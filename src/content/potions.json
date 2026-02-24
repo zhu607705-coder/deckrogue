@@ -1,0 +1,171 @@
+[
+  {
+    "id": "healing_potion",
+    "name": "Healing Potion",
+    "description": "Heal 20% of your Max HP.",
+    "price": 45,
+    "toxicity": 1,
+    "tags": [
+      "heal",
+      "stable"
+    ],
+    "effect": {
+      "type": "Heal",
+      "amount": 0.2
+    }
+  },
+  {
+    "id": "strength_potion",
+    "name": "Strength Potion",
+    "description": "Gain 2 Strength.",
+    "price": 60,
+    "toxicity": 2,
+    "tags": [
+      "buff",
+      "overload"
+    ],
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Strength",
+      "amount": 2,
+      "target": "Self"
+    }
+  },
+  {
+    "id": "block_potion",
+    "name": "Block Potion",
+    "description": "Gain 12 Block.",
+    "price": 45,
+    "toxicity": 1,
+    "tags": [
+      "defense",
+      "stable"
+    ],
+    "effect": {
+      "type": "GainBlock",
+      "amount": 12,
+      "target": "Self"
+    }
+  },
+  {
+    "id": "energy_potion",
+    "name": "Energy Potion",
+    "description": "Gain 2 Energy.",
+    "price": 75,
+    "toxicity": 2,
+    "tags": [
+      "energy",
+      "overload"
+    ],
+    "effect": {
+      "type": "GainEnergy",
+      "amount": 2
+    }
+  },
+  {
+    "id": "weak_potion",
+    "name": "Weak Potion",
+    "description": "Apply 3 Weak to all enemies.",
+    "price": 60,
+    "toxicity": 2,
+    "tags": [
+      "debuff",
+      "alchemy"
+    ],
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Weak",
+      "amount": 3,
+      "target": "AllEnemies"
+    }
+  },
+  {
+    "id": "combo_brew",
+    "name": "Combo Brew",
+    "description": "Your next card is cast twice this turn.",
+    "price": 95,
+    "toxicity": 2,
+    "tags": [
+      "combo",
+      "burst"
+    ],
+    "effect": {
+      "type": "ComboBrew"
+    }
+  },
+  {
+    "id": "sacrificial_elixir",
+    "name": "Sacrificial Elixir",
+    "description": "Lose 15 HP. Gain 3 Energy and 3 Strength.",
+    "price": 105,
+    "toxicity": 3,
+    "tags": [
+      "blood",
+      "energy",
+      "corruption"
+    ],
+    "effect": {
+      "type": "SacrificialElixir"
+    }
+  },
+  {
+    "id": "dice_water",
+    "name": "Dice Water",
+    "description": "Roll a d6. Gain that much Energy, then draw (7-roll) cards.",
+    "price": 90,
+    "toxicity": 2,
+    "tags": [
+      "chaos",
+      "draw",
+      "energy"
+    ],
+    "effect": {
+      "type": "DiceWater"
+    }
+  },
+  {
+    "id": "liquid_lightning",
+    "name": "Liquid Lightning",
+    "description": "Gain 3 Energy. Become Electrified (take self-damage when playing cards) this turn.",
+    "price": 100,
+    "toxicity": 3,
+    "tags": [
+      "energy",
+      "overload",
+      "lightning"
+    ],
+    "effect": {
+      "type": "LiquidLightning"
+    }
+  },
+  {
+    "id": "purifying_tears",
+    "name": "Purifying Tears",
+    "description": "Exhaust all Curse/Status cards in hand. Deal 15 true damage per card to the highest-HP enemy.",
+    "price": 110,
+    "toxicity": 2,
+    "tags": [
+      "curse",
+      "purge",
+      "execute"
+    ],
+    "effect": {
+      "type": "PurifyingTears"
+    }
+  },
+  {
+    "id": "mutagenic_draft",
+    "name": "Mutagenic Draft",
+    "description": "Gain 2 Energy, 8 Block, and 2 Strength. Apply 2 Poison to yourself.",
+    "price": 115,
+    "toxicity": 3,
+    "tags": [
+      "alchemy",
+      "mix",
+      "overload"
+    ],
+    "effect": {
+      "type": "MutagenicDraft"
+    }
+  }
+]

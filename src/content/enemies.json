@@ -1,0 +1,688 @@
+[
+  {
+    "id": "slime_small",
+    "name": "Small Slime",
+    "hp_range": [
+      11,
+      15
+    ],
+    "intent_policy": [
+      {
+        "intent": "tackle",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "tackle": [
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin Scout",
+    "hp_range": [
+      22,
+      28
+    ],
+    "intent_policy": [
+      {
+        "intent": "attack",
+        "weight": 2
+      },
+      {
+        "intent": "block",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "attack": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ],
+      "block": [
+        {
+          "type": "GainBlock",
+          "amount": 6,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "cultist",
+    "name": "Cultist",
+    "hp_range": [
+      48,
+      54
+    ],
+    "intent_policy": [
+      {
+        "intent": "incantation",
+        "weight": 1
+      },
+      {
+        "intent": "dark_strike",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "incantation": [
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 3,
+          "target": "Self"
+        }
+      ],
+      "dark_strike": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "jaw_worm",
+    "name": "Jaw Worm",
+    "hp_range": [
+      40,
+      44
+    ],
+    "intent_policy": [
+      {
+        "intent": "chomp",
+        "weight": 1
+      },
+      {
+        "intent": "thrash",
+        "weight": 1
+      },
+      {
+        "intent": "bellow",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "chomp": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        }
+      ],
+      "thrash": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 6,
+          "target": "Self"
+        }
+      ],
+      "bellow": [
+        {
+          "type": "GainBlock",
+          "amount": 6,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "gremlin_nob",
+    "name": "Gremlin Nob",
+    "hp_range": [
+      80,
+      85
+    ],
+    "intent_policy": [
+      {
+        "intent": "bellow",
+        "weight": 1
+      },
+      {
+        "intent": "rush",
+        "weight": 2
+      },
+      {
+        "intent": "skull_bash",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "bellow": [
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ],
+      "rush": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "Enemy"
+        }
+      ],
+      "skull_bash": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "elite"
+    ]
+  },
+  {
+    "id": "lagavulin",
+    "name": "Lagavulin",
+    "hp_range": [
+      109,
+      111
+    ],
+    "intent_policy": [
+      {
+        "intent": "attack",
+        "weight": 2
+      },
+      {
+        "intent": "siphon",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "attack": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        }
+      ],
+      "siphon": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "elite"
+    ]
+  },
+  {
+    "id": "slime_boss",
+    "name": "Slime Boss",
+    "hp_range": [
+      150,
+      165
+    ],
+    "intent_policy": [
+      {
+        "intent": "slam",
+        "weight": 2
+      },
+      {
+        "intent": "prep",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "slam": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        }
+      ],
+      "prep": [
+        {
+          "type": "GainBlock",
+          "amount": 18,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": [
+      "boss"
+    ]
+  },
+  {
+    "id": "hexaghost",
+    "name": "Hexaghost",
+    "hp_range": [
+      250,
+      250
+    ],
+    "intent_policy": [
+      {
+        "intent": "inferno",
+        "weight": 1
+      },
+      {
+        "intent": "sear",
+        "weight": 2
+      },
+      {
+        "intent": "tackle",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "inferno": [
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "sear": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        }
+      ],
+      "tackle": [
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "boss"
+    ]
+  },
+  {
+    "id": "predictor",
+    "name": "Predictor",
+    "hp_range": [
+      34,
+      40
+    ],
+    "intent_policy": [
+      {
+        "intent": "adapt",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "adapt": [
+        {
+          "type": "PredictorAction"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "fission",
+    "name": "Fission Core",
+    "hp_range": [
+      42,
+      48
+    ],
+    "intent_policy": [
+      {
+        "intent": "pulse",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "pulse": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "splits"
+    ]
+  },
+  {
+    "id": "fission_small",
+    "name": "Fission Shard",
+    "hp_range": [
+      15,
+      20
+    ],
+    "intent_policy": [
+      {
+        "intent": "zap",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "zap": [
+        {
+          "type": "DealDamage",
+          "amount": 4,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": []
+  },
+  {
+    "id": "barrier",
+    "name": "Barrier Guard",
+    "hp_range": [
+      25,
+      30
+    ],
+    "intent_policy": [
+      {
+        "intent": "shield_bash",
+        "weight": 1
+      },
+      {
+        "intent": "fortify",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "shield_bash": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        }
+      ],
+      "fortify": [
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": [
+      "starts_with_block"
+    ]
+  },
+  {
+    "id": "symbiote_a",
+    "name": "Symbiote Alpha",
+    "hp_range": [
+      50,
+      50
+    ],
+    "intent_policy": [
+      {
+        "intent": "strike",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "strike": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "symbiote"
+    ]
+  },
+  {
+    "id": "symbiote_b",
+    "name": "Symbiote Beta",
+    "hp_range": [
+      50,
+      50
+    ],
+    "intent_policy": [
+      {
+        "intent": "strike",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "strike": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "symbiote"
+    ]
+  },
+  {
+    "id": "intelligence_officer",
+    "name": "Intelligence Officer",
+    "hp_range": [
+      90,
+      100
+    ],
+    "intent_policy": [
+      {
+        "intent": "analyze",
+        "weight": 1
+      },
+      {
+        "intent": "copy_strike",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "analyze": [
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "copy_strike": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "elite"
+    ]
+  },
+  {
+    "id": "alchemy_master",
+    "name": "Alchemy Master",
+    "hp_range": [
+      210,
+      230
+    ],
+    "intent_policy": [
+      {
+        "intent": "brew_fire",
+        "weight": 1
+      },
+      {
+        "intent": "brew_acid",
+        "weight": 1
+      },
+      {
+        "intent": "throw_concoction",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "brew_fire": [
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ],
+      "brew_acid": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 4,
+          "target": "Enemy"
+        }
+      ],
+      "throw_concoction": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "boss"
+    ]
+  },
+  {
+    "id": "time_guardian",
+    "name": "Time Guardian",
+    "hp_range": [
+      250,
+      275
+    ],
+    "intent_policy": [
+      {
+        "intent": "time_strike",
+        "weight": 2
+      },
+      {
+        "intent": "rewind",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "time_strike": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        }
+      ],
+      "rewind": [
+        {
+          "type": "HealSelf",
+          "amount": 24
+        }
+      ]
+    },
+    "keywords": [
+      "boss"
+    ]
+  },
+  {
+    "id": "puppet_queen",
+    "name": "Puppet Queen",
+    "hp_range": [
+      190,
+      215
+    ],
+    "intent_policy": [
+      {
+        "intent": "summon_puppet",
+        "weight": 2
+      },
+      {
+        "intent": "command",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "summon_puppet": [
+        {
+          "type": "SummonEnemy",
+          "unit": "fission_small"
+        }
+      ],
+      "command": [
+        {
+          "type": "BuffAllEnemies",
+          "amount": 3
+        }
+      ]
+    },
+    "keywords": [
+      "boss"
+    ]
+  }
+]

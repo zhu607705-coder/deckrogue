@@ -1,0 +1,182 @@
+[
+  {
+    "id": "burning_blood",
+    "name": "Burning Blood",
+    "description": "At the end of combat, heal 6 HP.",
+    "price": 140,
+    "tags": [
+      "flesh",
+      "sustain"
+    ],
+    "resonanceGroup": "flesh",
+    "trigger": "EndCombat",
+    "effect": {
+      "type": "Heal",
+      "amount": 6
+    }
+  },
+  {
+    "id": "bag_of_prep",
+    "name": "Bag of Preparation",
+    "description": "At the start of each combat, draw 2 extra cards.",
+    "price": 190,
+    "tags": [
+      "draw",
+      "tempo"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "Draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "vajra",
+    "name": "Vajra",
+    "description": "At the start of each combat, gain 1 Strength.",
+    "price": 165,
+    "tags": [
+      "damage",
+      "martial"
+    ],
+    "resonanceGroup": "martial",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Strength",
+      "amount": 1,
+      "target": "Self"
+    }
+  },
+  {
+    "id": "anchor",
+    "name": "Anchor",
+    "description": "Start each combat with 10 Block.",
+    "price": 145,
+    "tags": [
+      "defense",
+      "fortress"
+    ],
+    "resonanceGroup": "fortress",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainBlock",
+      "amount": 10,
+      "target": "Self"
+    }
+  },
+  {
+    "id": "lantern",
+    "name": "Lantern",
+    "description": "Gain 1 Energy at the start of each combat.",
+    "price": 175,
+    "tags": [
+      "energy",
+      "arcane"
+    ],
+    "resonanceGroup": "arcane",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainEnergy",
+      "amount": 1
+    }
+  },
+  {
+    "id": "heretics_metronome",
+    "name": "Heretic's Metronome",
+    "description": "Each turn, your 4th card costs 0. When triggered, suffer 3 HP loss.",
+    "price": 200,
+    "tags": [
+      "frequency",
+      "corruption"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    }
+  },
+  {
+    "id": "zealots_chain",
+    "name": "Zealot's Chain",
+    "description": "If you play more than 6 cards in a turn, gain +1 Energy next turn.",
+    "price": 190,
+    "tags": [
+      "frequency",
+      "energy"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    }
+  },
+  {
+    "id": "warp_distorter",
+    "name": "Warp Distorter",
+    "description": "At the start of your turn, cards in hand randomize their costs (0-3).",
+    "price": 225,
+    "tags": [
+      "chaos",
+      "cost"
+    ],
+    "resonanceGroup": "chaos",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    }
+  },
+  {
+    "id": "ruined_reactor",
+    "name": "Ruined Reactor",
+    "description": "Gain +1 Energy each turn. Every 3 turns, suffer 8 radiation damage.",
+    "price": 235,
+    "tags": [
+      "energy",
+      "overload"
+    ],
+    "resonanceGroup": "arcane",
+    "trigger": "StartTurn",
+    "effect": {
+      "type": "Passive"
+    }
+  },
+  {
+    "id": "mark_of_chaos",
+    "name": "Mark of Chaos",
+    "description": "Shop cards, relics, and potions cost half. Every purchase adds a random Curse card to your deck.",
+    "price": 260,
+    "tags": [
+      "curse",
+      "economy",
+      "corruption"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "addCurseOnPickup": 1
+    }
+  },
+  {
+    "id": "corrupted_tome",
+    "name": "Corrupted Tome",
+    "description": "At the start of combat, gain 1 Energy and 1 Strength for each Curse in your deck.",
+    "price": 255,
+    "tags": [
+      "curse",
+      "scaling",
+      "corruption"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "Passive",
+      "maxHpPenalty": 5,
+      "addCurseOnPickup": 1
+    }
+  }
+]

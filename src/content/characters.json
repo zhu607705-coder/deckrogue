@@ -1,0 +1,122 @@
+[
+  {
+    "id": "informant",
+    "name": "The Informant",
+    "description": "A master of secrets. Uses Intel to predict and outmaneuver enemies.",
+    "maxHp": 55,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "defend",
+      "defend",
+      "gather_intel",
+      "go_dark"
+    ],
+    "portraitPrompt": "A mysterious rogue in a dark cloak, holding a glowing blue intel orb, fantasy art style, dark background"
+  },
+  {
+    "id": "brute",
+    "name": "The Brute",
+    "description": "A resilient warrior. Relies on high health, raw strength, and vulnerable foes.",
+    "maxHp": 80,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "defend",
+      "bash",
+      "flex"
+    ],
+    "portraitPrompt": "A heavily armored fantasy warrior with a massive battle axe, glowing red eyes, fierce expression, dynamic pose"
+  },
+  {
+    "id": "tactician",
+    "name": "The Tactician",
+    "description": "A cunning rogue. Cycles through cards quickly and exploits weaknesses.",
+    "maxHp": 62,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "defend",
+      "defend",
+      "deadly_poison",
+      "acrobatics"
+    ],
+    "portraitPrompt": "A nimble assassin with twin daggers dripping with green poison, wearing a mask, agile stance, fantasy concept art"
+  },
+  {
+    "id": "chronomancer",
+    "name": "The Chronomancer",
+    "description": "A traveler from twisted realities, able to briefly break the timeline, jumping between past, present, and future.",
+    "maxHp": 68,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "defend",
+      "time_bomb",
+      "time_bomb",
+      "time_warp",
+      "time_warp"
+    ],
+    "portraitPrompt": "A mysterious traveler in a clockwork-themed cloak, manipulating glowing golden time rifts, fantasy art style, cosmic background"
+  },
+  {
+    "id": "puppeteer",
+    "name": "The Puppeteer",
+    "description": "A dark artist manipulating strings, sealing souls into mechanical bodies to create loyal constructs.",
+    "maxHp": 60,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "scrap_golem",
+      "scrap_golem",
+      "wire_guard",
+      "wire_guard",
+      "spark_shock",
+      "spark_shock"
+    ],
+    "portraitPrompt": "A dark artist manipulating glowing magical strings attached to mechanical puppets, fantasy art style, eerie background"
+  },
+  {
+    "id": "alchemist",
+    "name": "The Alchemist",
+    "description": "A scholar pursuing the essence of all things, viewing chemical reactions as the ultimate truth of the universe.",
+    "maxHp": 70,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "element_spark",
+      "element_spark",
+      "element_spark",
+      "defend",
+      "defend",
+      "defend",
+      "fire_arrow",
+      "fire_arrow",
+      "frost_armor",
+      "frost_armor"
+    ],
+    "portraitPrompt": "A scholar in a lab coat holding glowing vials of different colored liquids, surrounded by magical runes, fantasy art style, alchemy lab background"
+  }
+]
