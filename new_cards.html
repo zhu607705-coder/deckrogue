@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战锤肉鸽 - 新增卡牌材质</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    body {
+      background-color: #08080a;
+      background-image: radial-gradient(circle at 50% 50%, #15151c 0%, #000 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Crimson Text', serif;
+      flex-wrap: wrap;
+    }
+
+    .card-base {
+      position: relative;
+      width: 250px;
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .card-title {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      margin: 0;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .card-wood {
+      background: #3b2f24;
+      border: 3px solid #1f1812;
+      border-radius: 4px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.6), 0 0 0 2px #4a3e31;
+    }
+    .card-wood:hover {
+      transform: translateY(-5px);
+      border-color: #5c4a3d;
+      box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 0 2px #5c4a3d;
+    }
+    .cost-wood {
+      position: absolute;
+      top: -12px;
+      left: -12px;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, #8b5a2b, #4a2e15);
+      border: 2px solid #2e1d0d;
+      border-radius: 50%;
+      color: #d3c4b5;
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: inset 0 0 5px #000, 0 4px 6px rgba(0,0,0,0.8);
+      z-index: 10;
+    }
+    .header-wood { background: linear-gradient(to bottom, #2b2219, #17120d); padding: 10px 10px 6px 35px; border-bottom: 2px solid #0f0b08; }
+    .card-wood .card-title { color: #a89f91; text-shadow: 1px 1px 2px #000; }
+    .image-wood { flex: 1; background: url('https://images.unsplash.com/photo-1533558701576-23c65e0272fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80') center/cover; border-bottom: 2px solid #0f0b08; filter: sepia(30%) grayscale(20%); }
+    .body-wood { height: 120px; background: #c2b5a3; padding: 10px 12px; color: #2b2219; text-align: center; display: flex; flex-direction: column; }
+    .type-wood { font-family: 'Cinzel', serif; font-size: 10px; color: #4a3e31; font-weight: 800; border-bottom: 1px dashed #7a6b58; padding-bottom: 3px; margin-bottom: 6px; }
+
+    .card-tactic {
+      background: #e3d5c1;
+      border: 2px solid #5a3c22;
+      border-radius: 2px 15px 2px 2px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 0 30px rgba(100,60,20,0.2), inset 0 0 0 4px #e3d5c1, inset 0 0 0 5px #8b5a2b;
+    }
+    .card-tactic:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,255,255,0.1), inset 0 0 40px rgba(0,255,255,0.15); }
+    .cost-tactic {
+      position: absolute; top: -15px; left: -15px; width: 45px; height: 45px;
+      background: radial-gradient(circle at 30% 30%, #cc3333, #660000);
+      border-radius: 50% 45% 55% 50%; color: #f0e6d2; font-family: 'Cinzel', serif; font-size: 22px; font-weight: 800;
+      display: flex; justify-content: center; align-items: center;
+      box-shadow: inset -2px -2px 6px rgba(0,0,0,0.6), 2px 4px 8px rgba(0,0,0,0.5); z-index: 10;
+    }
+    .header-tactic { padding: 12px 10px 6px 35px; border-bottom: 1px solid rgba(90, 60, 34, 0.3); }
+    .card-tactic .card-title { color: #3a2211; font-weight: bold; }
+    .image-tactic { flex: 1; background: url('https://images.unsplash.com/photo-1544816155-12df9643f363?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80') center/cover; border-bottom: 1px solid rgba(90, 60, 34, 0.3); mix-blend-mode: multiply; opacity: 0.9; }
+    .body-tactic { height: 130px; padding: 10px 15px; color: #2c1e14; text-align: center; display: flex; flex-direction: column; }
+    .type-tactic { font-family: 'Cinzel', serif; font-size: 11px; color: #8b5a2b; font-weight: 800; border-bottom: 1px solid rgba(139,90,43,0.3); padding-bottom: 4px; margin-bottom: 8px; }
+
+    .card-mech {
+      background: #1a1612;
+      border: 3px solid #8c6a38;
+      border-radius: 8px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 20px #000, 0 0 0 4px #111;
+    }
+    .card-mech:hover {
+      transform: translateY(-10px);
+      border-color: #ffd700;
+      box-shadow: 0 20px 45px rgba(0, 200, 255, 0.3), inset 0 0 20px rgba(0, 200, 255, 0.2), 0 0 0 4px #111;
+    }
+    .cost-mech {
+      position: absolute; top: -12px; left: -12px; width: 48px; height: 48px; background: #05131a; border: 3px solid #b58d47;
+      border-radius: 8px; color: #00ffff; font-family: 'Cinzel', serif; font-size: 24px; font-weight: 800;
+      display: flex; justify-content: center; align-items: center; text-shadow: 0 0 10px #00ffff;
+      box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.5), 0 5px 10px #000; z-index: 10;
+    }
+    .header-mech { background: linear-gradient(to right, #2a2218, #111); padding: 12px 10px 8px 45px; border-bottom: 2px solid #5a4422; }
+    .card-mech .card-title { color: #d4b886; text-shadow: 1px 1px 2px #000; }
+    .image-mech { flex: 1; background: url('https://images.unsplash.com/photo-1517420704952-d9f39740e850?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80') center/cover; border-bottom: 3px solid #5a4422; }
+    .body-mech { height: 125px; background: #2b2520; padding: 12px 15px; color: #c4b5a5; text-align: center; display: flex; flex-direction: column; border-radius: 0 0 5px 5px; }
+    .type-mech { font-family: 'Cinzel', serif; font-size: 11px; color: #00ffff; font-weight: 800; border-bottom: 1px solid #4a3c2c; padding-bottom: 4px; margin-bottom: 8px; text-shadow: 0 0 5px rgba(0,255,255,0.4); }
+
+    .card-magic {
+      background: #0a0a0f;
+      border: 2px solid transparent;
+      background-image: linear-gradient(#0a0a0f, #0a0a0f), linear-gradient(135deg, #0099ff, #ff4400);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      border-radius: 6px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 20px rgba(0,0,0,1);
+    }
+    .card-magic:hover {
+      transform: translateY(-10px);
+      box-shadow: -15px 20px 40px rgba(0, 153, 255, 0.3), 15px 20px 40px rgba(255, 68, 0, 0.3);
+    }
+    .cost-magic {
+      position: absolute; top: -15px; left: -15px; width: 45px; height: 45px; background: linear-gradient(135deg, #00ccff, #ff3300);
+      transform: rotate(45deg); color: #fff; font-family: 'Cinzel', serif; font-size: 20px; font-weight: 800;
+      display: flex; justify-content: center; align-items: center; box-shadow: 0 0 15px rgba(255,255,255,0.3); z-index: 10;
+    }
+    .cost-magic span { transform: rotate(-45deg); text-shadow: 0 0 5px #fff; }
+    .header-magic { background: rgba(20, 20, 30, 0.8); padding: 12px 10px 8px 40px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .card-magic .card-title { color: #e0e0ff; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
+    .image-magic { flex: 1; background: url('https://images.unsplash.com/photo-1618606015525-4c01d9f0ce6f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80') center/cover; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .body-magic { height: 125px; background: #14141e; padding: 12px 15px; color: #d0d0e0; text-align: center; display: flex; flex-direction: column; border-radius: 0 0 4px 4px; }
+    .type-magic { font-family: 'Cinzel', serif; font-size: 11px; color: #a0a0c0; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 8px; }
+
+    .hl-cyan { color: #00cccc; font-weight: bold; }
+    .hl-fire { color: #ff5500; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card-base card-wood">
+    <div class="cost-wood">1</div>
+    <div class="header-wood"><h2 class="card-title">惊恐格挡</h2></div>
+    <div class="image-wood"></div>
+    <div class="body-wood">
+      <div class="type-wood">防御 - 基础</div>
+      <div style="font-size: 14px; line-height: 1.4; font-weight: 600;">
+        获得 5 点护甲。<br><br>
+        <span style="font-style: italic; font-size: 12px; color:#6b5a48;">“拿好你的木板，尽量别抖出声。”</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-base card-tactic">
+    <div class="cost-tactic">0</div>
+    <div class="header-tactic"><h2 class="card-title">弱点洞悉</h2></div>
+    <div class="image-tactic"></div>
+    <div class="body-tactic">
+      <div class="type-tactic">技能 - 战术</div>
+      <div style="font-size: 14px; line-height: 1.5; font-weight: 600;">
+        选择一名敌人，使其获得 <span style="color:#cc0000;">[破甲]</span> 直到战斗结束。<br>
+        抽取 1 张牌。<span style="color:#5a3c22; font-weight:bold;">消耗</span>。
+      </div>
+    </div>
+  </div>
+
+  <div class="card-base card-mech">
+    <div class="cost-mech">3</div>
+    <div class="header-mech"><h2 class="card-title">超载线圈</h2></div>
+    <div class="image-mech"></div>
+    <div class="body-mech">
+      <div class="type-mech">能力 - 装置</div>
+      <div style="font-size: 13px; line-height: 1.5; font-weight: 600;">
+        每当你打出一张 <span class="hl-cyan">科技</span> 牌时，对随机敌人造成 4 点 <span class="hl-cyan">闪电伤害</span>。<br>
+        回合结束时，如果你有剩余能量，则将其储存在线圈中。
+      </div>
+    </div>
+  </div>
+
+  <div class="card-base card-magic">
+    <div class="cost-magic"><span>2</span></div>
+    <div class="header-magic"><h2 class="card-title">双生交锋</h2></div>
+    <div class="image-magic"></div>
+    <div class="body-magic">
+      <div class="type-magic">攻击 - 元素箭术</div>
+      <div style="font-size: 14px; line-height: 1.5; font-weight: 600;">
+        造成 8 点伤害。<br>
+        如果目标被 <span class="hl-cyan">冰冻</span>，则额外造成 12 点 <span class="hl-fire">火焰伤害</span> 并触发一次爆裂。
+      </div>
+    </div>
+  </div>
+</body>
+</html>

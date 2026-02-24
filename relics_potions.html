@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战锤肉鸽 - 奇物与药水 UI 设计</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    body {
+      background-color: #0d0d12;
+      background-image: 
+        radial-gradient(circle at 50% 30%, #1a1a24 0%, #000 100%);
+      color: #e0e0e0;
+      font-family: 'Crimson Text', serif;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* =========================================
+       1. 顶部：奇物展示架 (Relic Bar)
+       ========================================= */
+    .relic-bar {
+      width: 100%;
+      height: 60px;
+      background: linear-gradient(to bottom, #111, rgba(0,0,0,0));
+      border-bottom: 2px solid #2a2218;
+      display: flex;
+      align-items: center;
+      padding: 0 30px;
+      gap: 15px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+    }
+
+    .relic-item {
+      width: 40px;
+      height: 40px;
+      background-color: #1a1a1a;
+      border: 2px solid #5a4422; /* 黄铜边框 */
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: inset 0 0 10px #000, 0 4px 6px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+
+    /* 不同的奇物状态 */
+    .relic-active { border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.4), inset 0 0 10px #000; }
+    .relic-corrupted { border-color: #cc0000; box-shadow: 0 0 10px rgba(200,0,0,0.6), inset 0 0 10px #000; }
+    .relic-used { border-color: #333; filter: grayscale(100%) brightness(0.5); }
+
+    /* 奇物悬停反馈与 Tooltip */
+    .relic-item:hover { transform: translateY(-2px) scale(1.1); }
+    
+    .tooltip {
+      position: absolute;
+      top: 50px; left: 50%; transform: translateX(-50%);
+      width: 220px;
+      background: #1c1814;
+      border: 1px solid #5a4422;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 10px 25px #000;
+      opacity: 0; visibility: hidden; transition: opacity 0.2s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .relic-item:hover .tooltip { opacity: 1; visibility: visible; }
+    
+    .tooltip-title { font-family: 'Cinzel', serif; color: #d4af37; font-size: 14px; margin-bottom: 5px; border-bottom: 1px dashed #5a4422; padding-bottom: 3px;}
+    .tooltip-desc { font-size: 13px; color: #bcaaa4; line-height: 1.4; }
+    .tooltip-flavor { font-size: 11px; color: #6b5a48; font-style: italic; margin-top: 5px; }
+
+
+    /* =========================================
+       2. 底部：炼金药水腰带 (Potion Belt)
+       ========================================= */
+    .potion-belt-container {
+      position: absolute;
+      bottom: 30px;
+      right: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .belt-title {
+      font-family: 'Cinzel', serif;
+      color: #8c7355;
+      font-size: 12px;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .potion-belt {
+      display: flex;
+      gap: 20px;
+      background: #1a1410;
+      padding: 15px 25px;
+      border: 3px solid #3a2e22;
+      border-radius: 10px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.9), inset 0 0 20px #000;
+      /* 皮革缝线感 */
+      outline: 1px dashed #5a4a35;
+      outline-offset: -5px;
+    }
+
+    .potion-slot {
+      width: 50px;
+      height: 65px;
+      background: #0a0806;
+      border-radius: 25px 25px 5px 5px;
+      border: 2px solid #2a2218;
+      box-shadow: inset 0 10px 15px rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      position: relative;
+    }
+
+    /* 药水瓶子本体 */
+    .potion-vial {
+      width: 34px;
+      height: 50px;
+      border-radius: 17px 17px 8px 8px;
+      position: relative;
+      cursor: pointer;
+      box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5), inset 5px 5px 10px rgba(255,255,255,0.3);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      margin-bottom: 5px;
+    }
+
+    /* 软木塞 */
+    .potion-vial::before {
+      content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+      width: 14px; height: 10px; background: #8b5a2b; border-radius: 2px;
+      border: 1px solid #4a2e15;
+    }
+
+    /* 液体发光特效 */
+    .potion-red { background: linear-gradient(to bottom, transparent 20%, #cc0000 20%, #880000 100%); filter: drop-shadow(0 0 8px rgba(200,0,0,0.6)); }
+    .potion-green { background: linear-gradient(to bottom, transparent 30%, #39ff14 30%, #1f8a0e 100%); filter: drop-shadow(0 0 10px rgba(57,255,20,0.6)); }
+    .potion-blue { background: linear-gradient(to bottom, transparent 10%, #00e5ff 10%, #006688 100%); filter: drop-shadow(0 0 12px rgba(0,229,255,0.7)); }
+
+    /* 悬停动画：拔出药水瓶 */
+    .potion-vial:hover {
+      transform: translateY(-15px) scale(1.15);
+      z-index: 10;
+    }
+    
+    /* 药水冒泡动画 */
+    .potion-vial::after {
+      content: '°'; position: absolute; bottom: 5px; left: 10px;
+      color: rgba(255,255,255,0.6); font-size: 10px;
+      animation: bubble 2s infinite ease-in;
+    }
+    @keyframes bubble { 0% {transform: translateY(0); opacity:1;} 100% {transform: translateY(-20px); opacity:0;} }
+
+    /* 空槽位 */
+    .potion-empty { background: transparent; box-shadow: none; border: 1px dashed #333; }
+    .potion-empty::before, .potion-empty::after { display: none; }
+
+  </style>
+</head>
+<body>
+
+  <!-- 顶部奇物栏 -->
+  <div class="relic-bar">
+    <div style="font-family: 'Cinzel', serif; color: #8c7355; margin-right: 10px; font-size: 14px;">异端遗物 (Relics)</div>
+    
+    <!-- 激活状态的奇物 -->
+    <div class="relic-item relic-active" style="background-image: url('https://images.unsplash.com/photo-1618606015525-4c01d9f0ce6f?auto=format&fit=crop&w=40&q=80'); background-size: cover;">
+      <div class="tooltip">
+        <div class="tooltip-title">异端节拍器</div>
+        <div class="tooltip-desc">每回合打出的第 4 张牌耗能为 0，但受到 3 点伤害。</div>
+        <div class="tooltip-flavor">“滴答...滴答...鲜血与节奏同频。”</div>
+      </div>
+    </div>
+
+    <!-- 腐化状态的奇物 -->
+    <div class="relic-item relic-corrupted" style="background-image: url('https://images.unsplash.com/photo-1542382103-10d9cc534c0e?auto=format&fit=crop&w=40&q=80'); background-size: cover;">
+      <div class="tooltip">
+        <div class="tooltip-title">浸血圣杯 (被诅咒)</div>
+        <div class="tooltip-desc">战斗结束恢复 20% 生命，但最大生命值永久 -1。</div>
+        <div class="tooltip-flavor">“它索取的，比它给予的更多。”</div>
+      </div>
+    </div>
+
+    <!-- 耗尽/冷却中的奇物 -->
+    <div class="relic-item relic-used" style="background-image: url('https://images.unsplash.com/photo-1506744012117-6db65675e8e3?auto=format&fit=crop&w=40&q=80'); background-size: cover;">
+      <div class="tooltip">
+        <div class="tooltip-title">时空残片</div>
+        <div class="tooltip-desc">战斗中免死一次。本场战斗已触发。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 屏幕主体留白用于战斗场景 -->
+
+  <!-- 右下角药水腰带 -->
+  <div class="potion-belt-container">
+    <div class="belt-title">炼金腰带 [2/3]</div>
+    <div class="potion-belt">
+      
+      <!-- 药水 1：生命药剂 -->
+      <div class="potion-slot">
+        <div class="potion-vial potion-red" title="献祭灵药: 失去15生命，获得3能量与3力量。"></div>
+      </div>
+
+      <!-- 药水 2：剧毒/机制药剂 -->
+      <div class="potion-slot">
+        <div class="potion-vial potion-green" title="腐败胆汁: 增加2张诅咒，获得4力量与4敏捷。"></div>
+      </div>
+
+      <!-- 药水 3：空槽位 -->
+      <div class="potion-slot">
+        <div class="potion-vial potion-empty" title="空槽位"></div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

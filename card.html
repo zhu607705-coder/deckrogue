@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeckRogue 卡牌 UI 示例（沉浸式画框）</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 20% 20%, #1f1822 0%, transparent 45%),
+        radial-gradient(circle at 80% 80%, #111b24 0%, transparent 45%),
+        #060608;
+      font-family: "Noto Serif SC", Georgia, serif;
+      color: #ddd;
+    }
+
+    .note {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      max-width: 760px;
+      margin: auto;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d0d0d0;
+      background: rgba(12, 12, 16, 0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      backdrop-filter: blur(8px);
+    }
+
+    .card {
+      --accent: 62, 171, 227;
+      --accent2: 24, 64, 112;
+      width: 280px;
+      height: 420px;
+      position: relative;
+      border-radius: 10px;
+      isolation: isolate;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 12px;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(var(--accent), 0.45), transparent 45%),
+        radial-gradient(circle at 84% 80%, rgba(var(--accent2), 0.38), transparent 55%);
+      filter: blur(10px);
+      opacity: 0.8;
+    }
+
+    .frame {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #11131a, #07080b);
+      box-shadow:
+        inset 0 0 0 2px #243546,
+        inset 0 0 0 4px rgba(255,255,255,0.02),
+        inset 0 0 20px rgba(0,0,0,0.9),
+        0 22px 45px rgba(0,0,0,0.65);
+    }
+
+    .cost {
+      position: absolute;
+      top: -14px;
+      left: -12px;
+      width: 52px;
+      height: 52px;
+      clip-path: polygon(50% 0%, 94% 21%, 100% 68%, 66% 100%, 20% 93%, 0% 46%, 18% 10%);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 800;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+      background:
+        radial-gradient(circle at 30% 28%, rgba(255,255,255,0.4), transparent 45%),
+        linear-gradient(145deg, rgb(var(--accent)), rgb(var(--accent2)));
+      border: 2px solid #e2d7c1;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.7), 0 0 16px rgba(var(--accent), 0.45);
+      z-index: 3;
+    }
+
+    .header {
+      padding: 16px 16px 10px 44px;
+      border-bottom: 1px solid rgba(122, 167, 207, 0.35);
+      background: linear-gradient(180deg, #152232, #0d1017);
+    }
+
+    .title {
+      margin: 0;
+      font-size: 18px;
+      color: #d8edf8;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+
+    .sub {
+      margin-top: 6px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #8fd2ed;
+    }
+
+    .art {
+      height: 210px;
+      position: relative;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(122, 167, 207, 0.35);
+      background:
+        linear-gradient(180deg, rgba(6,8,11,0.15), rgba(6,8,11,0.65)),
+        url("https://images.unsplash.com/photo-1518066000714-58c45f1a2c08?auto=format&fit=crop&w=800&q=80") center/cover;
+      filter: brightness(0.85) saturate(0.9);
+    }
+
+    .art::after {
+      content: "SKL";
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      font: 700 11px/1 sans-serif;
+      letter-spacing: 2px;
+      color: rgba(237, 244, 250, 0.9);
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .body {
+      height: calc(100% - 64px - 210px);
+      padding: 12px 14px 14px;
+      background: linear-gradient(180deg, #141a22, #0a0d12);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .type {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #a3c0d2;
+      text-transform: uppercase;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .text {
+      text-align: center;
+      color: #c8d3db;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .num { color: #7ce0ff; font-weight: 700; }
+    .kw { color: #cdefff; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="note">
+    示例说明：这是“沉浸式画框”视觉模板示例。实际接入游戏时，卡牌名称、费用、描述、稀有度、目标类型、数值与玩法效果都必须继续读取原项目数据（如 <code>cards.json</code> / 引擎结算逻辑），只替换外观表现层。
+  </div>
+
+  <div class="card">
+    <div class="frame">
+      <div class="cost">2</div>
+      <div class="header">
+        <h2 class="title">雷霆震击</h2>
+        <div class="sub">Uncommon · Skill</div>
+      </div>
+      <div class="art"></div>
+      <div class="body">
+        <div class="type">All Enemies</div>
+        <div class="text">
+          对所有敌人造成 <span class="num">12</span> 点伤害，并施加 <span class="num">2</span> 层 <span class="kw">[感电]</span>。
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

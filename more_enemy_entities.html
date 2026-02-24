@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战锤肉鸽 - 更多敌人实体建模</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    body {
+      background-color: #030408;
+      background-image:
+        radial-gradient(circle at 50% 100%, #151822 0%, #000 100%),
+        linear-gradient(to bottom, transparent 40%, rgba(10, 15, 20, 0.9) 100%);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 50px;
+      height: 100vh;
+      margin: 0;
+      padding: 0 50px 80px 50px;
+      font-family: 'Crimson Text', serif;
+      box-sizing: border-box;
+    }
+
+    .enemy-entity { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .intent {
+      margin-bottom: 12px; display: flex; flex-direction: column; align-items: center;
+      filter: drop-shadow(0 5px 8px rgba(0,0,0,0.9)); z-index: 20;
+    }
+    .intent-icon { font-size: 26px; margin-bottom: 2px; }
+    .intent-value {
+      font-family: 'Cinzel', serif; font-size: 18px; font-weight: 800; color: #fff;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+
+    .sprite-frame {
+      background: #111; position: relative; overflow: hidden; display: flex;
+      justify-content: center; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.8);
+    }
+    .sprite-image { width: 100%; height: 100%; background-size: cover; background-position: center; }
+
+    .stats-hud { margin-top: -12px; position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+    .hp-bar-container {
+      background: #0a0a0a; border: 2px solid #333; border-radius: 3px;
+      position: relative; box-shadow: 0 5px 10px #000; overflow: hidden;
+    }
+    .hp-fill { height: 100%; transition: width 0.3s ease; }
+    .hp-text {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-family: 'Cinzel', serif; font-size: 13px; font-weight: bold; color: #fff;
+      text-shadow: 1px 1px 2px #000; white-space: nowrap;
+    }
+    .status-row { display: flex; gap: 4px; margin-top: 6px; }
+    .status-icon {
+      width: 22px; height: 22px; background: #1a1a1a; border: 1px solid #555;
+      display: flex; justify-content: center; align-items: center; font-size: 13px;
+      position: relative; box-shadow: 0 2px 4px #000;
+    }
+    .status-stack {
+      position: absolute; bottom: -5px; right: -3px; font-family: 'Cinzel', serif;
+      font-size: 11px; font-weight: bold; color: #fff; text-shadow: 1px 1px 1px #000;
+    }
+
+    .entity-goblin { animation: float-rough 2s infinite alternate; }
+    @keyframes float-rough { 0% {transform: translateY(0);} 100% {transform: translateY(-3px);} }
+    .entity-goblin .sprite-frame {
+      width: 160px; height: 230px; border: 4px solid #3a2e22; border-bottom: 10px solid #241b12; border-radius: 4px;
+    }
+    .entity-goblin .intent-icon { filter: sepia(100%) hue-rotate(300deg); }
+    .entity-goblin .sprite-image { background-image: url('https://images.unsplash.com/photo-1620215733578-83b6329c3558?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); filter: sepia(40%) contrast(1.1); }
+    .entity-goblin .hp-bar-container { width: 130px; height: 18px; border-color: #3a2e22; }
+    .entity-goblin .hp-fill { background: linear-gradient(90deg, #550000, #880000); }
+
+    .entity-alchemist { animation: float-smooth 3.5s infinite alternate ease-in-out; }
+    @keyframes float-smooth { 0% {transform: translateY(0);} 100% {transform: translateY(-6px);} }
+    .entity-alchemist .sprite-frame {
+      width: 180px; height: 260px; border: 3px solid #8c7335; border-bottom: 8px solid #4a3e20;
+      border-radius: 90px 90px 6px 6px; box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0, 255, 100, 0.2);
+    }
+    .entity-alchemist .intent-value { color: #39ff14; text-shadow: 0 0 8px #39ff14, 2px 2px 0 #000; }
+    .entity-alchemist .sprite-image { background-image: url('https://images.unsplash.com/photo-1532634922-8fe0b757fb13?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); mix-blend-mode: screen; }
+    .entity-alchemist .hp-bar-container { width: 140px; height: 20px; border-color: #8c7335; }
+    .entity-alchemist .hp-fill { background: linear-gradient(90deg, #660033, #aa0055); }
+
+    .entity-void { animation: float-ghost 4s infinite alternate ease-in-out; }
+    @keyframes float-ghost { 0% {transform: translateY(5px);} 100% {transform: translateY(-15px);} }
+    .entity-void .sprite-frame {
+      width: 200px; height: 280px; border: 2px solid rgba(150, 50, 255, 0.6); border-bottom: 2px solid rgba(150, 50, 255, 0.2);
+      border-radius: 100px; background: transparent; box-shadow: 0 10px 40px rgba(100, 0, 255, 0.3), inset 0 0 30px rgba(150, 50, 255, 0.4);
+      backdrop-filter: blur(4px);
+    }
+    .entity-void .intent-value { color: #d4aaff; text-shadow: 0 0 15px #a020f0, 2px 2px 0 #000; }
+    .entity-void .sprite-image { background-image: url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); opacity: 0.85; mix-blend-mode: hard-light; }
+    .entity-void .hp-bar-container { width: 150px; height: 20px; border-color: #6a0dad; background: rgba(0,0,0,0.6); }
+    .entity-void .hp-fill { background: linear-gradient(90deg, #4b0082, #9400d3); }
+
+    .entity-worm { animation: breathe-heavy 5s infinite alternate ease-in-out; }
+    @keyframes breathe-heavy { 0% {transform: translateY(0) scale(1);} 100% {transform: translateY(-2px) scale(1.01);} }
+    .entity-worm .sprite-frame {
+      width: 280px; height: 320px; border: 6px solid #4a3b2c; border-bottom: 15px solid #2a1f16;
+      border-radius: 140px 140px 10px 10px; box-shadow: 0 25px 50px rgba(0,0,0,0.9), inset 0 -30px 40px rgba(0,0,0,0.8);
+    }
+    .entity-worm .intent-icon { font-size: 38px; }
+    .entity-worm .intent-value { font-size: 28px; color: #ffaa00; text-shadow: 0 0 10px #cc5500, 2px 2px 0 #000; }
+    .entity-worm .sprite-image { background-image: url('https://images.unsplash.com/photo-1506512420485-a11ebfc26896?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'); filter: contrast(1.3) sepia(20%); }
+    .entity-worm .hp-bar-container { width: 240px; height: 26px; border-color: #4a3b2c; border-width: 3px; }
+    .entity-worm .hp-fill { background: linear-gradient(90deg, #662200, #cc4400); }
+    .entity-worm .hp-text { font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="enemy-entity entity-goblin">
+    <div class="intent"><div class="intent-icon">🗡️</div><div class="intent-value">6</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud"><div class="hp-bar-container"><div class="hp-fill" style="width: 100%;"></div><div class="hp-text">24 / 24</div></div></div>
+  </div>
+
+  <div class="enemy-entity entity-alchemist">
+    <div class="intent"><div class="intent-icon">🧪</div><div class="intent-value">毒气</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container"><div class="hp-fill" style="width: 80%;"></div><div class="hp-text">36 / 45</div></div>
+      <div class="status-row"><div class="status-icon" style="color: #00ffff; border-color: #00ffff;">🛡️<span class="status-stack">1</span></div></div>
+    </div>
+  </div>
+
+  <div class="enemy-entity entity-void">
+    <div class="intent"><div class="intent-icon">👁️‍🗨️</div><div class="intent-value">灵魂吸取</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container"><div class="hp-fill" style="width: 100%;"></div><div class="hp-text">110 / 110</div></div>
+      <div class="status-row">
+        <div class="status-icon" style="color: #d4aaff; border-color: #d4aaff;">🌫️</div>
+        <div class="status-icon" style="color: #aa00ff; border-color: #aa00ff;">🌀</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="enemy-entity entity-worm">
+    <div class="intent"><div class="intent-icon">⚠️</div><div class="intent-value">吞噬打击 (35)</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container"><div class="hp-fill" style="width: 75%;"></div><div class="hp-text">225 / 300</div></div>
+      <div class="status-row">
+        <div class="status-icon" style="color: #ffcc00; border-color: #ffcc00;">🪨<span class="status-stack">3</span></div>
+        <div class="status-icon" style="color: #aaa; border-color: #aaa;">🕳️</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

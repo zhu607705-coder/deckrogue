@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeckRogue - 高阶机制卡牌材质图鉴</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    :root {
+      --bg: #050508;
+      --panel: rgba(10, 10, 14, 0.78);
+      --line: rgba(255,255,255,0.08);
+      --text: #d8d8de;
+      --muted: #a1a1aa;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Crimson Text', serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, #171726 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, #10202a 0%, transparent 40%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 22px 36px;
+    }
+
+    .header {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+    .header h1 {
+      margin: 0;
+      font-family: 'Cinzel', serif;
+      font-size: 24px;
+      letter-spacing: 2px;
+      color: #efe5c4;
+    }
+    .header p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(9, 9, 12, 0.55);
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.02);
+    }
+    .section-title {
+      margin: 0;
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      letter-spacing: 1.5px;
+    }
+    .section-desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .grid {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 18px;
+      justify-items: center;
+    }
+
+    .card-base {
+      position: relative;
+      width: 250px;
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+      z-index: 1;
+    }
+    .card-title {
+      font-family: 'Cinzel', serif; font-size: 15px; margin: 0;
+      letter-spacing: 1.2px; text-transform: uppercase; text-align: center;
+    }
+    .card-sub {
+      margin-top: 4px; font-size: 11px; letter-spacing: 1px; text-align: center; opacity: 0.85;
+    }
+    .card-text {
+      font-size: 13px; line-height: 1.45; font-weight: 600;
+    }
+
+    .card-time {
+      background: #0f1423;
+      border: 3px solid #d4af37;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 20px rgba(0, 150, 255, 0.3);
+    }
+    .card-time:hover { transform: translateY(-12px) scale(1.03); border-color: #fff2cc; box-shadow: 0 20px 50px rgba(0, 150, 255, 0.45), 0 0 25px rgba(212,175,55,0.3), inset 0 0 28px rgba(0,150,255,0.4); z-index: 10; }
+    .cost-time {
+      position: absolute; top: -15px; left: -15px; width: 50px; height: 50px;
+      background: radial-gradient(circle, #0f1423, #003366);
+      border: 3px solid #d4af37; border-radius: 50%; color: #fff2cc;
+      font-family: 'Cinzel', serif; font-size: 22px; font-weight: 800; display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 0 15px #00aaff, inset 0 0 10px #00aaff; z-index: 10;
+    }
+    .card-time:hover .cost-time { animation: spin-hourglass 2s linear infinite; }
+    @keyframes spin-hourglass { to { transform: rotate(360deg); } }
+    .header-time { background: linear-gradient(90deg, #1f1807, #0a1122); padding: 12px 10px 8px 35px; border-bottom: 2px solid #d4af37; }
+    .card-time .card-title { color: #d4af37; text-shadow: 0 0 8px #00aaff; }
+    .card-time .card-sub { color: #bcd2ff; }
+    .image-time { flex: 1; background-size: cover; background-position: center; border-bottom: 2px solid #d4af37; mix-blend-mode: screen; }
+    .body-time { height: 125px; background: linear-gradient(to bottom, #111a2e, #0a0e1a); padding: 12px 15px; color: #b3c6ff; text-align: center; display: flex; flex-direction: column; }
+    .type-time { font-family: 'Cinzel', serif; font-size: 11px; color: #d4af37; font-weight: 800; border-bottom: 1px solid #d4af37; padding-bottom: 4px; margin-bottom: 8px; text-shadow: 0 0 5px rgba(212,175,55,0.5);}    
+
+    .card-mirror {
+      background: #1a1e24; border: 3px solid #c0c5ce;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 15px rgba(255,255,255,0.25);
+      overflow: hidden;
+    }
+    .card-mirror:hover { transform: translateY(-10px); border-color: #fff; box-shadow: 0 20px 40px rgba(255,255,255,0.18), inset 0 0 22px rgba(255,255,255,0.35); }
+    .card-mirror::after { content:''; position:absolute; top:-50%; left:-50%; width:50px; height:200%; background:linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.4), rgba(255,255,255,0)); transform: rotate(35deg); opacity:0; pointer-events:none; }
+    .card-mirror:hover::after { opacity:1; animation: mirror-glare 1.4s ease-in-out infinite; }
+    @keyframes mirror-glare { from { left:-50%; } to { left:150%; } }
+    .cost-mirror { position:absolute; top:-12px; left:-12px; width:44px; height:44px; background:radial-gradient(circle, #e6e9f0, #8a93a3); border:2px solid #fff; border-radius:4px 50% 4px 50%; color:#111; font-family:'Cinzel', serif; font-size:22px; font-weight:800; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,0.8); z-index:10; }
+    .header-mirror { background: linear-gradient(to bottom, #4a5568, #2b323c); padding: 12px 10px 8px 35px; border-bottom: 2px solid #fff; }
+    .card-mirror .card-title { color: #f0f4f8; text-shadow: 1px 1px 2px #000; }
+    .card-mirror .card-sub { color:#dbe7f7; }
+    .image-mirror { flex:1; background-size:cover; background-position:center; border-bottom:2px solid #c0c5ce; filter: contrast(1.08) brightness(1.08); }
+    .body-mirror { height:125px; background:#e2e8f0; padding:12px 15px; color:#1a202c; text-align:center; display:flex; flex-direction:column; }
+    .type-mirror { font-family:'Cinzel', serif; font-size:11px; color:#2d3748; font-weight:800; border-bottom:2px solid #cbd5e1; padding-bottom:4px; margin-bottom:8px; }
+
+    .card-spirit {
+      background: rgba(10, 25, 30, 0.85); border:2px solid #00ffcc;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 20px rgba(0,255,204,0.2);
+      backdrop-filter: blur(5px);
+    }
+    .card-spirit:hover { transform: translateY(-12px); background: rgba(5,40,45,0.64); box-shadow: 0 22px 46px rgba(0,255,204,0.28), inset 0 0 34px rgba(0,255,204,0.3); border-color: rgba(0,255,204,0.6); }
+    .cost-spirit { position:absolute; top:-15px; left:-15px; width:45px; height:45px; background:radial-gradient(circle at 30% 30%, #ccffff, #0088aa); border:none; border-radius:50% 50% 0 50%; color:#051a22; font-family:'Cinzel', serif; font-size:22px; font-weight:800; display:flex; justify-content:center; align-items:center; box-shadow:0 0 15px #00ffcc; z-index:10; animation: float-fire 3s infinite alternate; }
+    @keyframes float-fire { from { transform: translateY(0); } to { transform: translateY(-5px) scale(1.05); } }
+    .header-spirit { background: transparent; padding: 12px 10px 8px 35px; border-bottom: 1px dashed #00ffcc; }
+    .card-spirit .card-title { color:#ccffff; text-shadow:0 0 10px #00ffcc; letter-spacing:2px; }
+    .card-spirit .card-sub { color:#9bf8e8; }
+    .image-spirit { flex:1; background-size:cover; background-position:center; border-bottom:1px dashed #00ffcc; mix-blend-mode: screen; opacity: 0.82; }
+    .body-spirit { height:125px; background:transparent; padding:12px 15px; color:#aaffee; text-align:center; display:flex; flex-direction:column; }
+    .type-spirit { font-family:'Cinzel', serif; font-size:11px; color:#00ffcc; font-weight:800; border-bottom:1px dotted #00ffcc; padding-bottom:4px; margin-bottom:8px; }
+
+    .card-acid {
+      background: #2a1c12; border:4px solid #6b3e1b; border-radius:4px;
+      box-shadow:0 15px 35px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,0,0,0.8);
+      position: relative;
+    }
+    .card-acid::before { content:''; position:absolute; bottom:120px; left:-4px; width:calc(100% + 8px); height:5px; background:#39ff14; box-shadow:0 5px 15px #39ff14; opacity:0.5; z-index:5; }
+    .card-acid:hover { transform: translateY(-8px); border-color:#39ff14; box-shadow:0 20px 45px rgba(50,255,20,0.15), inset 0 0 20px rgba(57,255,20,0.1); }
+    .cost-acid { position:absolute; top:-12px; left:-12px; width:45px; height:55px; background:radial-gradient(circle at 50% 80%, #1f4a10, #39ff14 70%, transparent 100%); border:2px solid #111; border-radius:10px 10px 40px 40px; color:#fff; font-family:'Cinzel', serif; font-size:24px; font-weight:800; display:flex; justify-content:center; align-items:center; box-shadow:0 5px 10px #000; z-index:10; }
+    .header-acid { background:linear-gradient(to bottom, #1f140a, #0d0804); padding:12px 10px 8px 35px; border-bottom:2px solid #111; }
+    .card-acid .card-title { color:#ccbba0; }
+    .card-acid .card-sub { color:#d0c4b0; }
+    .image-acid { flex:1; background-size:cover; background-position:center; border-bottom:3px solid #111; filter: sepia(25%) contrast(1.08); }
+    .body-acid { height:125px; background:#8c765c; background-image:linear-gradient(0deg, rgba(57,255,20,0.1), transparent 50%); padding:12px 15px; color:#1a110a; text-align:center; display:flex; flex-direction:column; }
+    .type-acid { font-family:'Cinzel', serif; font-size:11px; color:#3a2411; font-weight:800; border-bottom:2px solid #5c4228; padding-bottom:4px; margin-bottom:8px; }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 16px; color: var(--muted); font-size: 12px;
+    }
+    .chip {
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; background: rgba(255,255,255,0.02);
+    }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .card-base { width: 100%; max-width: 260px; }
+      .section-head { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1>高阶机制卡牌动态 UI 图鉴（special_cards）</h1>
+      <p>将“时间法术 / 镜像反射 / 灵魂剥离 / 极效腐蚀”四种高阶材质继续推广到项目中其余机制相近的卡牌。示例均使用项目真实卡图（<code>assets/cards/*.png</code>）与真实卡牌描述，方便后续直接映射到游戏运行时 UI。</p>
+    </div>
+
+    <div id="app"></div>
+  </div>
+
+  <script>
+    const sections = [
+      {
+        key: 'time',
+        title: '时间法术（传奇奥术 / 金与流光）',
+        desc: '适用于延迟、回溯、额外能量、时序操控。',
+        className: 'card-time',
+        costClass: 'cost-time',
+        headerClass: 'header-time',
+        imageClass: 'image-time',
+        bodyClass: 'body-time',
+        typeClass: 'type-time',
+        cards: [
+          { id: 'borrowed_time', name: 'Borrowed Time', cost: 2, subtype: 'Skill - Legendary Time', text: 'Gain 3 Energy. Draw 2 cards. Skip your next draw phase.' },
+          { id: 'deja_vu', name: 'Deja Vu', cost: 1, subtype: 'Skill - Temporal Recall', text: 'Return the last played card to your hand. It costs 0 this turn.' },
+          { id: 'stasis_field', name: 'Stasis Field', cost: 1, subtype: 'Power - Time Control', text: 'At the start of your turn, if you have 2+ delayed cards, gain 5 Block.' },
+          { id: 'grandfather_paradox', name: 'Grandfather Paradox', cost: 3, subtype: 'Attack - Time Rupture', text: 'Deal 5 damage to ALL enemies. Deals 3 more damage for each delayed card.' }
+        ]
+      },
+      {
+        key: 'mirror',
+        title: '镜像反射（白银反光 / 防御反击）',
+        desc: '适用于反制、改写意图、防御反扑。',
+        className: 'card-mirror',
+        costClass: 'cost-mirror',
+        headerClass: 'header-mirror',
+        imageClass: 'image-mirror',
+        bodyClass: 'body-mirror',
+        typeClass: 'type-mirror',
+        cards: [
+          { id: 'turn_the_tables', name: 'Turn the Tables', cost: 2, subtype: 'Skill - Reflection', text: "Redirect an enemy's intent to another random enemy." },
+          { id: 'emergency_measure', name: 'Emergency Measure', cost: 1, subtype: 'Defense - Reactive', text: 'Gain 10 Block. If HP < 30%, gain 15 instead.' },
+          { id: 'defend', name: 'Defend', cost: 1, subtype: 'Defense - Base Shield', text: 'Gain 5 block.' }
+        ]
+      },
+      {
+        key: 'spirit',
+        title: '灵魂剥离（幽青雾化 / 闪避虚无）',
+        desc: '适用于潜行、灵魂链接、幽灵化与虚无保护。',
+        className: 'card-spirit',
+        costClass: 'cost-spirit',
+        headerClass: 'header-spirit',
+        imageClass: 'image-spirit',
+        bodyClass: 'body-spirit',
+        typeClass: 'type-spirit',
+        cards: [
+          { id: 'go_dark', name: 'Go Dark', cost: 1, subtype: 'Skill - Void Stealth', text: 'Spend 3 Intel. Gain 1 Stealth.' },
+          { id: 'soul_link', name: 'Soul Link', cost: 1, subtype: 'Power - Spirit Bond', text: '50% of damage you take is redirected to your nearest Construct.' }
+        ]
+      },
+      {
+        key: 'acid',
+        title: '极效腐蚀（锈蚀酸液 / 破甲毒系）',
+        desc: '适用于酸液、剧毒、护甲摧毁与腐蚀连锁。',
+        className: 'card-acid',
+        costClass: 'cost-acid',
+        headerClass: 'header-acid',
+        imageClass: 'image-acid',
+        bodyClass: 'body-acid',
+        typeClass: 'type-acid',
+        cards: [
+          { id: 'acid_spray', name: 'Acid Spray', cost: 1, subtype: 'Attack - Alchemy', text: 'Deal 3 damage. Add Acid.' },
+          { id: 'universal_solvent', name: 'Universal Solvent', cost: 2, subtype: 'Attack - Corrosion', text: 'Deal 3 damage to ALL enemies. Deals 2 extra damage per Block they have. Add Acid.' },
+          { id: 'deadly_poison', name: 'Deadly Poison', cost: 1, subtype: 'Skill - Toxin', text: 'Apply 5 Poison.' },
+          { id: 'catalyst', name: 'Catalyst', cost: 1, subtype: 'Skill - Toxic Amplifier', text: "Double the enemy's Poison." }
+        ]
+      }
+    ];
+
+    const app = document.getElementById('app');
+    const html = sections.map(section => {
+      const cards = section.cards.map(card => `
+        <div class="card-base ${section.className}">
+          <div class="${section.costClass}">${card.cost}</div>
+          <div class="${section.headerClass}">
+            <h2 class="card-title">${card.name}</h2>
+            <div class="card-sub">${card.id}</div>
+          </div>
+          <div class="${section.imageClass}" style="background-image:url('./assets/cards/${card.id}.png');"></div>
+          <div class="${section.bodyClass}">
+            <div class="${section.typeClass}">${card.subtype}</div>
+            <div class="card-text">${card.text}</div>
+          </div>
+        </div>
+      `).join('');
+
+      return `
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">${section.title}</h2>
+            <p class="section-desc">${section.desc}</p>
+          </div>
+          <div class="grid">${cards}</div>
+        </section>
+      `;
+    }).join('');
+
+    app.innerHTML = html + `
+      <div class="legend">
+        <div class="chip">说明：仅替换视觉材质，不改变卡牌数值与玩法逻辑</div>
+        <div class="chip">实际接入仍以 cards.json / engine.ts 为准</div>
+        <div class="chip">可继续扩展：传奇 Boss 奖励 / 诅咒 / 圣物衍生卡</div>
+      </div>
+    `;
+  </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战锤肉鸽 - 2D敌人实体建模</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    body {
+      background-color: #050505;
+      background-image: 
+        radial-gradient(circle at center, #1a1a20 0%, #000 100%),
+        linear-gradient(to bottom, transparent 60%, rgba(20, 10, 5, 0.8) 100%);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 60px;
+      height: 100vh;
+      margin: 0;
+      padding-bottom: 100px;
+      font-family: 'Crimson Text', serif;
+      box-sizing: border-box;
+    }
+
+    .enemy-entity {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: breathe 4s ease-in-out infinite alternate;
+    }
+    .enemy-entity:nth-child(1) { animation-delay: 0s; }
+    .enemy-entity:nth-child(2) { animation-delay: -1.5s; }
+    .enemy-entity:nth-child(3) { animation-delay: -3s; }
+
+    @keyframes breathe {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-5px); }
+    }
+
+    .intent {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+    }
+    .intent-icon {
+      font-size: 28px;
+      margin-bottom: 5px;
+    }
+    .intent-value {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+
+    .sprite-frame {
+      width: 200px;
+      height: 280px;
+      background: #111;
+      border: 4px solid #2a2a2a;
+      border-bottom: 8px solid #1a1a1a;
+      border-radius: 100px 100px 8px 8px;
+      box-shadow:
+        0 20px 40px rgba(0,0,0,0.9),
+        inset 0 0 20px rgba(0,0,0,0.8);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .sprite-image {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      mix-blend-mode: luminosity;
+      transition: filter 0.3s;
+    }
+
+    .stats-hud {
+      margin-top: -15px;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hp-bar-container {
+      width: 160px;
+      height: 24px;
+      background: #0a0a0a;
+      border: 3px solid #3a3a3a;
+      border-radius: 4px;
+      position: relative;
+      box-shadow: 0 5px 10px #000;
+    }
+
+    .hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #660000, #cc0000);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+      transition: width 0.3s ease;
+    }
+
+    .hp-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+      white-space: nowrap;
+    }
+
+    .armor-badge {
+      position: absolute;
+      top: -15px;
+      left: -20px;
+      width: 35px;
+      height: 40px;
+      background: linear-gradient(135deg, #a0a0a0, #404040);
+      border: 2px solid #fff;
+      border-radius: 10% 10% 50% 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Cinzel', serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 4px 8px #000;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .status-icon {
+      width: 24px;
+      height: 24px;
+      background: #1a1a1a;
+      border: 1px solid #555;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      box-shadow: 0 2px 5px #000;
+      position: relative;
+    }
+
+    .status-stack {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    .entity-assassin .sprite-frame {
+      width: 170px;
+      height: 240px;
+      border-color: #1a0a2a;
+    }
+    .entity-assassin .intent-value { color: #cc00ff; text-shadow: 0 0 10px #cc00ff, 2px 2px 0 #000; }
+    .entity-assassin .sprite-image { background-image: url('https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); filter: grayscale(50%) brightness(0.8); }
+
+    .entity-guard .sprite-frame { border-color: #4a5441; }
+    .entity-guard .intent-value { color: #aaddff; }
+    .entity-guard .sprite-image { background-image: url('https://images.unsplash.com/photo-1599839619722-39751411ea63?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); filter: saturate(0.8); }
+
+    .entity-boss .sprite-frame {
+      width: 280px;
+      height: 380px;
+      border-color: #5a1100;
+      border-width: 6px;
+      box-shadow: 0 20px 50px rgba(150, 20, 0, 0.4), inset 0 0 30px rgba(255, 50, 0, 0.5);
+    }
+    .entity-boss .hp-bar-container { width: 220px; height: 28px; border-color: #5a1100; }
+    .entity-boss .hp-fill { background: linear-gradient(90deg, #880000, #ff3300); }
+    .entity-boss .hp-text { font-size: 16px; }
+    .entity-boss .intent-icon { font-size: 40px; text-shadow: 0 0 20px #ff3300; }
+    .entity-boss .intent-value { font-size: 32px; color: #ff3300; }
+    .entity-boss .sprite-image { background-image: url('https://images.unsplash.com/photo-1542382103-10d9cc534c0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'); filter: contrast(1.2) saturate(1.5); }
+  </style>
+</head>
+<body>
+  <div class="enemy-entity entity-assassin">
+    <div class="intent"><div class="intent-icon">🗡️</div><div class="intent-value">8x2</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container">
+        <div class="hp-fill" style="width: 100%;"></div>
+        <div class="hp-text">55 / 55</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="color: #aaa; border-color: #aaa;">👁️‍🗨️</div>
+        <div class="status-icon" style="color: #39ff14; border-color: #39ff14;">💧<span class="status-stack">3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="enemy-entity entity-guard">
+    <div class="intent"><div class="intent-icon">🛡️</div><div class="intent-value">25</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container">
+        <div class="armor-badge">12</div>
+        <div class="hp-fill" style="width: 80%;"></div>
+        <div class="hp-text">64 / 80</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="color: #ffcc00; border-color: #ffcc00;">🎯</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="enemy-entity entity-boss">
+    <div class="intent"><div class="intent-icon">⚔️</div><div class="intent-value">45</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud">
+      <div class="hp-bar-container">
+        <div class="hp-fill" style="width: 65%;"></div>
+        <div class="hp-text">162 / 250</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon" style="color: #ff3300; border-color: #ff3300;">💢<span class="status-stack">2</span></div>
+        <div class="status-icon" style="color: #ff9900; border-color: #ff9900;">🔥</div>
+        <div class="status-icon" style="color: #fff; border-color: #fff;">👑</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战锤肉鸽 - 变异森林与发条遗迹</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Text:wght@400;600;700&display=swap');
+
+    body {
+      background-color: #05070a;
+      background-image: radial-gradient(circle at center, #111820 0%, #020203 100%);
+      display: flex; justify-content: center; align-items: flex-end; gap: 60px;
+      height: 100vh; margin: 0; padding-bottom: 80px;
+      font-family: 'Crimson Text', serif; box-sizing: border-box;
+    }
+
+    .enemy-entity { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .intent { margin-bottom: 12px; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.9)); z-index: 20; }
+    .intent-icon { font-size: 26px; margin-bottom: 2px; }
+    .intent-value {
+      font-family: 'Cinzel', serif; font-size: 18px; font-weight: 800; color: #fff;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+
+    .sprite-frame { background: #111; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
+    .sprite-image { width: 100%; height: 100%; background-size: cover; background-position: center; }
+    .stats-hud { margin-top: -12px; position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+    .hp-bar-container { background: #0a0a0a; border: 2px solid #333; border-radius: 3px; position: relative; box-shadow: 0 5px 10px #000; overflow: hidden; }
+    .hp-fill { height: 100%; transition: width 0.3s ease; }
+    .hp-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Cinzel', serif; font-size: 13px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; white-space: nowrap; }
+    .status-row { display: flex; gap: 4px; margin-top: 6px; }
+    .status-icon { width: 22px; height: 22px; background: #1a1a1a; border: 1px solid #555; display: flex; justify-content: center; align-items: center; font-size: 13px; position: relative; box-shadow: 0 2px 4px #000; }
+    .status-stack { position: absolute; bottom: -5px; right: -3px; font-family: 'Cinzel', serif; font-size: 11px; font-weight: bold; color: #fff; text-shadow: 1px 1px 1px #000; }
+
+    .entity-slime { transform-origin: bottom; animation: jelly-bounce 2.5s infinite ease-in-out; }
+    @keyframes jelly-bounce { 0%, 100% { transform: scaleY(1) scaleX(1); } 50% { transform: scaleY(0.95) scaleX(1.03) translateY(5px); } }
+    .entity-slime .sprite-frame {
+      width: 170px; height: 210px; border: 4px solid #4a7c36; border-bottom: 8px solid #2d4f20;
+      border-radius: 90px 90px 30px 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 -15px 25px rgba(57, 255, 20, 0.2);
+    }
+    .entity-slime .intent-value { color: #88ff4d; }
+    .entity-slime .sprite-image { background-image: url('https://images.unsplash.com/photo-1518709766631-16aaae04868e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); filter: sepia(50%) hue-rotate(50deg) saturate(2); mix-blend-mode: screen; }
+    .entity-slime .hp-bar-container { width: 140px; height: 20px; border-color: #4a7c36; border-radius: 10px; }
+    .entity-slime .hp-fill { background: linear-gradient(90deg, #1f4a10, #4d9926); }
+
+    .entity-jelly { animation: float-jelly 4s infinite alternate ease-in-out; }
+    @keyframes float-jelly { 0% {transform: translateY(0) scale(1);} 100% {transform: translateY(-12px) scale(0.98);} }
+    .entity-jelly .sprite-frame {
+      width: 190px; height: 250px; border: 3px solid rgba(180, 80, 255, 0.7);
+      border-radius: 100px 100px 50% 50%; background: transparent;
+      box-shadow: 0 15px 40px rgba(120, 0, 255, 0.3), inset 0 0 40px rgba(150, 50, 255, 0.4); backdrop-filter: blur(3px);
+    }
+    .entity-jelly .intent-value { color: #d4aaff; text-shadow: 0 0 15px #a020f0, 2px 2px 0 #000; }
+    .entity-jelly .sprite-image { background-image: url('https://images.unsplash.com/photo-1541701494587-cb58502866ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); opacity: 0.9; mix-blend-mode: hard-light; }
+    .entity-jelly .hp-bar-container { width: 150px; height: 18px; border-color: #6a0dad; border-radius: 10px; background: rgba(0,0,0,0.7); }
+    .entity-jelly .hp-fill { background: linear-gradient(90deg, #4b0082, #b450ff); }
+
+    .entity-clockwork { animation: mech-shake 3s infinite; }
+    @keyframes mech-shake { 0%, 95%, 100% { transform: translateY(0); } 96% { transform: translateY(-2px) translateX(1px); } 98% { transform: translateY(1px) translateX(-1px); } }
+    .entity-clockwork .sprite-frame {
+      width: 240px; height: 320px; border: 6px solid #b58d47; border-bottom: 12px solid #5a4422;
+      clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%);
+      box-shadow: none; background: #0d1218;
+    }
+    .entity-clockwork::before {
+      content: ''; position: absolute; top: 38px; left: -5px; right: -5px; bottom: 35px; background: #00e5ff; z-index: -1; filter: blur(20px); opacity: 0.3;
+    }
+    .entity-clockwork .intent-icon { font-size: 32px; filter: hue-rotate(180deg); }
+    .entity-clockwork .intent-value { font-size: 24px; color: #00e5ff; text-shadow: 0 0 10px #0088aa, 2px 2px 0 #000; }
+    .entity-clockwork .sprite-image { background-image: url('https://images.unsplash.com/photo-1506744012117-6db65675e8e3?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'); filter: contrast(1.2) sepia(30%) hue-rotate(180deg); opacity: 0.9; }
+    .entity-clockwork .hp-bar-container { width: 200px; height: 24px; border-color: #b58d47; border-width: 3px; border-radius: 0; }
+    .entity-clockwork .hp-fill { background: linear-gradient(90deg, #005566, #00e5ff); box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+    .entity-clockwork .hp-text { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="enemy-entity entity-slime">
+    <div class="intent"><div class="intent-icon">🦠</div><div class="intent-value">再生 (10)</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud"><div class="hp-bar-container"><div class="hp-fill" style="width: 45%;"></div><div class="hp-text">18 / 40</div></div><div class="status-row"><div class="status-icon" style="color: #88ff4d; border-color: #88ff4d;">💧<span class="status-stack">2</span></div></div></div>
+  </div>
+
+  <div class="enemy-entity entity-jelly">
+    <div class="intent"><div class="intent-icon">✨</div><div class="intent-value">精神震击</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud"><div class="hp-bar-container"><div class="hp-fill" style="width: 100%;"></div><div class="hp-text">65 / 65</div></div><div class="status-row"><div class="status-icon" style="color: #d4aaff; border-color: #d4aaff;">🛡️<span class="status-stack">1</span></div></div></div>
+  </div>
+
+  <div class="enemy-entity entity-clockwork">
+    <div class="intent"><div class="intent-icon">⏳</div><div class="intent-value">时空重置</div></div>
+    <div class="sprite-frame"><div class="sprite-image"></div></div>
+    <div class="stats-hud"><div class="hp-bar-container"><div class="hp-fill" style="width: 85%;"></div><div class="hp-text">255 / 300</div></div><div class="status-row"><div class="status-icon" style="color: #b58d47; border-color: #b58d47;">⚙️<span class="status-stack">9</span></div><div class="status-icon" style="color: #00e5ff; border-color: #00e5ff;">⚡<span class="status-stack">3</span></div></div></div>
+  </div>
+</body>
+</html>
