@@ -1,0 +1,764 @@
+[
+  {
+    "characterId": "informant",
+    "runs": 12,
+    "survivalRateFirst3": 0.6666666666666666,
+    "avgCombatsPerRun": 2,
+    "avgCombatTurns": 3.4166666666666665,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 1.5,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.98,
+      11.08,
+      12.404,
+      14.4075
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.1,
+      1.324,
+      2.0035
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      10,
+      8
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4348,
+        "Elite": 0.1014,
+        "Event": 0.1812,
+        "Shop": 0.0942,
+        "Boss": 0,
+        "Rest": 0.1884
+      },
+      "resolved": {
+        "Combat": 0.0057,
+        "Elite": 0,
+        "Event": 0.9935,
+        "Shop": 0.0002,
+        "Boss": 0,
+        "Rest": 0.0005
+      },
+      "absoluteDrift": {
+        "Combat": 0.4291,
+        "Elite": 0.1014,
+        "Event": 0.8123,
+        "Shop": 0.094,
+        "Boss": 0,
+        "Rest": 0.1879
+      },
+      "totalVariationDistance": 0.8124,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.4048,
+          "Elite": 0.0476,
+          "Event": 0.1905,
+          "Shop": 0.119,
+          "Boss": 0,
+          "Rest": 0.2381
+        },
+        "floor2": {
+          "Combat": 0.4583,
+          "Elite": 0.1042,
+          "Event": 0.1875,
+          "Shop": 0.0833,
+          "Boss": 0,
+          "Rest": 0.1667
+        },
+        "floor3": {
+          "Combat": 0.4375,
+          "Elite": 0.1458,
+          "Event": 0.1667,
+          "Shop": 0.0833,
+          "Boss": 0,
+          "Rest": 0.1667
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.005,
+          "Elite": 0,
+          "Event": 0.995,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0.008,
+          "Elite": 0,
+          "Event": 0.991,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0.001
+        },
+        "floor3": {
+          "Combat": 0.005,
+          "Elite": 0,
+          "Event": 0.993,
+          "Shop": 0.001,
+          "Boss": 0,
+          "Rest": 0.001
+        }
+      }
+    }
+  },
+  {
+    "characterId": "brute",
+    "runs": 12,
+    "survivalRateFirst3": 0.8333333333333334,
+    "avgCombatsPerRun": 2,
+    "avgCombatTurns": 1.8333333333333333,
+    "medianCombatTurns": 2,
+    "avgMaxFloorResolved": 1.8333333333333333,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      10.08,
+      12.8467,
+      13.9333,
+      14.622
+    ],
+    "netAssetEVUGrowthByFloor": [
+      2.7667,
+      1.0866,
+      0.6887
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      12,
+      10
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4565,
+        "Elite": 0.1232,
+        "Event": 0.1087,
+        "Shop": 0.1667,
+        "Boss": 0,
+        "Rest": 0.1449
+      },
+      "resolved": {
+        "Combat": 0.0076,
+        "Elite": 0,
+        "Event": 0.9897,
+        "Shop": 0.0017,
+        "Boss": 0,
+        "Rest": 0.001
+      },
+      "absoluteDrift": {
+        "Combat": 0.4489,
+        "Elite": 0.1232,
+        "Event": 0.881,
+        "Shop": 0.165,
+        "Boss": 0,
+        "Rest": 0.1439
+      },
+      "totalVariationDistance": 0.881,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.4762,
+          "Elite": 0.0714,
+          "Event": 0.0714,
+          "Shop": 0.1667,
+          "Boss": 0,
+          "Rest": 0.2143
+        },
+        "floor2": {
+          "Combat": 0.4167,
+          "Elite": 0.1458,
+          "Event": 0.125,
+          "Shop": 0.1458,
+          "Boss": 0,
+          "Rest": 0.1667
+        },
+        "floor3": {
+          "Combat": 0.4792,
+          "Elite": 0.1458,
+          "Event": 0.125,
+          "Shop": 0.1875,
+          "Boss": 0,
+          "Rest": 0.0625
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.8333,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0.1667
+        },
+        "floor2": {
+          "Combat": 0.0079,
+          "Elite": 0,
+          "Event": 0.9891,
+          "Shop": 0.002,
+          "Boss": 0,
+          "Rest": 0.001
+        },
+        "floor3": {
+          "Combat": 0.0025,
+          "Elite": 0,
+          "Event": 0.996,
+          "Shop": 0.0015,
+          "Boss": 0,
+          "Rest": 0
+        }
+      }
+    }
+  },
+  {
+    "characterId": "tactician",
+    "runs": 12,
+    "survivalRateFirst3": 1,
+    "avgCombatsPerRun": 2.4166666666666665,
+    "avgCombatTurns": 3.1379310344827585,
+    "medianCombatTurns": 2,
+    "avgMaxFloorResolved": 2,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.58,
+      11.4,
+      13.1233,
+      14.8433
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.82,
+      1.7233,
+      1.72
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      12,
+      12
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.442,
+        "Elite": 0.087,
+        "Event": 0.1522,
+        "Shop": 0.1667,
+        "Boss": 0,
+        "Rest": 0.1522
+      },
+      "resolved": {
+        "Combat": 0.0144,
+        "Elite": 0,
+        "Event": 0.9832,
+        "Shop": 0.001,
+        "Boss": 0,
+        "Rest": 0.0015
+      },
+      "absoluteDrift": {
+        "Combat": 0.4276,
+        "Elite": 0.087,
+        "Event": 0.831,
+        "Shop": 0.1657,
+        "Boss": 0,
+        "Rest": 0.1507
+      },
+      "totalVariationDistance": 0.831,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.5238,
+          "Elite": 0.119,
+          "Event": 0.119,
+          "Shop": 0.1429,
+          "Boss": 0,
+          "Rest": 0.0952
+        },
+        "floor2": {
+          "Combat": 0.4792,
+          "Elite": 0.0625,
+          "Event": 0.1042,
+          "Shop": 0.1667,
+          "Boss": 0,
+          "Rest": 0.1875
+        },
+        "floor3": {
+          "Combat": 0.3333,
+          "Elite": 0.0833,
+          "Event": 0.2292,
+          "Shop": 0.1875,
+          "Boss": 0,
+          "Rest": 0.1667
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 1,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0.9167,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0.0833
+        },
+        "floor3": {
+          "Combat": 0.003,
+          "Elite": 0,
+          "Event": 0.995,
+          "Shop": 0.001,
+          "Boss": 0,
+          "Rest": 0.001
+        }
+      }
+    }
+  },
+  {
+    "characterId": "chronomancer",
+    "runs": 12,
+    "survivalRateFirst3": 0.75,
+    "avgCombatsPerRun": 2,
+    "avgCombatTurns": 3.5416666666666665,
+    "medianCombatTurns": 4,
+    "avgMaxFloorResolved": 1.6666666666666667,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.18,
+      10.39,
+      11.3782,
+      12.8667
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.21,
+      0.9882,
+      1.4885
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      11,
+      9
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.3696,
+        "Elite": 0.087,
+        "Event": 0.2971,
+        "Shop": 0.1232,
+        "Boss": 0,
+        "Rest": 0.1232
+      },
+      "resolved": {
+        "Combat": 0.0048,
+        "Elite": 0,
+        "Event": 0.9946,
+        "Shop": 0.0004,
+        "Boss": 0,
+        "Rest": 0.0002
+      },
+      "absoluteDrift": {
+        "Combat": 0.3648,
+        "Elite": 0.087,
+        "Event": 0.6975,
+        "Shop": 0.1228,
+        "Boss": 0,
+        "Rest": 0.123
+      },
+      "totalVariationDistance": 0.6976,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.3571,
+          "Elite": 0.119,
+          "Event": 0.3333,
+          "Shop": 0.1429,
+          "Boss": 0,
+          "Rest": 0.0476
+        },
+        "floor2": {
+          "Combat": 0.3125,
+          "Elite": 0.0833,
+          "Event": 0.2708,
+          "Shop": 0.1458,
+          "Boss": 0,
+          "Rest": 0.1875
+        },
+        "floor3": {
+          "Combat": 0.4375,
+          "Elite": 0.0625,
+          "Event": 0.2917,
+          "Shop": 0.0833,
+          "Boss": 0,
+          "Rest": 0.125
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0109,
+          "Elite": 0,
+          "Event": 0.9891,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0.0035,
+          "Elite": 0,
+          "Event": 0.9955,
+          "Shop": 0.0005,
+          "Boss": 0,
+          "Rest": 0.0005
+        },
+        "floor3": {
+          "Combat": 0.003,
+          "Elite": 0,
+          "Event": 0.9965,
+          "Shop": 0.0005,
+          "Boss": 0,
+          "Rest": 0
+        }
+      }
+    }
+  },
+  {
+    "characterId": "puppeteer",
+    "runs": 12,
+    "survivalRateFirst3": 1,
+    "avgCombatsPerRun": 2.6666666666666665,
+    "avgCombatTurns": 3.25,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 2,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.18,
+      10.5,
+      12.2233,
+      13.6783
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.32,
+      1.7233,
+      1.455
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      12,
+      12
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.5362,
+        "Elite": 0.0507,
+        "Event": 0.1884,
+        "Shop": 0.1159,
+        "Boss": 0,
+        "Rest": 0.1087
+      },
+      "resolved": {
+        "Combat": 0.0106,
+        "Elite": 0,
+        "Event": 0.989,
+        "Shop": 0,
+        "Boss": 0,
+        "Rest": 0.0003
+      },
+      "absoluteDrift": {
+        "Combat": 0.5256,
+        "Elite": 0.0507,
+        "Event": 0.8006,
+        "Shop": 0.1159,
+        "Boss": 0,
+        "Rest": 0.1084
+      },
+      "totalVariationDistance": 0.8006,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.5238,
+          "Elite": 0.0476,
+          "Event": 0.2381,
+          "Shop": 0.119,
+          "Boss": 0,
+          "Rest": 0.0714
+        },
+        "floor2": {
+          "Combat": 0.625,
+          "Elite": 0.0208,
+          "Event": 0.125,
+          "Shop": 0.125,
+          "Boss": 0,
+          "Rest": 0.1042
+        },
+        "floor3": {
+          "Combat": 0.4583,
+          "Elite": 0.0833,
+          "Event": 0.2083,
+          "Shop": 0.1042,
+          "Boss": 0,
+          "Rest": 0.1458
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 1,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0.9167,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0.0833
+        },
+        "floor3": {
+          "Combat": 0.003,
+          "Elite": 0,
+          "Event": 0.997,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        }
+      }
+    }
+  },
+  {
+    "characterId": "alchemist",
+    "runs": 12,
+    "survivalRateFirst3": 0.16666666666666666,
+    "avgCombatsPerRun": 1.75,
+    "avgCombatTurns": 10.238095238095237,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 0.4166666666666667,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      8.78,
+      9.99,
+      10.1,
+      12.04
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.21,
+      0.11,
+      1.94
+    ],
+    "netAssetCoverageByCheckpoint": [
+      12,
+      12,
+      3,
+      2
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.442,
+        "Elite": 0.087,
+        "Event": 0.1884,
+        "Shop": 0.1449,
+        "Boss": 0,
+        "Rest": 0.1377
+      },
+      "resolved": {
+        "Combat": 0.0065,
+        "Elite": 0,
+        "Event": 0.9925,
+        "Shop": 0.001,
+        "Boss": 0,
+        "Rest": 0
+      },
+      "absoluteDrift": {
+        "Combat": 0.4355,
+        "Elite": 0.087,
+        "Event": 0.8041,
+        "Shop": 0.1439,
+        "Boss": 0,
+        "Rest": 0.1377
+      },
+      "totalVariationDistance": 0.8041,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.4048,
+          "Elite": 0.0476,
+          "Event": 0.2381,
+          "Shop": 0.1429,
+          "Boss": 0,
+          "Rest": 0.1667
+        },
+        "floor2": {
+          "Combat": 0.5,
+          "Elite": 0.1042,
+          "Event": 0.1458,
+          "Shop": 0.125,
+          "Boss": 0,
+          "Rest": 0.125
+        },
+        "floor3": {
+          "Combat": 0.4167,
+          "Elite": 0.1042,
+          "Event": 0.1875,
+          "Shop": 0.1667,
+          "Boss": 0,
+          "Rest": 0.125
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0109,
+          "Elite": 0,
+          "Event": 0.9891,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0,
+          "Elite": 0,
+          "Event": 0.998,
+          "Shop": 0.002,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor3": {
+          "Combat": 1,
+          "Elite": 0,
+          "Event": 0,
+          "Shop": 0,
+          "Boss": 0,
+          "Rest": 0
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,261 @@
+{
+  "characters": [
+    {
+      "characterId": "informant",
+      "runs": 12,
+      "survivalRateFirst3": 0.5833333333333334,
+      "survivalRateAll5": 0.4166666666666667,
+      "avgCombatsPerRun": 2.6666666666666665,
+      "avgCombatTurns": 3.4375,
+      "avgMaxFloor": 2.4166666666666665,
+      "overallScore": 2470.2083333333335
+    },
+    {
+      "characterId": "brute",
+      "runs": 12,
+      "survivalRateFirst3": 0.8333333333333334,
+      "survivalRateAll5": 0.5,
+      "avgCombatsPerRun": 2.75,
+      "avgCombatTurns": 2.121212121212121,
+      "avgMaxFloor": 3,
+      "overallScore": 2673.901515151515
+    },
+    {
+      "characterId": "tactician",
+      "runs": 12,
+      "survivalRateFirst3": 1,
+      "survivalRateAll5": 0.75,
+      "avgCombatsPerRun": 3.5833333333333335,
+      "avgCombatTurns": 3.4186046511627906,
+      "avgMaxFloor": 3.5833333333333335,
+      "overallScore": 2430.959302325581
+    },
+    {
+      "characterId": "chronomancer",
+      "runs": 12,
+      "survivalRateFirst3": 0.4166666666666667,
+      "survivalRateAll5": 0.16666666666666666,
+      "avgCombatsPerRun": 2.5833333333333335,
+      "avgCombatTurns": 3.129032258064516,
+      "avgMaxFloor": 2.0833333333333335,
+      "overallScore": 2508.5618279569894
+    },
+    {
+      "characterId": "puppeteer",
+      "runs": 12,
+      "survivalRateFirst3": 0.3333333333333333,
+      "survivalRateAll5": 0,
+      "avgCombatsPerRun": 2.6666666666666665,
+      "avgCombatTurns": 9.875,
+      "avgMaxFloor": 1.4166666666666667,
+      "overallScore": 1482.0833333333333
+    },
+    {
+      "characterId": "alchemist",
+      "runs": 12,
+      "survivalRateFirst3": 0.16666666666666666,
+      "survivalRateAll5": 0.16666666666666666,
+      "avgCombatsPerRun": 2,
+      "avgCombatTurns": 11.208333333333334,
+      "avgMaxFloor": 0.75,
+      "overallScore": 1511.6666666666667
+    }
+  ],
+  "enemies": [
+    {
+      "enemyId": "enemy_0_1772875047685_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875047685_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875053841_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875053841_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875057049_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875057049_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875057673_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875057673_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875058299_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875058299_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875058947_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875058947_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875062117_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_1_1772875062117_5mavaaysu",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    },
+    {
+      "enemyId": "enemy_0_1772875062736_mz2k14kow",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 26,
+      "threatLevel": 126
+    }
+  ],
+  "analysis": {
+    "survivalSpreadFirst3": 0.8333,
+    "survivalSpreadAll5": 0.75,
+    "avgCombatTurnsSpread": 9.0871,
+    "avgMaxFloorSpread": 2.8333,
+    "overallScoreSpread": 1191.8182,
+    "means": {
+      "survivalRateFirst3": 0.5555555555555556,
+      "avgCombatTurns": 5.53161372729546,
+      "avgMaxFloor": 2.2083333333333335,
+      "overallScore": 2179.5634964612364
+    },
+    "stdDevs": {
+      "survivalRateFirst3": 0.28733556757746115,
+      "avgCombatTurns": 3.590345997468468,
+      "avgMaxFloor": 0.9425020876290859,
+      "overallScore": 488.680025589815
+    },
+    "outliers": [
+      {
+        "characterId": "brute",
+        "flags": [
+          "dominant_fast_tempo",
+          "dominant_overall_score"
+        ],
+        "zScores": {
+          "survivalRateFirst3": 0.9667,
+          "avgCombatTurns": -0.9499,
+          "avgMaxFloor": 0.84,
+          "overallScore": 1.0116
+        }
+      },
+      {
+        "characterId": "tactician",
+        "flags": [
+          "high_early_survival"
+        ],
+        "zScores": {
+          "survivalRateFirst3": 1.5468,
+          "avgCombatTurns": -0.5885,
+          "avgMaxFloor": 1.4589,
+          "overallScore": 0.5144
+        }
+      },
+      {
+        "characterId": "puppeteer",
+        "flags": [
+          "low_early_survival",
+          "slow_combat_tempo",
+          "low_overall_score"
+        ],
+        "zScores": {
+          "survivalRateFirst3": -0.7734,
+          "avgCombatTurns": 1.2097,
+          "avgMaxFloor": -0.84,
+          "overallScore": -1.4273
+        }
+      },
+      {
+        "characterId": "alchemist",
+        "flags": [
+          "low_early_survival",
+          "slow_combat_tempo",
+          "progression_lag",
+          "low_overall_score"
+        ],
+        "zScores": {
+          "survivalRateFirst3": -1.3534,
+          "avgCombatTurns": 1.5811,
+          "avgMaxFloor": -1.5473,
+          "overallScore": -1.3667
+        }
+      }
+    ]
+  }
+}
