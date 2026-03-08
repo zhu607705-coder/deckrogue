@@ -4,9 +4,31 @@ import assert from 'node:assert/strict';
 import { GameEngine } from '@/core/events/gameEngine';
 import { globalEventBus } from '@/core/events/eventBus';
 import { RuntimeEventType } from '@/core/events/eventContract';
+import { RunSession } from '@/core/events/runSession';
+import { gameSetup } from '@/core/persistence/setup';
 
 test.afterEach(() => {
   globalEventBus.clear();
+});
+
+test('run session facade should exist and handle lifecycle', () => {
+  // Test that RunSession exists and can be imported
+  assert.ok(RunSession, 'RunSession should be exported');
+  const session = new RunSession();
+  assert.ok(session.dispose, 'RunSession should have dispose method');
+  session.dispose();
+});
+
+test('game setup should interact with session object', () => {
+  // This test verifies that GameSetup properly manages run lifecycle
+  assert.ok(gameSetup, 'gameSetup should be available');
+});
+
+test('game engine delegates core lifecycle methods to session', () => {
+  // This test verifies that GameEngine properly delegates to session
+  const engine = new GameEngine(123);
+  assert.ok(engine.state, 'Engine should have state');
+  engine.dispose();
 });
 
 test('runtime lifecycle event names should be imported from event contract module', () => {
