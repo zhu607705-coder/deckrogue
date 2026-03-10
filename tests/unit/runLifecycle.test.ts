@@ -85,3 +85,31 @@ test('active engine should still react to player death before dispose', () => {
   engine.dispose();
 });
 
+test('game engine should ignore CombatVictory after game over without logging transition errors', () => {
+  const engine = new GameEngine(123);
+  engine.state.screen = 'Combat';
+  engine.state.pendingNodeResolution = true;
+
+  globalEventBus.publish({ type: 'PlayerDeath' } as any);
+  assert.equal(engine.state.screen, 'GameOver');
+
+  const originalError = console.error;
+  const errors: string[] = [];
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+  };
+
+  try {
+    globalEventBus.publish({ type: 'CombatVictory' } as any);
+  } finally {
+    console.error = originalError;
+    engine.dispose();
+  }
+
+  assert.equal(engine.state.screen, 'GameOver');
+  assert.equal(
+    errors.some(error => error.includes('Illegal run transition')),
+    false,
+    'CombatVictory after game_over should be ignored rather than reported as an illegal transition'
+  );
+});

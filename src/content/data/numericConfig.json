@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "cards": {
+    "byId": {
+      "strike": {
+        "$set": {
+          "actions[0].amount": 5
+        }
+      }
+    }
+  },
+  "potions": {
+    "byId": {},
+    "runtime": {
+      "slotLimit": 3,
+      "toxicityOverloadThreshold": 3
+    }
+  },
+  "relics": {
+    "byId": {}
+  },
+  "enemies": {
+    "byId": {},
+    "runtime": {
+      "earlyCombatHpSoftCaps": {
+        "floor_2": 30,
+        "floor_4": 40,
+        "floor_6": 52
+      },
+      "earlyEliteHpSoftCaps": {
+        "floor_3": 88,
+        "floor_6": 112
+      },
+      "singleSlimeRoomBoost": {
+        "enabled": true,
+        "maxFloor": 4,
+        "hpBonusRatio": 0.60,
+        "minHpBonus": 3,
+        "strengthBonus": 1,
+        "innateStatus": {
+          "PlatedArmor": 5
+        }
+      },
+      "floorEligibility": {
+        "elite": {
+          "floor_3_maxHp": 95,
+          "floor_6_maxHp": 115
+        },
+        "combat": {
+          "floor_2_maxHp": 32,
+          "floor_4_maxHp": 42,
+          "floor_6_maxHp": 50,
+          "excludeSplitBeforeFloor": 3,
+          "excludeSymbioteBeforeFloor": 7,
+          "excludeFissionSmallBeforeFloor": 5
+        }
+      }
+    }
+  },
+  "events": {
+    "runtime": {
+      "minSelectableWeight": 0.01
+    },
+    "defs": {
+      "rusting_medicae": { "floorMin": 1, "floorMax": 3, "weight": 1.2 },
+      "nameless_martyr_shrine": { "floorMin": 2, "floorMax": 5, "weight": 1.0 },
+      "warp_tear_whispers": { "floorMin": 4, "floorMax": 7, "weight": 0.9 },
+      "inquisitor_legacy": { "floorMin": 5, "floorMax": 9, "weight": 0.8 }
+    },
+    "outcomes": {
+      "rusting_medicae": {
+        "salvageFleeTrueDamage": 15,
+        "implant": {
+          "currentHpLossRatio": 0.25,
+          "maxHpGain": 10
+        },
+        "extract": {
+          "maxHpLoss": 5,
+          "healMaxHpRatio": 0.3,
+          "corruptionGain": 20,
+          "potionCount": 2,
+          "strongPotionsOnly": true
+        },
+        "salvage": {
+          "goldGain": 100,
+          "normalRelicOnly": true
+        }
+      },
+      "nameless_martyr_shrine": {
+        "offerBlood": {
+          "maxHpLossRatio": 0.33
+        },
+        "offerWealth": {
+          "curseGoldThreshold": 50,
+          "freeRemovals": 2
+        },
+        "desecrate": {
+          "warpTideBonus": 50,
+          "devotionSetTo": 0
+        }
+      },
+      "warp_tear_whispers": {
+        "embrace": {
+          "corruptionSetTo": 100,
+          "warpDebuffCombats": 3
+        },
+        "seal": {
+          "devotionGain": 50,
+          "clearPendingWarpTideBonus": true
+        }
+      },
+      "inquisitor_legacy": {
+        "openCasket": {
+          "currentHpLossRatio": 0.5,
+          "enemyHuntBonusPct": 0.1
+        },
+        "readCodex": {
+          "intelGain": 30,
+          "maxHpLoss": 10,
+          "revealAllMapNodes": true
+        },
+        "takeRosary": {
+          "selfDamage": 10
+        }
+      }
+    }
+  }
+}

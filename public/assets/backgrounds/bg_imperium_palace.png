@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768">
+    
+      <defs>
+        <linearGradient id="imperiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:0.6"/>
+          <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#b45309;stop-opacity:0.5"/>
+        </linearGradient>
+      </defs>
+      <rect width="1024" height="768" fill="url(#imperiumGrad)"/>
+      <path d="M512 100 L532 180 L620 180 L550 230 L575 310 L512 260 L449 310 L474 230 L404 180 L492 180 Z" fill="#fbbf24" opacity="0.15"/>
+      <rect x="0" y="680" width="1024" height="88" fill="#b45309" opacity="0.25"/>
+    
+  </svg>

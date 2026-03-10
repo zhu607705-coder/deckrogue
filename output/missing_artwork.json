@@ -1,0 +1,13 @@
+{
+  "totalMissing": 0,
+  "byCharacter": {
+    "informant": [],
+    "brute": [],
+    "tactician": [],
+    "puppeteer": [],
+    "chronomancer": [],
+    "alchemist": [],
+    "all": []
+  },
+  "missingArtwork": []
+}

@@ -1,0 +1,96 @@
+{
+  "currencyConversion": {
+    "goldPerRequisition": 100,
+    "commonCardSalvageRequisition": 0,
+    "uncommonCardSalvageRequisition": 1,
+    "rareCardSalvageRequisition": 2,
+    "relicSalvageRequisition": 2,
+    "bossVictoryWarpEchoes": 4,
+    "rareCardWarpEchoes": 1,
+    "corruptedRelicWarpEchoes": 1,
+    "highCorruptionPer50WarpEchoes": 1
+  },
+  "runHistoryLimit": 30,
+  "upgrades": {
+    "quartermaster_stash": {
+      "cost": { "requisition": 5, "warpEchoes": 0 },
+      "effects": {
+        "startingGold": 20
+      }
+    },
+    "gene_graft_alpha": {
+      "cost": { "requisition": 8, "warpEchoes": 0 },
+      "effects": {
+        "maxHpFlat": 3
+      }
+    },
+    "recon_briefing": {
+      "cost": { "requisition": 7, "warpEchoes": 1 },
+      "effects": {
+        "startingIntel": 1
+      }
+    }
+  },
+  "pacts": {
+    "warp_knowledge": {
+      "cost": { "warpEchoes": 3 },
+      "benefits": {
+        "addRandomRareCard": 1
+      },
+      "penalties": {
+        "addCurseCardIds": ["psychic_backlash"]
+      }
+    },
+    "blood_furnace": {
+      "cost": { "warpEchoes": 4 },
+      "benefits": {
+        "maxEnergyFlat": 1
+      },
+      "penalties": {
+        "maxHpPctLoss": 0.3
+      }
+    }
+  },
+  "martyrLegacy": {
+    "enabledFromFloor": 3,
+    "inheritedCardCostPenalty": 1,
+    "inheritedRelicAddsCurse": "paranoia",
+    "inheritedCardWeakTag": "OldEcho"
+  },
+  "ascension": {
+    "maxLevel": 5,
+    "levels": {
+      "1": {
+        "enemyHpMultiplier": 1.08,
+        "enemyDamageMultiplier": 1.05,
+        "eliteUpgradeChance": 0.03
+      },
+      "2": {
+        "enemyHpMultiplier": 1.14,
+        "enemyDamageMultiplier": 1.08,
+        "eliteUpgradeChance": 0.06
+      },
+      "3": {
+        "enemyHpMultiplier": 1.2,
+        "enemyDamageMultiplier": 1.12,
+        "eliteUpgradeChance": 0.1,
+        "startingCurseCardId": "paranoia"
+      },
+      "4": {
+        "enemyHpMultiplier": 1.28,
+        "enemyDamageMultiplier": 1.16,
+        "eliteUpgradeChance": 0.14,
+        "startingCurseCardId": "psychic_backlash"
+      },
+      "5": {
+        "enemyHpMultiplier": 1.36,
+        "enemyDamageMultiplier": 1.22,
+        "eliteUpgradeChance": 0.18,
+        "startingCurseCardId": "psychic_backlash"
+      }
+    }
+  },
+  "poolWeights": {
+    "metaUnlockedWeightBonus": 2
+  }
+}

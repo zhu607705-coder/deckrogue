@@ -1,0 +1,5667 @@
+[
+  {
+    "id": "strike",
+    "name": "Strike",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 5 damage.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A dynamic action shot of a glowing sword striking a dark silhouette, sparks flying, fantasy art style",
+    "upgrade": {
+      "name": "Strike+",
+      "text": "Deal 8 damage.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "All"
+  },
+  {
+    "id": "defend",
+    "name": "Defend",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "Gain 4 block.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 4,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A sturdy metallic shield glowing with blue magical energy, blocking a shadowy attack, fantasy art style",
+    "upgrade": {
+      "name": "Defend+",
+      "text": "Gain 7 block.",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 7,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "All"
+  },
+  {
+    "id": "gather_intel",
+    "name": "Gather Intel",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "Gain 2 Intel. Draw 2 cards.",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A mysterious glowing blue orb floating above an open ancient tome, dark library background, fantasy art style",
+    "upgrade": {
+      "name": "Gather Intel+",
+      "text": "Gain 3 Intel. Draw 2 cards.",
+      "actions": [
+        {
+          "type": "GainIntel",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "precision_strike",
+    "name": "Precision Strike",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "strike"
+    ],
+    "text": "If you have 1 Intel, spend it to deal 12 damage. Otherwise deal 6 damage.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 12,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 6,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A sniper's crosshair locking onto a glowing weak point on a monster's armor, high tech fantasy art style",
+    "upgrade": {
+      "name": "Precision Strike+",
+      "text": "If you have 1 Intel, spend it to deal 16 damage. Otherwise deal 8 damage.",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 16,
+              "target": "Enemy"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "DealDamage",
+              "amount": 8,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "bash",
+    "name": "Bash",
+    "rarity": "Starter",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 12 damage. Apply 2 Vulnerable.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A massive heavy warhammer smashing into the ground, creating a shockwave, aggressive fantasy art style",
+    "upgrade": {
+      "name": "Bash+",
+      "text": "Deal 18 damage. Apply 3 Vulnerable.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 3,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "flex",
+    "name": "Flex",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Gain 2 Strength.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A muscular warrior glowing with intense red aura, flexing their arms, powerful fantasy art style",
+    "upgrade": {
+      "name": "Flex+",
+      "text": "Gain 3 Strength.",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 3,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "quick_slash",
+    "name": "Quick Slash",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 4 damage. Draw 1 card.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 4,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A blur of motion showing a dagger slicing through the air with green afterimages, fast fantasy art style",
+    "upgrade": {
+      "name": "Quick Slash+",
+      "text": "Deal 8 damage. Draw 1 card.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "acrobatics",
+    "name": "Acrobatics",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Draw 2 cards. Discard 1 card.",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Discard",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A nimble rogue performing a mid-air backflip over a trap, dynamic perspective, fantasy art style",
+    "upgrade": {
+      "name": "Acrobatics+",
+      "text": "Draw 4 cards. Discard 1 card.",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 4,
+          "target": "Self"
+        },
+        {
+          "type": "Discard",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "expose_weakness",
+    "name": "Expose Weakness",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "intel"
+    ],
+    "text": "Spend 2 Intel: Apply 2 Vulnerable and 2 Weak.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 2,
+            "target": "Self"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Vulnerable",
+            "amount": 2,
+            "target": "Enemy"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "amount": 2,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A glowing magical monocle revealing the skeletal structure and weak points of a monster, analytical fantasy art style",
+    "upgrade": {
+      "name": "Expose Weakness+",
+      "text": "Spend 2 Intel: Apply 3 Vulnerable and 3 Weak.",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 2,
+              "target": "Self"
+            },
+            {
+              "type": "ApplyStatus",
+              "status": "Vulnerable",
+              "amount": 3,
+              "target": "Enemy"
+            },
+            {
+              "type": "ApplyStatus",
+              "status": "Weak",
+              "amount": 3,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "cleave",
+    "name": "Cleave",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 8 damage to ALL enemies.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "AllEnemies"
+      }
+    ],
+    "art_prompt": "A wide sweeping arc of red energy from a massive sword, cutting through multiple shadowy figures, fantasy art style",
+    "upgrade": {
+      "name": "Cleave+",
+      "text": "Deal 11 damage to ALL enemies.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 11,
+          "target": "AllEnemies"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "body_slam",
+    "name": "Body Slam",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal damage equal to your Block.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 0,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A heavily armored knight tackling a monster with full force, shield first, heavy impact fantasy art style",
+    "upgrade": {
+      "name": "Body Slam+",
+      "cost": 0
+    },
+    "character": "brute"
+  },
+  {
+    "id": "shrug_it_off",
+    "name": "Shrug It Off",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "Gain 8 Block. Draw 1 card.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A warrior casually brushing off arrows bouncing off their thick metallic armor, resilient fantasy art style",
+    "upgrade": {
+      "name": "Shrug It Off+",
+      "text": "Gain 11 Block. Draw 1 card.",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 11,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "pommel_strike",
+    "name": "Pommel Strike",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 9 damage. Draw 1 card.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 9,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A close up of a sword's heavy pommel smashing into a monster's face, disorienting impact, fantasy art style",
+    "upgrade": {
+      "name": "Pommel Strike+",
+      "text": "Deal 10 damage. Draw 2 cards.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "limit_break",
+    "name": "极限突破祷令",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Double your Strength.",
+    "actions": [
+      {
+        "type": "DoubleStatus",
+        "status": "Strength",
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A warrior screaming as fiery aura erupts from their body, breaking magical chains, intense anime fantasy art style",
+    "upgrade": {
+      "name": "Limit Break+",
+      "cost": 0
+    },
+    "character": "brute",
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "deadly_poison",
+    "name": "Deadly Poison",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison"
+    ],
+    "text": "Apply 3 Poison.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 3,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A glass vial dripping with glowing toxic green liquid onto a dagger blade, dark fantasy art style",
+    "upgrade": {
+      "name": "Deadly Poison+",
+      "text": "Apply 7 Poison.",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "bouncing_flask",
+    "name": "Bouncing Flask",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "RandomEnemy",
+    "tags": [
+      "poison"
+    ],
+    "text": "Apply 4 Poison to a random enemy 3 times.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "RandomEnemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "RandomEnemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "RandomEnemy"
+      }
+    ],
+    "art_prompt": "A glowing green potion flask bouncing erratically between multiple shadowy enemies, splashing acid, dynamic fantasy art style",
+    "upgrade": {
+      "name": "Bouncing Flask+",
+      "text": "Apply 5 Poison to a random enemy 3 times.",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "RandomEnemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "RandomEnemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "RandomEnemy"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "catalyst",
+    "name": "毒剂催化祷文",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison"
+    ],
+    "text": "Double the enemy's Poison.",
+    "actions": [
+      {
+        "type": "DoubleStatus",
+        "status": "Poison",
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A magical chemical reaction causing green toxic fumes to violently explode and expand, alchemical fantasy art style",
+    "upgrade": {
+      "name": "Catalyst+",
+      "cost": 0
+    },
+    "character": "tactician",
+    "lastWords": "“味道发甜时就别再闻了，那已经不是药。”"
+  },
+  {
+    "id": "time_bomb",
+    "name": "Time Bomb",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "delay",
+      "warp",
+      "psyker"
+    ],
+    "text": "Delay 2: Deal 14 damage.",
+    "actions": [
+      {
+        "type": "Delay",
+        "turns": 2,
+        "actions": [
+          {
+            "type": "DealDamage",
+            "amount": 14,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A glowing magical clock ticking down, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "time_warp",
+    "name": "Time Warp",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Trigger a delayed card immediately.",
+    "actions": [
+      {
+        "type": "TriggerDelay"
+      }
+    ],
+    "art_prompt": "A distorted clock face melting into a portal, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "deja_vu",
+    "name": "Deja Vu",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Return the last played card to your hand. It costs 0 this turn.",
+    "actions": [
+      {
+        "type": "ReturnLastCard",
+        "costModifier": 0
+      }
+    ],
+    "art_prompt": "A ghostly echo of a warrior repeating a strike, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "borrowed_time",
+    "name": "借时赦令",
+    "rarity": "Rare",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Gain 3 Energy. Draw 3 cards. Skip your next draw phase.",
+    "actions": [
+      {
+        "type": "GainEnergy",
+        "amount": 3
+      },
+      {
+        "type": "Draw",
+        "amount": 3
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "SkipDraw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A glowing hourglass being shattered, releasing intense energy, fantasy art style",
+    "character": "chronomancer",
+    "lastWords": "“我只是借了一分钟。债主却沿着一生来讨。”"
+  },
+  {
+    "id": "stasis_field",
+    "name": "Stasis Field",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "At the start of your turn, if you have 2+ delayed cards, gain 5 Block.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "StasisField",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A protective bubble of frozen time, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "temporal_backtrack",
+    "name": "时序回溯",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Restore all HP lost last turn.",
+    "actions": [
+      {
+        "type": "Revive"
+      }
+    ],
+    "art_prompt": "A fallen warrior rising backwards in time, fantasy art style",
+    "character": "chronomancer",
+    "lastWords": "“把我拉回来没有意义，门后的我已经不是人类。”"
+  },
+  {
+    "id": "chronos_rift",
+    "name": "Chronos Rift",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "delay",
+      "warp",
+      "psyker"
+    ],
+    "text": "Deal 8 damage. Delay 3: Deal 8 damage.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "Delay",
+        "turns": 3,
+        "actions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A tear in reality showing a past and future strike, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "grandfather_paradox",
+    "name": "祖父悖论",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Deal 5 damage to ALL enemies. Deals 3 more damage for each delayed card.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "AllEnemies",
+        "scaling": {
+          "type": "DelayedCards",
+          "multiplier": 3
+        }
+      }
+    ],
+    "art_prompt": "A chaotic swirl of conflicting timelines destroying everything, fantasy art style",
+    "character": "chronomancer",
+    "lastWords": "“如果你未来见到我，请立刻开枪。别听我解释。”——时间审判员最后记录"
+  },
+  {
+    "id": "memory_fragment",
+    "name": "Memory Fragment",
+    "rarity": "Common",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Draw 3 cards. The next Attack you play this turn costs 1 less.",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 3
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "NextAttackDiscount",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A glowing crystal containing a memory of a battle, fantasy art style",
+    "character": "chronomancer"
+  },
+  {
+    "id": "scrap_golem",
+    "name": "Scrap Golem",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "Summon a Scrap Golem (8 HP, 2 ATK). Trench Cover: it absorbs 50% of damage you take until destroyed.",
+    "actions": [
+      {
+        "type": "Summon",
+        "unit": "scrap_golem"
+      }
+    ],
+    "art_prompt": "A crude golem made of gears and scrap metal, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "wire_guard",
+    "name": "Wire Guard",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Gain 6 Block. If you have a Construct, gain 4 more.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConstruct"
+        },
+        "trueActions": [
+          {
+            "type": "GainBlock",
+            "amount": 4,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Magical glowing wires forming a protective barrier, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "spark_shock",
+    "name": "Spark Shock",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "Deal 6 damage. Constructs gain 1 ATK this turn.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "BuffConstructs",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A spark of electricity jumping between mechanical parts, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "overdrive",
+    "name": "Overdrive",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "All Constructs deal 3x their ATK as damage, then are destroyed.",
+    "actions": [
+      {
+        "type": "ConstructOverdrive",
+        "multiplier": 3
+      }
+    ],
+    "art_prompt": "A mechanical golem glowing red hot before exploding, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "soul_link",
+    "name": "灵魂缆线",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "50% of damage you take is redirected to your nearest Construct.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "SoulLink",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A glowing ethereal tether connecting a person to a puppet, fantasy art style",
+    "character": "puppeteer",
+    "lastWords": "“让构造体替我挨这一击……至少它不会尖叫。”"
+  },
+  {
+    "id": "wire_acrobatics",
+    "name": "Wire Acrobatics",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Draw 1 card. If you have a Construct, draw 1 more.",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 1
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConstruct"
+        },
+        "trueActions": [
+          {
+            "type": "Draw",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A puppet performing a nimble flip on magical strings, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "gear_storm",
+    "name": "Gear Storm",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "Deal 6 damage to ALL enemies. Deals 2 more for each Construct.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "AllEnemies",
+        "scaling": {
+          "type": "Constructs",
+          "multiplier": 2
+        }
+      }
+    ],
+    "art_prompt": "A whirlwind of sharp gears and metal scraps, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "core_rebuild",
+    "name": "Core Rebuild",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Consume 1 other Construct. Fully heal a Construct and it gains +2 ATK.",
+    "actions": [
+      {
+        "type": "HealConstruct",
+        "consumeOtherConstructs": 1,
+        "constructAtkBonus": 2
+      }
+    ],
+    "art_prompt": "A glowing mechanical heart being inserted into a golem, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "proxied_war",
+    "name": "Proxied War",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "RandomEnemy",
+    "tags": [],
+    "text": "Force a random enemy to attack another random enemy.",
+    "actions": [
+      {
+        "type": "ForceEnemyAttack"
+      }
+    ],
+    "art_prompt": "Magical strings controlling an enemy monster like a puppet, fantasy art style",
+    "character": "puppeteer"
+  },
+  {
+    "id": "mega_fusion",
+    "name": "巨构熔接",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "Destroy all Constructs. For each destroyed, the Mega Construct gains +15 HP and +4 ATK. If none are destroyed, take 15 true damage and summon a failed 10 HP construct.",
+    "actions": [
+      {
+        "type": "SummonMegaConstruct",
+        "baseHp": 20,
+        "baseAtk": 4,
+        "hpPerConstruct": 15,
+        "atkPerConstruct": 4,
+        "emptyPenaltyTrueDamage": 15,
+        "failureConstructHp": 10,
+        "failureConstructAtk": 0
+      }
+    ],
+    "art_prompt": "Multiple golems combining into a massive mechanical titan, fantasy art style",
+    "character": "puppeteer",
+    "lastWords": "“把它们焊在一起。名字和痛觉都删掉。”"
+  },
+  {
+    "id": "element_spark",
+    "name": "Element Spark",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Add 1 random Element to your Element Pool. Draw 1 card. Gain 3 Block.",
+    "actions": [
+      {
+        "type": "AddRandomElement",
+        "amount": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 3,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A chaotic spark of multi-colored magical energy, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "fire_arrow",
+    "name": "Fire Arrow",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "fire"
+    ],
+    "text": "Deal 8 damage. Add Fire to Element Pool.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "AddElement",
+        "element": "Fire"
+      }
+    ],
+    "art_prompt": "A flaming magical arrow, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "frost_armor",
+    "name": "Frost Armor",
+    "rarity": "Starter",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "frost"
+    ],
+    "text": "Gain 7 Block. Add Frost to Element Pool.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "AddElement",
+        "element": "Frost"
+      }
+    ],
+    "art_prompt": "A shield made of solid ice, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "element_siphon",
+    "name": "Element Siphon",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Gain 1 random Element.",
+    "actions": [
+      {
+        "type": "AddRandomElement",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "Magical energy being drawn from the environment into a vial, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "fire_bomb",
+    "name": "Fire Bomb",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "fire"
+    ],
+    "text": "Deal 4 damage. Apply 3 Burn. Add Fire.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 4,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Burn",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "AddElement",
+        "element": "Fire"
+      }
+    ],
+    "art_prompt": "A glass flask exploding with intense fire, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "acid_spray",
+    "name": "Acid Spray",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "acid"
+    ],
+    "text": "Deal 3 damage. Add Acid.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "AddElement",
+        "element": "Acid"
+      }
+    ],
+    "art_prompt": "Corrosive green liquid spraying from a nozzle, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "chain_reaction",
+    "name": "链式反应",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "Trigger all Element reactions in your pool.",
+    "actions": [
+      {
+        "type": "TriggerReactions"
+      }
+    ],
+    "art_prompt": "A massive explosion of mixed magical elements, fantasy art style",
+    "character": "alchemist",
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "elemental_overload",
+    "name": "元素过载",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "Deal 15 damage. If you have 3+ different Elements, deal double damage.",
+    "actions": [
+      {
+        "type": "ElementalOverloadDamage",
+        "amount": 15,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A beam of pure, multi-colored elemental energy, fantasy art style",
+    "character": "alchemist",
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "alchemical_transmute",
+    "name": "Alchemical Transmute",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Consume all Elements. Heal 2 HP per Element.",
+    "actions": [
+      {
+        "type": "TransmuteElements"
+      }
+    ],
+    "art_prompt": "A glowing golden liquid being poured from a flask, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "universal_solvent",
+    "name": "Universal Solvent",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "acid"
+    ],
+    "text": "Deal 3 damage to ALL enemies. Deals 2 extra damage per Block they have. Add Acid.",
+    "actions": [
+      {
+        "type": "SolventDamage",
+        "amount": 3,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "AddElement",
+        "element": "Acid"
+      }
+    ],
+    "art_prompt": "A bubbling vial of clear liquid dissolving a metal shield, fantasy art style",
+    "character": "alchemist"
+  },
+  {
+    "id": "turn_the_tables",
+    "name": "Turn the Tables",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "Redirect an enemy's intent to another random enemy.",
+    "actions": [
+      {
+        "type": "RedirectIntent"
+      }
+    ],
+    "art_prompt": "A magical mirror reflecting an attack back at a monster, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "temp_worker",
+    "name": "Temp Worker",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "Summon a Temp Guard (5 HP, Taunt). Overflow damage dealt to it is transferred to you.",
+    "actions": [
+      {
+        "type": "Summon",
+        "unit": "temp_guard"
+      }
+    ],
+    "art_prompt": "A nervous-looking peasant holding a wooden shield, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "precision_throw",
+    "name": "Precision Throw",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "Deal 6 damage. If the enemy has Block, deal 9 instead.",
+    "actions": [
+      {
+        "type": "PrecisionThrowDamage",
+        "amount": 6,
+        "bonus": 9,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A throwing knife perfectly hitting a gap in armor, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "adrenaline",
+    "name": "肾上腺祷剂",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Gain 1 Energy. Skip your next draw phase.",
+    "actions": [
+      {
+        "type": "GainEnergy",
+        "amount": 1
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "SkipDraw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A glowing red aura surrounding a warrior, fantasy art style",
+    "character": "All",
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "full_scan",
+    "name": "Full Scan",
+    "rarity": "Uncommon",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "Reveal all enemy intents for 1 turn.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Revealed",
+        "amount": 1,
+        "target": "AllEnemies"
+      }
+    ],
+    "art_prompt": "A magical radar sweeping over a dark battlefield, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "emergency_measure",
+    "name": "Emergency Measure",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Gain 4 Block. If HP < 30%, gain 12 instead.",
+    "actions": [
+      {
+        "type": "EmergencyBlock",
+        "amount": 4,
+        "bonus": 12,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A desperate magical shield blocking a lethal blow, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "double_down",
+    "name": "双重押注",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Your next Attack this turn deals double damage.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "DoubleDamageNextAttack",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A warrior glowing with intense power, preparing a massive strike, fantasy art style",
+    "character": "All",
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "jamming_signal",
+    "name": "Jamming Signal",
+    "rarity": "Uncommon",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "Enemies cannot gain Block until the end of their next turn.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "BlockBlocked",
+        "amount": 2,
+        "target": "AllEnemies"
+      }
+    ],
+    "art_prompt": "Magical static disrupting an enemy's shield spell, fantasy art style",
+    "character": "All"
+  },
+  {
+    "id": "go_dark",
+    "name": "Go Dark",
+    "rarity": "Uncommon",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel",
+      "warp",
+      "psyker"
+    ],
+    "text": "Spend 1 Intel. Gain 1 Stealth.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Stealth",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A rogue blending completely into the shadows, fantasy art style",
+    "character": "informant"
+  },
+  {
+    "id": "chaos_taint",
+    "name": "Chaos Taint",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. A dead draw born of corruption.",
+    "actions": [],
+    "art_prompt": "A blackened parchment covered in writhing warp sigils, dark fantasy",
+    "character": "All"
+  },
+  {
+    "id": "bleak_omen",
+    "name": "Bleak Omen",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. The omen lingers in your hand and mind.",
+    "actions": [],
+    "art_prompt": "A spectral omen card shrouded in cold mist and ash, dark fantasy",
+    "character": "All"
+  },
+  {
+    "id": "soul_smite",
+    "name": "Soul Smite",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "Deal 7 warp damage. Increase Warp Tide by 5 and test Perils of the Warp.",
+    "actions": [
+      {
+        "type": "DealWarpDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "ModifyWarpTide",
+        "amount": 5
+      },
+      {
+        "type": "CheckWarpPeril"
+      }
+    ],
+    "art_prompt": "A psyker hurling a soul-lance through a cathedral nave, grimdark warhammer style",
+    "character": "All",
+    "upgrade": {
+      "name": "Soul Smite+",
+      "text": "Deal 10 warp damage. Increase Warp Tide by 5 and test Perils of the Warp.",
+      "actions": [
+        {
+          "type": "DealWarpDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ModifyWarpTide",
+          "amount": 5
+        },
+        {
+          "type": "CheckWarpPeril"
+        }
+      ]
+    }
+  },
+  {
+    "id": "warp_storm",
+    "name": "亚空间风暴",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "warp",
+      "psyker",
+      "aoe"
+    ],
+    "text": "对所有敌人造成 10 点亚空间伤害。亚空间潮汐 +30，并进行一次灵能险象检定。",
+    "actions": [
+      {
+        "type": "DealWarpDamage",
+        "amount": 10,
+        "target": "AllEnemies",
+        "alpha": 2.5
+      },
+      {
+        "type": "ModifyWarpTide",
+        "amount": 30
+      },
+      {
+        "type": "CheckWarpPeril",
+        "sensitivity": 0.055
+      }
+    ],
+    "art_prompt": "A warp storm tearing open reality over a battlefield, daemons in lightning clouds, grimdark oil painting",
+    "character": "All",
+    "lastWords": "“风暴里有声音在念我的军籍编号。”"
+  },
+  {
+    "id": "litany_of_faith",
+    "name": "Litany of Faith",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "faith",
+      "support"
+    ],
+    "text": "Lower Warp Tide by 20. Gain 6 block. Gain 8 Devotion.",
+    "actions": [
+      {
+        "type": "ModifyWarpTide",
+        "amount": -20
+      },
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "GainDevotion",
+        "amount": 8,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A priest chanting litanies under purity seals and incense smoke, gothic industrial chapel",
+    "character": "All"
+  },
+  {
+    "id": "emperors_mercy",
+    "name": "Emperor's Mercy",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "faith",
+      "command"
+    ],
+    "text": "Purge Fear and reduce Corruption. Gain 30 Devotion. If you have a construct, sacrifice it; otherwise lose 6 HP.",
+    "actions": [
+      {
+        "type": "EmperorMercy"
+      }
+    ],
+    "art_prompt": "A grim commissar executing a corrupted trooper as purity seals flare, warhammer grimdark",
+    "character": "All"
+  },
+  {
+    "id": "warp_rift",
+    "name": "Warp Rift",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "None",
+    "tags": [
+      "warp",
+      "psyker",
+      "terrain"
+    ],
+    "text": "Create a Warp Rift for 3 turns: all units gain 5 Corruption each round, warp power is amplified, and Perils are more likely. Increase Warp Tide by 12.",
+    "actions": [
+      {
+        "type": "CreateWarpRift",
+        "turns": 3,
+        "amount": 5,
+        "alpha": 2,
+        "bonus": 25
+      },
+      {
+        "type": "ModifyWarpTide",
+        "amount": 12
+      },
+      {
+        "type": "CheckWarpPeril",
+        "sensitivity": 0.05
+      }
+    ],
+    "art_prompt": "A jagged warp rift splitting a gothic battlefield, purple fire and screaming faces in the tear, grimdark art",
+    "character": "All"
+  },
+  {
+    "id": "gaze_of_the_abyss",
+    "name": "凝视深渊",
+    "rarity": "Rare",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker",
+      "corruption"
+    ],
+    "text": "获得 3 点能量。腐化 +15。若腐化 >= 50，此牌异变为【血肉触须】。",
+    "actions": [
+      {
+        "type": "GainEnergy",
+        "amount": 3
+      },
+      {
+        "type": "GainCorruption",
+        "amount": 15,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasCorruption",
+          "amount": 50
+        },
+        "trueActions": [
+          {
+            "type": "MutateCard",
+            "mutateTo": "flesh_tentacle"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style",
+    "character": "All",
+    "upgrade": {
+      "name": "Gaze of the Abyss+",
+      "text": "Gain 4 Energy. Increase Corruption by 15. If Corruption >= 50, this card mutates into Flesh Tentacle.",
+      "actions": [
+        {
+          "type": "GainEnergy",
+          "amount": 4
+        },
+        {
+          "type": "GainCorruption",
+          "amount": 15,
+          "target": "Self"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasCorruption",
+            "amount": 50
+          },
+          "trueActions": [
+            {
+              "type": "MutateCard",
+              "mutateTo": "flesh_tentacle"
+            }
+          ]
+        }
+      ]
+    },
+    "lastWords": "“深渊回望时，我看见它戴着我的脸。”"
+  },
+  {
+    "id": "flesh_tentacle",
+    "name": "Flesh Tentacle",
+    "rarity": "Special",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "warp",
+      "mutated",
+      "unplayable_normal"
+    ],
+    "text": "Deal damage equal to half your Corruption. Heal for the same amount. This card can only be obtained through mutation.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 0,
+        "target": "Enemy",
+        "scaling": {
+          "type": "Corruption",
+          "multiplier": 0.5
+        }
+      },
+      {
+        "type": "Heal",
+        "amount": 0,
+        "target": "Self",
+        "scaling": {
+          "type": "Corruption",
+          "multiplier": 0.5
+        }
+      }
+    ],
+    "art_prompt": "A grotesque mass of writhing flesh tentacles erupting from corrupted flesh, warhammer chaos mutation style",
+    "character": "All",
+    "upgrade": {
+      "name": "Flesh Tentacle+",
+      "text": "Deal damage equal to half your Corruption + 5. Heal for the same amount.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy",
+          "scaling": {
+            "type": "Corruption",
+            "multiplier": 0.5
+          }
+        },
+        {
+          "type": "Heal",
+          "amount": 5,
+          "target": "Self",
+          "scaling": {
+            "type": "Corruption",
+            "multiplier": 0.5
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "chainsword_sweep",
+    "name": "Chainsword Sweep",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike",
+      "tech",
+      "seal_slot"
+    ],
+    "text": "Deal 6 damage. This card has 2 Seal slots for Purity Seals.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      }
+    ],
+    "sealSlots": 2,
+    "art_prompt": "A space marine chainsword sweeping through the air with teeth spinning, warhammer 40k style",
+    "character": "All",
+    "upgrade": {
+      "name": "Chainsword Sweep+",
+      "text": "Deal 9 damage. This card has 2 Seal slots for Purity Seals.",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        }
+      ],
+      "sealSlots": 2
+    }
+  },
+  {
+    "id": "awaken_machine_spirit",
+    "name": "唤醒机魂",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "tech",
+      "machine",
+      "overload"
+    ],
+    "text": "你手中的所有科技牌效果翻倍。每打出一张，向弃牌堆加入一张【过热】。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "MachineSpiritAwakened",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A mechanical cogitator spirit awakening with glowing eyes in a gothic machine, warhammer mechanicus style",
+    "character": "All",
+    "upgrade": {
+      "name": "Awaken Machine Spirit+",
+      "cost": 1
+    },
+    "lastWords": "“机魂苏醒了。它先学会的第一句话是拒绝服从。”"
+  },
+  {
+    "id": "overheat",
+    "name": "Overheat",
+    "rarity": "Special",
+    "cost": -1,
+    "type": "Status",
+    "targeting": "Self",
+    "tags": [
+      "status",
+      "unplayable",
+      "tech"
+    ],
+    "text": "Unplayable. At the end of your turn, take 2 damage. If you have Block, lose 5 Block.",
+    "actions": [],
+    "art_prompt": "A mechanical component glowing red hot with steam venting, warhammer mechanicus style",
+    "character": "All"
+  },
+  {
+    "id": "emperors_wrath",
+    "name": "帝皇之怒",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "zeal",
+      "faith",
+      "finisher"
+    ],
+    "text": "造成 8 点伤害。若你的狂热值 > 15，则改为造成 30 点伤害并施加【致盲】。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasZeal",
+          "amount": 16
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 30,
+            "target": "Enemy"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Blind",
+            "amount": 2,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A space marine in golden armor surrounded by holy fire and wrath, warhammer 40k style",
+    "character": "All",
+    "upgrade": {
+      "name": "Emperor's Wrath+",
+      "text": "Deal 10 damage. If your Zeal is greater than 12, deal 35 damage instead and apply Blind.",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasZeal",
+            "amount": 13
+          },
+          "trueActions": [
+            {
+              "type": "DealDamage",
+              "amount": 35,
+              "target": "Enemy"
+            },
+            {
+              "type": "ApplyStatus",
+              "status": "Blind",
+              "amount": 2,
+              "target": "Enemy"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "lastWords": "“若你捡到这张战术片，请替我把结局写得体面一些。”"
+  },
+  {
+    "id": "trial_of_heretics",
+    "name": "Trial of Heretics",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "zeal",
+      "faith",
+      "purge"
+    ],
+    "text": "Remove all buffs from the target. Gain 3 Zeal for each buff removed.",
+    "actions": [
+      {
+        "type": "PurgeEnemyBuffs",
+        "zealPerBuff": 3
+      }
+    ],
+    "art_prompt": "An inquisitor holding a flaming sword pronouncing judgment on heretics, warhammer 40k style",
+    "character": "All",
+    "upgrade": {
+      "name": "Trial of Heretics+",
+      "text": "Remove all buffs from the target. Gain 4 Zeal for each buff removed.",
+      "actions": [
+        {
+          "type": "PurgeEnemyBuffs",
+          "zealPerBuff": 4
+        }
+      ]
+    }
+  },
+  {
+    "id": "execution_slash",
+    "name": "处决斩击",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "Weapon",
+      "Execution"
+    ],
+    "text": "造成 18 点伤害。施加 1 层【易伤】。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 18,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "isUpgraded": true,
+    "character": "All",
+    "lastWords": "“对准颈环缝隙。盔甲会比肉先求饶。”——行刑官断讯前留言",
+    "art_prompt": "A glowing executioner blade striking down, dramatic fantasy art style"
+  },
+  {
+    "id": "rejection_response",
+    "name": "排异反应",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. Your flesh rebels against the implant.",
+    "actions": [],
+    "character": "All",
+    "art_prompt": "A magical shield rejecting an incoming attack, defensive fantasy art style"
+  },
+  {
+    "id": "greed_sin",
+    "name": "贪婪之罪",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. The martyr rejects hollow offerings.",
+    "actions": [],
+    "character": "All",
+    "art_prompt": "Golden coins and treasure swirling around, temptation fantasy art style"
+  },
+  {
+    "id": "psychic_backlash",
+    "name": "灵能反噬",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. Your skull still rings with the tear's whisper.",
+    "actions": [],
+    "character": "All",
+    "art_prompt": "A psychic attack rebounding back at the caster, magical feedback fantasy art style"
+  },
+  {
+    "id": "paranoia",
+    "name": "妄想狂",
+    "rarity": "Starter",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "Curse",
+      "DoubleRemoveCost",
+      "Unplayable"
+    ],
+    "text": "Curse. Unplayable. Remove cost is doubled.",
+    "actions": [],
+    "character": "All",
+    "art_prompt": "Shadowy figures watching from the corners, paranoid dark fantasy art style"
+  },
+  {
+    "id": "intel_network",
+    "name": "情报网络",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "获得 2 点情报。抽 2 张牌。",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "情报网络+",
+      "text": "获得 3 点情报。抽 2 张牌。",
+      "actions": [
+        {
+          "type": "GainIntel",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "informant",
+    "art_prompt": "A network of glowing blue data lines connecting multiple nodes, information fantasy tech style"
+  },
+  {
+    "id": "weak_point_analysis",
+    "name": "弱点分析",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "intel"
+    ],
+    "text": "获得 2 点情报。施加 1 层易伤。",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "弱点分析+",
+      "text": "获得 3 点情报。施加 1 层易伤。",
+      "actions": [
+        {
+          "type": "GainIntel",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "informant",
+    "art_prompt": "A tactical hologram highlighting enemy weak points, analytical fantasy tech style"
+  },
+  {
+    "id": "calculated_strike",
+    "name": "计算打击",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "strike"
+    ],
+    "text": "造成 7 点伤害。若你有 1 点情报，则消耗 1 点并额外造成 7 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 7,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "计算打击+",
+      "text": "造成 10 点伤害。若你有 1 点情报，则消耗 1 点并额外造成 10 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "intel_dump",
+    "name": "情报倾泻",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel"
+    ],
+    "text": "消耗所有情报。每消耗 1 点情报，造成 8 点伤害。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 99,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "情报倾泻+",
+      "text": "消耗所有情报。每消耗 1 点情报，造成 12 点伤害。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 99,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "execute_protocol",
+    "name": "处决协议",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel"
+    ],
+    "text": "消耗 3 点情报：造成 25 点伤害。若目标生命值低于 30%，改为造成 40 点伤害。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 3
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 3,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 25,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "处决协议+",
+      "text": "消耗 3 点情报：造成 35 点伤害。若目标生命值低于 30%，改为造成 50 点伤害。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 3
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 3,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 35,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant",
+    "lastWords": "情报就是子弹。用完为止。",
+    "art_prompt": "A robotic arm executing a termination protocol, sci-fi fantasy art style"
+  },
+  {
+    "id": "surveillance",
+    "name": "监视",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "获得 1 点情报。获得 4 点格挡。",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 4,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "监视+",
+      "text": "获得 2 点情报。获得 4 点格挡。",
+      "actions": [
+        {
+          "type": "GainIntel",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "shadow_step",
+    "name": "暗影步",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "stealth"
+    ],
+    "text": "获得 1 层潜行。抽 1 张牌。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Stealth",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "暗影步+",
+      "text": "获得 1 层潜行。抽 2 张牌。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Stealth",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "warp_tap",
+    "name": "亚空间窃取",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "消耗 1 点情报。亚空间潮汐 +10，获得 2 点能量。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "ModifyWarpTide",
+            "amount": 10
+          },
+          {
+            "type": "GainEnergy",
+            "amount": 2
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "亚空间窃取+",
+      "text": "消耗 1 点情报。亚空间潮汐 +10，获得 3 点能量。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "ModifyWarpTide",
+              "amount": 10
+            },
+            {
+              "type": "GainEnergy",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    "character": "informant",
+    "art_prompt": "A hand reaching into a glowing warp portal to steal something, space fantasy art style"
+  },
+  {
+    "id": "vanishing_strike",
+    "name": "消失打击",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "stealth",
+      "strike"
+    ],
+    "text": "造成 12 点伤害。若你处于潜行状态，额外造成 8 点伤害并获得 2 点情报。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "消失打击+",
+      "text": "造成 16 点伤害。若你处于潜行状态，额外造成 10 点伤害并获得 3 点情报。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "informant"
+  },
+  {
+    "id": "rage_slam",
+    "name": "狂怒猛击",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 8 点伤害。每有 1 层力量，额外造成 2 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "狂怒猛击+",
+      "text": "造成 12 点伤害。每有 1 层力量，额外造成 3 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "brute",
+    "art_prompt": "A furious warrior slamming a weapon into the ground, rage fantasy art style"
+  },
+  {
+    "id": "armor_break",
+    "name": "破甲重击",
+    "rarity": "Common",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 14 点伤害。若目标有格挡，额外造成 8 点伤害并移除其格挡。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "破甲重击+",
+      "text": "造成 18 点伤害。若目标有格挡，额外造成 12 点伤害并移除其格挡。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "brute",
+    "art_prompt": "A heavy weapon shattering enemy armor, breaking fantasy art style"
+  },
+  {
+    "id": "intimidating_roar",
+    "name": "威慑怒吼",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "对所有敌人施加 1 层虚弱。获得 1 层力量。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "威慑怒吼+",
+      "text": "对所有敌人施加 2 层虚弱。获得 1 层力量。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "AllEnemies"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "crushing_blow",
+    "name": "粉碎打击",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 16 点伤害。若目标处于易伤状态，额外造成 8 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 16,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "粉碎打击+",
+      "text": "造成 22 点伤害。若目标处于易伤状态，额外造成 12 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 22,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "brute",
+    "art_prompt": "A massive warhammer delivering a devastating blow, heavy fantasy art style"
+  },
+  {
+    "id": "blood_fury",
+    "name": "血性狂怒",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "失去 3 点生命。获得 3 层力量。抽 1 张牌。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 3,
+        "target": "Self",
+        "trueDamage": true
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 3,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "血性狂怒+",
+      "text": "失去 3 点生命。获得 4 层力量。抽 1 张牌。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 3,
+          "target": "Self",
+          "trueDamage": true
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 4,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute",
+    "lastWords": "痛苦是最好的燃料。",
+    "art_prompt": "A warrior consumed by bloodlust, eyes glowing red, dark fantasy art style"
+  },
+  {
+    "id": "iron_wall",
+    "name": "铁壁",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "获得 12 点格挡。若你的生命值低于 50%，额外获得 6 点格挡。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "铁壁+",
+      "text": "获得 16 点格挡。若你的生命值低于 50%，额外获得 8 点格挡。",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 16,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "shield_bash",
+    "name": "盾牌猛击",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成等同于你格挡值的伤害。获得 4 点格挡。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 0,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 4,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "盾牌猛击+",
+      "text": "造成等同于你格挡值的伤害。获得 7 点格挡。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 0,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 7,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "reckless_charge",
+    "name": "鲁莽冲锋",
+    "rarity": "Uncommon",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 10 点伤害。失去 2 点生命。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "DealDamage",
+        "amount": 2,
+        "target": "Self",
+        "trueDamage": true
+      }
+    ],
+    "upgrade": {
+      "name": "鲁莽冲锋+",
+      "text": "造成 14 点伤害。失去 2 点生命。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 2,
+          "target": "Self",
+          "trueDamage": true
+        }
+      ]
+    },
+    "character": "brute"
+  },
+  {
+    "id": "last_stand",
+    "name": "背水一战",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "获得 5 层力量。获得 5 层易伤。本回合结束时，失去所有力量。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 5,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 5,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "背水一战+",
+      "cost": 1
+    },
+    "character": "brute",
+    "lastWords": "要么赢，要么死。没有第三条路。"
+  },
+  {
+    "id": "poison_dart",
+    "name": "毒镖",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "poison"
+    ],
+    "text": "造成 3 点伤害。施加 2 层中毒。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 2,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "毒镖+",
+      "text": "造成 4 点伤害。施加 3 层中毒。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 4,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 3,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician",
+    "art_prompt": "A poisoned dart flying through the air, toxic fantasy art style"
+  },
+  {
+    "id": "toxic_cloud",
+    "name": "毒云",
+    "rarity": "Common",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "poison"
+    ],
+    "text": "对所有敌人施加 4 层中毒。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "AllEnemies"
+      }
+    ],
+    "upgrade": {
+      "name": "毒云+",
+      "text": "对所有敌人施加 6 层中毒。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 6,
+          "target": "AllEnemies"
+        }
+      ]
+    },
+    "character": "tactician",
+    "art_prompt": "A thick green toxic cloud spreading across the battlefield, poison fantasy art style"
+  },
+  {
+    "id": "quick_cycle",
+    "name": "快速循环",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "抽 2 张牌。弃 1 张牌。",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Discard",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "快速循环+",
+      "text": "抽 3 张牌。弃 1 张牌。",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "Discard",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "poison_blade",
+    "name": "毒刃",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "poison",
+      "strike"
+    ],
+    "text": "造成 6 点伤害。施加等同于你手牌数量的中毒层数。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "毒刃+",
+      "text": "造成 9 点伤害。施加等同于你手牌数量的中毒层数。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician",
+    "art_prompt": "A dagger dripping with green poison, toxic fantasy art style"
+  },
+  {
+    "id": "lingering_toxin",
+    "name": "残留毒素",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison"
+    ],
+    "text": "将目标的中毒层数翻倍。",
+    "actions": [
+      {
+        "type": "DoubleStatus",
+        "status": "Poison",
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "残留毒素+",
+      "cost": 0
+    },
+    "character": "tactician",
+    "art_prompt": "Residual poison glowing on a surface, persistent toxic fantasy art style"
+  },
+  {
+    "id": "venom_strike",
+    "name": "剧毒打击",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "poison",
+      "strike"
+    ],
+    "text": "造成 10 点伤害。施加 8 层中毒。若目标已有中毒，额外施加 4 层。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 8,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "剧毒打击+",
+      "text": "造成 14 点伤害。施加 10 层中毒。若目标已有中毒，额外施加 6 层。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 10,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician",
+    "lastWords": "毒药不需要剑，只需要耐心。",
+    "art_prompt": "A venomous snake striking, toxic fantasy art style"
+  },
+  {
+    "id": "exploit_weakness",
+    "name": "利用弱点",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 8 点伤害。若目标有负面状态，额外造成 4 点伤害并抽 1 张牌。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "利用弱点+",
+      "text": "造成 12 点伤害。若目标有负面状态，额外造成 6 点伤害并抽 1 张牌。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "crippling_shot",
+    "name": "致残射击",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 5 点伤害。施加 2 层虚弱和 2 层易伤。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "致残射击+",
+      "text": "造成 8 点伤害。施加 2 层虚弱和 2 层易伤。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician"
+  },
+  {
+    "id": "execute_target",
+    "name": "处决目标",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike",
+      "finisher"
+    ],
+    "text": "造成 20 点伤害。若目标生命值低于 25%，改为造成 40 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 20,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "处决目标+",
+      "text": "造成 25 点伤害。若目标生命值低于 25%，改为造成 50 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 25,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "tactician",
+    "lastWords": "最后一击需要最冷静的手。",
+    "art_prompt": "A crosshair locking onto a target for execution, tactical fantasy art style"
+  },
+  {
+    "id": "time_layer",
+    "name": "时间层",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "delay",
+      "warp",
+      "psyker"
+    ],
+    "text": "获得 2 层时间层。获得 6 点格挡。",
+    "actions": [
+      {
+        "type": "GainTimeLayer",
+        "amount": 2
+      },
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "时间层+",
+      "text": "获得 3 层时间层。获得 6 点格挡。",
+      "actions": [
+        {
+          "type": "GainTimeLayer",
+          "amount": 3
+        },
+        {
+          "type": "GainBlock",
+          "amount": 6,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "chronomancer"
+  },
+  {
+    "id": "delayed_blast",
+    "name": "延迟爆破",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "delay",
+      "warp",
+      "psyker"
+    ],
+    "text": "延迟 2 回合：造成 18 点伤害。获得 1 层时间层。",
+    "actions": [
+      {
+        "type": "Delay",
+        "turns": 2,
+        "actions": [
+          {
+            "type": "DealDamage",
+            "amount": 18,
+            "target": "Enemy"
+          }
+        ]
+      },
+      {
+        "type": "GainTimeLayer",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "name": "延迟爆破+",
+      "text": "延迟 2 回合：造成 24 点伤害。获得 1 层时间层。",
+      "actions": [
+        {
+          "type": "Delay",
+          "turns": 2,
+          "actions": [
+            {
+              "type": "DealDamage",
+              "amount": 24,
+              "target": "Enemy"
+            }
+          ]
+        },
+        {
+          "type": "GainTimeLayer",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "chronomancer"
+  },
+  {
+    "id": "temporal_acceleration",
+    "name": "时间加速",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "将所有延迟卡的剩余回合数减 1。抽 2 张牌。",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "时间加速+",
+      "text": "将所有延迟卡的剩余回合数减 1。抽 3 张牌。",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 3,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "art_prompt": "Clock hands spinning rapidly, time speeding up, temporal fantasy art style"
+  },
+  {
+    "id": "layer_strike",
+    "name": "层叠打击",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "delay",
+      "warp",
+      "psyker",
+      "strike"
+    ],
+    "text": "消耗 2 层时间层：造成 20 点伤害。否则造成 8 点伤害。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 2
+          },
+          {
+            "type": "DealDamage",
+            "amount": 20,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "层叠打击+",
+      "text": "消耗 2 层时间层：造成 28 点伤害。否则造成 12 点伤害。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasTimeLayer",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendTimeLayer",
+              "amount": 2
+            },
+            {
+              "type": "DealDamage",
+              "amount": 28,
+              "target": "Enemy"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "DealDamage",
+              "amount": 12,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "art_prompt": "Multiple overlapping strikes hitting at once, layered fantasy art style"
+  },
+  {
+    "id": "future_sight",
+    "name": "预见未来",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "获得 2 层时间层。查看抽牌堆顶 3 张牌，将其中 1 张置入手牌。",
+    "actions": [
+      {
+        "type": "GainTimeLayer",
+        "amount": 2
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "预见未来+",
+      "text": "获得 2 层时间层。查看抽牌堆顶 3 张牌，将其中 2 张置入手牌。",
+      "actions": [
+        {
+          "type": "GainTimeLayer",
+          "amount": 2
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "chronomancer"
+  },
+  {
+    "id": "temporal_mastery",
+    "name": "时间掌控",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "消耗所有时间层。每消耗 1 层，触发一张延迟卡。",
+    "actions": [
+      {
+        "type": "TriggerDelay"
+      }
+    ],
+    "upgrade": {
+      "name": "时间掌控+",
+      "text": "消耗所有时间层。每消耗 1 层，触发一张延迟卡并获得 1 点能量。",
+      "actions": [
+        {
+          "type": "TriggerDelay"
+        },
+        {
+          "type": "GainEnergy",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "lastWords": "时间不是河流，是工具。",
+    "art_prompt": "A wizard controlling multiple clock faces, time magic fantasy art style"
+  },
+  {
+    "id": "warp_recall",
+    "name": "亚空间回溯",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "亚空间潮汐 -15。获得 1 层时间层。",
+    "actions": [
+      {
+        "type": "ModifyWarpTide",
+        "amount": -15
+      },
+      {
+        "type": "GainTimeLayer",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "name": "亚空间回溯+",
+      "text": "亚空间潮汐 -20。获得 2 层时间层。",
+      "actions": [
+        {
+          "type": "ModifyWarpTide",
+          "amount": -20
+        },
+        {
+          "type": "GainTimeLayer",
+          "amount": 2
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "art_prompt": "A figure being pulled back through a warp portal, time recall fantasy art style"
+  },
+  {
+    "id": "temporal_shield",
+    "name": "时间护盾",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "消耗 1 层时间层：获得 15 点格挡。否则获得 6 点格挡。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 1
+          },
+          {
+            "type": "GainBlock",
+            "amount": 15,
+            "target": "Self"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainBlock",
+            "amount": 6,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "时间护盾+",
+      "text": "消耗 1 层时间层：获得 20 点格挡。否则获得 9 点格挡。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasTimeLayer",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendTimeLayer",
+              "amount": 1
+            },
+            {
+              "type": "GainBlock",
+              "amount": 20,
+              "target": "Self"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainBlock",
+              "amount": 9,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "art_prompt": "A shield made of frozen time, protective temporal fantasy art style"
+  },
+  {
+    "id": "warp_surge",
+    "name": "亚空间涌动",
+    "rarity": "Rare",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "psyker"
+    ],
+    "text": "亚空间潮汐 +25。获得 3 层时间层。进行一次灵能险象检定。",
+    "actions": [
+      {
+        "type": "ModifyWarpTide",
+        "amount": 25
+      },
+      {
+        "type": "GainTimeLayer",
+        "amount": 3
+      },
+      {
+        "type": "CheckWarpPeril"
+      }
+    ],
+    "upgrade": {
+      "name": "亚空间涌动+",
+      "text": "亚空间潮汐 +25。获得 4 层时间层。进行一次灵能险象检定。",
+      "actions": [
+        {
+          "type": "ModifyWarpTide",
+          "amount": 25
+        },
+        {
+          "type": "GainTimeLayer",
+          "amount": 4
+        },
+        {
+          "type": "CheckWarpPeril"
+        }
+      ]
+    },
+    "character": "chronomancer",
+    "lastWords": "时间在我手中流动，而不是相反。"
+  },
+  {
+    "id": "thread_weave",
+    "name": "线程编织",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "获得 2 条线程。获得 5 点格挡。",
+    "actions": [
+      {
+        "type": "GainThread",
+        "amount": 2
+      },
+      {
+        "type": "GainBlock",
+        "amount": 5,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "线程编织+",
+      "text": "获得 3 条线程。获得 5 点格挡。",
+      "actions": [
+        {
+          "type": "GainThread",
+          "amount": 3
+        },
+        {
+          "type": "GainBlock",
+          "amount": 5,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "art_prompt": "Magical threads being woven together, puppet master fantasy art style"
+  },
+  {
+    "id": "reinforced_golem",
+    "name": "强化魔像",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "消耗 2 条线程：召唤一个强化魔像 (12 HP, 4 ATK, 嘲讽)。否则召唤一个废料魔像。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 2
+          },
+          {
+            "type": "Summon",
+            "unit": "reinforced_golem"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "Summon",
+            "unit": "scrap_golem"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "强化魔像+",
+      "text": "消耗 2 条线程：召唤一个强化魔像 (16 HP, 5 ATK, 嘲讽)。否则召唤一个废料魔像。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 2
+            },
+            {
+              "type": "Summon",
+              "unit": "reinforced_golem_plus"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "Summon",
+              "unit": "scrap_golem"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "art_prompt": "A heavily armored golem with glowing eyes, reinforced fantasy art style"
+  },
+  {
+    "id": "thread_lash",
+    "name": "线程鞭挞",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "造成 6 点伤害。每有 1 条线程，额外造成 2 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "name": "线程鞭挞+",
+      "text": "造成 9 点伤害。每有 1 条线程，额外造成 3 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "art_prompt": "Magical threads lashing out like a whip, puppet attack fantasy art style"
+  },
+  {
+    "id": "puppet_dance",
+    "name": "傀儡舞步",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "消耗 1 条线程：造成 12 点伤害。所有构造体获得 +2 攻击力。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 1
+          },
+          {
+            "type": "DealDamage",
+            "amount": 12,
+            "target": "Enemy"
+          },
+          {
+            "type": "BuffConstructs",
+            "amount": 2
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "傀儡舞步+",
+      "text": "消耗 1 条线程：造成 16 点伤害。所有构造体获得 +3 攻击力。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 1
+            },
+            {
+              "type": "DealDamage",
+              "amount": 16,
+              "target": "Enemy"
+            },
+            {
+              "type": "BuffConstructs",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    "character": "puppeteer"
+  },
+  {
+    "id": "construct_army",
+    "name": "构造军团",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon"
+    ],
+    "text": "消耗 3 条线程：召唤 2 个废料魔像。否则获得 2 条线程。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 3
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 3
+          },
+          {
+            "type": "Summon",
+            "unit": "scrap_golem"
+          },
+          {
+            "type": "Summon",
+            "unit": "scrap_golem"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 2
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "构造军团+",
+      "text": "消耗 3 条线程：召唤 2 个强化魔像。否则获得 2 条线程。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 3
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 3
+            },
+            {
+              "type": "Summon",
+              "unit": "reinforced_golem"
+            },
+            {
+              "type": "Summon",
+              "unit": "reinforced_golem"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainThread",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "art_prompt": "An army of mechanical constructs marching, puppet army fantasy art style"
+  },
+  {
+    "id": "thread_mastery",
+    "name": "线程精通",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [],
+    "text": "每当你召唤一个构造体时，获得 1 条线程。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "ThreadMastery",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "线程精通+",
+      "text": "每当你召唤一个构造体时，获得 2 条线程。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "ThreadMastery",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "lastWords": "每一根线都是承诺。"
+  },
+  {
+    "id": "sacrifice_construct",
+    "name": "献祭构造",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "消灭一个构造体。获得 3 条线程。抽 2 张牌。",
+    "actions": [
+      {
+        "type": "GainThread",
+        "amount": 3
+      },
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "name": "献祭构造+",
+      "text": "消灭一个构造体。获得 4 条线程。抽 2 张牌。",
+      "actions": [
+        {
+          "type": "GainThread",
+          "amount": 4
+        },
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "character": "puppeteer"
+  },
+  {
+    "id": "detonate_construct",
+    "name": "引爆构造",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "消耗 2 条线程：所有构造体对随机敌人造成 3 倍攻击力的伤害，然后被消灭。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 2
+          },
+          {
+            "type": "ConstructOverdrive",
+            "multiplier": 3
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "引爆构造+",
+      "text": "消耗 2 条线程：所有构造体对随机敌人造成 4 倍攻击力的伤害，然后被消灭。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 2
+            },
+            {
+              "type": "ConstructOverdrive",
+              "multiplier": 4
+            }
+          ]
+        }
+      ]
+    },
+    "character": "puppeteer"
+  },
+  {
+    "id": "reposition",
+    "name": "重新部署",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "消耗 1 条线程：治疗所有构造体至满生命值。否则获得 1 条线程。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 1
+          },
+          {
+            "type": "HealConstruct",
+            "constructAtkBonus": 0
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "重新部署+",
+      "text": "消耗 1 条线程：治疗所有构造体至满生命值并使其获得 +2 攻击力。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 1
+            },
+            {
+              "type": "HealConstruct",
+              "constructAtkBonus": 2
+            }
+          ]
+        }
+      ]
+    },
+    "character": "puppeteer",
+    "lastWords": "傀儡没有灵魂，但它们有忠诚。",
+    "art_prompt": "Puppet strings rearranging constructs on the battlefield, tactical fantasy art style"
+  },
+  {
+    "id": "concoct",
+    "name": "调配",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "获得 2 点调配。获得 1 个随机元素。",
+    "actions": [
+      {
+        "type": "GainConcoction",
+        "amount": 2
+      },
+      {
+        "type": "AddRandomElement",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "name": "调配+",
+      "text": "获得 3 点调配。获得 1 个随机元素。",
+      "actions": [
+        {
+          "type": "GainConcoction",
+          "amount": 3
+        },
+        {
+          "type": "AddRandomElement",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "alchemist",
+    "art_prompt": "An alchemist mixing colorful potions, brewing fantasy art style"
+  },
+  {
+    "id": "elemental_fusion",
+    "name": "元素融合",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "造成 6 点伤害。消耗 1 点调配：触发所有元素反应。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1
+          },
+          {
+            "type": "TriggerReactions"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "元素融合+",
+      "text": "造成 10 点伤害。消耗 1 点调配：触发所有元素反应。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 1
+            },
+            {
+              "type": "TriggerReactions"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "alchemist"
+  },
+  {
+    "id": "acid_flask",
+    "name": "酸液瓶",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "acid"
+    ],
+    "text": "造成 4 点伤害。获得 1 点调配。添加酸元素。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 4,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainConcoction",
+        "amount": 1
+      },
+      {
+        "type": "AddElement",
+        "element": "Acid"
+      }
+    ],
+    "upgrade": {
+      "name": "酸液瓶+",
+      "text": "造成 7 点伤害。获得 1 点调配。添加酸元素。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainConcoction",
+          "amount": 1
+        },
+        {
+          "type": "AddElement",
+          "element": "Acid"
+        }
+      ]
+    },
+    "character": "alchemist"
+  },
+  {
+    "id": "elemental_burst",
+    "name": "元素爆发",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [],
+    "text": "消耗 2 点调配：造成 20 点伤害。每有 1 种不同元素，额外造成 4 点伤害。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 2
+          },
+          {
+            "type": "DealDamage",
+            "amount": 20,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "元素爆发+",
+      "text": "消耗 2 点调配：造成 28 点伤害。每有 1 种不同元素，额外造成 6 点伤害。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 2
+            },
+            {
+              "type": "DealDamage",
+              "amount": 28,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "alchemist"
+  },
+  {
+    "id": "transmute_life",
+    "name": "生命转化",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "消耗 1 点调配：治疗 8 点生命值。否则获得 1 点调配。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1
+          },
+          {
+            "type": "Heal",
+            "amount": 8,
+            "target": "Self"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "生命转化+",
+      "text": "消耗 1 点调配：治疗 12 点生命值。否则获得 1 点调配。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 1
+            },
+            {
+              "type": "Heal",
+              "amount": 12,
+              "target": "Self"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainConcoction",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    "character": "alchemist",
+    "art_prompt": "Life energy being transformed, alchemical fantasy art style"
+  },
+  {
+    "id": "grand_experiment",
+    "name": "大实验",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "消耗所有调配。每消耗 1 点，获得 1 个随机元素并造成 5 点伤害给随机敌人。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 10
+          },
+          {
+            "type": "AddRandomElement",
+            "amount": 5
+          },
+          {
+            "type": "DealDamage",
+            "amount": 25,
+            "target": "RandomEnemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "大实验+",
+      "cost": 2
+    },
+    "character": "alchemist",
+    "lastWords": "真理在试管中诞生。",
+    "art_prompt": "A massive alchemical experiment in progress, chaotic fantasy art style"
+  },
+  {
+    "id": "acid_bath",
+    "name": "酸浴",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "acid"
+    ],
+    "text": "施加 3 层中毒。获得 1 点调配。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainConcoction",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "name": "酸浴+",
+      "text": "施加 5 层中毒。获得 1 点调配。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainConcoction",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "alchemist"
+  },
+  {
+    "id": "elemental_shield",
+    "name": "元素护盾",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "消耗 1 点调配：获得 12 点格挡并添加 1 个随机元素。否则获得 5 点格挡。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1
+          },
+          {
+            "type": "GainBlock",
+            "amount": 12,
+            "target": "Self"
+          },
+          {
+            "type": "AddRandomElement",
+            "amount": 1
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainBlock",
+            "amount": 5,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "元素护盾+",
+      "text": "消耗 1 点调配：获得 16 点格挡并添加 2 个随机元素。否则获得 8 点格挡。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 1
+            },
+            {
+              "type": "GainBlock",
+              "amount": 16,
+              "target": "Self"
+            },
+            {
+              "type": "AddRandomElement",
+              "amount": 2
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainBlock",
+              "amount": 8,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "alchemist"
+  },
+  {
+    "id": "volatile_mixture",
+    "name": "不稳定混合物",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [],
+    "text": "消耗 2 点调配：对所有敌人造成 15 点伤害并触发所有元素反应。否则获得 2 点调配。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 2
+          },
+          {
+            "type": "DealDamage",
+            "amount": 15,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "TriggerReactions"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 2
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "name": "不稳定混合物+",
+      "text": "消耗 2 点调配：对所有敌人造成 20 点伤害并触发所有元素反应。否则获得 2 点调配。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 2
+            },
+            {
+              "type": "DealDamage",
+              "amount": 20,
+              "target": "AllEnemies"
+            },
+            {
+              "type": "TriggerReactions"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainConcoction",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    "character": "alchemist",
+    "lastWords": "爆炸只是另一种形式的转化。",
+    "art_prompt": "A potion bottle about to explode, volatile fantasy art style"
+  },
+  {
+    "id": "intel_surge",
+    "name": "Intel Surge",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "Gain 2 Intel. Draw 1 card.",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A burst of blue data streams flowing into a glowing orb, information overload, fantasy tech art style"
+  },
+  {
+    "id": "predictive_strike",
+    "name": "Predictive Strike",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "strike"
+    ],
+    "text": "Spend 1 Intel: Deal 15 damage and draw 1 card. Otherwise deal 8 damage.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 15,
+            "target": "Enemy"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A glowing blue prediction line showing exactly where a blade will strike, precognitive combat, fantasy art style"
+  },
+  {
+    "id": "shadow_meld",
+    "name": "Shadow Meld",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "Gain 1 Intel. Gain 1 Stealth. Draw 1 card.",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Stealth",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A rogue dissolving into shadows, becoming one with darkness, stealth fantasy art style"
+  },
+  {
+    "id": "information_broker",
+    "name": "Information Broker",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "Spend 2 Intel: Draw 3 cards and gain 1 energy. Otherwise gain 2 Intel.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 2,
+            "target": "Self"
+          },
+          {
+            "type": "Draw",
+            "amount": 3,
+            "target": "Self"
+          },
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainIntel",
+            "amount": 2,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A hooded figure trading glowing data crystals in a dark market, secrets for sale, fantasy art style"
+  },
+  {
+    "id": "deadly_secrets",
+    "name": "Deadly Secrets",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel"
+    ],
+    "text": "Spend all Intel. Deal 8 damage for each Intel spent.",
+    "actions": [
+      {
+        "type": "SpendAllIntel"
+      },
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "scaling": {
+          "type": "SpendIntelThisTurn",
+          "multiplier": 1
+        },
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A blade made of pure information data, cutting through reality itself, fantasy cyber art style"
+  },
+  {
+    "id": "crushing_blow_all",
+    "name": "Crushing Blow",
+    "rarity": "Common",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 14 damage. If this kills, gain 1 Strength.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalKill",
+        "trueActions": [
+          {
+            "type": "ApplyStatus",
+            "status": "Strength",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A massive warhammer crushing down on an enemy, devastating impact, fantasy art style"
+  },
+  {
+    "id": "thick_skin",
+    "name": "Thick Skin",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "Gain 10 Block. If you took damage last turn, gain 2 Strength.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 10,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TookDamageLastTurn"
+        },
+        "trueActions": [
+          {
+            "type": "ApplyStatus",
+            "status": "Strength",
+            "amount": 2,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A warrior with skin like stone, arrows bouncing off harmlessly, resilient fantasy art style"
+  },
+  {
+    "id": "berserker_rage",
+    "name": "Berserker Rage",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Lose 3 HP. Gain 3 Strength. Lose 1 Dexterity.",
+    "actions": [
+      {
+        "type": "LoseHp",
+        "amount": 3,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 3,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Dexterity",
+        "amount": -1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A warrior consumed by red rage, eyes glowing with fury, dark fantasy art style"
+  },
+  {
+    "id": "last_stand_all",
+    "name": "Last Stand",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal damage equal to your missing HP. Gain 1 energy if this kills.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 0,
+        "scaling": {
+          "type": "MissingHp",
+          "multiplier": 1
+        },
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalKill",
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A wounded warrior making a desperate final strike, dramatic fantasy art style"
+  },
+  {
+    "id": "unbreakable",
+    "name": "Unbreakable",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Whenever you take damage, gain 1 Block.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "UnbreakablePower",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "An immortal warrior standing amidst destruction, unyielding, epic fantasy art style"
+  },
+  {
+    "id": "fortify_position",
+    "name": "Fortify Position",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "Gain 12 Block. You cannot play Attacks this turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "NoAttacks",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A tactical commander setting up defensive barricades, military fantasy art style"
+  },
+  {
+    "id": "calculated_risk",
+    "name": "Calculated Risk",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [],
+    "text": "Draw 2 cards. If your hand has 5+ cards, gain 2 energy.",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HandSizeAtLeast",
+          "amount": 5
+        },
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 2,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A strategist analyzing probability matrices, calculated gamble, fantasy art style"
+  },
+  {
+    "id": "tactical_superiority",
+    "name": "Tactical Superiority",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 8 damage. If you have more Block than the enemy has HP, deal 20 instead.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "BlockGreaterThanEnemyHp"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 20,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A commander executing a perfect tactical strike, overwhelming force, fantasy art style"
+  },
+  {
+    "id": "perfect_defense",
+    "name": "Perfect Defense",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend"
+    ],
+    "text": "Gain Block equal to your current Block + 8. Retain your Block this turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "scaling": {
+          "type": "CurrentBlock",
+          "multiplier": 1
+        },
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "RetainBlock",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "An impenetrable shield formation, perfect tactical defense, fantasy art style"
+  },
+  {
+    "id": "checkmate",
+    "name": "Checkmate",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike"
+    ],
+    "text": "Deal 10 damage. If the enemy has 0 Block, deal 30 damage instead.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyHasZeroBlock"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 30,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 10,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A chess-like tactical board with the enemy king piece being captured, strategic fantasy art style"
+  },
+  {
+    "id": "temporal_stasis",
+    "name": "Temporal Stasis",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "time"
+    ],
+    "text": "Spend 1 Time Layer: Freeze the enemy for 1 turn (they skip their turn). Otherwise gain 1 Time Layer.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 1
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Stasis",
+            "amount": 1,
+            "target": "Enemy"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainTimeLayer",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A frozen moment in time, an enemy suspended in crystalline stasis, time magic fantasy art style"
+  },
+  {
+    "id": "paradox_wave",
+    "name": "Paradox Wave",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "time"
+    ],
+    "text": "Spend 2 Time Layers: Deal 20 damage to all enemies and replay the last card you played this turn. Otherwise deal 8 damage to all.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 2
+          },
+          {
+            "type": "DealDamage",
+            "amount": 20,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "ReplayLastCard"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "AllEnemies"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Reality fracturing into multiple overlapping timelines, temporal chaos, fantasy art style"
+  },
+  {
+    "id": "future_sight_all",
+    "name": "Future Sight",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "time"
+    ],
+    "text": "Gain 1 Time Layer. Look at the top 3 cards of your draw pile and put them back in any order.",
+    "actions": [
+      {
+        "type": "GainTimeLayer",
+        "amount": 1
+      },
+      {
+        "type": "Scry",
+        "amount": 3
+      }
+    ],
+    "art_prompt": "An oracle seeing through the veil of time, glimpsing future possibilities, mystical fantasy art style"
+  },
+  {
+    "id": "eternal_return",
+    "name": "Eternal Return",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "time"
+    ],
+    "text": "Spend 3 Time Layers: Return to the state at the start of this combat (HP, deck, etc). Keep all Time Layers.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 3
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 3
+          },
+          {
+            "type": "RewindCombatState"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A time loop resetting reality, the eternal cycle of time, fantasy art style"
+  },
+  {
+    "id": "marionette_dance",
+    "name": "Marionette Dance",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "construct"
+    ],
+    "text": "Spend 2 Threads: All your constructs attack twice this turn. Otherwise gain 1 Thread.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 2
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "DoubleAttack",
+            "amount": 1,
+            "target": "AllConstructs"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Multiple puppets dancing in perfect synchronization, puppet master controlling them, dark fantasy art style"
+  },
+  {
+    "id": "soul_binding",
+    "name": "Soul Binding",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "construct"
+    ],
+    "text": "Spend 3 Threads: Bind the enemy's soul into a new construct with their HP as stats. Otherwise gain 1 Thread.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 3
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 3
+          },
+          {
+            "type": "BindEnemySoul"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A soul being extracted from a defeated enemy and bound into a mechanical vessel, dark necromancy art style"
+  },
+  {
+    "id": "clockwork_soldier",
+    "name": "Clockwork Soldier",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "construct"
+    ],
+    "text": "Spend 1 Thread: Create a 15/15 construct with Taunt. Otherwise create a 8/8 construct.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 1
+          },
+          {
+            "type": "CreateConstruct",
+            "name": "Clockwork Soldier",
+            "hp": 15,
+            "atk": 15,
+            "taunt": true
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "CreateConstruct",
+            "name": "Clockwork Soldier",
+            "hp": 8,
+            "atk": 8,
+            "taunt": false
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A mechanical soldier made of brass gears and clockwork, animated by dark magic, steampunk fantasy art style"
+  },
+  {
+    "id": "puppet_mastery",
+    "name": "Puppet Mastery",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "construct"
+    ],
+    "text": "Whenever a construct dies, gain 2 Threads and draw 1 card.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "PuppetMasteryPower",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A puppet master pulling strings that glow with ethereal energy, master of life and death, dark fantasy art style"
+  },
+  {
+    "id": "grand_design",
+    "name": "Grand Design",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "construct"
+    ],
+    "text": "Spend 2 Threads: All constructs gain +5 HP and +5 ATK permanently. Otherwise gain 1 Thread.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 2
+          },
+          {
+            "type": "BuffAllConstructs",
+            "hpBonus": 5,
+            "atkBonus": 5
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "An intricate blueprint of a grand mechanical creation, master engineer's design, fantasy art style"
+  },
+  {
+    "id": "elemental_fusion_all",
+    "name": "Elemental Fusion",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "element"
+    ],
+    "text": "Spend 1 Concoction: Add 2 random elements and trigger all element reactions. Otherwise gain 1 Concoction.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1
+          },
+          {
+            "type": "AddRandomElement",
+            "amount": 2
+          },
+          {
+            "type": "TriggerAllReactions"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Multiple colored elements swirling together in an alchemical fusion, magical explosion, fantasy art style"
+  },
+  {
+    "id": "philosopher_stone",
+    "name": "Philosopher Stone",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "element"
+    ],
+    "text": "At the start of each turn, gain 1 Concoction and add 1 random element.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "PhilosopherStonePower",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "The legendary philosopher's stone glowing with all colors of the spectrum, ultimate alchemy, fantasy art style"
+  },
+  {
+    "id": "grand_transmutation",
+    "name": "Grand Transmutation",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "element"
+    ],
+    "text": "Spend 2 Concoctions: Transform all cards in your hand into random Rare cards. Otherwise gain 1 Concoction.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 2
+          },
+          {
+            "type": "TransformHandToRare"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "An alchemist performing a grand transmutation circle, lead turning to gold, mystical fantasy art style"
+  },
+  {
+    "id": "catalyst_overload",
+    "name": "Catalyst Overload",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "element"
+    ],
+    "text": "Spend all Concoctions. Deal 10 damage for each Concoction spent. Trigger all element reactions 3 times.",
+    "actions": [
+      {
+        "type": "SpendAllConcoction"
+      },
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "scaling": {
+          "type": "SpendConcoctionThisTurn",
+          "multiplier": 1
+        },
+        "target": "AllEnemies"
+      },
+      {
+        "type": "TriggerAllReactions",
+        "times": 3
+      }
+    ],
+    "art_prompt": "An alchemical explosion of epic proportions, all elements reacting at once, catastrophic fantasy art style"
+  }
+]

@@ -1,0 +1,2984 @@
+[
+  {
+    "characterId": "informant",
+    "runs": 36,
+    "survivalRateFirst3": 0.5,
+    "avgCombatsPerRun": 1.5833333333333333,
+    "avgCombatTurns": 3.6842105263157894,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 1.25,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.98,
+      10.7867,
+      13.1,
+      14.7833
+    ],
+    "netAssetEVUGrowthByFloor": [
+      0.8067,
+      2.3133,
+      1.6833
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      36,
+      27,
+      18
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4541,
+        "Elite": 0.1208,
+        "Event": 0.1667,
+        "Shop": 0.0942,
+        "Boss": 0,
+        "Rest": 0.1643
+      },
+      "resolved": {
+        "Combat": 0.0037,
+        "Elite": 0,
+        "Event": 0.9952,
+        "Shop": 0.0008,
+        "Boss": 0,
+        "Rest": 0.0003
+      },
+      "absoluteDrift": {
+        "Combat": 0.4504,
+        "Elite": 0.1208,
+        "Event": 0.8285,
+        "Shop": 0.0934,
+        "Boss": 0,
+        "Rest": 0.164
+      },
+      "totalVariationDistance": 0.8286,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.4524,
+          "Elite": 0.0873,
+          "Event": 0.1429,
+          "Shop": 0.1111,
+          "Boss": 0,
+          "Rest": 0.2063
+        },
+        "floor2": {
+          "Combat": 0.4514,
+          "Elite": 0.1042,
+          "Event": 0.2083,
+          "Shop": 0.0903,
+          "Boss": 0,
+          "Rest": 0.1458
+        },
+        "floor3": {
+          "Combat": 0.4583,
+          "Elite": 0.1667,
+          "Event": 0.1458,
+          "Shop": 0.0833,
+          "Boss": 0,
+          "Rest": 0.1458
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0031,
+          "Elite": 0,
+          "Event": 0.9959,
+          "Shop": 0.0009,
+          "Boss": 0,
+          "Rest": 0.0001
+        },
+        "floor2": {
+          "Combat": 0.003,
+          "Elite": 0,
+          "Event": 0.9965,
+          "Shop": 0.0002,
+          "Boss": 0,
+          "Rest": 0.0003
+        },
+        "floor3": {
+          "Combat": 0.0119,
+          "Elite": 0,
+          "Event": 0.9832,
+          "Shop": 0.004,
+          "Boss": 0,
+          "Rest": 0.001
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.98,
+          11.08,
+          13.8091,
+          15.2975
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.1,
+          2.7291,
+          1.4884
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          11,
+          8
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4348,
+            "Elite": 0.1014,
+            "Event": 0.1812,
+            "Shop": 0.0942,
+            "Boss": 0,
+            "Rest": 0.1884
+          },
+          "resolved": {
+            "Combat": 0.0124,
+            "Elite": 0,
+            "Event": 0.9857,
+            "Shop": 0.0015,
+            "Boss": 0,
+            "Rest": 0.0005
+          },
+          "absoluteDrift": {
+            "Combat": 0.4224,
+            "Elite": 0.1014,
+            "Event": 0.8045,
+            "Shop": 0.0927,
+            "Boss": 0,
+            "Rest": 0.1879
+          },
+          "totalVariationDistance": 0.8044,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4048,
+              "Elite": 0.0476,
+              "Event": 0.1905,
+              "Shop": 0.119,
+              "Boss": 0,
+              "Rest": 0.2381
+            },
+            "floor2": {
+              "Combat": 0.4583,
+              "Elite": 0.1042,
+              "Event": 0.1875,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.1458,
+              "Event": 0.1667,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.1667
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0099,
+              "Elite": 0,
+              "Event": 0.9891,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0089,
+              "Elite": 0,
+              "Event": 0.9901,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0.001
+            },
+            "floor3": {
+              "Combat": 0.75,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.25,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.98,
+          11.3,
+          14.004,
+          15.7086
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.32,
+          2.704,
+          1.7046
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          10,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4928,
+            "Elite": 0.1594,
+            "Event": 0.1377,
+            "Shop": 0.0942,
+            "Boss": 0,
+            "Rest": 0.1159
+          },
+          "resolved": {
+            "Combat": 0.0083,
+            "Elite": 0,
+            "Event": 0.9914,
+            "Shop": 0.0003,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.4845,
+            "Elite": 0.1594,
+            "Event": 0.8537,
+            "Shop": 0.0939,
+            "Boss": 0,
+            "Rest": 0.1159
+          },
+          "totalVariationDistance": 0.8537,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5476,
+              "Elite": 0.1667,
+              "Event": 0.0476,
+              "Shop": 0.0952,
+              "Boss": 0,
+              "Rest": 0.1429
+            },
+            "floor2": {
+              "Combat": 0.4375,
+              "Elite": 0.1042,
+              "Event": 0.25,
+              "Shop": 0.1042,
+              "Boss": 0,
+              "Rest": 0.1042
+            },
+            "floor3": {
+              "Combat": 0.5,
+              "Elite": 0.2083,
+              "Event": 0.1042,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.1042
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 1,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.004,
+              "Elite": 0,
+              "Event": 0.996,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.005,
+              "Elite": 0,
+              "Event": 0.994,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.98,
+          9.98,
+          10.2933,
+          11.2533
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0,
+          0.3133,
+          0.96
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          6,
+          3
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4348,
+            "Elite": 0.1014,
+            "Event": 0.1812,
+            "Shop": 0.0942,
+            "Boss": 0,
+            "Rest": 0.1884
+          },
+          "resolved": {
+            "Combat": 0.0002,
+            "Elite": 0,
+            "Event": 0.9987,
+            "Shop": 0.0008,
+            "Boss": 0,
+            "Rest": 0.0003
+          },
+          "absoluteDrift": {
+            "Combat": 0.4346,
+            "Elite": 0.1014,
+            "Event": 0.8175,
+            "Shop": 0.0934,
+            "Boss": 0,
+            "Rest": 0.1881
+          },
+          "totalVariationDistance": 0.8175,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4048,
+              "Elite": 0.0476,
+              "Event": 0.1905,
+              "Shop": 0.119,
+              "Boss": 0,
+              "Rest": 0.2381
+            },
+            "floor2": {
+              "Combat": 0.4583,
+              "Elite": 0.1042,
+              "Event": 0.1875,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.1458,
+              "Event": 0.1667,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.1667
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0,
+              "Elite": 0,
+              "Event": 0.999,
+              "Shop": 0.0008,
+              "Boss": 0,
+              "Rest": 0.0002
+            },
+            "floor2": {
+              "Combat": 0.0003,
+              "Elite": 0,
+              "Event": 0.999,
+              "Shop": 0.0003,
+              "Boss": 0,
+              "Rest": 0.0003
+            },
+            "floor3": {
+              "Combat": 0.3333,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.3333,
+              "Boss": 0,
+              "Rest": 0.3333
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 18,
+      "firstTwoTurnDamage": 36,
+      "firstResourceSpendTurn": -1
+    }
+  },
+  {
+    "characterId": "brute",
+    "runs": 36,
+    "survivalRateFirst3": 0.7222222222222222,
+    "avgCombatsPerRun": 1.6666666666666667,
+    "avgCombatTurns": 3.65,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 1.5277777777777777,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      5.58,
+      6.7933,
+      8.1145,
+      9.1554
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.2133,
+      1.3212,
+      1.0409
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      36,
+      29,
+      26
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4831,
+        "Elite": 0.1111,
+        "Event": 0.1256,
+        "Shop": 0.1473,
+        "Boss": 0,
+        "Rest": 0.1329
+      },
+      "resolved": {
+        "Combat": 0.0053,
+        "Elite": 0.0001,
+        "Event": 0.9919,
+        "Shop": 0.0021,
+        "Boss": 0,
+        "Rest": 0.0006
+      },
+      "absoluteDrift": {
+        "Combat": 0.4778,
+        "Elite": 0.111,
+        "Event": 0.8663,
+        "Shop": 0.1452,
+        "Boss": 0,
+        "Rest": 0.1323
+      },
+      "totalVariationDistance": 0.8663,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.5079,
+          "Elite": 0.0873,
+          "Event": 0.1032,
+          "Shop": 0.127,
+          "Boss": 0,
+          "Rest": 0.1746
+        },
+        "floor2": {
+          "Combat": 0.4583,
+          "Elite": 0.1319,
+          "Event": 0.125,
+          "Shop": 0.1319,
+          "Boss": 0,
+          "Rest": 0.1528
+        },
+        "floor3": {
+          "Combat": 0.4861,
+          "Elite": 0.1111,
+          "Event": 0.1458,
+          "Shop": 0.1806,
+          "Boss": 0,
+          "Rest": 0.0764
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0118,
+          "Elite": 0,
+          "Event": 0.9833,
+          "Shop": 0.0034,
+          "Boss": 0,
+          "Rest": 0.0015
+        },
+        "floor2": {
+          "Combat": 0.0084,
+          "Elite": 0,
+          "Event": 0.9866,
+          "Shop": 0.0035,
+          "Boss": 0,
+          "Rest": 0.0015
+        },
+        "floor3": {
+          "Combat": 0.002,
+          "Elite": 0.0002,
+          "Event": 0.9967,
+          "Shop": 0.0012,
+          "Boss": 0,
+          "Rest": 0
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          5.58,
+          7.0967,
+          8.872,
+          9.7933
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.5167,
+          1.7753,
+          0.9213
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          10,
+          9
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4565,
+            "Elite": 0.1232,
+            "Event": 0.1087,
+            "Shop": 0.1667,
+            "Boss": 0,
+            "Rest": 0.1449
+          },
+          "resolved": {
+            "Combat": 0.0104,
+            "Elite": 0.0005,
+            "Event": 0.9856,
+            "Shop": 0.0035,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.4461,
+            "Elite": 0.1227,
+            "Event": 0.8769,
+            "Shop": 0.1632,
+            "Boss": 0,
+            "Rest": 0.1449
+          },
+          "totalVariationDistance": 0.8769,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4762,
+              "Elite": 0.0714,
+              "Event": 0.0714,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.2143
+            },
+            "floor2": {
+              "Combat": 0.4167,
+              "Elite": 0.1458,
+              "Event": 0.125,
+              "Shop": 0.1458,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor3": {
+              "Combat": 0.4792,
+              "Elite": 0.1458,
+              "Event": 0.125,
+              "Shop": 0.1875,
+              "Boss": 0,
+              "Rest": 0.0625
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.8333,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.8,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.2,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.0015,
+              "Elite": 0.0005,
+              "Event": 0.9965,
+              "Shop": 0.0015,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          5.58,
+          7.2483,
+          9.092,
+          9.812
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.6683,
+          1.8437,
+          0.72
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          10,
+          10
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.5362,
+            "Elite": 0.087,
+            "Event": 0.1594,
+            "Shop": 0.1087,
+            "Boss": 0,
+            "Rest": 0.1087
+          },
+          "resolved": {
+            "Combat": 0.0062,
+            "Elite": 0,
+            "Event": 0.993,
+            "Shop": 0.0007,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.53,
+            "Elite": 0.087,
+            "Event": 0.8336,
+            "Shop": 0.108,
+            "Boss": 0,
+            "Rest": 0.1087
+          },
+          "totalVariationDistance": 0.8337,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5714,
+              "Elite": 0.119,
+              "Event": 0.1667,
+              "Shop": 0.0476,
+              "Boss": 0,
+              "Rest": 0.0952
+            },
+            "floor2": {
+              "Combat": 0.5417,
+              "Elite": 0.1042,
+              "Event": 0.125,
+              "Shop": 0.1042,
+              "Boss": 0,
+              "Rest": 0.125
+            },
+            "floor3": {
+              "Combat": 0.5,
+              "Elite": 0.0417,
+              "Event": 0.1875,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.1042
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0109,
+              "Elite": 0,
+              "Event": 0.9891,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.9,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.1,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.0017,
+              "Elite": 0,
+              "Event": 0.9977,
+              "Shop": 0.0007,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          5.58,
+          6.035,
+          6.1867,
+          7.3971
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0.455,
+          0.1517,
+          1.2104
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          9,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4565,
+            "Elite": 0.1232,
+            "Event": 0.1087,
+            "Shop": 0.1667,
+            "Boss": 0,
+            "Rest": 0.1449
+          },
+          "resolved": {
+            "Combat": 0.0017,
+            "Elite": 0,
+            "Event": 0.994,
+            "Shop": 0.0027,
+            "Boss": 0,
+            "Rest": 0.0015
+          },
+          "absoluteDrift": {
+            "Combat": 0.4548,
+            "Elite": 0.1232,
+            "Event": 0.8853,
+            "Shop": 0.164,
+            "Boss": 0,
+            "Rest": 0.1434
+          },
+          "totalVariationDistance": 0.8853,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4762,
+              "Elite": 0.0714,
+              "Event": 0.0714,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.2143
+            },
+            "floor2": {
+              "Combat": 0.4167,
+              "Elite": 0.1458,
+              "Event": 0.125,
+              "Shop": 0.1458,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor3": {
+              "Combat": 0.4792,
+              "Elite": 0.1458,
+              "Event": 0.125,
+              "Shop": 0.1875,
+              "Boss": 0,
+              "Rest": 0.0625
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.003,
+              "Elite": 0,
+              "Event": 0.9891,
+              "Shop": 0.005,
+              "Boss": 0,
+              "Rest": 0.003
+            },
+            "floor2": {
+              "Combat": 0,
+              "Elite": 0,
+              "Event": 0.9965,
+              "Shop": 0.002,
+              "Boss": 0,
+              "Rest": 0.0015
+            },
+            "floor3": {
+              "Combat": 0.004,
+              "Elite": 0,
+              "Event": 0.994,
+              "Shop": 0.002,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 18,
+      "firstTwoTurnDamage": 36,
+      "firstResourceSpendTurn": -1
+    }
+  },
+  {
+    "characterId": "tactician",
+    "runs": 36,
+    "survivalRateFirst3": 0.6388888888888888,
+    "avgCombatsPerRun": 1.7777777777777777,
+    "avgCombatTurns": 2.875,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 1.4444444444444444,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      4.98,
+      5.8851,
+      7.3707,
+      8.2817
+    ],
+    "netAssetEVUGrowthByFloor": [
+      0.9051,
+      1.4856,
+      0.911
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      35,
+      30,
+      23
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4396,
+        "Elite": 0.087,
+        "Event": 0.1667,
+        "Shop": 0.1594,
+        "Boss": 0,
+        "Rest": 0.1473
+      },
+      "resolved": {
+        "Combat": 0.0058,
+        "Elite": 0,
+        "Event": 0.9922,
+        "Shop": 0.0012,
+        "Boss": 0,
+        "Rest": 0.0008
+      },
+      "absoluteDrift": {
+        "Combat": 0.4338,
+        "Elite": 0.087,
+        "Event": 0.8255,
+        "Shop": 0.1582,
+        "Boss": 0,
+        "Rest": 0.1465
+      },
+      "totalVariationDistance": 0.8255,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.5238,
+          "Elite": 0.0873,
+          "Event": 0.1667,
+          "Shop": 0.1111,
+          "Boss": 0,
+          "Rest": 0.1111
+        },
+        "floor2": {
+          "Combat": 0.4792,
+          "Elite": 0.0694,
+          "Event": 0.1111,
+          "Shop": 0.1667,
+          "Boss": 0,
+          "Rest": 0.1736
+        },
+        "floor3": {
+          "Combat": 0.3264,
+          "Elite": 0.1042,
+          "Event": 0.2222,
+          "Shop": 0.1944,
+          "Boss": 0,
+          "Rest": 0.1528
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.006,
+          "Elite": 0,
+          "Event": 0.9923,
+          "Shop": 0.0015,
+          "Boss": 0,
+          "Rest": 0.0002
+        },
+        "floor2": {
+          "Combat": 0.0073,
+          "Elite": 0,
+          "Event": 0.991,
+          "Shop": 0.001,
+          "Boss": 0,
+          "Rest": 0.0007
+        },
+        "floor3": {
+          "Combat": 0.004,
+          "Elite": 0,
+          "Event": 0.9933,
+          "Shop": 0.001,
+          "Boss": 0,
+          "Rest": 0.0017
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.98,
+          6.3,
+          8.18,
+          9.044
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.32,
+          1.88,
+          0.864
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          11,
+          10
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.442,
+            "Elite": 0.087,
+            "Event": 0.1522,
+            "Shop": 0.1667,
+            "Boss": 0,
+            "Rest": 0.1522
+          },
+          "resolved": {
+            "Combat": 0.0283,
+            "Elite": 0,
+            "Event": 0.9688,
+            "Shop": 0.001,
+            "Boss": 0,
+            "Rest": 0.002
+          },
+          "absoluteDrift": {
+            "Combat": 0.4137,
+            "Elite": 0.087,
+            "Event": 0.8166,
+            "Shop": 0.1657,
+            "Boss": 0,
+            "Rest": 0.1502
+          },
+          "totalVariationDistance": 0.8166,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5238,
+              "Elite": 0.119,
+              "Event": 0.119,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.0952
+            },
+            "floor2": {
+              "Combat": 0.4792,
+              "Elite": 0.0625,
+              "Event": 0.1042,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.1875
+            },
+            "floor3": {
+              "Combat": 0.3333,
+              "Elite": 0.0833,
+              "Event": 0.2292,
+              "Shop": 0.1875,
+              "Boss": 0,
+              "Rest": 0.1667
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 1,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 1,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.006,
+              "Elite": 0,
+              "Event": 0.991,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0.002
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.98,
+          6.18,
+          7.804,
+          9.38
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.2,
+          1.624,
+          1.576
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          11,
+          10,
+          6
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4348,
+            "Elite": 0.087,
+            "Event": 0.1957,
+            "Shop": 0.1449,
+            "Boss": 0,
+            "Rest": 0.1377
+          },
+          "resolved": {
+            "Combat": 0.0057,
+            "Elite": 0,
+            "Event": 0.9943,
+            "Shop": 0,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.4291,
+            "Elite": 0.087,
+            "Event": 0.7986,
+            "Shop": 0.1449,
+            "Boss": 0,
+            "Rest": 0.1377
+          },
+          "totalVariationDistance": 0.7986,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5238,
+              "Elite": 0.0238,
+              "Event": 0.2619,
+              "Shop": 0.0476,
+              "Boss": 0,
+              "Rest": 0.1429
+            },
+            "floor2": {
+              "Combat": 0.4792,
+              "Elite": 0.0833,
+              "Event": 0.125,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.1458
+            },
+            "floor3": {
+              "Combat": 0.3125,
+              "Elite": 0.1458,
+              "Event": 0.2083,
+              "Shop": 0.2083,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0099,
+              "Elite": 0,
+              "Event": 0.9901,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.004,
+              "Elite": 0,
+              "Event": 0.996,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.005,
+              "Elite": 0,
+              "Event": 0.995,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.98,
+          5.2,
+          5.9,
+          6.2514
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0.22,
+          0.7,
+          0.3514
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          9,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.442,
+            "Elite": 0.087,
+            "Event": 0.1522,
+            "Shop": 0.1667,
+            "Boss": 0,
+            "Rest": 0.1522
+          },
+          "resolved": {
+            "Combat": 0.0012,
+            "Elite": 0,
+            "Event": 0.9954,
+            "Shop": 0.0022,
+            "Boss": 0,
+            "Rest": 0.0012
+          },
+          "absoluteDrift": {
+            "Combat": 0.4408,
+            "Elite": 0.087,
+            "Event": 0.8432,
+            "Shop": 0.1645,
+            "Boss": 0,
+            "Rest": 0.151
+          },
+          "totalVariationDistance": 0.8432,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5238,
+              "Elite": 0.119,
+              "Event": 0.119,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.0952
+            },
+            "floor2": {
+              "Combat": 0.4792,
+              "Elite": 0.0625,
+              "Event": 0.1042,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.1875
+            },
+            "floor3": {
+              "Combat": 0.3333,
+              "Elite": 0.0833,
+              "Event": 0.2292,
+              "Shop": 0.1875,
+              "Boss": 0,
+              "Rest": 0.1667
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0007,
+              "Elite": 0,
+              "Event": 0.997,
+              "Shop": 0.002,
+              "Boss": 0,
+              "Rest": 0.0003
+            },
+            "floor2": {
+              "Combat": 0.003,
+              "Elite": 0,
+              "Event": 0.992,
+              "Shop": 0.003,
+              "Boss": 0,
+              "Rest": 0.002
+            },
+            "floor3": {
+              "Combat": 0.001,
+              "Elite": 0,
+              "Event": 0.994,
+              "Shop": 0.002,
+              "Boss": 0,
+              "Rest": 0.003
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 18,
+      "firstTwoTurnDamage": 36,
+      "firstResourceSpendTurn": -1
+    }
+  },
+  {
+    "characterId": "puppeteer",
+    "runs": 36,
+    "survivalRateFirst3": 0.5833333333333334,
+    "avgCombatsPerRun": 1.4444444444444444,
+    "avgCombatTurns": 3.826923076923077,
+    "medianCombatTurns": 3,
+    "avgMaxFloorResolved": 1.3055555555555556,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      9.58,
+      10.724,
+      11.8319,
+      12.8171
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.144,
+      1.1079,
+      0.9852
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      35,
+      27,
+      21
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.3865,
+        "Elite": 0.1063,
+        "Event": 0.2512,
+        "Shop": 0.1353,
+        "Boss": 0,
+        "Rest": 0.1208
+      },
+      "resolved": {
+        "Combat": 0.0026,
+        "Elite": 0,
+        "Event": 0.9966,
+        "Shop": 0.0006,
+        "Boss": 0,
+        "Rest": 0.0002
+      },
+      "absoluteDrift": {
+        "Combat": 0.3839,
+        "Elite": 0.1063,
+        "Event": 0.7454,
+        "Shop": 0.1347,
+        "Boss": 0,
+        "Rest": 0.1206
+      },
+      "totalVariationDistance": 0.7455,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.3651,
+          "Elite": 0.1429,
+          "Event": 0.2778,
+          "Shop": 0.1429,
+          "Boss": 0,
+          "Rest": 0.0714
+        },
+        "floor2": {
+          "Combat": 0.3472,
+          "Elite": 0.1111,
+          "Event": 0.2361,
+          "Shop": 0.1528,
+          "Boss": 0,
+          "Rest": 0.1528
+        },
+        "floor3": {
+          "Combat": 0.4444,
+          "Elite": 0.0694,
+          "Event": 0.2431,
+          "Shop": 0.1111,
+          "Boss": 0,
+          "Rest": 0.1319
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0031,
+          "Elite": 0,
+          "Event": 0.996,
+          "Shop": 0.0009,
+          "Boss": 0,
+          "Rest": 0
+        },
+        "floor2": {
+          "Combat": 0.0032,
+          "Elite": 0,
+          "Event": 0.9956,
+          "Shop": 0.0006,
+          "Boss": 0,
+          "Rest": 0.0006
+        },
+        "floor3": {
+          "Combat": 0.0016,
+          "Elite": 0,
+          "Event": 0.998,
+          "Shop": 0.0003,
+          "Boss": 0,
+          "Rest": 0.0001
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.58,
+          11.2483,
+          12.0533,
+          13.192
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.6683,
+          0.805,
+          1.1387
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          12,
+          10
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.3696,
+            "Elite": 0.087,
+            "Event": 0.2971,
+            "Shop": 0.1232,
+            "Boss": 0,
+            "Rest": 0.1232
+          },
+          "resolved": {
+            "Combat": 0.0062,
+            "Elite": 0,
+            "Event": 0.9925,
+            "Shop": 0.001,
+            "Boss": 0,
+            "Rest": 0.0002
+          },
+          "absoluteDrift": {
+            "Combat": 0.3634,
+            "Elite": 0.087,
+            "Event": 0.6954,
+            "Shop": 0.1222,
+            "Boss": 0,
+            "Rest": 0.123
+          },
+          "totalVariationDistance": 0.6955,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.3571,
+              "Elite": 0.119,
+              "Event": 0.3333,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.0476
+            },
+            "floor2": {
+              "Combat": 0.3125,
+              "Elite": 0.0833,
+              "Event": 0.2708,
+              "Shop": 0.1458,
+              "Boss": 0,
+              "Rest": 0.1875
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.0625,
+              "Event": 0.2917,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.9167,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0035,
+              "Elite": 0,
+              "Event": 0.995,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0.0005
+            },
+            "floor3": {
+              "Combat": 0.0035,
+              "Elite": 0,
+              "Event": 0.996,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.58,
+          11.2345,
+          12.6267,
+          13.3971
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.6545,
+          1.3922,
+          0.7704
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          11,
+          9,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4203,
+            "Elite": 0.1449,
+            "Event": 0.1594,
+            "Shop": 0.1594,
+            "Boss": 0,
+            "Rest": 0.1159
+          },
+          "resolved": {
+            "Combat": 0.0052,
+            "Elite": 0,
+            "Event": 0.9943,
+            "Shop": 0.0002,
+            "Boss": 0,
+            "Rest": 0.0002
+          },
+          "absoluteDrift": {
+            "Combat": 0.4151,
+            "Elite": 0.1449,
+            "Event": 0.8349,
+            "Shop": 0.1592,
+            "Boss": 0,
+            "Rest": 0.1157
+          },
+          "totalVariationDistance": 0.8349,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.381,
+              "Elite": 0.1905,
+              "Event": 0.1667,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.119
+            },
+            "floor2": {
+              "Combat": 0.4167,
+              "Elite": 0.1667,
+              "Event": 0.1667,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.0833
+            },
+            "floor3": {
+              "Combat": 0.4583,
+              "Elite": 0.0833,
+              "Event": 0.1458,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.1458
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0099,
+              "Elite": 0,
+              "Event": 0.9901,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.008,
+              "Elite": 0,
+              "Event": 0.992,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.0015,
+              "Elite": 0,
+              "Event": 0.9975,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0.0005
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          9.58,
+          9.7317,
+          10.1967,
+          10.865
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0.1517,
+          0.465,
+          0.6683
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          6,
+          4
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.3696,
+            "Elite": 0.087,
+            "Event": 0.2971,
+            "Shop": 0.1232,
+            "Boss": 0,
+            "Rest": 0.1232
+          },
+          "resolved": {
+            "Combat": 0.0003,
+            "Elite": 0,
+            "Event": 0.999,
+            "Shop": 0.0005,
+            "Boss": 0,
+            "Rest": 0.0002
+          },
+          "absoluteDrift": {
+            "Combat": 0.3693,
+            "Elite": 0.087,
+            "Event": 0.7019,
+            "Shop": 0.1227,
+            "Boss": 0,
+            "Rest": 0.123
+          },
+          "totalVariationDistance": 0.7019,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.3571,
+              "Elite": 0.119,
+              "Event": 0.3333,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.0476
+            },
+            "floor2": {
+              "Combat": 0.3125,
+              "Elite": 0.0833,
+              "Event": 0.2708,
+              "Shop": 0.1458,
+              "Boss": 0,
+              "Rest": 0.1875
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.0625,
+              "Event": 0.2917,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0002,
+              "Elite": 0,
+              "Event": 0.999,
+              "Shop": 0.0008,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0005,
+              "Elite": 0,
+              "Event": 0.998,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0.001
+            },
+            "floor3": {
+              "Combat": 0.0003,
+              "Elite": 0,
+              "Event": 0.9997,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 15,
+      "firstTwoTurnDamage": 33,
+      "firstResourceSpendTurn": 1
+    }
+  },
+  {
+    "characterId": "chronomancer",
+    "runs": 36,
+    "survivalRateFirst3": 0.6666666666666666,
+    "avgCombatsPerRun": 1.75,
+    "avgCombatTurns": 3.2222222222222223,
+    "medianCombatTurns": 2,
+    "avgMaxFloorResolved": 1.4166666666666667,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      4.38,
+      5.6439,
+      6.9711,
+      8.1608
+    ],
+    "netAssetEVUGrowthByFloor": [
+      1.2639,
+      1.3272,
+      1.1897
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      36,
+      27,
+      24
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.5229,
+        "Elite": 0.0675,
+        "Event": 0.1711,
+        "Shop": 0.1325,
+        "Boss": 0,
+        "Rest": 0.106
+      },
+      "resolved": {
+        "Combat": 0.0043,
+        "Elite": 0,
+        "Event": 0.9948,
+        "Shop": 0.0007,
+        "Boss": 0,
+        "Rest": 0.0002
+      },
+      "absoluteDrift": {
+        "Combat": 0.5186,
+        "Elite": 0.0675,
+        "Event": 0.8237,
+        "Shop": 0.1318,
+        "Boss": 0,
+        "Rest": 0.1058
+      },
+      "totalVariationDistance": 0.8237,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.5354,
+          "Elite": 0.0472,
+          "Event": 0.1969,
+          "Shop": 0.1339,
+          "Boss": 0,
+          "Rest": 0.0866
+        },
+        "floor2": {
+          "Combat": 0.5833,
+          "Elite": 0.0694,
+          "Event": 0.1319,
+          "Shop": 0.1181,
+          "Boss": 0,
+          "Rest": 0.0972
+        },
+        "floor3": {
+          "Combat": 0.4514,
+          "Elite": 0.0833,
+          "Event": 0.1875,
+          "Shop": 0.1458,
+          "Boss": 0,
+          "Rest": 0.1319
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0042,
+          "Elite": 0,
+          "Event": 0.995,
+          "Shop": 0.0007,
+          "Boss": 0,
+          "Rest": 0.0002
+        },
+        "floor2": {
+          "Combat": 0.0066,
+          "Elite": 0,
+          "Event": 0.992,
+          "Shop": 0.001,
+          "Boss": 0,
+          "Rest": 0.0003
+        },
+        "floor3": {
+          "Combat": 0.003,
+          "Elite": 0,
+          "Event": 0.9962,
+          "Shop": 0.0006,
+          "Boss": 0,
+          "Rest": 0.0002
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.38,
+          6.2,
+          7.465,
+          8.5867
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.82,
+          1.265,
+          1.1217
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          12,
+          12
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.5362,
+            "Elite": 0.0507,
+            "Event": 0.1884,
+            "Shop": 0.1159,
+            "Boss": 0,
+            "Rest": 0.1087
+          },
+          "resolved": {
+            "Combat": 0.0158,
+            "Elite": 0,
+            "Event": 0.9832,
+            "Shop": 0.001,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.5204,
+            "Elite": 0.0507,
+            "Event": 0.7948,
+            "Shop": 0.1149,
+            "Boss": 0,
+            "Rest": 0.1087
+          },
+          "totalVariationDistance": 0.7947,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5238,
+              "Elite": 0.0476,
+              "Event": 0.2381,
+              "Shop": 0.119,
+              "Boss": 0,
+              "Rest": 0.0714
+            },
+            "floor2": {
+              "Combat": 0.625,
+              "Elite": 0.0208,
+              "Event": 0.125,
+              "Shop": 0.125,
+              "Boss": 0,
+              "Rest": 0.1042
+            },
+            "floor3": {
+              "Combat": 0.4583,
+              "Elite": 0.0833,
+              "Event": 0.2083,
+              "Shop": 0.1042,
+              "Boss": 0,
+              "Rest": 0.1458
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 1,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.9167,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.0045,
+              "Elite": 0,
+              "Event": 0.995,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.38,
+          6.0483,
+          7.172,
+          8.2956
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.6683,
+          1.1237,
+          1.1236
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          10,
+          9
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4964,
+            "Elite": 0.1007,
+            "Event": 0.1367,
+            "Shop": 0.1655,
+            "Boss": 0,
+            "Rest": 0.1007
+          },
+          "resolved": {
+            "Combat": 0.0124,
+            "Elite": 0,
+            "Event": 0.9856,
+            "Shop": 0.001,
+            "Boss": 0,
+            "Rest": 0.001
+          },
+          "absoluteDrift": {
+            "Combat": 0.484,
+            "Elite": 0.1007,
+            "Event": 0.8489,
+            "Shop": 0.1645,
+            "Boss": 0,
+            "Rest": 0.0997
+          },
+          "totalVariationDistance": 0.8489,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5581,
+              "Elite": 0.0465,
+              "Event": 0.1163,
+              "Shop": 0.1628,
+              "Boss": 0,
+              "Rest": 0.1163
+            },
+            "floor2": {
+              "Combat": 0.5,
+              "Elite": 0.1667,
+              "Event": 0.1458,
+              "Shop": 0.1042,
+              "Boss": 0,
+              "Rest": 0.0833
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.0833,
+              "Event": 0.1458,
+              "Shop": 0.2292,
+              "Boss": 0,
+              "Rest": 0.1042
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.9167,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0.0833
+            },
+            "floor2": {
+              "Combat": 0.008,
+              "Elite": 0,
+              "Event": 0.991,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.006,
+              "Elite": 0,
+              "Event": 0.992,
+              "Shop": 0.001,
+              "Boss": 0,
+              "Rest": 0.001
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          4.38,
+          4.6833,
+          5.384,
+          6.0533
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0.3033,
+          0.7007,
+          0.6693
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          5,
+          3
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.5362,
+            "Elite": 0.0507,
+            "Event": 0.1884,
+            "Shop": 0.1159,
+            "Boss": 0,
+            "Rest": 0.1087
+          },
+          "resolved": {
+            "Combat": 0.0003,
+            "Elite": 0,
+            "Event": 0.999,
+            "Shop": 0.0006,
+            "Boss": 0,
+            "Rest": 0.0001
+          },
+          "absoluteDrift": {
+            "Combat": 0.5359,
+            "Elite": 0.0507,
+            "Event": 0.8106,
+            "Shop": 0.1153,
+            "Boss": 0,
+            "Rest": 0.1086
+          },
+          "totalVariationDistance": 0.8105,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5238,
+              "Elite": 0.0476,
+              "Event": 0.2381,
+              "Shop": 0.119,
+              "Boss": 0,
+              "Rest": 0.0714
+            },
+            "floor2": {
+              "Combat": 0.625,
+              "Elite": 0.0208,
+              "Event": 0.125,
+              "Shop": 0.125,
+              "Boss": 0,
+              "Rest": 0.1042
+            },
+            "floor3": {
+              "Combat": 0.4583,
+              "Elite": 0.0833,
+              "Event": 0.2083,
+              "Shop": 0.1042,
+              "Boss": 0,
+              "Rest": 0.1458
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0003,
+              "Elite": 0,
+              "Event": 0.999,
+              "Shop": 0.0007,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0005,
+              "Elite": 0,
+              "Event": 0.9985,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0.0005
+            },
+            "floor3": {
+              "Combat": 0,
+              "Elite": 0,
+              "Event": 0.9995,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 12,
+      "firstTwoTurnDamage": 24,
+      "firstResourceSpendTurn": 2
+    }
+  },
+  {
+    "characterId": "alchemist",
+    "runs": 36,
+    "survivalRateFirst3": 0.6388888888888888,
+    "avgCombatsPerRun": 1.8611111111111112,
+    "avgCombatTurns": 4.895522388059701,
+    "medianCombatTurns": 5,
+    "avgMaxFloorResolved": 1.5,
+    "avgGoldGainPerFloor": [
+      50,
+      60,
+      71
+    ],
+    "netAssetEVUByCheckpoint": [
+      7.38,
+      8.2474,
+      10.5631,
+      11.8017
+    ],
+    "netAssetEVUGrowthByFloor": [
+      0.8674,
+      2.3157,
+      1.2386
+    ],
+    "netAssetCoverageByCheckpoint": [
+      36,
+      35,
+      32,
+      23
+    ],
+    "shopAffordability": {
+      "card": 1,
+      "potion": 0.6666666666666666,
+      "relic": 0.3333333333333333
+    },
+    "removalAffordability": {
+      "floor1Cost": 75,
+      "floor3Cost": 75,
+      "floor1Affordable": false,
+      "floor3Affordable": true
+    },
+    "rewardToPriceRatio": {
+      "card": 1.1482517482517482,
+      "potion": 0.7672503648113405,
+      "relic": 0.370583226905066,
+      "removal": 0.8044444444444445
+    },
+    "nodeDistribution": {
+      "generated": {
+        "Combat": 0.4602,
+        "Elite": 0.0988,
+        "Event": 0.1855,
+        "Shop": 0.1277,
+        "Boss": 0,
+        "Rest": 0.1277
+      },
+      "resolved": {
+        "Combat": 0.0054,
+        "Elite": 0.0001,
+        "Event": 0.9928,
+        "Shop": 0.0011,
+        "Boss": 0,
+        "Rest": 0.0005
+      },
+      "absoluteDrift": {
+        "Combat": 0.4548,
+        "Elite": 0.0987,
+        "Event": 0.8073,
+        "Shop": 0.1266,
+        "Boss": 0,
+        "Rest": 0.1272
+      },
+      "totalVariationDistance": 0.8073,
+      "generatedByFloor": {
+        "floor1": {
+          "Combat": 0.4646,
+          "Elite": 0.0551,
+          "Event": 0.1969,
+          "Shop": 0.1339,
+          "Boss": 0,
+          "Rest": 0.1496
+        },
+        "floor2": {
+          "Combat": 0.4931,
+          "Elite": 0.1181,
+          "Event": 0.1667,
+          "Shop": 0.1111,
+          "Boss": 0,
+          "Rest": 0.1111
+        },
+        "floor3": {
+          "Combat": 0.4236,
+          "Elite": 0.1181,
+          "Event": 0.1944,
+          "Shop": 0.1389,
+          "Boss": 0,
+          "Rest": 0.125
+        }
+      },
+      "resolvedByFloor": {
+        "floor1": {
+          "Combat": 0.0076,
+          "Elite": 0,
+          "Event": 0.9894,
+          "Shop": 0.002,
+          "Boss": 0,
+          "Rest": 0.001
+        },
+        "floor2": {
+          "Combat": 0.0057,
+          "Elite": 0.0002,
+          "Event": 0.993,
+          "Shop": 0.0007,
+          "Boss": 0,
+          "Rest": 0.0002
+        },
+        "floor3": {
+          "Combat": 0.0035,
+          "Elite": 0,
+          "Event": 0.9952,
+          "Shop": 0.0008,
+          "Boss": 0,
+          "Rest": 0.0005
+        }
+      }
+    },
+    "resolvedByPolicy": {
+      "balanced": {
+        "policy": "balanced",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          7.38,
+          8.59,
+          11,
+          12.56
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.21,
+          2.41,
+          1.56
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          12,
+          9
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.442,
+            "Elite": 0.087,
+            "Event": 0.1884,
+            "Shop": 0.1449,
+            "Boss": 0,
+            "Rest": 0.1377
+          },
+          "resolved": {
+            "Combat": 0.009,
+            "Elite": 0,
+            "Event": 0.99,
+            "Shop": 0.001,
+            "Boss": 0,
+            "Rest": 0
+          },
+          "absoluteDrift": {
+            "Combat": 0.433,
+            "Elite": 0.087,
+            "Event": 0.8016,
+            "Shop": 0.1439,
+            "Boss": 0,
+            "Rest": 0.1377
+          },
+          "totalVariationDistance": 0.8016,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4048,
+              "Elite": 0.0476,
+              "Event": 0.2381,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor2": {
+              "Combat": 0.5,
+              "Elite": 0.1042,
+              "Event": 0.1458,
+              "Shop": 0.125,
+              "Boss": 0,
+              "Rest": 0.125
+            },
+            "floor3": {
+              "Combat": 0.4167,
+              "Elite": 0.1042,
+              "Event": 0.1875,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.9167,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0089,
+              "Elite": 0,
+              "Event": 0.9891,
+              "Shop": 0.002,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.0035,
+              "Elite": 0,
+              "Event": 0.9965,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            }
+          }
+        }
+      },
+      "aggressive": {
+        "policy": "aggressive",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          7.38,
+          8.7,
+          11.6709,
+          12.9486
+        ],
+        "netAssetEVUGrowthByFloor": [
+          1.32,
+          2.9709,
+          1.2777
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          11,
+          11,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.4964,
+            "Elite": 0.1223,
+            "Event": 0.1799,
+            "Shop": 0.0935,
+            "Boss": 0,
+            "Rest": 0.1079
+          },
+          "resolved": {
+            "Combat": 0.0124,
+            "Elite": 0.0005,
+            "Event": 0.9866,
+            "Shop": 0,
+            "Boss": 0,
+            "Rest": 0.0005
+          },
+          "absoluteDrift": {
+            "Combat": 0.484,
+            "Elite": 0.1218,
+            "Event": 0.8067,
+            "Shop": 0.0935,
+            "Boss": 0,
+            "Rest": 0.1074
+          },
+          "totalVariationDistance": 0.8067,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.5814,
+              "Elite": 0.0698,
+              "Event": 0.1163,
+              "Shop": 0.1163,
+              "Boss": 0,
+              "Rest": 0.1163
+            },
+            "floor2": {
+              "Combat": 0.4792,
+              "Elite": 0.1458,
+              "Event": 0.2083,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.0833
+            },
+            "floor3": {
+              "Combat": 0.4375,
+              "Elite": 0.1458,
+              "Event": 0.2083,
+              "Shop": 0.0833,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 1,
+              "Elite": 0,
+              "Event": 0,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor2": {
+              "Combat": 0.0089,
+              "Elite": 0.001,
+              "Event": 0.9901,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0
+            },
+            "floor3": {
+              "Combat": 0.005,
+              "Elite": 0,
+              "Event": 0.994,
+              "Shop": 0,
+              "Boss": 0,
+              "Rest": 0.001
+            }
+          }
+        }
+      },
+      "economy": {
+        "policy": "economy",
+        "avgGoldGainPerFloor": [
+          50,
+          60,
+          71
+        ],
+        "netAssetEVUByCheckpoint": [
+          7.38,
+          7.49,
+          8.6267,
+          9.68
+        ],
+        "netAssetEVUGrowthByFloor": [
+          0.11,
+          1.1367,
+          1.0533
+        ],
+        "netAssetCoverageByCheckpoint": [
+          12,
+          12,
+          9,
+          7
+        ],
+        "shopAffordability": {
+          "card": 1,
+          "potion": 0.6666666666666666,
+          "relic": 0.3333333333333333
+        },
+        "removalAffordability": {
+          "floor1Cost": 75,
+          "floor3Cost": 75,
+          "floor1Affordable": false,
+          "floor3Affordable": true
+        },
+        "rewardToPriceRatio": {
+          "card": 1.1482517482517482,
+          "potion": 0.7672503648113405,
+          "relic": 0.370583226905066,
+          "removal": 0.8044444444444445
+        },
+        "nodeDistribution": {
+          "generated": {
+            "Combat": 0.442,
+            "Elite": 0.087,
+            "Event": 0.1884,
+            "Shop": 0.1449,
+            "Boss": 0,
+            "Rest": 0.1377
+          },
+          "resolved": {
+            "Combat": 0.0013,
+            "Elite": 0,
+            "Event": 0.9963,
+            "Shop": 0.0015,
+            "Boss": 0,
+            "Rest": 0.0008
+          },
+          "absoluteDrift": {
+            "Combat": 0.4407,
+            "Elite": 0.087,
+            "Event": 0.8079,
+            "Shop": 0.1434,
+            "Boss": 0,
+            "Rest": 0.1369
+          },
+          "totalVariationDistance": 0.8079,
+          "generatedByFloor": {
+            "floor1": {
+              "Combat": 0.4048,
+              "Elite": 0.0476,
+              "Event": 0.2381,
+              "Shop": 0.1429,
+              "Boss": 0,
+              "Rest": 0.1667
+            },
+            "floor2": {
+              "Combat": 0.5,
+              "Elite": 0.1042,
+              "Event": 0.1458,
+              "Shop": 0.125,
+              "Boss": 0,
+              "Rest": 0.125
+            },
+            "floor3": {
+              "Combat": 0.4167,
+              "Elite": 0.1042,
+              "Event": 0.1875,
+              "Shop": 0.1667,
+              "Boss": 0,
+              "Rest": 0.125
+            }
+          },
+          "resolvedByFloor": {
+            "floor1": {
+              "Combat": 0.0003,
+              "Elite": 0,
+              "Event": 0.997,
+              "Shop": 0.0017,
+              "Boss": 0,
+              "Rest": 0.001
+            },
+            "floor2": {
+              "Combat": 0.0025,
+              "Elite": 0,
+              "Event": 0.9965,
+              "Shop": 0.0005,
+              "Boss": 0,
+              "Rest": 0.0005
+            },
+            "floor3": {
+              "Combat": 0.002,
+              "Elite": 0,
+              "Event": 0.994,
+              "Shop": 0.003,
+              "Boss": 0,
+              "Rest": 0.001
+            }
+          }
+        }
+      }
+    },
+    "starterDamageProfile": {
+      "openingTurnDamage": 16,
+      "firstTwoTurnDamage": 40,
+      "firstResourceSpendTurn": 2
+    }
+  }
+]

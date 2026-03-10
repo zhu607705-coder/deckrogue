@@ -1,0 +1,893 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 战锤40K 黑暗风格全局样式 (Grimdark Global Styles)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 包含：
+ * - 扫描线效果
+ * - 噪点纹理
+ * - 暗角效果
+ * - 动画关键帧
+ * - 特殊视觉效果
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   基础变量
+   ═══════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* 主色调 */
+  --grim-black-900: #0a0a0c;
+  --grim-black-800: #121216;
+  --grim-black-700: #1a1a20;
+  --grim-black-600: #25252e;
+  --grim-black-500: #353545;
+
+  /* 鲜血红 */
+  --blood-red-900: #2d0a0a;
+  --blood-red-700: #5c1212;
+  --blood-red-500: #8b1a1a;
+  --blood-red-400: #b52b2b;
+  --blood-red-300: #dc4444;
+  --blood-red-100: #ff6b6b;
+
+  /* 锈蚀黄铜 */
+  --rusted-brass-900: #2a1f0d;
+  --rusted-brass-700: #4a3718;
+  --rusted-brass-500: #6b4e23;
+  --rusted-brass-400: #8b6914;
+  --rusted-brass-300: #b8860b;
+  --rusted-brass-100: #daa520;
+
+  /* 亚空间紫 */
+  --warp-purple-900: #1a0a2e;
+  --warp-purple-700: #2d1b4e;
+  --warp-purple-500: #4a2c7a;
+  --warp-purple-400: #6b3d99;
+  --warp-purple-300: #9d4edd;
+  --warp-purple-100: #c77dff;
+  --warp-purple-glow: #e0aaff;
+
+  /* 计算终端绿 */
+  --cogitator-green-900: #0a1f0a;
+  --cogitator-green-700: #0d3d0d;
+  --cogitator-green-500: #1a5c1a;
+  --cogitator-green-400: #2e8b2e;
+  --cogitator-green-300: #4caf50;
+  --cogitator-green-100: #7cfc00;
+  --cogitator-green-scan: #00ff41;
+
+  /* 羊皮纸 */
+  --parchment-900: #2a2520;
+  --parchment-700: #4a4239;
+  --parchment-500: #6b5d4f;
+  --parchment-400: #8b7d6b;
+  --parchment-300: #b8a88a;
+  --parchment-100: #e8dcc0;
+
+  /* 特殊效果 */
+  --toxic: #39ff14;
+  --corruption: #8b008b;
+  --warning: #ff8c00;
+  --info: #00bfff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   扫描线效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.scanlines::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   扫描线动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.scanline-effect {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--cogitator-green-scan),
+    transparent
+  );
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 9998;
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   噪点纹理
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.noise-overlay::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9997;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   暗角效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.vignette::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: 9996;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   闪烁效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.flicker {
+  animation: flicker 3s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  25%, 75% {
+    opacity: 0.9;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   脉冲效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px var(--warp-purple-300), 0 0 20px var(--warp-purple-500);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 20px var(--warp-purple-300), 0 0 40px var(--warp-purple-500);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   亚空间扭曲效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.warp-distortion {
+  animation: warpDistortion 4s ease-in-out infinite;
+}
+
+@keyframes warpDistortion {
+  0% {
+    filter: hue-rotate(0deg) blur(0px);
+  }
+  25% {
+    filter: hue-rotate(15deg) blur(1px);
+  }
+  50% {
+    filter: hue-rotate(-10deg) blur(0.5px);
+  }
+  75% {
+    filter: hue-rotate(20deg) blur(1.5px);
+  }
+  100% {
+    filter: hue-rotate(0deg) blur(0px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   数据流效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.data-stream {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--cogitator-green-scan) 50%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: dataStream 3s linear infinite;
+}
+
+@keyframes dataStream {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 200%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   故障效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.glitch {
+  animation: glitch 0.3s ease-in-out infinite;
+}
+
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   发光效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.glow-red {
+  box-shadow: 0 0 10px rgba(139, 26, 26, 0.6), 0 0 20px rgba(139, 26, 26, 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 0 10px rgba(157, 78, 221, 0.6), 0 0 20px rgba(157, 78, 221, 0.3);
+}
+
+.glow-green {
+  box-shadow: 0 0 10px rgba(124, 252, 0, 0.6), 0 0 20px rgba(124, 252, 0, 0.3);
+}
+
+.glow-gold {
+  box-shadow: 0 0 10px rgba(184, 134, 11, 0.6), 0 0 20px rgba(184, 134, 11, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   边框样式
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.border-gothic {
+  border: 2px solid var(--grim-black-600);
+}
+
+.border-mechanicus {
+  border: 2px solid var(--rusted-brass-500);
+}
+
+.border-warp {
+  border: 2px solid var(--warp-purple-300);
+}
+
+.border-warning {
+  border: 2px solid var(--blood-red-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   文字效果
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.text-terminal {
+  color: var(--cogitator-green-scan);
+  text-shadow: 0 0 5px var(--cogitator-green-scan);
+}
+
+.text-warp {
+  color: var(--warp-purple-100);
+  text-shadow: 0 0 5px var(--warp-purple-glow);
+}
+
+.text-blood {
+  color: var(--blood-red-300);
+  text-shadow: 0 0 5px var(--blood-red-500);
+}
+
+.text-brass {
+  color: var(--rusted-brass-300);
+  text-shadow: 0 0 5px var(--rusted-brass-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   金属质感背景
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.bg-metallic {
+  background: linear-gradient(
+    135deg,
+    var(--grim-black-600) 0%,
+    var(--grim-black-500) 50%,
+    var(--grim-black-600) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   亚空间背景
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.bg-warp {
+  background: linear-gradient(
+    135deg,
+    var(--warp-purple-900) 0%,
+    var(--grim-black-900) 50%,
+    var(--warp-purple-900) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   羊皮纸背景
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.bg-parchment {
+  background: linear-gradient(
+    135deg,
+    var(--parchment-900) 0%,
+    var(--parchment-700) 50%,
+    var(--parchment-900) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   按钮样式
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.btn-grimdark {
+  background: var(--grim-black-700);
+  border: 2px solid var(--grim-black-600);
+  color: var(--parchment-300);
+  padding: 0.5rem 1rem;
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-grimdark:hover {
+  border-color: var(--rusted-brass-500);
+  box-shadow: 0 0 10px rgba(107, 78, 35, 0.5);
+}
+
+.btn-grimdark:active {
+  background: var(--grim-black-800);
+}
+
+.btn-grimdark:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   卡片样式
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.card-grimdark {
+  background: var(--grim-black-700);
+  border: 2px solid var(--grim-black-600);
+  border-radius: 4px;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-grimdark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--rusted-brass-500),
+    transparent
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   工具类
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.relative {
+  position: relative;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+.opacity-30 {
+  opacity: 0.3;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   终端与档案语义类
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.grimdark-terminal-screen {
+  position: relative;
+  background: #050505;
+  color: #d4d4d8;
+  overflow: hidden;
+}
+
+.grimdark-crt-overlay {
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 3px 100%;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.grimdark-terminal-vignette {
+  background: radial-gradient(circle at center, rgba(24, 9, 9, 0.55) 0%, rgba(0, 0, 0, 0.96) 100%);
+  pointer-events: none;
+}
+
+.grimdark-cogitator-shell {
+  position: relative;
+  background:
+    radial-gradient(circle at center, rgba(26, 26, 26, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
+}
+
+.grimdark-terminal-topbar {
+  background: rgba(10, 10, 10, 0.9);
+  border-bottom: 2px solid rgba(63, 63, 70, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.grimdark-terminal-divider {
+  width: 1px;
+  background: #3f3f46;
+}
+
+.grimdark-terminal-heading {
+  color: #e5e5e5;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.grimdark-terminal-kicker {
+  color: #b45309;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.grimdark-terminal-copy {
+  color: #71717a;
+}
+
+.grimdark-terminal-sensor {
+  background: #000;
+  border: 1px solid #064e3b;
+  box-shadow: 0 0 10px rgba(6, 78, 59, 0.3);
+}
+
+.grimdark-terminal-sensor-label {
+  color: #059669;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.grimdark-terminal-sensor-value {
+  color: #34d399;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.grimdark-terminal-atmosphere {
+  border: 1px solid rgba(63, 63, 70, 0.7);
+  background: rgba(12, 12, 12, 0.75);
+  backdrop-filter: blur(6px);
+  color: #a1a1aa;
+}
+
+.grimdark-control-panel {
+  background: rgba(9, 9, 9, 0.9);
+  border: 1px solid rgba(91, 68, 34, 0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.grimdark-control-btn {
+  color: #d4d4d8;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.grimdark-control-btn:hover:not(:disabled) {
+  color: #fbbf24;
+  background: #1b150d;
+}
+
+.grimdark-control-btn:disabled {
+  color: #52525b;
+  cursor: not-allowed;
+}
+
+.grimdark-control-separator {
+  height: 1px;
+  background: rgba(91, 68, 34, 0.5);
+}
+
+.grimdark-control-meter {
+  color: #b45309;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.grimdark-control-caption {
+  color: #71717a;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.grimdark-node-card {
+  border-width: 3px;
+  border-style: solid;
+  border-radius: 2px;
+  backdrop-filter: blur(6px);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease, color 220ms ease;
+  clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%);
+}
+
+.grimdark-node-card--selectable:hover {
+  transform: scale(1.05);
+}
+
+.grimdark-node-card--current {
+  background: rgba(69, 10, 10, 0.9);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 30px rgba(220, 38, 38, 0.6);
+}
+
+.grimdark-node-card--past {
+  background: rgba(12, 10, 9, 0.5);
+  border-color: #292524;
+  color: #57534e;
+}
+
+.grimdark-node-card__iconFrame {
+  background: rgba(9, 9, 9, 0.8);
+  border: 1px solid #3f3f46;
+  border-radius: 2px;
+}
+
+.grimdark-node-card__iconFrame--unknown {
+  background: rgba(9, 9, 9, 0.7);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+}
+
+.grimdark-node-current-tag {
+  background: rgba(69, 10, 10, 0.8);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.grimdark-node-reveal-btn {
+  background: rgba(9, 9, 9, 0.9);
+  border: 1px solid rgba(63, 63, 70, 0.5);
+  color: #71717a;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.grimdark-node-reveal-btn:hover {
+  color: #f59e0b;
+  border-color: rgba(180, 83, 9, 0.5);
+}
+
+.grimdark-node-tone--combat {
+  background: rgba(26, 15, 15, 0.9);
+  border-color: #7f1d1d;
+  color: #ef4444;
+}
+
+.grimdark-node-tone--combat.grimdark-node-card--selectable:hover {
+  border-color: #dc2626;
+  color: #fca5a5;
+  box-shadow: 0 0 20px rgba(185, 28, 28, 0.6);
+}
+
+.grimdark-node-icon-tone--combat {
+  color: #ef4444;
+}
+
+.grimdark-node-tone--elite {
+  background: rgba(31, 22, 6, 0.9);
+  border-color: #b45309;
+  color: #f59e0b;
+}
+
+.grimdark-node-tone--elite.grimdark-node-card--selectable:hover {
+  border-color: #f59e0b;
+  color: #fcd34d;
+  box-shadow: 0 0 20px rgba(217, 119, 6, 0.6);
+}
+
+.grimdark-node-icon-tone--elite {
+  color: #f59e0b;
+}
+
+.grimdark-node-tone--event {
+  background: rgba(23, 12, 30, 0.9);
+  border-color: #6b21a8;
+  color: #a855f7;
+}
+
+.grimdark-node-tone--event.grimdark-node-card--selectable:hover {
+  border-color: #a855f7;
+  color: #d8b4fe;
+  box-shadow: 0 0 20px rgba(126, 34, 206, 0.6);
+}
+
+.grimdark-node-icon-tone--event {
+  color: #a855f7;
+}
+
+.grimdark-node-tone--shop {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: #0ea5e9;
+  color: #38bdf8;
+}
+
+.grimdark-node-tone--shop.grimdark-node-card--selectable:hover {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  box-shadow: 0 0 20px rgba(2, 132, 199, 0.6);
+}
+
+.grimdark-node-icon-tone--shop {
+  color: #38bdf8;
+}
+
+.grimdark-node-tone--rest {
+  background: rgba(26, 24, 20, 0.9);
+  border-color: #d97706;
+  color: #fbbf24;
+}
+
+.grimdark-node-tone--rest.grimdark-node-card--selectable:hover {
+  border-color: #fbbf24;
+  color: #fde68a;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+
+.grimdark-node-icon-tone--rest {
+  color: #fbbf24;
+}
+
+.grimdark-node-tone--boss {
+  background: rgba(42, 8, 8, 0.95);
+  border-color: #991b1b;
+  color: #ef4444;
+}
+
+.grimdark-node-tone--boss.grimdark-node-card--selectable:hover {
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 35px rgba(220, 38, 38, 0.8);
+}
+
+.grimdark-node-icon-tone--boss {
+  color: #ef4444;
+}
+
+.grimdark-node-tone--default {
+  background: rgba(10, 10, 10, 0.9);
+  border-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+.grimdark-node-tone--default.grimdark-node-card--selectable:hover {
+  border-color: #71717a;
+  color: #d4d4d8;
+  box-shadow: 0 0 15px rgba(82, 82, 91, 0.4);
+}
+
+.grimdark-node-icon-tone--default {
+  color: #a1a1aa;
+}
+
+.grimdark-dossier-screen {
+  position: relative;
+  background: #050505;
+  color: #d4d4d8;
+}
+
+.grimdark-dossier-frame {
+  position: relative;
+  width: 100%;
+  max-width: 48rem;
+  border: 2px solid #7f1d1d;
+  background: rgba(26, 15, 15, 0.9);
+  padding: 2rem;
+  box-shadow: 0 0 40px rgba(127, 29, 29, 0.3);
+}
+
+.grimdark-dossier-corner {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+}
+
+.grimdark-dossier-corner--tl {
+  top: 0;
+  left: 0;
+  border-top: 2px solid #ef4444;
+  border-left: 2px solid #ef4444;
+}
+
+.grimdark-dossier-corner--tr {
+  top: 0;
+  right: 0;
+  border-top: 2px solid #ef4444;
+  border-right: 2px solid #ef4444;
+}
+
+.grimdark-dossier-corner--bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 2px solid #ef4444;
+  border-left: 2px solid #ef4444;
+}
+
+.grimdark-dossier-corner--br {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid #ef4444;
+  border-right: 2px solid #ef4444;
+}
+
+.grimdark-dossier-header {
+  border-bottom: 1px solid #7f1d1d;
+}
+
+.grimdark-dossier-kicker {
+  color: #fca5a5;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.grimdark-blackbox {
+  border: 1px solid rgba(180, 83, 9, 0.3);
+  background: rgba(42, 19, 8, 0.4);
+}
+
+.grimdark-blackbox-title {
+  color: #f59e0b;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.grimdark-blackbox-line {
+  border-left: 2px solid #f59e0b;
+  padding-left: 0.5rem;
+  opacity: 0.8;
+}
+
+.grimdark-dossier-card {
+  border: 1px solid #3f3f46;
+  background: #0a0a0a;
+  padding: 1rem;
+}
+
+.grimdark-dossier-cardTitle {
+  color: #71717a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.grimdark-dossier-card--verdict .grimdark-dossier-accent,
+.grimdark-dossier-accent--verdict {
+  color: #a855f7;
+}
+
+.grimdark-dossier-card--devotion .grimdark-dossier-accent,
+.grimdark-dossier-accent--devotion {
+  color: #fbbf24;
+}
+
+.grimdark-dossier-card--requisition .grimdark-dossier-accent,
+.grimdark-dossier-accent--requisition {
+  color: #38bdf8;
+}
+
+.grimdark-dossier-card--warp .grimdark-dossier-accent,
+.grimdark-dossier-accent--warp {
+  color: #a855f7;
+}
+
+.grimdark-dossier-archive {
+  border: 1px solid #3f3f46;
+  background: #0a0a0a;
+  padding: 1rem;
+}
+
+.grimdark-dossier-narrative {
+  border: 1px solid rgba(127, 29, 29, 0.4);
+  background: rgba(34, 11, 11, 0.5);
+  color: #e7c9c9;
+}
+
+.grimdark-dossier-epitaph {
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+.grimdark-dossier-action {
+  background: #7f1d1d;
+  border: 2px solid #ef4444;
+  color: white;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.grimdark-dossier-action:hover {
+  background: #991b1b;
+}

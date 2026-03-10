@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768">
+    
+      <defs>
+        <linearGradient id="shopGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" style="stop-color:#78350f;stop-opacity:0.8"/>
+          <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#0a0a0f;stop-opacity:1"/>
+        </linearGradient>
+        <filter id="forgeGlow">
+          <feGaussianBlur stdDeviation="3" result="glow"/>
+          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="768" fill="url(#shopGrad)"/>
+      <rect x="50" y="200" width="150" height="400" fill="#1a1a1a" opacity="0.6" rx="10"/>
+      <rect x="824" y="200" width="150" height="400" fill="#1a1a1a" opacity="0.6" rx="10"/>
+      <circle cx="512" cy="650" r="100" fill="#f59e0b" opacity="0.3" filter="url(#forgeGlow)"/>
+      <rect x="0" y="700" width="1024" height="68" fill="#78350f" opacity="0.4"/>
+      <text x="512" y="100" text-anchor="middle" font-family="serif" font-size="48" fill="#f59e0b" opacity="0.3">⚙</text>
+    
+  </svg>

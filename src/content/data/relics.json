@@ -1,0 +1,460 @@
+[
+  {
+    "id": "burning_blood",
+    "name": "殉道者炽血瓶",
+    "description": "At the end of combat, heal 6 HP.",
+    "price": 140,
+    "tags": [
+      "flesh",
+      "sustain"
+    ],
+    "resonanceGroup": "flesh",
+    "trigger": "EndCombat",
+    "effect": {
+      "type": "Heal",
+      "amount": 6
+    },
+    "inscription": "一瓶从无名殉道者静脉中抽取的沸腾血液，据说仍残留审判祷文的热度。",
+    "flavorText": "“他们说这是祝福。我只感到燃烧。”"
+  },
+  {
+    "id": "bag_of_prep",
+    "name": "战术预备囊",
+    "description": "At the start of each combat, draw 2 extra cards.",
+    "price": 190,
+    "tags": [
+      "draw",
+      "tempo"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "Draw",
+      "amount": 2
+    },
+    "inscription": "一件被用于开战仪式的器物，战术预备囊会在战斗伊始回应持有者的杀意。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "vajra",
+    "name": "战斗祷钉",
+    "description": "At the start of each combat, gain 1 Strength.",
+    "price": 165,
+    "tags": [
+      "damage",
+      "martial"
+    ],
+    "resonanceGroup": "martial",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Strength",
+      "amount": 1,
+      "target": "Self"
+    },
+    "inscription": "一件被用于开战仪式的器物，战斗祷钉会在战斗伊始回应持有者的杀意。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "anchor",
+    "name": "虚空系泊锚",
+    "description": "Start each combat with 10 Block.",
+    "price": 145,
+    "tags": [
+      "defense",
+      "fortress"
+    ],
+    "resonanceGroup": "fortress",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainBlock",
+      "amount": 10,
+      "target": "Self"
+    },
+    "inscription": "一件被用于开战仪式的器物，虚空系泊锚会在战斗伊始回应持有者的杀意。",
+    "flavorText": "“把锚放下，否则你会在梦里漂回那扇门后。”"
+  },
+  {
+    "id": "lantern",
+    "name": "尸蜡引魂灯",
+    "description": "Gain 1 Energy at the start of each combat.",
+    "price": 175,
+    "tags": [
+      "energy",
+      "arcane"
+    ],
+    "resonanceGroup": "arcane",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainEnergy",
+      "amount": 1
+    },
+    "inscription": "一件被用于开战仪式的器物，尸蜡引魂灯会在战斗伊始回应持有者的杀意。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "heretics_metronome",
+    "name": "异端节律仪",
+    "description": "Each turn, your 4th card costs 0. When triggered, suffer 3 HP loss.",
+    "price": 200,
+    "tags": [
+      "frequency",
+      "corruption"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "异端节律仪并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“如果你听见它在呼唤，不要回头。已经太迟了。”"
+  },
+  {
+    "id": "zealots_chain",
+    "name": "狂信徒锁链",
+    "description": "If you play more than 6 cards in a turn, gain +1 Energy next turn.",
+    "price": 190,
+    "tags": [
+      "frequency",
+      "energy"
+    ],
+    "resonanceGroup": "tempo",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "狂信徒锁链并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "warp_distorter",
+    "name": "亚空间畸变仪",
+    "description": "At the start of your turn, cards in hand randomize their costs (0-3).",
+    "price": 225,
+    "tags": [
+      "chaos",
+      "cost"
+    ],
+    "resonanceGroup": "chaos",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "亚空间畸变仪并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "ruined_reactor",
+    "name": "残毁等离子反应堆",
+    "description": "Gain +1 Energy each turn. Every 3 turns, suffer 8 radiation damage.",
+    "price": 235,
+    "tags": [
+      "energy",
+      "overload"
+    ],
+    "resonanceGroup": "arcane",
+    "trigger": "StartTurn",
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "残毁等离子反应堆来自某个已被封存的战区，来源记录被刻意抹去。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "mark_of_chaos",
+    "name": "混沌烙印",
+    "description": "Shop cards, relics, and potions cost half. Every purchase adds a random Curse card to your deck.",
+    "price": 260,
+    "tags": [
+      "curse",
+      "economy",
+      "corruption"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "addCurseOnPickup": 1
+    },
+    "inscription": "刻痕并非纹身，而是一道会随你呼吸鼓动的伤口。",
+    "flavorText": "“如果你听见它在呼唤，不要回头。已经太迟了。”"
+  },
+  {
+    "id": "corrupted_tome",
+    "name": "渎神抄本",
+    "description": "At the start of combat, gain 1 Energy and 1 Strength for each Curse in your deck.",
+    "price": 255,
+    "tags": [
+      "curse",
+      "scaling",
+      "corruption"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "Passive",
+      "maxHpPenalty": 5,
+      "addCurseOnPickup": 1
+    },
+    "inscription": "书页会在你闭眼时自行翻动，墨迹像活物一样沿着指尖爬行。",
+    "flavorText": "“如果你听见它在呼唤，不要回头。已经太迟了。”"
+  },
+  {
+    "id": "corrupted_relic",
+    "name": "失落圣骨匣",
+    "description": "Each turn gain +2 Strength, but gain 10 Corruption axis. Embrace power, hasten mutation.",
+    "price": 240,
+    "tags": [
+      "corruption",
+      "damage",
+      "warp"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "StartTurn",
+    "effect": {
+      "type": "Passive",
+      "addCurseOnPickup": 1
+    },
+    "inscription": "失落圣骨匣来自某个已被封存的战区，来源记录被刻意抹去。",
+    "flavorText": "“它救了我三次，也杀了我第四次。”"
+  },
+  {
+    "id": "martyrs_censer",
+    "name": "殉道者香炉",
+    "description": "At the start of your turn while below 50% HP, gain Devotion and steady your fear.",
+    "price": 185,
+    "tags": [
+      "faith",
+      "devotion",
+      "survival"
+    ],
+    "resonanceGroup": "faith",
+    "trigger": "StartTurn",
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "殉道者香炉来自某个已被封存的战区，来源记录被刻意抹去。",
+    "flavorText": "“愿我的骨灰也能成为下一枚子弹的底火。”"
+  },
+  {
+    "id": "nurgles_blessing",
+    "name": "纳垢赐瘴",
+    "description": "You are immune to Poison and Bleed. Whenever you would receive these status effects, gain 5 Corruption instead.",
+    "price": 220,
+    "tags": [
+      "corruption",
+      "immunity",
+      "chaos"
+    ],
+    "resonanceGroup": "chaos",
+    "corrupted": true,
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "immuneToStatus": [
+        "Poison",
+        "Bleed"
+      ],
+      "corruptionOnImmunity": 5
+    },
+    "inscription": "纳垢赐瘴并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“如果你听见它在呼唤，不要回头。已经太迟了。”"
+  },
+  {
+    "id": "mechanicus_coolant",
+    "name": "机神冷却圣油",
+    "description": "Whenever you draw an Overheat card, Exhaust it and gain 1 Energy.",
+    "price": 195,
+    "tags": [
+      "tech",
+      "energy",
+      "machine"
+    ],
+    "resonanceGroup": "tech",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "exhaustOverheatOnDraw": true,
+      "energyOnExhaust": 1
+    },
+    "inscription": "机神冷却圣油并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "seal_of_martyrdom",
+    "name": "殉道封蜡",
+    "description": "A Purity Seal that can be attached to a card. When the card is played, lose 3 HP and draw 2 cards.",
+    "price": 150,
+    "tags": [
+      "seal",
+      "draw",
+      "sacrifice"
+    ],
+    "resonanceGroup": "faith",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Seal",
+      "sealEffect": {
+        "onPlay": [
+          {
+            "type": "LoseHP",
+            "amount": 3,
+            "target": "Self"
+          },
+          {
+            "type": "Draw",
+            "amount": 2,
+            "target": "Self"
+          }
+        ]
+      }
+    },
+    "inscription": "殉道封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "seal_of_exterminatus",
+    "name": "灭绝令封蜡",
+    "description": "A Purity Seal that can be attached to an Attack card. The attack ignores Block and Armor. If it doesn't kill the target, Exile the card.",
+    "price": 180,
+    "tags": [
+      "seal",
+      "damage",
+      "exile"
+    ],
+    "resonanceGroup": "martial",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Seal",
+      "sealEffect": {
+        "modifyAttack": {
+          "ignoreBlock": true,
+          "ignoreArmor": true,
+          "exileIfNotKill": true
+        }
+      }
+    },
+    "inscription": "灭绝令封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "seal_of_defiance",
+    "name": "抗命封蜡",
+    "description": "A Purity Seal that can be attached to a Skill card. If you take no damage this turn, retain the card.",
+    "price": 160,
+    "tags": [
+      "seal",
+      "defense",
+      "retain"
+    ],
+    "resonanceGroup": "fortress",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Seal",
+      "sealEffect": {
+        "onTurnEnd": {
+          "condition": "NoDamageTaken",
+          "effect": "Retain"
+        }
+      }
+    },
+    "inscription": "抗命封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "seal_of_omnissiah",
+    "name": "欧姆弥赛亚封蜡",
+    "description": "A Purity Seal that can be attached to a card. When played, reduce the cost of a random Tech card in your hand by 1 this turn.",
+    "price": 170,
+    "tags": [
+      "seal",
+      "tech",
+      "energy"
+    ],
+    "resonanceGroup": "tech",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Seal",
+      "sealEffect": {
+        "onPlay": [
+          {
+            "type": "ReduceRandomTechCost",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    "inscription": "欧姆弥赛亚封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "rust_implants",
+    "name": "锈蚀植入体",
+    "description": "战斗开始时获得 1 点力量。血肉苦弱。",
+    "price": 180,
+    "trigger": "StartCombat",
+    "tags": [
+      "mechanicus"
+    ],
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Strength",
+      "amount": 1,
+      "target": "Self"
+    },
+    "inscription": "锈蚀关节与骨钉的拼装件，仍带着伺服锯条切开的血痕。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "martyrs_mark",
+    "name": "殉道者之印",
+    "description": "生命值越低，造成伤害越高。",
+    "price": 260,
+    "trigger": "Passive",
+    "tags": [
+      "faith"
+    ],
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "银钉缀成的印记，佩戴者每一次喘息都像在替他人受刑。",
+    "flavorText": "“别为我止血。让它记住我仍在供奉。”"
+  },
+  {
+    "id": "inquisitor_rosary",
+    "name": "审判官玫瑰",
+    "description": "每次战斗开始时获得 12 点格挡。",
+    "price": 190,
+    "trigger": "StartCombat",
+    "tags": [
+      "faith"
+    ],
+    "effect": {
+      "type": "GainBlock",
+      "amount": 12,
+      "target": "Self"
+    },
+    "inscription": "每一枚念珠都刻着一名被焚者的名字，握紧时会传来低语。",
+    "flavorText": "“把它交给下一个人。告诉他别问名字。”"
+  },
+  {
+    "id": "chaos_sanctum_relic",
+    "name": "混沌圣物",
+    "description": "每打出一张牌，随机对一名敌人造成 2-6 点伤害。",
+    "price": 280,
+    "trigger": "Passive",
+    "corrupted": true,
+    "tags": [
+      "chaos",
+      "warp"
+    ],
+    "effect": {
+      "type": "Passive"
+    },
+    "inscription": "封印匣内不该存在的圣物碎片，它憎恶沉默，渴望见血。",
+    "flavorText": "“我没有打开匣子。是匣子先打开了我。”"
+  }
+]

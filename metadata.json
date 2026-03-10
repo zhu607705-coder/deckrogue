@@ -1,0 +1,5 @@
+{
+  "name": "DeckRogue",
+  "description": "A Slay the Spire-like card roguelike with an Intel Economy system.",
+  "requestFramePermissions": []
+}

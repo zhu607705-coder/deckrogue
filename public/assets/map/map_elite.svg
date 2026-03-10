@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg-elite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#1a1a2e;stop-opacity:0.95"/>
+    </linearGradient>
+    <filter id="glow-elite" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="outer-glow-elite" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="blur" in2="SourceGraphic" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="128" height="128" fill="url(#bg-elite)" rx="12"/>
+  
+  <!-- 外边框发光 -->
+  <rect x="2" y="2" width="124" height="124" fill="none" stroke="#f59e0b" stroke-width="1" rx="10" opacity="0.3" filter="url(#outer-glow-elite)"/>
+  
+  <!-- 内边框 -->
+  <rect x="4" y="4" width="120" height="120" fill="none" stroke="#f59e0b" stroke-width="2" rx="8" opacity="0.6"/>
+  
+  <!-- 装饰角标 -->
+  <path d="M 8 20 L 8 8 L 20 8" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.8"/>
+  <path d="M 108 8 L 120 8 L 120 20" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.8"/>
+  <path d="M 8 108 L 8 120 L 20 120" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.8"/>
+  <path d="M 108 120 L 120 120 L 120 108" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.8"/>
+  
+  <!-- 图标 -->
+  <text x="64" y="56" text-anchor="middle" font-family="serif" font-size="40" fill="#f59e0b" filter="url(#glow-elite)">💀</text>
+  
+  <!-- 标签 -->
+  <text x="64" y="95" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#a0a0a0" font-weight="500">Elite</text>
+</svg>

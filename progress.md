@@ -35,3 +35,20 @@ Original prompt: 设计有专门的 set-uo 的启动器，不再只能依靠直�
 - 2026-03-08: 清理 combat UI 的类型边界漂移，修复 `src/ui/hooks/useCardPreview.ts`、`src/ui/hooks/useCombatTelemetry.ts`、`src/ui/hooks/useIntentMasquerade.ts`、`src/ui/views/combat/Battlefield.tsx`、`src/ui/views/combat/CombatHUD.tsx` 与 `src/ui/views/combat/modals/DrawPileModal.tsx` 的运行时类型错配和缺失导入问题。当前 `npx tsc --noEmit`、`npm run lint --silent`、`npm run build --silent` 与 `npm run test:ui-smoke -- --url=http://127.0.0.1:3010` 已全部通过。
 - 2026-03-08: 将 Grimdark 视觉从页面内联类抽取到 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/src/ui/theme/grimdark.css` 与 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/src/ui/theme/grimdark.ts`，新增终端、档案、地图节点 tone 的语义类，并在 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/src/index.css` 全局接入主题样式。`MapView` 与 `AppShell` 已切换到主题层 utility，`npm run lint --silent`、`npm run build --silent`、`npm run test:ui-smoke -- --url=http://127.0.0.1:3010` 全部通过，说明主题抽取没有带来 UI 回退。
 - 2026-03-08: 锁定运行时重构前的基线快照，复制 `baseline_audit.json`、`combat_regression.json`、`economy_regression.json` 为 `*.pre_runtime_refactor.json`，并创建 `output/numerics/pre_refactor_snapshot.md` 记录当前职业生存分布、商店可购买性与 bundle 状态。
+- 2026-03-09: 完成二次平衡调整，重点解决构造体/元素体系前期收益偏低、多个职业起始卡组输出不足、三类专属资源在前两回合内难以形成稳定"获取-消费"闭环的问题。
+- 2026-03-09: 构造体基础攻击上调：scrap_golem 2→3、reinforced_golem 4→5、reinforced_golem_plus 5→6、CreateConstructAction 默认 ATK 5→6。
+- 2026-03-09: 元素反应伤害公式调整：从 `elements.length * 3 * times` 改为 `elements.length * 4 * times + max(0, uniqueElements - 1) * 2 * times`，提升前期兑现能力。
+- 2026-03-09: 起始卡组输出提升：informant/tactician 增加 1 张 strike，puppeteer 增加 1 张 thread_lash，chronomancer 增加 1 张 echo_strike，alchemist 增加 1 张 fire_arrow。
+- 2026-03-09: 专属资源初值调整：timeLayer 0→1、concoction 0→1，确保高复杂度职业前两回合内至少有一次可行的资源消费窗口。
+- 2026-03-09: 新增 `starterBalanceDetection.test.ts`，覆盖构造体基础输出、元素反应公式、起始卡组输出、资源闭环四类检测。
+- 2026-03-09: 新增 `starterDamageProfile` 输出到 `combat_regression.json`，包含 `openingTurnDamage`、`firstTwoTurnDamage`、`firstResourceSpendTurn`。
+- 2026-03-09: 回归验证结果：高复杂度职业（puppeteer、chronomancer、alchemist）前3层存活率从 17%~33% 提升至 67%~75%，职业间 spread 从 0.83 降至 0.75，达到平衡目标。
+- 2026-03-09: 对 `informant` 做二次平衡优化，确认其问题不是面板偏低，而是 starter loop 中“产 Intel”和“兑现伤害”脱节，导致前期回合被功能牌占满，平均战斗回合被拖到 7.1。
+- 2026-03-09: `informant` 起始卡组从 `shadow_step` 切换为 `precision_strike`，同时重写 `gather_intel`、`weak_point_analysis`、`calculated_strike`，让前两回合稳定形成“产 Intel -> 消耗 Intel -> 结束战斗”的闭环。
+- 2026-03-09: 新增 `tests/unit/informantStarterLoop.test.ts`，并扩展 `starterBalanceDetection.test.ts` 与 `combatCalibration.test.ts`，把 `informant` 起手组成、三张关键牌动作与前 3 / 前 5 层回归门槛正式固化为测试。
+- 2026-03-09: 修正 `scripts/analysis/balance_test.ts` 的 `overallScore` 诊断口径。旧公式过度奖励短战斗，导致 `informant` 在只推进到 2.25 层时仍出现异常高分；新公式把生存、推进、节奏和活动量拆开计分后，`informant` 的回归得分已回落到合理区间。
+- 2026-03-09: 最新回归结果：`informant` 前 3 层存活率提升到 `41.67%`，前 5 层存活率提升到 `25%`，平均战斗回合降到 `2.75`，已跨过本轮验收线；同时 `overallScore = 45.83`，不再高于 `chronomancer` 与 `tactician`。
+- 2026-03-09: 修复回归环境中的运行时污染：`scripts/analysis/balance_test.ts` 现在会在每次 run 结束后调用 `engine.dispose()`，旧 `GameEngine` 不再残留订阅并继续接收后续 `CombatVictory` 事件。
+- 2026-03-09: 为 `ConditionalKill` 补齐正式运行时支持：已在 `src/core/types/actions.ts` 注册动作类型，在 `src/core/actions/v2/SpecialActions.ts` 增加 `ConditionalKillAction`，并在 `src/core/actions/v2/ActionFactory.ts` 中接入工厂。
+- 2026-03-09: 新增 `tests/unit/conditionalKillAction.test.ts` 与 `runLifecycle.test.ts` 的竞态回归用例，确认 `ConditionalKill` 不再退化为 `NullAction`，且 `game_over` 后的 `CombatVictory` 不再污染运行时或输出非法转移告警。
+- 2026-03-09: 重新执行 `balance_test.ts --runs=12 --floors=5`、`npm run lint --silent` 与 `npm run build --silent`，全部通过；回归输出中已不再出现 `ConditionalKill` 未注册或 `CombatVictory after game_over` 的噪音。

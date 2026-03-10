@@ -1,0 +1,179 @@
+[
+  {
+    "id": "informant",
+    "name": "The Informant",
+    "description": "A master of secrets. Uses Intel to predict and outmaneuver enemies.",
+    "maxHp": 85,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "gather_intel",
+      "surveillance",
+      "weak_point_analysis",
+      "calculated_strike"
+    ],
+    "portraitPrompt": "A mysterious rogue in a dark cloak, holding a glowing blue intel orb, fantasy art style, dark background",
+    "complexity": "low",
+    "archetype": ["intel", "precision"],
+    "extendedPool": [
+      "intel_surge",
+      "predictive_strike",
+      "shadow_meld",
+      "information_broker",
+      "deadly_secrets"
+    ]
+  },
+  {
+    "id": "brute",
+    "name": "The Brute",
+    "description": "A resilient warrior. Relies on high health and raw strength.",
+    "maxHp": 70,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "bash",
+      "iron_hide",
+      "rage",
+      "heavy_slam",
+      "endure"
+    ],
+    "portraitPrompt": "A heavily armored fantasy warrior with massive battle scars, wielding a giant warhammer, epic fantasy art style",
+    "complexity": "low",
+    "archetype": ["strength", "survival"],
+    "extendedPool": [
+      "crushing_blow",
+      "thick_skin",
+      "berserker_rage",
+      "last_stand",
+      "unbreakable"
+    ]
+  },
+  {
+    "id": "tactician",
+    "name": "The Tactician",
+    "description": "A strategic mastermind. Uses block and precision to control the battlefield.",
+    "maxHp": 60,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "tactical_block",
+      "calculated_defense",
+      "counter_strike",
+      "battle_plan",
+      "strategic_retreat"
+    ],
+    "portraitPrompt": "A military commander in ornate armor studying tactical maps, surrounded by floating strategy pieces, fantasy art style",
+    "complexity": "medium",
+    "archetype": ["block", "control"],
+    "extendedPool": [
+      "fortify_position",
+      "calculated_risk",
+      "tactical_superiority",
+      "perfect_defense",
+      "checkmate"
+    ]
+  },
+  {
+    "id": "puppeteer",
+    "name": "The Puppeteer",
+    "description": "A dark artist manipulating strings, sealing souls into mechanical bodies to create loyal constructs.",
+    "maxHp": 70,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "scrap_golem",
+      "scrap_golem",
+      "wire_guard",
+      "thread_weave",
+      "thread_lash",
+      "thread_lash"
+    ],
+    "portraitPrompt": "A dark artist manipulating glowing magical strings attached to mechanical puppets, fantasy art style, eerie background",
+    "complexity": "high",
+    "archetype": ["constructs", "summoner"],
+    "extendedPool": [
+      "marionette_dance",
+      "soul_binding",
+      "clockwork_soldier",
+      "puppet_mastery",
+      "grand_design"
+    ],
+    "specialResource": "thread"
+  },
+  {
+    "id": "chronomancer",
+    "name": "The Chronomancer",
+    "description": "A traveler from twisted realities, manipulating the flow of time itself.",
+    "maxHp": 50,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "time_shift",
+      "temporal_anchor",
+      "echo_strike",
+      "echo_strike",
+      "delayed_reaction",
+      "delayed_reaction"
+    ],
+    "portraitPrompt": "A mysterious traveler in a clockwork-themed cloak, manipulating glowing golden time rifts, fantasy art style, cosmic background",
+    "complexity": "high",
+    "archetype": ["time", "delay"],
+    "extendedPool": [
+      "temporal_stasis",
+      "paradox_wave",
+      "future_sight",
+      "time_warp",
+      "eternal_return"
+    ],
+    "specialResource": "timeLayer"
+  },
+  {
+    "id": "alchemist",
+    "name": "The Alchemist",
+    "description": "A scholar pursuing the essence of transformation, viewing chemical reactions as the ultimate truth.",
+    "maxHp": 65,
+    "maxEnergy": 3,
+    "startingDeck": [
+      "strike",
+      "strike",
+      "strike",
+      "defend",
+      "element_spark",
+      "element_spark",
+      "fire_arrow",
+      "fire_arrow",
+      "frost_armor",
+      "transmute"
+    ],
+    "portraitPrompt": "A scholar in a lab coat holding glowing vials of different colored liquids, surrounded by magical runes, fantasy art style, alchemy lab background",
+    "complexity": "high",
+    "archetype": ["elements", "transformation"],
+    "extendedPool": [
+      "elemental_fusion",
+      "volatile_mixture",
+      "philosopher_stone",
+      "grand_transmutation",
+      "catalyst_overload"
+    ],
+    "specialResource": "concoction"
+  }
+]

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768">
+    
+      <defs>
+        <linearGradient id="templeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.4"/>
+          <stop offset="100%" style="stop-color:#0a0a0f;stop-opacity:1"/>
+        </linearGradient>
+      </defs>
+      <rect width="1024" height="768" fill="url(#templeGrad)"/>
+      <path d="M100 768 L100 400 L200 300 L300 400 L300 768 Z" fill="#b91c1c" opacity="0.2"/>
+      <path d="M724 768 L724 400 L824 300 L924 400 L924 768 Z" fill="#b91c1c" opacity="0.2"/>
+      <path d="M350 768 L450 350 L574 350 L674 768 Z" fill="#b91c1c" opacity="0.3"/>
+      <rect x="0" y="700" width="1024" height="68" fill="#b91c1c" opacity="0.4"/>
+    
+  </svg>

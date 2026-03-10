@@ -1,0 +1,1327 @@
+import { GameState, ActionSpec } from '@/core/types';
+import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
+import { TargetingService, CardTarget } from '@/core/combat/targetingService';
+import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
+import { globalEventBus } from '@/core/events/eventBus';
+import { getActionManager } from '@/core/actions/actionManager';
+import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
+import { getEnemyDefById, getCardDefById } from '@/content/narrative/numericSystem';
+import { stateRandomChoice, stateRandomId, stateRandomInt } from '@/infrastructure/rng/stateRandom';
+
+export abstract class BaseAction implements IAction {
+  protected spec: ActionSpec;
+  protected context: IActionContext = { source: 'player' };
+  
+  constructor(spec: ActionSpec) {
+    this.spec = spec;
+  }
+  
+  get type(): string {
+    return this.spec.type;
+  }
+
+  setContext(context: IActionContext): void {
+    this.context = context;
+  }
+  
+  abstract execute(state: GameState, queue: ActionQueue): void;
+  
+  protected resolveTargets(state: GameState, targetType: CardTarget) {
+    return TargetingService.resolveTargets(state, this.context, targetType);
+  }
+
+  protected getContextFromQueue(queue: ActionQueue): IActionContext {
+    return (queue as any)._currentContext || { source: 'player' };
+  }
+}
+
+export class DelayAction extends BaseAction {
+  private turns: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.turns = spec.turns || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    this.context = this.getContextFromQueue(queue);
+    if (!combat || !this.context.card) return;
+
+    combat.player.delayedCards.push({
+      card: this.context.card,
+      turns: this.turns,
+      targetId: this.context.targetId
+    });
+  }
+}
+
+export class ConditionalAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+
+  private evaluateCondition(state: GameState): boolean {
+    const condition = this.spec.condition;
+    if (!condition) return false;
+
+    switch (condition.type) {
+      case 'HasIntel':
+        return (state.player.intel || 0) >= (condition.amount || 0);
+      case 'HasConstruct':
+        return (state.combat?.player.constructs.length || 0) > 0;
+      case 'HasCorruption':
+        return (state.player.corruption || 0) >= (condition.amount || 0);
+      case 'TargetHasStatus': {
+        const combat = state.combat;
+        if (!combat) return false;
+        const targetId = this.context.targetId;
+        const target = targetId === 'player'
+          ? combat.player
+          : combat.enemies.find(e => e.id === targetId);
+        return Boolean(target?.statuses?.[condition.status]);
+      }
+      case 'HasTimeLayer':
+        return (state.combat?.player.timeLayer || 0) >= (condition.amount || 0);
+      case 'HasThread':
+        return (state.combat?.player.thread || 0) >= (condition.amount || 0);
+      case 'HasConcoction':
+        return (state.combat?.player.concoction || 0) >= (condition.amount || 0);
+      default:
+        return false;
+    }
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const actions = this.evaluateCondition(state) ? (this.spec.trueActions || []) : (this.spec.falseActions || []);
+    if (actions.length === 0) return;
+
+    // Push in reverse so execution order matches array order when popped from the front.
+    for (let i = actions.length - 1; i >= 0; i--) {
+      const action = ActionFactoryV2.createAction(actions[i]);
+      queue.pushFront(action, { ...this.context }, 'card');
+    }
+  }
+}
+
+export class ConditionalKillAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const combat = state.combat;
+    const targetId = this.context.targetId;
+    if (!combat || !targetId) return;
+
+    const target = targetId === 'player'
+      ? combat.player
+      : combat.enemies.find(enemy => enemy.id === targetId);
+    if (!target || target.hp > 0) return;
+
+    const actions = this.spec.trueActions || [];
+    for (let i = actions.length - 1; i >= 0; i--) {
+      const action = ActionFactoryV2.createAction(actions[i]);
+      queue.pushFront(action, { ...this.context }, 'card');
+    }
+  }
+}
+
+export class TriggerDelayAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || combat.player.delayedCards.length === 0) return;
+
+    const delayed = combat.player.delayedCards.shift();
+    if (!delayed) return;
+
+    const delayAction = delayed.card.actions.find((a: ActionSpec) => a.type === 'Delay');
+    if (delayAction?.actions) {
+      const manager = getActionManager();
+      if (manager) {
+        delayAction.actions.forEach((spec: ActionSpec) => {
+          const action = ActionFactoryV2.createAction(spec);
+          manager.enqueueUrgentAction(action, { 
+            source: 'player', 
+            targetId: delayed.targetId, 
+            card: delayed.card 
+          }, 'system');
+        });
+      }
+    }
+  }
+}
+
+export class SummonConstructAction extends BaseAction {
+  private unit: string;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.unit = spec.unit || '';
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const construct = this.createConstruct(state);
+    if (!construct) return;
+
+    if (this.unit === 'mega_construct') {
+      combat.player.constructs = [construct];
+    } else if (combat.player.constructs.length < 2) {
+      combat.player.constructs.push(construct);
+    } else {
+      return;
+    }
+
+    globalEventBus.publish({ 
+      type: 'ConstructCreated', 
+      constructId: construct.id, 
+      name: construct.name 
+    });
+  }
+
+  private createConstruct(state: GameState): { id: string; name: string; hp: number; maxHp: number; atk: number; taunt: boolean; overflowDamageToPlayer?: boolean; damageSharePct?: number } | null {
+    const id = stateRandomId(state, 'construct');
+    
+    switch (this.unit) {
+      case 'scrap_golem':
+        return { id, name: 'Scrap Golem', hp: 8, maxHp: 8, atk: 3, taunt: false, damageSharePct: 0.5 };
+      case 'temp_guard':
+        return { id, name: 'Temp Guard', hp: 5, maxHp: 5, atk: 0, taunt: true, overflowDamageToPlayer: true };
+      case 'mega_construct':
+        return { id, name: 'Mega Construct', hp: 50, maxHp: 50, atk: 10, taunt: true };
+      case 'reinforced_golem':
+        return { id, name: 'Reinforced Golem', hp: 12, maxHp: 12, atk: 5, taunt: true };
+      case 'reinforced_golem_plus':
+        return { id, name: 'Reinforced Golem', hp: 16, maxHp: 16, atk: 6, taunt: true };
+      default:
+        return null;
+    }
+  }
+}
+
+export class SummonMegaConstructAction extends BaseAction {
+  private baseHp: number;
+  private baseAtk: number;
+  private hpPerConstruct: number;
+  private atkPerConstruct: number;
+  private emptyPenaltyTrueDamage: number;
+  private failureConstructHp: number;
+  private failureConstructAtk: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    // Defaults chosen so consuming 2 constructs recreates the previous 50 HP / 10 ATK benchmark.
+    this.baseHp = spec.baseHp ?? 20;
+    this.baseAtk = spec.baseAtk ?? 4;
+    this.hpPerConstruct = spec.hpPerConstruct ?? 15;
+    this.atkPerConstruct = spec.atkPerConstruct ?? 4;
+    this.emptyPenaltyTrueDamage = Math.max(0, Math.floor(spec.emptyPenaltyTrueDamage ?? 15));
+    this.failureConstructHp = Math.max(1, Math.floor(spec.failureConstructHp ?? 10));
+    this.failureConstructAtk = Math.max(0, Math.floor(spec.failureConstructAtk ?? 0));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const consumed = combat.player.constructs.length;
+    if (consumed <= 0) {
+      if (this.emptyPenaltyTrueDamage > 0) {
+        combatSystem.applyDamage(state, {
+          amount: this.emptyPenaltyTrueDamage,
+          sourceType: 'system',
+          sourceId: 'fusion_backlash',
+          targetType: 'player',
+          targetId: 'player',
+          modifiers: [],
+          isTrueDamage: true,
+          ignoreBlock: true
+        });
+      }
+      const failedId = stateRandomId(state, 'construct');
+      combat.player.constructs = [{
+        id: failedId,
+        name: 'Malformed Stitchwork',
+        hp: this.failureConstructHp,
+        maxHp: this.failureConstructHp,
+        atk: this.failureConstructAtk,
+        taunt: true,
+        overflowDamageToPlayer: true
+      }];
+      combat.warpPulse = {
+        text: `巨构熔接失败：血肉补料 ${this.emptyPenaltyTrueDamage}，生成失败品 ${this.failureConstructHp}/${this.failureConstructAtk}`,
+        tone: 'danger'
+      };
+      globalEventBus.publish({
+        type: 'ConstructCreated',
+        constructId: failedId,
+        name: 'Malformed Stitchwork'
+      });
+      return;
+    }
+
+    const hp = Math.max(1, this.baseHp + consumed * this.hpPerConstruct);
+    const atk = Math.max(0, this.baseAtk + consumed * this.atkPerConstruct);
+    const id = stateRandomId(state, 'construct');
+
+    combat.player.constructs = [{
+      id,
+      name: 'Mega Construct',
+      hp,
+      maxHp: hp,
+      atk,
+      taunt: true
+    }];
+
+    combat.warpPulse = {
+      text: `巨构熔接：吞并 ${consumed} 构造体，生成 ${hp}/${atk} 巨构体`,
+      tone: 'warp'
+    };
+
+    globalEventBus.publish({
+      type: 'ConstructCreated',
+      constructId: id,
+      name: 'Mega Construct'
+    });
+  }
+}
+
+export class BuffConstructsAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    combat.player.constructs.forEach(c => {
+      c.atk += this.amount;
+    });
+  }
+}
+
+export class ConstructOverdriveAction extends BaseAction {
+  private multiplier: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.multiplier = Math.max(1, Math.floor(spec.multiplier || spec.amount || 1));
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const aliveEnemies = TargetingService.getAliveEnemies(state);
+    if (aliveEnemies.length === 0) return;
+
+    combat.player.constructs.forEach(c => {
+      const target = stateRandomChoice(state, aliveEnemies);
+      if (!target) return;
+      
+      const damageContext: DamageContext = {
+        amount: c.atk * this.multiplier,
+        sourceType: 'player',
+        sourceId: 'player',
+        targetType: 'enemy',
+        targetId: target.id,
+        modifiers: [],
+        isTrueDamage: false,
+        ignoreBlock: false
+      };
+
+      combatSystem.applyDamage(state, damageContext);
+    });
+
+    combat.player.constructs = [];
+  }
+}
+
+export class HealConstructAction extends BaseAction {
+  private consumeOtherConstructs: number;
+  private constructAtkBonus: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.consumeOtherConstructs = Math.max(0, Math.floor(spec.consumeOtherConstructs || 0));
+    this.constructAtkBonus = Math.max(0, Math.floor(spec.constructAtkBonus || 0));
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || combat.player.constructs.length === 0) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const constructs = combat.player.constructs;
+    const targetIndex = constructs.reduce((bestIdx, cur, idx, arr) => {
+      const best = arr[bestIdx];
+      const curMissing = Math.max(0, cur.maxHp - cur.hp);
+      const bestMissing = Math.max(0, best.maxHp - best.hp);
+      return curMissing > bestMissing ? idx : bestIdx;
+    }, 0);
+    const target = constructs[targetIndex];
+
+    if (this.consumeOtherConstructs > 0) {
+      const availableOthers = constructs.length - 1;
+      if (availableOthers < this.consumeOtherConstructs) {
+        combat.warpPulse = { text: '核心重构失败：缺少可拆解的其他构造体', tone: 'danger' };
+        return;
+      }
+      let toConsume = this.consumeOtherConstructs;
+      for (let i = constructs.length - 1; i >= 0 && toConsume > 0; i -= 1) {
+        if (i === targetIndex) continue;
+        const [removed] = constructs.splice(i, 1);
+        if (removed) {
+          globalEventBus.publish({ type: 'ConstructDestroyed', constructId: removed.id } as any);
+          toConsume -= 1;
+        }
+      }
+    }
+
+    target.hp = target.maxHp;
+    if (this.constructAtkBonus > 0) {
+      target.atk += this.constructAtkBonus;
+    }
+    combat.warpPulse = {
+      text: `核心重构完成：${target.name} 修复至满值${this.constructAtkBonus > 0 ? `，ATK +${this.constructAtkBonus}` : ''}`,
+      tone: 'faith'
+    };
+  }
+}
+
+export class AddRandomElementAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const elements = ['Fire', 'Frost', 'Lightning', 'Acid', 'Arcane'];
+    for (let i = 0; i < this.amount; i++) {
+      combat.player.elements.push(elements[stateRandomInt(state, elements.length)]);
+    }
+  }
+}
+
+export class AddElementAction extends BaseAction {
+  private element: string;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.element = spec.element || '';
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || !this.element) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    combat.player.elements.push(this.element);
+  }
+}
+
+export class TriggerReactionsAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const uniqueElements = new Set(combat.player.elements);
+    const aliveEnemies = TargetingService.getAliveEnemies(state);
+
+    if (uniqueElements.has('Fire') && uniqueElements.has('Acid')) {
+      aliveEnemies.forEach(e => {
+        combatSystem.applyStatus(state, 'enemy', e.id, 'Burn', 6);
+      });
+    }
+
+    if (uniqueElements.has('Frost') && uniqueElements.has('Lightning')) {
+      aliveEnemies.forEach(e => {
+        combatSystem.applyStatus(state, 'enemy', e.id, 'Weak', 2);
+      });
+    }
+
+    if (uniqueElements.has('Fire') && uniqueElements.has('Lightning')) {
+      aliveEnemies.forEach(e => {
+        const damageContext: DamageContext = {
+          amount: 12,
+          sourceType: 'player',
+          sourceId: 'player',
+          targetType: 'enemy',
+          targetId: e.id,
+          modifiers: [],
+          isTrueDamage: false,
+          ignoreBlock: false
+        };
+        combatSystem.applyDamage(state, damageContext);
+      });
+    }
+
+    combat.player.elements = [];
+  }
+}
+
+export class TransmuteElementsAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const heal = combat.player.elements.length * 2;
+    combat.player.hp = Math.min(combat.player.maxHp, combat.player.hp + heal);
+    state.player.hp = combat.player.hp;
+    combat.player.elements = [];
+  }
+}
+
+export class EmergencyBlockAction extends BaseAction {
+  private bonus: number;
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.bonus = spec.bonus || 0;
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const blockGain = combat.player.hp < combat.player.maxHp * 0.3 ? this.bonus : this.amount;
+    combatSystem.gainBlock(state, 'player', 'player', blockGain);
+  }
+}
+
+export class ReviveAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const healAmount = Math.max(0, Math.floor(combat.player.damageTakenLastTurn || 0));
+    if (healAmount <= 0) {
+      combat.warpPulse = { text: '时序回溯未捕获到可恢复的伤势', tone: 'neutral' };
+      return;
+    }
+    combat.player.hp = Math.min(combat.player.maxHp, combat.player.hp + healAmount);
+    state.player.hp = combat.player.hp;
+    combat.warpPulse = { text: `时序回溯：恢复上回合损失的 ${healAmount} 点生命`, tone: 'faith' };
+  }
+}
+
+export class ReturnLastCardAction extends BaseAction {
+  private costModifier: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.costModifier = spec.costModifier || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || !combat.player.lastPlayedCard) return;
+
+    this.context = this.getContextFromQueue(queue);
+
+    const returnedCard = { ...combat.player.lastPlayedCard, tempCost: this.costModifier };
+    combat.hand.push(returnedCard as any);
+  }
+}
+
+export class DoubleStatusAction extends BaseAction {
+  private target: CardTarget;
+  private status: string;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Enemy';
+    this.status = spec.status || '';
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    if (!this.status) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      if (targetInfo.entity.hp <= 0) return;
+      
+      const currentAmount = targetInfo.entity.statuses[this.status] || 0;
+      if (currentAmount > 0) {
+        combatSystem.applyStatus(
+          state,
+          targetInfo.type,
+          targetInfo.id,
+          this.status,
+          currentAmount
+        );
+      }
+    });
+  }
+}
+
+export class GainDevotionAction extends BaseAction {
+  private target: CardTarget;
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Self';
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      targetInfo.entity.devotion = Math.min(100, (targetInfo.entity.devotion || 0) + this.amount);
+      globalEventBus.publish({
+        type: 'AxisChanged',
+        axis: 'devotion',
+        amount: this.amount,
+        targetType: targetInfo.type,
+        targetId: targetInfo.id
+      });
+    });
+  }
+}
+
+export class GainCorruptionAxisAction extends BaseAction {
+  private target: CardTarget;
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Self';
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      targetInfo.entity.corruptionAxis = Math.min(100, (targetInfo.entity.corruptionAxis || 0) + this.amount);
+      globalEventBus.publish({
+        type: 'AxisChanged',
+        axis: 'corruption',
+        amount: this.amount,
+        targetType: targetInfo.type,
+        targetId: targetInfo.id
+      });
+    });
+  }
+}
+
+export class GainCorruptionAction extends BaseAction {
+  private target: CardTarget;
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Self';
+    this.amount = spec.amount || 0;
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      if (targetInfo.type === 'player') {
+        state.player.corruption = Math.min(100, Math.max(0, (state.player.corruption || 0) + this.amount));
+        combat.player.corruptionAxis = Math.min(100, Math.max(0, (combat.player.corruptionAxis || 0) + this.amount));
+      } else {
+        targetInfo.entity.corruptionAxis = Math.min(100, Math.max(0, (targetInfo.entity.corruptionAxis || 0) + this.amount));
+      }
+      globalEventBus.publish({
+        type: 'AxisChanged',
+        axis: 'corruption',
+        amount: this.amount,
+        targetType: targetInfo.type,
+        targetId: targetInfo.id
+      });
+    });
+  }
+}
+
+export class PurgeFearAndCorruptionAction extends BaseAction {
+  private target: CardTarget;
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Self';
+    this.amount = spec.amount || 20;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      if (targetInfo.entity.statuses['Fear']) {
+        combatSystem.applyStatus(state, targetInfo.type, targetInfo.id, 'Fear', -targetInfo.entity.statuses['Fear']);
+      }
+      targetInfo.entity.corruptionAxis = Math.max(0, (targetInfo.entity.corruptionAxis || 0) - this.amount);
+    });
+  }
+}
+
+export class GainIntelAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    state.player.intel += this.amount;
+    if (state.combat) {
+      (state.combat.player as any).intel = state.player.intel;
+      state.combat.warpPulse = { text: `Intel +${this.amount} (${state.player.intel})`, tone: 'faith' };
+    }
+  }
+}
+
+export class SpendIntelAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    state.player.intel = Math.max(0, state.player.intel - this.amount);
+    if (state.combat) {
+      (state.combat.player as any).intel = state.player.intel;
+      state.combat.warpPulse = { text: `Intel -${this.amount} (${state.player.intel})`, tone: 'neutral' };
+    }
+  }
+}
+
+export class PredictorAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+
+    const shouldAttack = combat.player.block < 8 && combat.player.hp > 12;
+    if (shouldAttack) {
+      const ctx: DamageContext = {
+        amount: 8,
+        sourceType: 'enemy',
+        sourceId: this.context.sourceId || this.context.source || 'enemy',
+        targetType: 'player',
+        targetId: 'player',
+        modifiers: [],
+        isTrueDamage: false,
+        ignoreBlock: false
+      };
+      combatSystem.applyDamage(state, ctx);
+      return;
+    }
+
+    const sourceId = this.context.sourceId || this.context.source;
+    if (typeof sourceId === 'string') {
+      const selfEnemy = combat.enemies.find(e => e.id === sourceId);
+      if (selfEnemy && selfEnemy.hp > 0) {
+        combatSystem.gainBlock(state, 'enemy', selfEnemy.id, 10);
+      }
+    }
+  }
+}
+
+export class RedirectIntentAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, 'Enemy');
+    const targetEnemy = targets.find(t => t.type === 'enemy')?.entity as any;
+    if (!targetEnemy) return;
+
+    const def = getEnemyDefById(targetEnemy.defId);
+    const intents = Array.isArray(def?.intent_policy) ? def.intent_policy.map((policy) => policy.intent).filter(Boolean) : [];
+    const alternatives = intents.filter((intent) => intent !== targetEnemy.nextIntent);
+    const nextIntent = stateRandomChoice(state, alternatives.length > 0 ? alternatives : intents);
+    if (!nextIntent) return;
+
+    targetEnemy.nextIntent = nextIntent;
+    if (combat) {
+      combat.warpPulse = {
+        text: `${targetEnemy.name} 的意图被改写为 ${nextIntent}`,
+        tone: 'faith'
+      };
+    }
+  }
+}
+
+export class MutateCardAction extends BaseAction {
+  private mutateTo: string;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.mutateTo = String((spec as any).mutateTo || '');
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || !this.mutateTo) return;
+    const targetCard = getCardDefById(this.mutateTo);
+    if (!targetCard) return;
+
+    const clone = { ...(targetCard as any), instanceId: stateRandomId(state, 'mutate') } as any;
+    combat.discardPile.push(clone);
+    state.player.deck.push(clone);
+    combat.warpPulse = {
+      text: `${this.context.card?.name || 'A card'} mutates into ${targetCard.name}`,
+      tone: 'warp'
+    };
+  }
+}
+
+export class EmperorMercyAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+
+    const player = combat.player;
+    if (player.statuses['Fear']) delete player.statuses['Fear'];
+    if (player.statuses['Corruption']) delete player.statuses['Corruption'];
+    player.hp = Math.min(player.maxHp, player.hp + 5);
+    state.player.hp = player.hp;
+  }
+}
+
+export class PurgeEnemyBuffsAction extends BaseAction {
+  private zealPerBuff: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.zealPerBuff = spec.zealPerBuff || 3;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targetId = this.context.targetId;
+
+    if (!targetId) return;
+
+    const target = combat.enemies.find(e => e.id === targetId);
+    if (!target || !target.statuses) return;
+
+    const buffStatuses = ['Strength', 'Artifact', 'Regen', 'Barricade', 'Intangible', 'Buffer'];
+    let buffsRemoved = 0;
+
+    for (const buff of buffStatuses) {
+      if (target.statuses[buff]) {
+        delete target.statuses[buff];
+        buffsRemoved++;
+      }
+    }
+
+    if (buffsRemoved > 0) {
+      const zealGained = buffsRemoved * this.zealPerBuff;
+      if (!combat.player.statuses) combat.player.statuses = {};
+      const currentZeal = (combat.player.statuses['Zeal'] as number) || 0;
+      combat.player.statuses['Zeal'] = currentZeal + zealGained;
+      combat.warpPulse = { 
+        text: `Purged ${buffsRemoved} buff(s), gained ${zealGained} Zeal`, 
+        tone: 'faith' 
+      };
+    }
+  }
+}
+
+export class PrecisionThrowDamageAction extends BaseAction {
+  private amount: number;
+  private bonus: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 6;
+    this.bonus = spec.bonus || 9;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const targetId = this.context.targetId;
+    
+    if (!targetId) return;
+    
+    const target = combat.enemies.find(e => e.id === targetId);
+    if (!target) return;
+    
+    const hasVulnerable = target.statuses && target.statuses['Vulnerable'];
+    const damage = hasVulnerable ? this.amount + this.bonus : this.amount;
+    
+    const damageContext: DamageContext = {
+      amount: damage,
+      sourceType: 'player',
+      sourceId: 'player',
+      targetType: 'enemy',
+      targetId: targetId,
+      modifiers: [],
+      isTrueDamage: false,
+      ignoreBlock: false
+    };
+    
+    combatSystem.applyDamage(state, damageContext);
+    combat.warpPulse = {
+      text: hasVulnerable ? `Precision throw hits vulnerable target for ${damage}!` : `Precision throw deals ${damage} damage`,
+      tone: 'neutral'
+    };
+  }
+}
+
+export class ForceEnemyAttackAction extends BaseAction {
+  private damage: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.damage = spec.amount || 5;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    
+    const aliveEnemies = combat.enemies.filter(e => e.hp > 0);
+    if (aliveEnemies.length < 2) return;
+    
+    const attacker = aliveEnemies[0];
+    const target = aliveEnemies[1];
+    
+    const damageContext: DamageContext = {
+      amount: this.damage,
+      sourceType: 'enemy',
+      sourceId: attacker.id,
+      targetType: 'enemy',
+      targetId: target.id,
+      modifiers: [],
+      isTrueDamage: true,
+      ignoreBlock: true
+    };
+    
+    combatSystem.applyDamage(state, damageContext);
+    combat.warpPulse = {
+      text: `${attacker.name || attacker.id} attacks ${target.name || target.id}!`,
+      tone: 'danger'
+    };
+  }
+}
+
+export class SolventDamageAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 3;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const targetId = this.context.targetId;
+    
+    if (!targetId) return;
+    
+    const target = combat.enemies.find(e => e.id === targetId);
+    if (!target) return;
+    
+    const block = target.block || 0;
+    const damage = this.amount + Math.floor(block / 2);
+    
+    const damageContext: DamageContext = {
+      amount: damage,
+      sourceType: 'player',
+      sourceId: 'player',
+      targetType: 'enemy',
+      targetId: targetId,
+      modifiers: [],
+      isTrueDamage: false,
+      ignoreBlock: false
+    };
+    
+    combatSystem.applyDamage(state, damageContext);
+    combat.warpPulse = {
+      text: `Solvent deals ${damage} damage (block bonus: ${Math.floor(block / 2)})`,
+      tone: 'neutral'
+    };
+  }
+}
+
+export class GainTimeLayerAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.timeLayer = Math.min(10, (combat.player.timeLayer || 0) + this.amount);
+    combat.warpPulse = { text: `时间层 +${this.amount} (${combat.player.timeLayer})`, tone: 'warp' };
+  }
+}
+
+export class SpendTimeLayerAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.timeLayer = Math.max(0, (combat.player.timeLayer || 0) - this.amount);
+    combat.warpPulse = { text: `时间层 -${this.amount} (${combat.player.timeLayer})`, tone: 'neutral' };
+  }
+}
+
+export class GainThreadAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.thread = Math.min(10, (combat.player.thread || 0) + this.amount);
+    combat.warpPulse = { text: `线程 +${this.amount} (${combat.player.thread})`, tone: 'faith' };
+  }
+}
+
+export class SpendThreadAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.thread = Math.max(0, (combat.player.thread || 0) - this.amount);
+    combat.warpPulse = { text: `线程 -${this.amount} (${combat.player.thread})`, tone: 'neutral' };
+  }
+}
+
+export class GainConcoctionAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.concoction = Math.min(10, (combat.player.concoction || 0) + this.amount);
+    combat.warpPulse = { text: `调配 +${this.amount} (${combat.player.concoction})`, tone: 'faith' };
+  }
+}
+
+export class SpendConcoctionAction extends BaseAction {
+  private amount: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.concoction = Math.max(0, (combat.player.concoction || 0) - this.amount);
+    combat.warpPulse = { text: `调配 -${this.amount} (${combat.player.concoction})`, tone: 'neutral' };
+  }
+}
+
+export class SpendAllIntelAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const intelSpent = state.player.intel || 0;
+    state.player.intel = 0;
+    combat.warpPulse = { text: `情报消耗 ${intelSpent}`, tone: 'neutral' };
+  }
+}
+
+export class SpendAllConcoctionAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const concoctionSpent = combat.player.concoction || 0;
+    combat.player.concoction = 0;
+    combat.warpPulse = { text: `调配消耗 ${concoctionSpent}`, tone: 'neutral' };
+  }
+}
+
+export class RewindCombatStateAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.hp = combat.player.maxHp;
+    combat.player.block = 0;
+    combat.player.statuses = {};
+    combat.warpPulse = { text: '时间回溯：状态重置', tone: 'warp' };
+  }
+}
+
+export class BindEnemySoulAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const targetId = this.context.targetId;
+    const enemy = combat.enemies.find(e => e.id === targetId);
+    if (!enemy || enemy.hp > 0) return;
+    
+    const construct = {
+      id: `soulbound_${enemy.id}_${Date.now()}`,
+      name: `${enemy.name}之魂`,
+      hp: Math.floor(enemy.maxHp * 0.5),
+      maxHp: Math.floor(enemy.maxHp * 0.5),
+      atk: Math.floor((enemy as any).baseDamage || 5),
+      taunt: false
+    };
+    
+    combat.player.constructs = combat.player.constructs || [];
+    combat.player.constructs.push(construct);
+    combat.warpPulse = { text: `灵魂绑定：${construct.name}`, tone: 'faith' };
+  }
+}
+
+export class CreateConstructAction extends BaseAction {
+  private name: string;
+  private hp: number;
+  private atk: number;
+  private taunt: boolean;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.name = spec.name || '构造体';
+    this.hp = spec.hp || 10;
+    this.atk = spec.atk || 6;
+    this.taunt = spec.taunt || false;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const construct = {
+      id: `construct_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: this.name,
+      hp: this.hp,
+      maxHp: this.hp,
+      atk: this.atk,
+      taunt: this.taunt
+    };
+    
+    combat.player.constructs = combat.player.constructs || [];
+    combat.player.constructs.push(construct);
+    combat.warpPulse = { text: `创建构造体：${this.name}`, tone: 'faith' };
+  }
+}
+
+export class BuffAllConstructsAction extends BaseAction {
+  private hpBonus: number;
+  private atkBonus: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.hpBonus = spec.hpBonus || 0;
+    this.atkBonus = spec.atkBonus || 0;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || !combat.player.constructs) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.player.constructs.forEach(c => {
+      c.maxHp += this.hpBonus;
+      c.hp = Math.min(c.hp + this.hpBonus, c.maxHp);
+      c.atk += this.atkBonus;
+    });
+    combat.warpPulse = { text: `构造体强化 +${this.hpBonus}HP +${this.atkBonus}ATK`, tone: 'faith' };
+  }
+}
+
+export class TriggerAllReactionsAction extends BaseAction {
+  private times: number;
+  
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.times = spec.times || 1;
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    const elements = combat.player.elements || [];
+    if (elements.length < 2) return;
+    
+    const uniqueElements = new Set(elements).size;
+    let totalDamage = 0;
+    for (let i = 0; i < this.times; i++) {
+      totalDamage += elements.length * 4 + Math.max(0, uniqueElements - 1) * 2;
+    }
+    
+    combat.enemies.forEach(enemy => {
+      if (enemy.hp > 0) {
+        enemy.hp -= totalDamage;
+      }
+    });
+    combat.warpPulse = { text: `元素反应 ×${this.times}：${totalDamage}伤害`, tone: 'faith' };
+  }
+}
+
+export class TransformHandToRareAction extends BaseAction {
+  constructor(spec: ActionSpec) {
+    super(spec);
+  }
+  
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    
+    this.context = this.getContextFromQueue(queue);
+    combat.warpPulse = { text: '手牌转化：稀有卡牌', tone: 'warp' };
+  }
+}

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "first_blood",
+    "title": "初次远征",
+    "description": "完成一局游戏（无论胜负）。",
+    "hidden": false,
+    "conditions": {
+      "minReachedFloor": 1
+    },
+    "rewards": {
+      "backgrounds": ["bg_military_archive"]
+    }
+  },
+  {
+    "id": "act1_survivor",
+    "title": "穿越前线",
+    "description": "抵达第4层或以上。",
+    "conditions": {
+      "minReachedFloor": 4
+    },
+    "rewards": {
+      "unlockedPoolIds": ["gather_intel", "wire_guard"]
+    }
+  },
+  {
+    "id": "boss_slayer",
+    "title": "弑首者",
+    "description": "获得一次完整通关胜利。",
+    "conditions": {
+      "requireVictory": true
+    },
+    "rewards": {
+      "startingRelics": ["lantern"],
+      "backgrounds": ["bg_cathedral_black"]
+    }
+  },
+  {
+    "id": "chronomancer_master",
+    "title": "时间主宰",
+    "description": "使用 Chronomancer 通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "chronomancer"
+    },
+    "rewards": {
+      "cardSkins": ["skin_time_chronomancer"],
+      "unlockedPoolIds": ["time_warp", "time_bomb"]
+    }
+  },
+  {
+    "id": "corruption_lord",
+    "title": "腐化之主",
+    "description": "腐化值达到100并通关。",
+    "conditions": {
+      "requireVictory": true,
+      "minCorruption": 100
+    },
+    "rewards": {
+      "startingRelics": ["martyrs_mark"],
+      "backgrounds": ["bg_chaos_rift"]
+    }
+  },
+  {
+    "id": "faith_kept",
+    "title": "信仰未泯",
+    "description": "以虔诚值50+结束一局。",
+    "conditions": {
+      "minDevotion": 50
+    },
+    "rewards": {
+      "startingRelics": ["inquisitor_rosary"]
+    }
+  },
+  {
+    "id": "relic_hoarder",
+    "title": "圣物收藏家",
+    "description": "单局持有6件及以上遗物。",
+    "conditions": {
+      "minRelicCount": 6
+    },
+    "rewards": {
+      "unlockedPoolIds": ["anchor", "vajra"]
+    }
+  },
+  {
+    "id": "thin_deck_doctrine",
+    "title": "极简主义教条",
+    "description": "单局结束时牌库不超过12张。",
+    "conditions": {
+      "maxDeckSize": 12
+    },
+    "rewards": {
+      "unlockedPoolIds": ["go_dark"]
+    }
+  },
+  {
+    "id": "quartermaster",
+    "title": "军需主管",
+    "description": "单局获得至少10点 Requisition。",
+    "conditions": {
+      "minEarnedRequisition": 10
+    },
+    "rewards": {
+      "unlockedPoolIds": ["chain_reaction"]
+    }
+  },
+  {
+    "id": "warp_listener",
+    "title": "聆听亚空间",
+    "description": "单局获得至少3点 Warp Echoes。",
+    "conditions": {
+      "minEarnedWarpEchoes": 3
+    },
+    "rewards": {
+      "backgrounds": ["bg_warp_observatory"]
+    }
+  },
+  {
+    "id": "martyr_memory",
+    "title": "殉道遗音",
+    "description": "在一次结算中生成殉道者传承。",
+    "conditions": {
+      "requiresMartyrLegacyCreated": true
+    },
+    "rewards": {
+      "cardSkins": ["skin_martyr_echo"]
+    }
+  },
+  {
+    "id": "iron_survivor",
+    "title": "铁血余烬",
+    "description": "在最大生命值30%以下完成一局胜利。",
+    "conditions": {
+      "requireVictory": true,
+      "maxCurrentHpPctAtEnd": 0.3
+    },
+    "rewards": {
+      "startingRelics": ["vajra"]
+    }
+  }
+]
+

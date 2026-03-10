@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768">
+    
+      <defs>
+        <linearGradient id="vaultGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#0a0a0f;stop-opacity:1"/>
+        </linearGradient>
+        <filter id="vaultGlow">
+          <feGaussianBlur stdDeviation="5" result="glow"/>
+          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="768" fill="url(#vaultGrad)"/>
+      <rect x="200" y="200" width="624" height="400" fill="#1a1a1a" opacity="0.4" rx="20"/>
+      <rect x="220" y="220" width="584" height="360" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.3" rx="15"/>
+      <circle cx="512" cy="400" r="80" fill="#fbbf24" opacity="0.15" filter="url(#vaultGlow)"/>
+      <rect x="0" y="700" width="1024" height="68" fill="#1a1a1a" opacity="0.5"/>
+      <text x="512" y="150" text-anchor="middle" font-family="serif" font-size="48" fill="#fbbf24" opacity="0.3">🏛</text>
+    
+  </svg>

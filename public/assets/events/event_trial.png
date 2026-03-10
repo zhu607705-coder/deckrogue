@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#1a1a2e;stop-opacity:0.9"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="128" height="128" fill="url(#bg)" rx="8"/>
+  <rect x="4" y="4" width="120" height="120" fill="none" stroke="#dc2626" stroke-width="2" rx="5.333333333333333" opacity="0.6"/>
+  <text x="64" y="54" text-anchor="middle" font-family="serif" font-size="32" fill="#dc2626" filter="url(#glow)">⚖</text>
+  <text x="64" y="89.6" text-anchor="middle" font-family="sans-serif" font-size="7.111111111111111" fill="#a0a0a0">Event Trial</text>
+  <text x="64" y="106.66666666666666" text-anchor="middle" font-family="sans-serif" font-size="5.333333333333333" fill="#666">Trial of Faith</text>
+</svg>

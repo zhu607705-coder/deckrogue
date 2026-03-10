@@ -1,0 +1,210 @@
+{
+  "hexaghost": {
+    "bossId": "hexaghost",
+    "phases": [
+      {
+        "id": "ember_veil",
+        "name": "Ember Veil",
+        "triggerHpPctLte": 1,
+        "hint": "常态压制，观察多段灼烧与撞击节奏。"
+      },
+      {
+        "id": "phantom_furnace",
+        "name": "Phantom Furnace",
+        "triggerHpPctLte": 0.66,
+        "hint": "进入熔炉阶段：幽影分身开始持续加入战场。",
+        "onEnter": {
+          "gainBlock": 24,
+          "gainStatuses": {
+            "Strength": 2
+          },
+          "summons": [
+            {
+              "unitId": "fission_small",
+              "count": 2,
+              "nameOverride": "Hex Shade",
+              "hpScale": 1.1
+            }
+          ],
+          "warpPulse": "Hexaghost fractures into spectral shades as the furnace opens."
+        },
+        "mechanics": {
+          "periodicSummon": {
+            "unitId": "fission_small",
+            "nameOverride": "Hex Shade",
+            "everyEnemyTurns": 2,
+            "maxActive": 2,
+            "hpScale": 1.05
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 3,
+            "statuses": {
+              "Weak": 1
+            },
+            "text": "Hexaghost exhales cinders that sap your strength."
+          }
+        }
+      },
+      {
+        "id": "eclipse_pyre",
+        "name": "Eclipse Pyre",
+        "triggerHpPctLte": 0.3,
+        "hint": "濒死狂暴：召唤更频繁，并以幽焰脉冲压制玩家。",
+        "onEnter": {
+          "gainBlock": 20,
+          "gainStatuses": {
+            "Strength": 2
+          },
+          "summons": [
+            {
+              "unitId": "barrier",
+              "count": 1,
+              "nameOverride": "Pyre Warden",
+              "hpScale": 0.9
+            }
+          ],
+          "warpPulse": "Hexaghost collapses into an eclipse pyre. The arena burns with spectral ash."
+        },
+        "mechanics": {
+          "periodicSummon": {
+            "unitId": "fission_small",
+            "nameOverride": "Hex Shade",
+            "everyEnemyTurns": 1,
+            "maxActive": 3,
+            "hpScale": 1.08
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 6,
+            "statuses": {
+              "Vulnerable": 1
+            },
+            "text": "Eclipse embers lash through the arena."
+          }
+        }
+      }
+    ]
+  },
+  "time_guardian": {
+    "bossId": "time_guardian",
+    "phases": [
+      {
+        "id": "chronal_lock",
+        "name": "Chronal Lock",
+        "triggerHpPctLte": 1,
+        "hint": "标准时间打击与回复循环。"
+      },
+      {
+        "id": "time_reversal",
+        "name": "Time Reversal",
+        "triggerHpPctLte": 0.5,
+        "hint": "半血后开始回响玩家上一回合的伤害牌。",
+        "onEnter": {
+          "gainStatuses": {
+            "Dexterity": 1
+          },
+          "warpPulse": "The Guardian tears a loop open and begins echoing your past attacks."
+        },
+        "mechanics": {
+          "echoLastPlayerAttack": {
+            "damageScale": 0.7,
+            "minDamage": 6,
+            "maxDamage": 20
+          }
+        }
+      }
+    ]
+  },
+  "puppet_queen": {
+    "bossId": "puppet_queen",
+    "phases": [
+      {
+        "id": "string_theater",
+        "name": "String Theater",
+        "triggerHpPctLte": 1,
+        "hint": "常规召唤与指挥阶段，优先清理傀儡。"
+      },
+      {
+        "id": "coercive_ballet",
+        "name": "Coercive Ballet",
+        "triggerHpPctLte": 0.6,
+        "hint": "中段开始操控玩家手牌并强化场上傀儡。",
+        "onEnter": {
+          "gainBlock": 18,
+          "summons": [
+            {
+              "unitId": "fission_small",
+              "count": 2,
+              "nameOverride": "Marionette Shard",
+              "hpScale": 1
+            }
+          ],
+          "warpPulse": "Silken threads cut into your hands as the Queen begins her ballet."
+        },
+        "mechanics": {
+          "periodicSummon": {
+            "unitId": "fission_small",
+            "nameOverride": "Marionette Shard",
+            "everyEnemyTurns": 2,
+            "maxActive": 3,
+            "hpScale": 1.0
+          },
+          "buffSummonedAllies": {
+            "everyEnemyTurns": 1,
+            "strength": 1,
+            "block": 4
+          },
+          "hijackHand": {
+            "everyEnemyTurns": 1,
+            "discardCount": 1,
+            "fallbackStatuses": {
+              "Weak": 1
+            }
+          }
+        }
+      },
+      {
+        "id": "grand_marionette",
+        "name": "Grand Marionette",
+        "triggerHpPctLte": 0.3,
+        "hint": "后段极限操控：每回合撕扯手牌并强化残余傀儡。",
+        "onEnter": {
+          "gainStatuses": {
+            "Strength": 1
+          },
+          "summons": [
+            {
+              "unitId": "barrier",
+              "count": 1,
+              "nameOverride": "Stage Butler",
+              "hpScale": 0.9
+            }
+          ],
+          "warpPulse": "The stage lights flare. The Queen seizes the strings of fate directly."
+        },
+        "mechanics": {
+          "buffSummonedAllies": {
+            "everyEnemyTurns": 1,
+            "strength": 2,
+            "block": 6
+          },
+          "hijackHand": {
+            "everyEnemyTurns": 1,
+            "discardCount": 1,
+            "fallbackStatuses": {
+              "Frail": 1
+            }
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 4,
+            "statuses": {
+              "Weak": 1
+            },
+            "text": "Puppet strings constrict and tear at your stance."
+          }
+        }
+      }
+    ]
+  }
+}

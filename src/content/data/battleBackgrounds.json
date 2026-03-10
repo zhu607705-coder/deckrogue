@@ -1,0 +1,140 @@
+{
+  "themes": {
+    "slime_swamp": {
+      "name": "腐化沼泽",
+      "image": "/assets/backgrounds/bg_slime_swamp.png",
+      "palette": "毒绿色、深紫色",
+      "tints": {
+        "a": "rgba(30, 120, 74, 0.22)",
+        "b": "rgba(104, 28, 150, 0.18)"
+      }
+    },
+    "goblin_mine": {
+      "name": "废弃矿洞",
+      "image": "/assets/backgrounds/bg_goblin_mine.png",
+      "palette": "暗褐色、橙黄色火光",
+      "tints": {
+        "a": "rgba(120, 62, 24, 0.20)",
+        "b": "rgba(214, 119, 39, 0.12)"
+      }
+    },
+    "cultist_altar": {
+      "name": "黑暗祭坛",
+      "image": "/assets/backgrounds/bg_cultist_altar.png",
+      "palette": "深紫色、暗红色",
+      "tints": {
+        "a": "rgba(109, 40, 217, 0.24)",
+        "b": "rgba(153, 27, 27, 0.16)"
+      }
+    },
+    "worm_nest": {
+      "name": "地下巢穴",
+      "image": "/assets/backgrounds/bg_worm_nest.png",
+      "palette": "泥土色、骨白色",
+      "tints": {
+        "a": "rgba(120, 83, 52, 0.18)",
+        "b": "rgba(148, 163, 184, 0.08)"
+      }
+    },
+    "mech_factory": {
+      "name": "机械工坊",
+      "image": "/assets/backgrounds/bg_mech_factory.png",
+      "palette": "金属灰、电弧蓝",
+      "tints": {
+        "a": "rgba(30, 64, 175, 0.18)",
+        "b": "rgba(56, 189, 248, 0.14)"
+      }
+    },
+    "symbiote_lab": {
+      "name": "生物实验室",
+      "image": "/assets/backgrounds/bg_symbiote_lab.png",
+      "palette": "有机绿、培养液蓝",
+      "tints": {
+        "a": "rgba(22, 163, 74, 0.18)",
+        "b": "rgba(14, 165, 233, 0.14)"
+      }
+    },
+    "ancient_ruins": {
+      "name": "远古遗迹",
+      "image": "/assets/backgrounds/bg_ancient_ruins.png",
+      "palette": "石灰色、神秘蓝",
+      "tints": {
+        "a": "rgba(71, 85, 105, 0.18)",
+        "b": "rgba(37, 99, 235, 0.12)"
+      }
+    },
+    "time_rift": {
+      "name": "时间裂隙",
+      "image": "/assets/backgrounds/bg_time_rift.png",
+      "palette": "银白色、时空蓝",
+      "tints": {
+        "a": "rgba(148, 163, 184, 0.16)",
+        "b": "rgba(59, 130, 246, 0.18)"
+      }
+    },
+    "puppet_theater": {
+      "name": "傀儡剧场",
+      "image": "/assets/backgrounds/bg_puppet_theater.png",
+      "palette": "暗红色、金色",
+      "tints": {
+        "a": "rgba(127, 29, 29, 0.20)",
+        "b": "rgba(180, 83, 9, 0.12)"
+      }
+    },
+    "alchemy_lab": {
+      "name": "炼金实验室",
+      "image": "/assets/backgrounds/bg_alchemy_lab.png",
+      "palette": "琥珀色、药剂绿",
+      "tints": {
+        "a": "rgba(180, 83, 9, 0.20)",
+        "b": "rgba(34, 197, 94, 0.12)"
+      }
+    }
+  },
+  "enemyIdToTheme": {
+    "slime_small": "slime_swamp",
+    "slime_boss": "slime_swamp",
+    "goblin": "goblin_mine",
+    "gremlin_nob": "goblin_mine",
+    "cultist": "cultist_altar",
+    "jaw_worm": "worm_nest",
+    "fission": "mech_factory",
+    "fission_small": "mech_factory",
+    "barrier": "mech_factory",
+    "predictor": "mech_factory",
+    "symbiote_a": "symbiote_lab",
+    "symbiote_b": "symbiote_lab",
+    "lagavulin": "ancient_ruins",
+    "hexaghost": "ancient_ruins",
+    "intelligence_officer": "mech_factory",
+    "time_guardian": "time_rift",
+    "puppet_queen": "puppet_theater",
+    "alchemy_master": "alchemy_lab"
+  },
+  "keywordFallbackToTheme": {
+    "boss": "ancient_ruins",
+    "elite": "mech_factory",
+    "symbiote": "symbiote_lab",
+    "splits": "mech_factory",
+    "starts_with_block": "mech_factory"
+  },
+  "fallbackThemePool": [
+    "ancient_ruins",
+    "mech_factory",
+    "goblin_mine",
+    "cultist_altar",
+    "time_rift"
+  ],
+  "prompts": {
+    "slime_swamp": "Dark grimdark corrupted swamp battlefield, card game combat background, glowing toxic mushrooms, bubbling slime pools, viscous ooze streams, poisonous green and deep purple palette, bioluminescent mist, no characters, wide cinematic composition.",
+    "goblin_mine": "Dark fantasy abandoned mine combat background, broken mine carts, rails, torches, rubble, deep shadows, orange torchlight and dark brown stone, grim card game backdrop, no characters, wide cinematic composition.",
+    "cultist_altar": "Grimdark cult ritual altar chamber, glowing rune circle, candles, sacrificial altar, deep purple and dark red light, occult atmosphere, no characters, wide combat background for card game.",
+    "worm_nest": "Underground worm nest cavern, organic tunnels, bone structures, slime, eerie bioluminescence, mud brown and bone white tones, dark fantasy combat backdrop, no characters, wide composition.",
+    "mech_factory": "Steampunk mechanical workshop battlefield, giant gears, pipes, steam, electric arcs, metal gray and arc blue palette, industrial card game combat background, no characters, wide cinematic composition.",
+    "symbiote_lab": "Dark sci-fi bio laboratory combat background, growth tanks, tubes, organic tissue, glowing green and blue fluids, warning lights, grim experiment facility, no characters, wide composition.",
+    "ancient_ruins": "Ancient ruins battlefield, broken stone pillars, glowing runes, dust beams, mysterious blue light, weathered stone gray palette, dark fantasy card game combat background, no characters, wide composition.",
+    "time_rift": "Time rift battleground, shattered clocks, floating fragments, silver white and temporal blue energy, cracked space reality, surreal cinematic combat background, no characters, wide composition.",
+    "puppet_theater": "Creepy puppet theater stage, curtains, strings, spotlights, dark red and gold palette, eerie performance hall, grimdark card game combat background, no characters, wide composition.",
+    "alchemy_lab": "Medieval alchemy laboratory combat background, apparatus, potion bottles, books, amber firelight and potion green glow, bubbling liquids, grim card game battle scene, no characters, wide composition."
+  }
+}

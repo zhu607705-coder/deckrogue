@@ -2,7 +2,7 @@
  * @deprecated Compatibility implementation.
  * Prefer importing runtime entrypoints from '@/core/persistence/setup' and domain modules under '@/core/*' and '@/features/*'.
  */
-import { GameState, ActionSpec, CardDef, CharacterDef, MapNode, ActiveEventState, MetaProfile } from '@/core/types';
+import { GameState, ActionSpec, CardDef, MapNode, ActiveEventState, MetaProfile, CharacterDef } from '@/core/types';
 import { createRNG } from '@/infrastructure/rng/rng';
 import { globalEventBus } from '@/core/events/eventBus';
 import { relicSystem } from '@/features/relics/relicSystem';
@@ -37,8 +37,9 @@ import {
   relicsData,
   rollEnemyBaseHp
 } from '@/content/narrative/numericSystem';
-import charactersData from '@/content/data/characters.json';
 import type { IActionContext } from '@/core/actions/actionQueue';
+import charactersDataRaw from '@/content/data/characters.json';
+const charactersData = charactersDataRaw as CharacterDef[];
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RuntimeEventType } from '@/core/events/eventContract';
 import { deriveRunTransitionState, runPhaseToScreen, transitionRunState, type RunAction } from '@/core/events/runStateMachine';
@@ -348,7 +349,10 @@ export class GameEngine {
         intel: this.state.player.intel,
         devotion: this.state.player.devotion || 0,
         corruptionAxis: Math.min(100, Math.max(0, this.state.player.corruption || 0)),
-        axisDisposition: (this.state.player.corruption || 0) > 0 ? 'corruption' : 'balanced'
+        axisDisposition: (this.state.player.corruption || 0) > 0 ? 'corruption' : 'balanced',
+        timeLayer: this.state.character?.specialResource === 'timeLayer' ? 1 : undefined,
+        thread: this.state.character?.specialResource === 'thread' ? 2 : undefined,
+        concoction: this.state.character?.specialResource === 'concoction' ? 1 : undefined
       },
       enemies,
       drawPile: this.shuffleDeck([...this.state.player.deck]),
@@ -881,6 +885,9 @@ export class GameEngine {
       this.notify();
       return;
     }
+    
+    this.executeConstructAttacks();
+    
     let skipDrawThisTurn = false;
     if ((combat.player.statuses['SkipDraw'] || 0) > 0) {
       skipDrawThisTurn = true;
@@ -905,6 +912,39 @@ export class GameEngine {
     });
 
     this.actionManager.executeAll().then(() => this.notify());
+  }
+  
+  private executeConstructAttacks(): void {
+    const combat = this.state.combat;
+    if (!combat) return;
+    
+    const constructs = combat.player.constructs || [];
+    if (constructs.length === 0) return;
+    
+    const aliveEnemies = combat.enemies.filter(e => e.hp > 0);
+    if (aliveEnemies.length === 0) return;
+    
+    for (const construct of constructs) {
+      if (construct.hp <= 0) continue;
+      
+      const atk = Math.max(0, construct.atk || 0);
+      if (atk <= 0) continue;
+      
+      const target = aliveEnemies[Math.floor(this.rng() * aliveEnemies.length)];
+      if (!target) continue;
+      
+      const damage = this.calculateDamage(atk, {}, target.statuses || {}, 'player');
+      target.hp = Math.max(0, target.hp - damage);
+      
+      combat.warpPulse = {
+        text: `${construct.name} 对 ${target.name} 造成 ${damage} 点伤害`,
+        tone: 'faith'
+      };
+      
+      if (target.hp <= 0) {
+        this.handleEnemyDefeated(target.id);
+      }
+    }
   }
 
   private processStatusDecay(statuses: Record<string, number>): void {
@@ -1220,20 +1260,33 @@ export class GameEngine {
   private generateCardRewards(count: number): CardDef[] {
     const rewards: CardDef[] = [];
     const characterId = this.state.character?.id;
+    const characterDef = charactersData.find(c => c.id === characterId);
+    const extendedPool = characterDef?.extendedPool || [];
     const unlockedIds = new Set(this.state.metaRuntime?.unlockedPoolIds || []);
     const unlockedWeightBonus = getMetaUnlockedWeightBonus();
+    
     for (let i = 0; i < count; i++) {
       const rarityRoll = this.rng();
       let rarity: 'Common' | 'Uncommon' | 'Rare' = 'Common';
       if (rarityRoll > 0.85) rarity = 'Rare';
       else if (rarityRoll > 0.55) rarity = 'Uncommon';
 
-      const validCards = cardsData.filter(c =>
+      let validCards = cardsData.filter(c =>
         c.rarity === rarity &&
         (((c as any).character ?? 'All') === 'All' || (c as any).character === characterId)
       );
+      
+      const extendedCards = extendedPool.length > 0 
+        ? cardsData.filter(c => extendedPool.includes(c.id) && c.rarity === rarity)
+        : [];
+      
+      if (extendedCards.length > 0 && this.rng() < 0.35) {
+        validCards = [...validCards, ...extendedCards];
+      }
+      
       const fallbackCards = cardsData.filter(c => c.rarity === rarity && (((c as any).character ?? 'All') === 'All'));
       const pool = validCards.length > 0 ? validCards : fallbackCards;
+      
       let card: any = null;
       if (pool.length > 0) {
         const weightedPool: any[] = [];

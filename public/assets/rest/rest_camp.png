@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768">
+    
+      <defs>
+        <linearGradient id="campGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" style="stop-color:#7c2d12;stop-opacity:0.6"/>
+          <stop offset="40%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#0a0a0f;stop-opacity:1"/>
+        </linearGradient>
+        <filter id="fireGlow">
+          <feGaussianBlur stdDeviation="8" result="glow"/>
+          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1024" height="768" fill="url(#campGrad)"/>
+      <circle cx="512" cy="550" r="120" fill="#f97316" opacity="0.4" filter="url(#fireGlow)"/>
+      <circle cx="512" cy="550" r="80" fill="#fbbf24" opacity="0.5" filter="url(#fireGlow)"/>
+      <circle cx="512" cy="550" r="40" fill="#fef3c7" opacity="0.6"/>
+      <rect x="0" y="650" width="1024" height="118" fill="#1a1a1a" opacity="0.4"/>
+      <path d="M100 768 L100 550 L200 450 L300 550 L300 768 Z" fill="#1a1a1a" opacity="0.3"/>
+      <path d="M724 768 L724 550 L824 450 L924 550 L924 768 Z" fill="#1a1a1a" opacity="0.3"/>
+    
+  </svg>
