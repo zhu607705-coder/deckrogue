@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Deckrogue
 
-# Run and deploy your AI Studio app
+A game-system experiment focused on deckbuilding mechanics, progression structure, and replayable combat loops.
 
-This contains everything you need to run your app locally.
+## What It Is
 
-View your app in AI Studio: https://ai.studio/apps/df5e4cc3-37a3-413e-9b29-b35578099baf
+`deckrogue` is a system-design project rather than a generic demo repo. The goal is to explore how card mechanics, randomness, progression, and player choice interact inside a compact roguelike-style structure.
 
-## Run Locally
+## Design Focus
 
-**Prerequisites:**  Node.js
+The project is centered on a few questions:
 
+- what makes a deckbuilding loop strategically interesting rather than noisy
+- how progression should change decision pressure over time
+- how to make mechanics readable while still leaving room for experimentation
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Why I Built It
+
+This repository is where I treat game mechanics as a design and systems problem.
+
+It is useful both as a playable experiment and as a way to think about balancing, rule interactions, and iterative system tuning.
+
+## Current Status
+
+Active prototype / experiment repository.
+
+The codebase is best read as an evolving design lab for mechanics and loop structure, not as a finished commercial game.
+
+## Next Steps
+
+- iterate on combat and deck progression rules
+- improve the clarity of system feedback
+- keep testing which mechanics create real tradeoffs instead of fake complexity
