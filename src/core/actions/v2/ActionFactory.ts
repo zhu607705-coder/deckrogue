@@ -58,7 +58,8 @@ import {
   CreateConstructAction,
   BuffAllConstructsAction,
   TriggerAllReactionsAction,
-  TransformHandToRareAction
+  TransformHandToRareAction,
+  TriggerPoisonOnTargetAction
 } from '@/core/actions/v2/SpecialActions';
 
 import { 
@@ -127,6 +128,7 @@ export class ActionFactoryV2 {
     ['BuffAllConstructs', BuffAllConstructsAction],
     ['TriggerAllReactions', TriggerAllReactionsAction],
     ['TransformHandToRare', TransformHandToRareAction],
+    ['TriggerPoisonOnTarget', TriggerPoisonOnTargetAction],
   ];
 
   private static actionMap: Map<string, new (spec: ActionSpec) => IAction> = new Map(this.actionMapEntries);

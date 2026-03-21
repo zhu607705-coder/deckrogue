@@ -80,6 +80,10 @@ interface RunSummary {
   generatedNodeCounts: Record<NodeType, number>;
   generatedNodeCountsByFloor: Record<string, Record<NodeType, number>>;
   assetSnapshots: AssetSnapshot[];
+  diagnostics: {
+    illegalRunTransitions: Array<{ action: string; fromPhase: string; error: string; timestamp: number }>;
+    unknownActionTypes: string[];
+  };
 }
 interface EconomySnapshot {
   avgGoldGainPerFloor: number[];
@@ -782,7 +786,11 @@ async function runSingle(characterId: string, seed: number, policy: PathPolicy):
     resolvedNodes,
     generatedNodeCounts: generated.counts,
     generatedNodeCountsByFloor: generated.byFloor,
-    assetSnapshots
+    assetSnapshots,
+    diagnostics: {
+      illegalRunTransitions: (engine as any).getIllegalTransitions?.() || [],
+      unknownActionTypes: []
+    }
   };
 }
 async function main() {
@@ -835,9 +843,45 @@ async function main() {
     );
   }
   console.log('\nJSON:');
-  console.log(JSON.stringify(allSummaries, null, 2));
-  writeArtifact('economy_regression.json', allSummaries);
+  const allRunsWithDiagnostics = allSummaries.flatMap((s: any) => {
+    const allPolicyRuns: any[] = [];
+    if (s.resolvedByPolicy?.aggressive?.runs) allPolicyRuns.push(...s.resolvedByPolicy.aggressive.runs);
+    if (s.resolvedByPolicy?.economy?.runs) allPolicyRuns.push(...s.resolvedByPolicy.economy.runs);
+    if (s.resolvedByPolicy?.balanced?.runs) allPolicyRuns.push(...s.resolvedByPolicy.balanced.runs);
+    return allPolicyRuns;
+  });
+  const allIllegalTransitions = allRunsWithDiagnostics.flatMap((r: any) => r.diagnostics?.illegalRunTransitions || []);
+  const allUnknownActionTypes = allRunsWithDiagnostics.flatMap((r: any) => r.diagnostics?.unknownActionTypes || []);
+  const hasIllegalTransitions = allIllegalTransitions.length > 0;
+  const hasUnknownActions = allUnknownActionTypes.length > 0;
+
+  if (hasIllegalTransitions) {
+    console.error('\n=== DIAGNOSTIC FAILURES ===');
+    console.error(`Found ${allIllegalTransitions.length} illegal run transitions:`);
+    for (const t of allIllegalTransitions.slice(0, 5)) {
+      console.error(`  - ${t.action} from ${t.fromPhase}: ${t.error}`);
+    }
+  }
+
+  if (hasUnknownActions) {
+    console.error('\n=== UNKNOWN ACTION TYPES ===');
+    console.error(`Found ${allUnknownActionTypes.length} unknown action types:`);
+    for (const a of [...new Set(allUnknownActionTypes)].slice(0, 10)) {
+      console.error(`  - ${a}`);
+    }
+  }
+
+  console.log(`\nDiagnostics: illegalRunTransitions=${allIllegalTransitions.length}, unknownActionTypes=${allUnknownActionTypes.length}`);
+
+  const payload = { summaries: allSummaries, diagnostics: { illegalRunTransitions: allIllegalTransitions, unknownActionTypes: [...new Set(allUnknownActionTypes)] } };
+  console.log(JSON.stringify(payload, null, 2));
+  writeArtifact('economy_regression.json', payload);
+
+  if (hasIllegalTransitions || hasUnknownActions) {
+    process.exit(1);
+  }
 }
+
 main().catch(err => {
   console.error(err);
   process.exit(1);

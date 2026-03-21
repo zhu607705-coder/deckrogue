@@ -32,8 +32,8 @@ export const ECONOMY_DEFAULTS = {
     goldPerFloor: 3,
     baseCardReward: 0.75,
     cardsPerFloor: 0.05,
-    relicRewardChance: 0.1,
-    potionRewardChance: 0.25
+    relicRewardChance: 0.12,
+    potionRewardChance: 0.30
   },
   floors: {
     precomputeMaxFloor: 10,
@@ -61,7 +61,7 @@ export const ECONOMY_DEFAULTS = {
     maxCardChoicesWithBagOfPrep: 3,
     bagOfPrepBonusChoices: 1,
     maxPotionDropChance: 0.5,
-    potionDropPerFloor: 0.02,
+    potionDropPerFloor: 0.03,
     maxRelicDropChance: 1
   },
   shop: {

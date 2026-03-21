@@ -73,11 +73,11 @@
     "tags": [
       "intel"
     ],
-    "text": "Gain 2 Intel. Draw 2 cards.",
+    "text": "Gain 1 Intel. Draw 1 card.",
     "actions": [
       {
         "type": "GainIntel",
-        "amount": 2,
+        "amount": 1,
         "target": "Self"
       },
       {
@@ -116,7 +116,7 @@
       "intel",
       "strike"
     ],
-    "text": "If you have 1 Intel, spend it to deal 12 damage. Otherwise deal 6 damage.",
+    "text": "If you have 1 Intel, spend it to deal 9 damage. Otherwise deal 6 damage.",
     "actions": [
       {
         "type": "Conditional",
@@ -132,7 +132,7 @@
           },
           {
             "type": "DealDamage",
-            "amount": 12,
+            "amount": 9,
             "target": "Enemy"
           }
         ],
@@ -348,7 +348,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Spend 2 Intel: Apply 2 Vulnerable and 2 Weak.",
+    "text": "Spend 2 Intel: Apply 3 Vulnerable and 2 Weak.",
     "actions": [
       {
         "type": "Conditional",
@@ -1170,7 +1170,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Add 1 random Element to your Element Pool. Draw 1 card. Gain 3 Block.",
+    "text": "Add 1 random Element to your Element Pool. Draw 1 card. Gain 4 Block.",
     "actions": [
       {
         "type": "AddRandomElement",
@@ -1183,7 +1183,7 @@
       },
       {
         "type": "GainBlock",
-        "amount": 3,
+        "amount": 4,
         "target": "Self"
       }
     ],
@@ -1225,11 +1225,11 @@
     "tags": [
       "frost"
     ],
-    "text": "Gain 7 Block. Add Frost to Element Pool.",
+    "text": "Gain 8 Block. Add Frost to Element Pool.",
     "actions": [
       {
         "type": "GainBlock",
-        "amount": 7,
+        "amount": 8,
         "target": "Self"
       },
       {
@@ -1299,11 +1299,11 @@
     "tags": [
       "acid"
     ],
-    "text": "Deal 3 damage. Add Acid.",
+    "text": "Deal 4 damage. Add Acid.",
     "actions": [
       {
         "type": "DealDamage",
-        "amount": 3,
+        "amount": 4,
         "target": "Enemy"
       },
       {
@@ -1360,10 +1360,11 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Consume all Elements. Heal 2 HP per Element.",
+    "text": "Consume all Elements. Heal 3 HP per Element.",
     "actions": [
       {
-        "type": "TransmuteElements"
+        "type": "TransmuteElements",
+        "amount": 3
       }
     ],
     "art_prompt": "A glowing golden liquid being poured from a flask, fantasy art style",
@@ -2259,11 +2260,11 @@
     "tags": [
       "intel"
     ],
-    "text": "获得 2 点情报。施加 1 层易伤。",
+    "text": "获得 1 点情报。施加 1 层易伤。",
     "actions": [
       {
         "type": "GainIntel",
-        "amount": 2,
+        "amount": 1,
         "target": "Self"
       },
       {
@@ -2477,13 +2478,13 @@
     "id": "surveillance",
     "name": "监视",
     "rarity": "Common",
-    "cost": 0,
+    "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [
       "intel"
     ],
-    "text": "获得 1 点情报。获得 4 点格挡。",
+    "text": "获得 1 点情报。获得 2 点格挡。",
     "actions": [
       {
         "type": "GainIntel",
@@ -2492,7 +2493,7 @@
       },
       {
         "type": "GainBlock",
-        "amount": 4,
+        "amount": 2,
         "target": "Self"
       }
     ],
@@ -4241,7 +4242,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "获得 2 点调配。获得 1 个随机元素。",
+    "text": "获得 2 点调配。获得 1 个随机元素。抽 1 张牌。",
     "actions": [
       {
         "type": "GainConcoction",
@@ -4250,11 +4251,16 @@
       {
         "type": "AddRandomElement",
         "amount": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
       }
     ],
     "upgrade": {
       "name": "调配+",
-      "text": "获得 3 点调配。获得 1 个随机元素。",
+      "text": "获得 3 点调配。获得 1 个随机元素。抽 1 张牌。",
       "actions": [
         {
           "type": "GainConcoction",
@@ -4263,6 +4269,11 @@
         {
           "type": "AddRandomElement",
           "amount": 1
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
         }
       ]
     },
@@ -4277,11 +4288,11 @@
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "造成 6 点伤害。消耗 1 点调配：触发所有元素反应。",
+    "text": "Deal 7 damage. Spend 1 Concoction: trigger all element reactions and gain 3 Block.",
     "actions": [
       {
         "type": "DealDamage",
-        "amount": 6,
+        "amount": 7,
         "target": "Enemy"
       },
       {
@@ -4551,12 +4562,12 @@
     "tags": [
       "acid"
     ],
-    "text": "施加 3 层中毒。获得 1 点调配。",
+    "text": "施加 2 层中毒。获得 1 点调配。",
     "actions": [
       {
         "type": "ApplyStatus",
         "status": "Poison",
-        "amount": 3,
+        "amount": 2,
         "target": "Enemy"
       },
       {
@@ -4566,7 +4577,7 @@
     ],
     "upgrade": {
       "name": "酸浴+",
-      "text": "施加 5 层中毒。获得 1 点调配。",
+      "text": "施加 6 层中毒。获得 1 点调配。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -4616,7 +4627,7 @@
         "falseActions": [
           {
             "type": "GainBlock",
-            "amount": 5,
+            "amount": 6,
             "target": "Self"
           }
         ]
@@ -5663,5 +5674,2929 @@
       }
     ],
     "art_prompt": "An alchemical explosion of epic proportions, all elements reacting at once, catastrophic fantasy art style"
+  },
+  {
+    "id": "dead_drop",
+    "name": "Dead Drop",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel"
+    ],
+    "text": "Gain 1 Intel. If this is the first card you play this turn, draw 1 card.",
+    "actions": [
+      {
+        "type": "GainIntel",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "IsFirstCardThisTurn"
+        },
+        "trueActions": [
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A covert exchange of encrypted documents in a shadowy alleyway, informant passing intel discreetly, noir spy thriller art style"
+  },
+  {
+    "id": "smoke_interrogation",
+    "name": "Smoke Interrogation",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "control"
+    ],
+    "text": "Gain 6 Block. Apply 2 Weak. If the target intends to Attack, gain 1 Intel.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyIntendsAttack"
+        },
+        "trueActions": [
+          {
+            "type": "GainIntel",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "An interrogator surrounded by mysterious smoke, extracting secrets from a shadowy figure, noir interrogation room art style"
+  },
+  {
+    "id": "mark_for_dissection",
+    "name": "Mark for Dissection",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "setup"
+    ],
+    "text": "Apply 2 Vulnerable. Gain 1 Intel. If the target already has Weak, draw 1 card.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainIntel",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyHasStatus",
+          "status": "Weak"
+        },
+        "trueActions": [
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A target being marked with precision crosshairs, analytical data floating around, high-tech detective art style"
+  },
+  {
+    "id": "silent_execution",
+    "name": "Silent Execution",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "assassin"
+    ],
+    "text": "Deal 7 damage. If the target has Weak or Vulnerable, spend 1 Intel to deal 10 additional damage and gain 1 Stealth.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasStatusOnTarget",
+          "status": "WeakOrVulnerable"
+        },
+        "trueActions": [
+          {
+            "type": "Conditional",
+            "condition": {
+              "type": "HasIntel",
+              "amount": 1
+            },
+            "trueActions": [
+              {
+                "type": "SpendIntel",
+                "amount": 1,
+                "target": "Self"
+              },
+              {
+                "type": "DealDamage",
+                "amount": 10,
+                "target": "Enemy"
+              },
+              {
+                "type": "ApplyStatus",
+                "status": "Stealth",
+                "amount": 1,
+                "target": "Self"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A stealthy assassin striking from the shadows, enemy marked with target acquired, silent assassin art style"
+  },
+  {
+    "id": "blackmail_file",
+    "name": "Blackmail File",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "intel",
+      "control"
+    ],
+    "text": "Spend up to 2 Intel. For each Intel spent, apply 1 Weak and 1 Vulnerable to all enemies and draw 1 card.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "amount": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Vulnerable",
+            "amount": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendIntel",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "amount": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Vulnerable",
+            "amount": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Classified documents with damning evidence, enemies being blackmailed with their secrets, spy thriller art style"
+  },
+  {
+    "id": "quietus_protocol",
+    "name": "Quietus Protocol",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "intel",
+      "finisher"
+    ],
+    "text": "Deal 10 damage. Spend all Intel. Deal 8 additional damage per Intel spent. If the target has both Weak and Vulnerable, gain 1 Energy.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasIntel",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendAllIntel"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "scaling": {
+              "type": "CurrentIntelSpent",
+              "multiplier": 1
+            },
+            "target": "Enemy"
+          }
+        ]
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasBothStatuses",
+          "status1": "Weak",
+          "status2": "Vulnerable"
+        },
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Final shutdown sequence initiated on a target, digital kill confirmation, cyberpunk assassin art style"
+  },
+  {
+    "id": "attrition_plan",
+    "name": "Attrition Plan",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "control",
+      "poison"
+    ],
+    "text": "Apply 1 Weak and 2 Poison to all enemies. Draw 1 card.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 2,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "A strategic map with multiple targets being simultaneously weakened and poisoned, calculated warfare art style"
+  },
+  {
+    "id": "measured_breach",
+    "name": "Measured Breach",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "control",
+      "assassin"
+    ],
+    "text": "Deal 8 damage. Deal 6 additional damage if the target has Weak or Poison. If the target has both, draw 1 card.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasStatusOnTarget",
+          "status": "WeakOrPoison"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 6,
+            "target": "Enemy"
+          }
+        ]
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasBothStatuses",
+          "status1": "Weak",
+          "status2": "Poison"
+        },
+        "trueActions": [
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Precision strike breaching through weakened defenses, calculated penetration art style"
+  },
+  {
+    "id": "nerve_agent",
+    "name": "Nerve Agent",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison",
+      "concoction"
+    ],
+    "text": "Apply 2 Poison and 1 Weak. If the target already has Poison, gain 1 Concoction.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyHasStatus",
+          "status": "Poison"
+        },
+        "trueActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Toxic chemical agent being deployed, poisoned enemy becoming more volatile, dark alchemical warfare art style"
+  },
+  {
+    "id": "caustic_reserve",
+    "name": "Caustic Reserve",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison",
+      "concoction",
+      "defense"
+    ],
+    "text": "Gain 1 Concoction. Apply 4 Poison. If the target has Weak, gain 4 Block.",
+    "actions": [
+      {
+        "type": "GainConcoction",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyHasStatus",
+          "status": "Weak"
+        },
+        "trueActions": [
+          {
+            "type": "GainBlock",
+            "amount": 4,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Caustic chemicals swirling in a flask, poison being applied with defensive cover, alchemical combat art style"
+  },
+  {
+    "id": "frost_distillate",
+    "name": "Frost Distillate",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "element",
+      "frost",
+      "defense"
+    ],
+    "text": "Gain 7 Block. Add Frost. If any enemy has Poison, gain 1 Concoction.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "AddElement",
+        "element": "Frost",
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "AnyEnemyHasStatus",
+          "status": "Poison"
+        },
+        "trueActions": [
+          {
+            "type": "GainConcoction",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Frost crystals forming from alchemical distillation, defensive ice shield emerging, cold alchemical art style"
+  },
+  {
+    "id": "volatile_catalyst",
+    "name": "Volatile Catalyst",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "element",
+      "concoction"
+    ],
+    "text": "Deal 6 damage. Trigger Poison on the target once. Add 1 random Element.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "TriggerPoisonOnTarget",
+        "target": "Enemy"
+      },
+      {
+        "type": "AddRandomElement",
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "Volatile alchemical explosion triggered by poison, random elemental energy being added, chaotic alchemical art style"
+  },
+  {
+    "id": "reflux_chamber",
+    "name": "Reflux Chamber",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "concoction",
+      "healing"
+    ],
+    "text": "Spend 1 Concoction. Heal 6 HP and draw 1 card. If you have added Acid this combat, heal 4 more HP.",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "Heal",
+            "amount": 6,
+            "target": "Self"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "Conditional",
+            "condition": {
+              "type": "HasAddedElementThisCombat",
+              "element": "Acid"
+            },
+            "trueActions": [
+              {
+                "type": "Heal",
+                "amount": 4,
+                "target": "Self"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Alchemical reflux device healing the user, acid residue being neutralized, alchemical healing art style"
+  },
+  {
+    "id": "mercurial_shell",
+    "name": "Mercurial Shell",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "concoction",
+      "defense",
+      "poison"
+    ],
+    "text": "Gain 12 Block. Gain 2 Concoction. At end of turn, trigger Poison on all enemies once.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      },
+      {
+        "type": "GainConcoction",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Delay",
+        "delayType": "EndOfTurn",
+        "actions": [
+          {
+            "type": "TriggerPoisonAllEnemies"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "Mercurial defensive shell encasing the alchemist, poison being released at turn end, toxic defensive art style"
+  },
+  {
+    "id": "armor_piercer",
+    "name": "护甲穿透弹",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter2",
+      "armor_piercing"
+    ],
+    "text": "造成 8 伤害，无视 8 格挡。",
+    "actions": [
+      {
+        "type": "DealDamagePiercing",
+        "amount": 8,
+        "armorIgnore": 8,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "穿甲弹穿透厚重的机械护甲，精准打击核心部位，军事武器概念图"
+  },
+  {
+    "id": "disrupt_rite",
+    "name": "打断仪式",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter2",
+      "disruption",
+      "ritual"
+    ],
+    "text": "若敌人拥有 Strength 或 Ritual，移除 2 层并抽 1 张牌。",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "EnemyHasStatus",
+          "status": "StrengthOrRitual"
+        },
+        "trueActions": [
+          {
+            "type": "RemoveStatus",
+            "status": [
+              "Strength",
+              "Ritual"
+            ],
+            "amount": 2,
+            "target": "Enemy"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "仪式被打断，能量四散，混乱的魔法场concept art"
+  },
+  {
+    "id": "coolant_burst",
+    "name": "冷却爆发",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter2",
+      "defense",
+      "energy"
+    ],
+    "text": "获得 9 格挡；若你本回合已受到伤害，再获得 1 能量。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 9,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TookDamageThisTurn"
+        },
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "冷却液喷涌而出形成保护屏障，机械蒸汽朋克防御概念图"
+  },
+  {
+    "id": "sealed_round",
+    "name": "封印弹",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter2",
+      "debuff",
+      "efficiency"
+    ],
+    "text": "造成 5 伤害；若目标拥有 debuff，额外造成 5。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 5,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "封印子弹击中带伤的敌人，额外的封印纹路爆发，暗黑奇幻射击概念图"
+  },
+  {
+    "id": "purity_pulse",
+    "name": "纯净脉冲",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter2",
+      "defense",
+      "card_draw"
+    ],
+    "text": "移除自身 1 debuff，抽 1 张牌。",
+    "actions": [
+      {
+        "type": "RemoveAnyDebuff",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "纯净的能量脉冲清除身上的负面状态，光明魔法净化概念图"
+  },
+  {
+    "id": "pressure_release",
+    "name": "压力释放",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter2",
+      "damage",
+      "armor_piercing"
+    ],
+    "text": "造成 14 伤害；若目标拥有 12+ 格挡，额外造成 10。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetBlockThreshold",
+          "threshold": 12
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 10,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "巨大的压力释放摧毁敌人的防御，机械爆炸概念图"
+  },
+  {
+    "id": "binary_feint",
+    "name": "二元佯攻",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter2",
+      "control",
+      "defense"
+    ],
+    "text": "施加 1 Weak，获得 7 格挡。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "二进制信号干扰敌人同时形成防御屏障，数字战争概念图"
+  },
+  {
+    "id": "reactor_tax",
+    "name": "反应炉税",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "chapter2",
+      "control",
+      "energy"
+    ],
+    "text": "所有敌人获得 1 Weak；若其中任一敌人拥有 Strength，获得 1 能量。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "AnyEnemyHasStatus",
+          "status": "Strength"
+        },
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "反应炉征收的能量税削弱所有敌人并为使用者充能，蒸汽朋克能量概念图"
+  },
+  {
+    "id": "purging_bolt",
+    "name": "净化螺栓",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter3",
+      "poison",
+      "removal"
+    ],
+    "text": "造成 9 伤害；若目标有 Poison，移除其最多 3 Poison 并额外造成等量伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 9,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasPoison"
+        },
+        "trueActions": [
+          {
+            "type": "RemovePoisonAndDealDamage",
+            "maxPoisonRemoval": 3,
+            "damagePerPoison": 1,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "净化之箭穿透中毒的敌人，毒素被净化同时造成额外伤害，暗黑奇幻射击概念图"
+  },
+  {
+    "id": "sterile_guard",
+    "name": "无菌卫士",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter3",
+      "defense",
+      "poison_removal"
+    ],
+    "text": "获得 10 格挡；移除自身 1 Poison。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 10,
+        "target": "Self"
+      },
+      {
+        "type": "RemoveStatus",
+        "status": "Poison",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "无菌防护罩保护角色同时清除身上的毒液，医疗科技概念图"
+  },
+  {
+    "id": "grave_cut",
+    "name": "墓斩",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter3",
+      "debuff",
+      "card_draw"
+    ],
+    "text": "造成 5 伤害；若目标有 debuff，抽 1 张牌。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "trueActions": [
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "坟墓之剑击中带有debuff的敌人，死亡能量被激活，暗黑奇幻斩击概念图"
+  },
+  {
+    "id": "incision_protocol",
+    "name": "切除协议",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter3",
+      "armor_piercing",
+      "poison"
+    ],
+    "text": "造成 15 伤害；若目标拥有 12+ 格挡或 8+ Poison，改为 23。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 15,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetBlockOrPoisonThreshold",
+          "blockThreshold": 12,
+          "poisonThreshold": 8
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 23,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "手术刀精准切开厚甲敌人的防御，疫病被同时激活，外科手术蒸汽朋克概念图"
+  },
+  {
+    "id": "suppress_spores",
+    "name": "抑制孢子",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "chapter3",
+      "control",
+      "energy"
+    ],
+    "text": "所有敌人 1 Weak; 若任一敌人有 Poison，获得 1 能量。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "AnyEnemyHasPoison"
+        },
+        "trueActions": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "抑制孢子云笼罩所有敌人，部分敌人中毒时能量被激活，科幻魔法概念图"
+  },
+  {
+    "id": "marsh_step",
+    "name": "泥沼步伐",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter3",
+      "defense",
+      "card_draw"
+    ],
+    "text": "获得 7 格挡并抽 1 张牌；若有 debuff，再获得 5 格挡。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasAnyDebuff"
+        },
+        "trueActions": [
+          {
+            "type": "GainBlock",
+            "amount": 5,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "角色在泥沼中艰难前行获得额外防护，湿地冒险概念图"
+  },
+  {
+    "id": "funeral_fire",
+    "name": "葬火",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "chapter3",
+      "aoe",
+      "healing"
+    ],
+    "text": "对所有敌人造成 8 伤害；若任一敌人死亡，恢复 4 生命。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "AnyEnemyKilled"
+        },
+        "trueActions": [
+          {
+            "type": "Heal",
+            "amount": 4,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "art_prompt": " Funeral pyre fires burn all enemies in range, healing the caster if any fall, dark fantasy fire magic concept art"
+  },
+  {
+    "id": "clean_hymn",
+    "name": "洁净赞歌",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter3",
+      "defense",
+      "card_draw"
+    ],
+    "text": "移除自身 1 Weak/1 Frail/1 Poison 中的一种；抽 1 张牌。",
+    "actions": [
+      {
+        "type": "RemoveAnyDebuff",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "洁净的赞歌清除身上的负面状态并给予力量，神圣魔法概念图"
+  },
+  {
+    "id": "pressure_lance",
+    "name": "压力长矛",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chapter3",
+      "damage",
+      "debuff"
+    ],
+    "text": "造成 7 伤害；若目标有 Weak 或 Poison，再造成 7。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasWeakOrPoison"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 7,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "压力之矛击中虚弱或中毒的敌人造成额外伤害，战争武器概念图"
+  },
+  {
+    "id": "embalmer_oil",
+    "name": "防腐油",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chapter3",
+      "defense",
+      "debuff"
+    ],
+    "text": "获得 6 格挡；本回合你施加的第一个 debuff 额外 +1 层。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "BuffNextDebuff",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "art_prompt": "防腐油形成保护膜增强下一次施毒效果，炼金术概念图"
+  },
+  {
+    "id": "mirror_probe",
+    "name": "Mirror Probe",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "mirror",
+      "probe"
+    ],
+    "text": "Draw 1 card if target has any debuffs.",
+    "actions": [
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "TargetHasDebuff"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "silver_guard",
+    "name": "Silver Guard",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "defense"
+    ],
+    "text": "Gain 9 Block. Gain 3 more if you spent a resource this turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 9,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalBonusBlock",
+        "condition": {
+          "type": "ResourceSpent"
+        },
+        "bonus": 3
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "fracture_strike",
+    "name": "Fracture Strike",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "mirror",
+      "attack"
+    ],
+    "text": "Deal 8 damage. Deal 5 more if target has Weak, Vulnerable, or Poison.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasAnyDebuff",
+          "debuffs": [
+            "Weak",
+            "Vulnerable",
+            "Poison"
+          ]
+        },
+        "bonus": 5
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "borrowed_pattern",
+    "name": "Borrowed Pattern",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "utility"
+    ],
+    "text": "Copy the leftmost Skill in your hand at 50% effect value.",
+    "actions": [
+      {
+        "type": "CopyLeftmostSkill",
+        "target": "Self",
+        "effectPercent": 50
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "refraction_dart",
+    "name": "Refraction Dart",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "mirror",
+      "attack"
+    ],
+    "text": "Deal 6 damage. Draw 1 if this hits a debuffed enemy.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "TargetHasDebuff"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "hush_field",
+    "name": "Hush Field",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "mirror",
+      "control"
+    ],
+    "text": "Apply 1 Weak to all enemies.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "stacks": 1,
+        "target": "AllEnemies"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "echo_step",
+    "name": "Echo Step",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "energy"
+    ],
+    "text": "Gain 1 Energy at the start of your next turn.",
+    "actions": [
+      {
+        "type": "DelayedEnergy",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "glass_molt",
+    "name": "Glass Molt",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "purify"
+    ],
+    "text": "Remove 1 debuff from yourself and draw 1 card.",
+    "actions": [
+      {
+        "type": "RemoveSelfDebuff",
+        "stacks": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "mirror_tax",
+    "name": "Mirror Tax",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "mirror",
+      "attack"
+    ],
+    "text": "Deal 14 damage. Deal 8 more if target has Block.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasBlock"
+        },
+        "bonus": 8
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "soft_reset",
+    "name": "Soft Reset",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "utility"
+    ],
+    "text": "The first time you spend a resource this turn, refund 1.",
+    "actions": [
+      {
+        "type": "ResourceRefund",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "palace_signal",
+    "name": "Palace Signal",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "mirror",
+      "defense"
+    ],
+    "text": "Whenever you draw a 0-cost card for the first time each turn, gain 3 Block.",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "DrawZeroCostCard"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 3
+        }
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "shard_harvest",
+    "name": "Shard Harvest",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "mirror",
+      "attack"
+    ],
+    "text": "Deal 12 damage. If this kills, gain 1 random resource.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "Kill"
+        },
+        "resource": "random",
+        "amount": 1
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "planted_witness",
+    "name": "Planted Witness",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "evidence"
+    ],
+    "text": "Gain 1 Evidence. Draw 1 if target already has a debuff.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 1
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "TargetHasDebuff"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "mirror_tail",
+    "name": "Mirror Tail",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "informant",
+      "defense"
+    ],
+    "text": "Gain 7 Block. Apply 2 Weak. Gain 1 Evidence if enemy will attack this turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "stacks": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "EnemyWillAttack"
+        },
+        "resource": "evidence",
+        "amount": 1
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "sealed_testimony",
+    "name": "Sealed Testimony",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "attack"
+    ],
+    "text": "Deal 7 damage. If you have Evidence, spend 1 to ignore 8 Block.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceEffect",
+        "resource": "evidence",
+        "amount": 1,
+        "effect": {
+          "type": "IgnoreBlock",
+          "amount": 8
+        }
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "false_identity",
+    "name": "False Identity",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "informant",
+      "control"
+    ],
+    "text": "The first Weak you apply this turn gains +1 stack. Draw 1.",
+    "actions": [
+      {
+        "type": "BonusNextDebuff",
+        "status": "Weak",
+        "bonus": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "cross_examiner",
+    "name": "Cross Examiner",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "attack"
+    ],
+    "text": "Deal 10 damage. If target has both Weak and Vulnerable, deal 12 more.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasBothDebuffs",
+          "debuffs": [
+            "Weak",
+            "Vulnerable"
+          ]
+        },
+        "bonus": 12
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "evidence_laundering",
+    "name": "Evidence Laundering",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "informant",
+      "control"
+    ],
+    "text": "Spend up to 2 Evidence. For each, apply 1 Weak to all enemies and draw 1.",
+    "actions": [
+      {
+        "type": "SpendResourceUpTo",
+        "resource": "evidence",
+        "maxAmount": 2,
+        "effect": [
+          {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "stacks": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "sudden_confession",
+    "name": "Sudden Confession",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "control"
+    ],
+    "text": "Apply 3 Vulnerable to target. If you spend 1 Evidence, draw 1 on first hit this turn.",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "stacks": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "SpendResource",
+          "resource": "evidence",
+          "amount": 1
+        },
+        "amount": 1
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "terminal_verdict",
+    "name": "Terminal Verdict",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "attack"
+    ],
+    "text": "Deal 14 damage. Spend all Evidence, deal 8 damage per. If target dies, refund 1 Energy.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "evidence",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 8
+        }
+      },
+      {
+        "type": "ConditionalRefund",
+        "condition": {
+          "type": "Kill"
+        },
+        "resource": "energy",
+        "amount": 1
+      }
+    ],
+    "character": "informant"
+  },
+  {
+    "id": "bloody_grin",
+    "name": "Bloody Grin",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "rage"
+    ],
+    "text": "Lose 3 HP. Gain 1 Rage. Draw 1.",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 3
+      },
+      {
+        "type": "GainResource",
+        "resource": "rage",
+        "amount": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "skull_crack",
+    "name": "Skull Crack",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "attack"
+    ],
+    "text": "Deal 9 damage. If you have Rage, spend 1 to apply 1 Vulnerable.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 9,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceEffect",
+        "resource": "rage",
+        "amount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "stacks": 1
+        }
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "meat_shield",
+    "name": "Meat Shield",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "defense"
+    ],
+    "text": "Gain 9 Block. If you took damage this turn, gain 1 Rage.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 9,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "TookDamageThisTurn"
+        },
+        "resource": "rage",
+        "amount": 1
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "chain_maul",
+    "name": "Chain Maul",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "attack"
+    ],
+    "text": "Deal 6x2 damage. If target HP below 50%, second hit deals 3 more.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "hits": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalBonusDamage",
+        "condition": {
+          "type": "TargetBelowHP",
+          "percent": 50
+        },
+        "bonus": 3
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "war_feast",
+    "name": "War Feast",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "rage"
+    ],
+    "text": "Lose 6 HP. Heal 10 HP. Gain 2 Rage.",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 6
+      },
+      {
+        "type": "Heal",
+        "amount": 10,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "rage",
+        "amount": 2
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "berserk_step",
+    "name": "Berserk Step",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "defense"
+    ],
+    "text": "Gain 6 Block. The next Attack card this turn costs 1 less.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "NextAttackCostDown",
+        "amount": 1
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "pit_execution",
+    "name": "Pit Execution",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "attack"
+    ],
+    "text": "Deal 16 damage. If this kills, heal 6 HP and gain 1 Rage.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 16,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalEffect",
+        "condition": {
+          "type": "Kill"
+        },
+        "effects": [
+          {
+            "type": "Heal",
+            "amount": 6,
+            "target": "Self"
+          },
+          {
+            "type": "GainResource",
+            "resource": "rage",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "red_howl",
+    "name": "Red Howl",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "attack"
+    ],
+    "text": "Spend all Rage. Deal 12 base damage, +7 per Rage spent. Gain Block equal to half Rage spent.",
+    "actions": [
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "rage",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 7
+        }
+      },
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 3,
+        "target": "Self"
+      }
+    ],
+    "character": "brute"
+  },
+  {
+    "id": "briefing_order",
+    "name": "Briefing Order",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "command"
+    ],
+    "text": "Gain 1 Command. Draw 1 if you haven't attacked yet this turn.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "NoAttackYet"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "shield_signal",
+    "name": "Shield Signal",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "defense"
+    ],
+    "text": "Gain 10 Block. If you have Command, gain 2 more.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 10,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalBonusBlock",
+        "condition": {
+          "type": "HasResource",
+          "resource": "command"
+        },
+        "bonus": 2
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "precise_rotation",
+    "name": "Precise Rotation",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "draw"
+    ],
+    "text": "Spend 1 Command. Draw 2, discard 1.",
+    "actions": [
+      {
+        "type": "SpendResourceEffect",
+        "resource": "command",
+        "amount": 1,
+        "effect": {
+          "type": "Draw",
+          "amount": 2
+        }
+      },
+      {
+        "type": "Discard",
+        "amount": 1
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "formation_break",
+    "name": "Formation Break",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "attack"
+    ],
+    "text": "Deal 8 damage. Deal 5 more if you gained Block this turn.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "GainedBlockThisTurn"
+        },
+        "bonus": 5
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "line_adjustment",
+    "name": "Line Adjustment",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "utility"
+    ],
+    "text": "The next card this turn costs 1 less. If you have Command, draw 1 instead.",
+    "actions": [
+      {
+        "type": "NextCardCostDown",
+        "amount": 1
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "HasResource",
+          "resource": "command"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "reserve_line",
+    "name": "Reserve Line",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "defense"
+    ],
+    "text": "Gain 14 Block. Retain 1 card at end of turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 14,
+        "target": "Self"
+      },
+      {
+        "type": "RetainCard",
+        "amount": 1
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "coordinated_breach",
+    "name": "Coordinated Breach",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "attack"
+    ],
+    "text": "Deal 12 damage. Spend 1 Command to also apply 2 Weak.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceEffect",
+        "resource": "command",
+        "amount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "stacks": 2
+        }
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "grand_doctrine",
+    "name": "Grand Doctrine",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "power"
+    ],
+    "text": "Whenever you first gain 12+ Block each turn, gain 1 Command. Whenever you first spend Command each turn, draw 1.",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainBlockThreshold",
+          "threshold": 12
+        },
+        "effect": {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 1
+        }
+      },
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "SpendResource",
+          "resource": "command"
+        },
+        "effect": {
+          "type": "Draw",
+          "amount": 1
+        }
+      }
+    ],
+    "character": "tactician"
+  },
+  {
+    "id": "glass_marionette",
+    "name": "Glass Marionette",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "summon"
+    ],
+    "text": "Summon a 3/1 Mirror Puppet. If you have Thread, it gains +2 Attack.",
+    "actions": [
+      {
+        "type": "Summon",
+        "id": "mirror_puppet",
+        "attack": 3,
+        "hp": 1
+      },
+      {
+        "type": "ConditionalSummonBonus",
+        "condition": {
+          "type": "HasResource",
+          "resource": "thread"
+        },
+        "attack": 2
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "echo_string",
+    "name": "Echo String",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "thread"
+    ],
+    "text": "Gain 1 Thread. Draw 1 if you control any puppets.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "thread",
+        "amount": 1
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "ControlsPuppets"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "shard_dance",
+    "name": "Shard Dance",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "puppeteer",
+      "attack"
+    ],
+    "text": "Deal 5 damage and have all puppets deal 3 damage.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "PuppetAttack",
+        "amount": 3
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "borrowed_face",
+    "name": "Borrowed Face",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "utility"
+    ],
+    "text": "The next time a puppet dies this turn, draw 2 cards.",
+    "actions": [
+      {
+        "type": "TriggerOnPuppetDeath",
+        "effect": {
+          "type": "Draw",
+          "amount": 2
+        }
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "silver_curtain",
+    "name": "Silver Curtain",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "defense"
+    ],
+    "text": "All puppets gain 4 Block and deal +2 attack.",
+    "actions": [
+      {
+        "type": "PuppetBuff",
+        "block": 4,
+        "attack": 2
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "reflected_stage",
+    "name": "Reflected Stage",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "power"
+    ],
+    "text": "The first summoned creature each turn gains +1 turn duration.",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "FirstSummon"
+        },
+        "effect": {
+          "type": "ExtendDuration",
+          "amount": 1
+        }
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "cut_the_strings",
+    "name": "Cut the Strings",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "puppeteer",
+      "attack"
+    ],
+    "text": "Sacrifice all puppets. Each one deals 7 damage.",
+    "actions": [
+      {
+        "type": "SacrificeAllPuppets",
+        "damage": 7
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "palace_of_doubles",
+    "name": "Palace of Doubles",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "summon"
+    ],
+    "text": "Immediately summon 2 Mirror Puppets. For each Thread you have, one gains +1/+1.",
+    "actions": [
+      {
+        "type": "Summon",
+        "id": "mirror_puppet",
+        "attack": 3,
+        "hp": 1
+      },
+      {
+        "type": "Summon",
+        "id": "mirror_puppet",
+        "attack": 3,
+        "hp": 1
+      },
+      {
+        "type": "ConditionalSummonBonus",
+        "condition": {
+          "type": "HasResource",
+          "resource": "thread"
+        },
+        "attack": 1,
+        "hp": 1
+      }
+    ],
+    "character": "puppeteer"
+  },
+  {
+    "id": "afterimage_tick",
+    "name": "Afterimage Tick",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "timelayer"
+    ],
+    "text": "Gain 1 TimeLayer. Draw 1 at the start of next turn.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 1
+      },
+      {
+        "type": "DelayedDraw",
+        "amount": 1,
+        "turns": 1
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "delay_refraction",
+    "name": "Delay Refraction",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "defense"
+    ],
+    "text": "Gain 7 Block. The next card this turn triggers again at 50% value next turn.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "DelayNextCardEffect",
+        "percent": 50
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "split_second",
+    "name": "Split Second",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "attack"
+    ],
+    "text": "Deal 8 damage. If you have TimeLayer, deal 4 again next turn.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDelayedDamage",
+        "condition": {
+          "type": "HasResource",
+          "resource": "timeLayer"
+        },
+        "amount": 4,
+        "turns": 1
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "borrow_tomorrow",
+    "name": "Borrow Tomorrow",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "energy"
+    ],
+    "text": "Gain 1 Energy next turn. Draw 1 less at end of this turn.",
+    "actions": [
+      {
+        "type": "DelayedEnergy",
+        "amount": 1,
+        "turns": 1
+      },
+      {
+        "type": "EndOfTurnDrawPenalty",
+        "amount": 1
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "stolen_window",
+    "name": "Stolen Window",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "timelayer"
+    ],
+    "text": "Gain 2 TimeLayer. If you have 3+ TimeLayer, draw 2.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 2
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "ResourceThreshold",
+          "resource": "timeLayer",
+          "threshold": 3
+        },
+        "amount": 2
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "echo_punishment",
+    "name": "Echo Punishment",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "attack"
+    ],
+    "text": "Deal 10 damage. Deal 2 for each debuff on target.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetDebuffCount"
+        },
+        "perDebuff": 2
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "fractured_hour",
+    "name": "Fractured Hour",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "power"
+    ],
+    "text": "The first time a delay effect triggers each turn, gain 3 Block.",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "DelayEffectTrigger"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 3
+        }
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "palimpsest_loop",
+    "name": "Palimpsest Loop",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "power"
+    ],
+    "text": "Choose a card played this turn. At start of next turn, replay it at no cost once.",
+    "actions": [
+      {
+        "type": "SelectCardForReplay",
+        "turns": 1,
+        "costReduction": 99
+      }
+    ],
+    "character": "chronomancer"
+  },
+  {
+    "id": "prism_seed",
+    "name": "Prism Seed",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "concoction"
+    ],
+    "text": "Gain 1 Concoction and add 1 random element.",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "concoction",
+        "amount": 1
+      },
+      {
+        "type": "AddRandomElement",
+        "amount": 1
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "caustic_glass",
+    "name": "Caustic Glass",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "alchemist",
+      "attack"
+    ],
+    "text": "Deal 6 damage. Apply 3 Poison. If you added an element this turn, apply 1 Weak.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "stacks": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalApply",
+        "condition": {
+          "type": "AddedElementThisTurn"
+        },
+        "status": "Weak",
+        "stacks": 1
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "distill_barrier",
+    "name": "Distill Barrier",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "defense"
+    ],
+    "text": "Gain 8 Block. If you have 2 different elements, heal 3.",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalHeal",
+        "condition": {
+          "type": "HasTwoElements"
+        },
+        "amount": 3
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "chromatic_bath",
+    "name": "Chromatic Bath",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "concoction"
+    ],
+    "text": "Trigger a random element reaction. If you have Concoction, draw 1.",
+    "actions": [
+      {
+        "type": "TriggerRandomElementReaction"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "HasResource",
+          "resource": "concoction"
+        },
+        "amount": 1
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "mercury_lace",
+    "name": "Mercury Lace",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "alchemist",
+      "attack"
+    ],
+    "text": "Spend 1 Concoction. Apply 2 Poison to all enemies. Gain 10 Block.",
+    "actions": [
+      {
+        "type": "SpendResourceEffect",
+        "resource": "concoction",
+        "amount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "stacks": 2
+        }
+      },
+      {
+        "type": "GainBlock",
+        "amount": 10,
+        "target": "Self"
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "vitriol_prism",
+    "name": "Vitriol Prism",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "alchemist",
+      "attack"
+    ],
+    "text": "Deal 7 damage. If target has Poison, deal 7 again.",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasStatus",
+          "status": "Poison"
+        },
+        "bonus": 7
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "refined_chamber",
+    "name": "Refined Chamber",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "power"
+    ],
+    "text": "The first time you gain Concoction each turn, heal 2 HP.",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainResource",
+          "resource": "concoction"
+        },
+        "effect": {
+          "type": "Heal",
+          "amount": 2
+        }
+      }
+    ],
+    "character": "alchemist"
+  },
+  {
+    "id": "perfect_solvent",
+    "name": "Perfect Solvent",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "alchemist",
+      "attack"
+    ],
+    "text": "Spend all Concoction. For each, trigger an element reaction and apply 2 Poison to all enemies.",
+    "actions": [
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "concoction",
+        "effect": [
+          {
+            "type": "TriggerRandomElementReaction"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Poison",
+            "stacks": 2,
+            "target": "AllEnemies"
+          }
+        ]
+      }
+    ],
+    "character": "alchemist"
   }
 ]
