@@ -329,6 +329,16 @@ baseline constraints: PASS ✅
    - alchemist: 90.5 → 目标 ~87
    - puppeteer: 89.9 → 目标 ~87
 
+3. **调参敏感性观察**:
+   - alchemist 对 element_spark 0→1费 非常敏感，节奏从 3.6t 变为 6.2t
+   - 建议用 HP 调整而非卡牌费用调整
+   - intel_surge 和 gather_intel 的改动也需要谨慎
+
+4. **EHP HP 分层配置**:
+   - 75 HP (高承压): tactician
+   - 70 HP (标准中轴): informant, brute, puppeteer
+   - 65 HP (高机制换承压): chronomancer, alchemist
+
 ---
 
 ## 文件变更清单

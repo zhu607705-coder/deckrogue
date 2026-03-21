@@ -41,7 +41,7 @@
     "id": "brute",
     "name": "The Brute",
     "description": "A resilient warrior. Relies on high health and raw strength.",
-    "maxHp": 75,
+    "maxHp": 70,
     "maxEnergy": 3,
     "secondaryResource": "rage",
     "startingDeck": [
@@ -80,7 +80,7 @@
     "id": "tactician",
     "name": "The Tactician",
     "description": "A strategic mastermind. Uses block and precision to control the battlefield.",
-    "maxHp": 70,
+    "maxHp": 75,
     "maxEnergy": 3,
     "secondaryResource": "command",
     "startingDeck": [
@@ -90,7 +90,7 @@
       "defend",
       "defend",
       "pommel_strike",
-      "fracture_strike",
+      "fortify_position",
       "calculated_strike",
       "precision_strike",
       "shield_bash"
