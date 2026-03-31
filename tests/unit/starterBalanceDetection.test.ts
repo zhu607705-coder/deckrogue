@@ -1,7 +1,15 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import charactersDataRaw from '@/content/data/characters.json';
+import cardsDataRaw from '@/content/data/cards.json';
 const charactersData = charactersDataRaw as any[];
+const cardsData = cardsDataRaw as any[];
+
+function getCard(id: string) {
+  const card = cardsData.find(entry => entry.id === id);
+  assert.ok(card, `missing card ${id}`);
+  return card;
+}
 
 describe('Starter Balance Detection', () => {
   
@@ -46,21 +54,31 @@ describe('Starter Balance Detection', () => {
   describe('3. 起始卡组输出测试', () => {
     const characterIds = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
     
+    const characterStrikeRequirements: Record<string, number> = {
+      informant: 2,  // vNext: 1 replaced with dead_drop
+      brute: 4,
+      tactician: 3,
+      puppeteer: 0,
+      chronomancer: 0,
+      alchemist: 1,  // vNext: 1 replaced with nerve_agent
+    };
+    
     for (const charId of characterIds) {
-      test(`${charId} should have at least 2 strikes in starting deck`, () => {
+      test(`${charId} should have at least ${characterStrikeRequirements[charId]} strikes in starting deck`, () => {
         const charDef = charactersData.find(c => c.id === charId);
         assert.ok(charDef, `${charId} should exist`);
         
         const strikes = charDef.startingDeck.filter((cardId: string) => cardId === 'strike');
-        assert.ok(strikes.length >= 2, `${charId} should have at least 2 strikes, got ${strikes.length}`);
+        const requiredStrikes = characterStrikeRequirements[charId] || 2;
+        assert.ok(strikes.length >= requiredStrikes, `${charId} should have at least ${requiredStrikes} strikes, got ${strikes.length}`);
       });
     }
     
-    test('informant should have 3 strikes after adjustment', () => {
+    test('informant should have 2 strikes after vNext adjustment', () => {
       const charDef = charactersData.find(c => c.id === 'informant');
       assert.ok(charDef);
       const strikes = charDef.startingDeck.filter((cardId: string) => cardId === 'strike');
-      assert.strictEqual(strikes.length, 3, 'informant should have 3 strikes');
+      assert.strictEqual(strikes.length, 2, 'informant should have 2 strikes (1 replaced with dead_drop)');
     });
 
     test('informant should include precision_strike in starting deck', () => {
@@ -72,12 +90,21 @@ describe('Starter Balance Detection', () => {
       );
     });
 
-    test('informant should not include shadow_step in starting deck', () => {
+    test('informant should include intel_surge in starting deck', () => {
       const charDef = charactersData.find(c => c.id === 'informant');
       assert.ok(charDef);
       assert.ok(
-        !charDef.startingDeck.includes('shadow_step'),
-        'informant should not include shadow_step in starting deck'
+        charDef.startingDeck.includes('intel_surge'),
+        'informant should include intel_surge in starting deck'
+      );
+    });
+
+    test('informant should include dead_drop in starting deck (vNext replacement)', () => {
+      const charDef = charactersData.find(c => c.id === 'informant');
+      assert.ok(charDef);
+      assert.ok(
+        charDef.startingDeck.includes('dead_drop'),
+        'informant should include dead_drop in starting deck (vNext replacement for 1 strike)'
       );
     });
     
@@ -95,18 +122,78 @@ describe('Starter Balance Detection', () => {
       assert.strictEqual(threadLash.length, 2, 'puppeteer should have 2 thread_lash');
     });
     
-    test('chronomancer should have 2 echo_strike after adjustment', () => {
+    test('chronomancer should use the real low-cost starter shell after adjustment', () => {
       const charDef = charactersData.find(c => c.id === 'chronomancer');
       assert.ok(charDef);
-      const echoStrike = charDef.startingDeck.filter((cardId: string) => cardId === 'echo_strike');
-      assert.strictEqual(echoStrike.length, 2, 'chronomancer should have 2 echo_strike');
+      assert.ok(
+        charDef.startingDeck.includes('gather_intel'),
+        'chronomancer should include gather_intel in the repaired starter shell'
+      );
+      assert.ok(
+        charDef.startingDeck.includes('surveillance'),
+        'chronomancer should include surveillance in the repaired starter shell'
+      );
+      assert.ok(
+        charDef.startingDeck.includes('precision_strike'),
+        'chronomancer should include precision_strike in the repaired starter shell'
+      );
+      for (const cardId of charDef.startingDeck) {
+        assert.ok(getCard(cardId), `chronomancer starter card should exist: ${cardId}`);
+      }
     });
     
-    test('alchemist should have 2 fire_arrow after adjustment', () => {
+    test('alchemist should have 1 strike and 1 nerve_agent after vNext adjustment', () => {
+      const charDef = charactersData.find(c => c.id === 'alchemist');
+      assert.ok(charDef);
+      const strike = charDef.startingDeck.filter((cardId: string) => cardId === 'strike');
+      const nerveAgent = charDef.startingDeck.filter((cardId: string) => cardId === 'nerve_agent');
+      assert.strictEqual(strike.length, 1, 'alchemist should have 1 strike (1 replaced with nerve_agent)');
+      assert.strictEqual(nerveAgent.length, 1, 'alchemist should have 1 nerve_agent');
+    });
+
+    test('alchemist should not have fire_arrow (replaced with volatile_catalyst)', () => {
       const charDef = charactersData.find(c => c.id === 'alchemist');
       assert.ok(charDef);
       const fireArrow = charDef.startingDeck.filter((cardId: string) => cardId === 'fire_arrow');
-      assert.strictEqual(fireArrow.length, 2, 'alchemist should have 2 fire_arrow');
+      assert.strictEqual(fireArrow.length, 0, 'alchemist should not have fire_arrow (replaced with volatile_catalyst)');
+    });
+
+    test('alchemist should include volatile_catalyst in starting deck (vNext replacement)', () => {
+      const charDef = charactersData.find(c => c.id === 'alchemist');
+      assert.ok(charDef);
+      assert.ok(
+        charDef.startingDeck.includes('volatile_catalyst'),
+        'alchemist should include volatile_catalyst in starting deck (vNext replacement for fire_arrow)'
+      );
+    });
+
+    test('alchemist should include alchemical_transmute in starting deck', () => {
+      const charDef = charactersData.find(c => c.id === 'alchemist');
+      assert.ok(charDef);
+      assert.ok(
+        charDef.startingDeck.includes('alchemical_transmute'),
+        'alchemist should include alchemical_transmute in starting deck'
+      );
+    });
+
+    test('alchemist should include concoct and acid_bath in starting deck', () => {
+      const charDef = charactersData.find(c => c.id === 'alchemist');
+      assert.ok(charDef);
+      assert.ok(
+        charDef.startingDeck.includes('concoct'),
+        'alchemist should include concoct in starting deck'
+      );
+      assert.ok(
+        charDef.startingDeck.includes('acid_bath'),
+        'alchemist should include acid_bath in starting deck'
+      );
+    });
+
+    test('alchemical_transmute should heal 3 HP per Element', () => {
+      const card = getCard('alchemical_transmute');
+      const transmute = card.actions.find((action: any) => action.type === 'TransmuteElements');
+      assert.equal(transmute?.amount, 3, `expected alchemical_transmute to heal 3 HP per Element, got ${transmute?.amount}`);
+      assert.match(card.text, /每有 1 个元素，恢复 3 点生命值。/);
     });
   });
   

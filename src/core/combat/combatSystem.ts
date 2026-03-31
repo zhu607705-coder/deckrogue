@@ -261,6 +261,10 @@ export class CombatSystem {
 
   public gainBlock(state: GameState, targetType: 'player' | 'enemy', targetId: string, amount: number): void {
     if (!state.combat) return;
+    if (!Number.isFinite(amount)) {
+      console.error('[CombatSystem] Illegal block amount:', { targetType, targetId, amount });
+      return;
+    }
 
     let target: any;
     if (targetType === 'player') {
@@ -271,7 +275,17 @@ export class CombatSystem {
 
     if (!target) return;
 
-    target.block += amount;
+    const nextBlock = Math.max(0, Math.floor((target.block || 0) + amount));
+    if (nextBlock !== (target.block || 0) + amount) {
+      console.warn('[CombatSystem] Clamped block mutation', {
+        targetType,
+        targetId,
+        previousBlock: target.block || 0,
+        amount,
+        nextBlock
+      });
+    }
+    target.block = nextBlock;
 
     globalEventBus.publish({ type: 'BlockGained', amount });
   }

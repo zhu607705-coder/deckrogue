@@ -2,43 +2,46 @@
   "characters": [
     {
       "characterId": "informant",
-      "runs": 24,
-      "survivalRateFirst3": 0.5,
-      "survivalRateAll5": 0.375,
-      "avgCombatsPerRun": 2.3333333333333335,
-      "avgCombatTurns": 3.9464285714285716,
-      "avgMaxFloor": 2.2083333333333335,
-      "overallScore": 50.0506,
-      "powerIndex": 86.29,
+      "runs": 20,
+      "survivalRateFirst3": 0.65,
+      "survivalRateAll5": 0.55,
+      "avgCombatsPerRun": 3.2,
+      "avgCombatTurns": 2.5,
+      "avgMaxFloor": 2.9,
+      "overallScore": 67.3,
+      "powerIndex": 90.5,
       "powerIndexComponents": {
-        "S5": 37.5,
-        "S3": 50,
-        "F": 44.16666666666667,
+        "S5": 55.00000000000001,
+        "S3": 65,
+        "F": 57.99999999999999,
         "T": 100,
         "E": 75,
-        "R": 75
+        "R": 100
       },
       "starterDamageProfile": {
-        "openingTurnDamage": 30,
-        "firstTwoTurnDamage": 60,
-        "firstResourceSpendTurn": -1
-      }
+        "openingTurnDamage": 16,
+        "firstTwoTurnDamage": 34,
+        "firstResourceSpendTurn": 1
+      },
+      "enchantmentPickupRate": 0.6,
+      "enchantmentContributionScore": 1.25,
+      "afflictionContributionPenalty": 0
     },
     {
       "characterId": "brute",
-      "runs": 24,
+      "runs": 20,
       "survivalRateFirst3": 0.75,
-      "survivalRateAll5": 0.4583333333333333,
-      "avgCombatsPerRun": 2.8333333333333335,
-      "avgCombatTurns": 3.5588235294117645,
-      "avgMaxFloor": 2.8333333333333335,
-      "overallScore": 66.5196,
-      "powerIndex": 87.88,
+      "survivalRateAll5": 0.4,
+      "avgCombatsPerRun": 2.75,
+      "avgCombatTurns": 2.1636363636363636,
+      "avgMaxFloor": 2.75,
+      "overallScore": 65.75,
+      "powerIndex": 83.61,
       "powerIndexComponents": {
-        "S5": 45.83333333333333,
+        "S5": 40,
         "S3": 75,
-        "F": 56.666666666666664,
-        "T": 100,
+        "F": 55.00000000000001,
+        "T": 93.27272727272727,
         "E": 75,
         "R": 75
       },
@@ -46,23 +49,26 @@
         "openingTurnDamage": 24,
         "firstTwoTurnDamage": 48,
         "firstResourceSpendTurn": -1
-      }
+      },
+      "enchantmentPickupRate": 0.45,
+      "enchantmentContributionScore": 1.05,
+      "afflictionContributionPenalty": 0
     },
     {
       "characterId": "tactician",
-      "runs": 24,
-      "survivalRateFirst3": 0.8333333333333334,
-      "survivalRateAll5": 0.5416666666666666,
-      "avgCombatsPerRun": 3.0833333333333335,
-      "avgCombatTurns": 2.9594594594594597,
-      "avgMaxFloor": 3.0833333333333335,
-      "overallScore": 75,
-      "powerIndex": 88.54,
+      "runs": 20,
+      "survivalRateFirst3": 0.7,
+      "survivalRateAll5": 0.45,
+      "avgCombatsPerRun": 2.75,
+      "avgCombatTurns": 2.4727272727272727,
+      "avgMaxFloor": 2.7,
+      "overallScore": 65.05,
+      "powerIndex": 87.22,
       "powerIndexComponents": {
-        "S5": 54.166666666666664,
-        "S3": 83.33333333333334,
-        "F": 61.66666666666667,
-        "T": 100,
+        "S5": 45,
+        "S3": 70,
+        "F": 54,
+        "T": 99.45454545454545,
         "E": 75,
         "R": 75
       },
@@ -70,22 +76,25 @@
         "openingTurnDamage": 18,
         "firstTwoTurnDamage": 36,
         "firstResourceSpendTurn": -1
-      }
+      },
+      "enchantmentPickupRate": 0.45,
+      "enchantmentContributionScore": 1.025,
+      "afflictionContributionPenalty": 0.4
     },
     {
       "characterId": "puppeteer",
-      "runs": 24,
-      "survivalRateFirst3": 0.625,
-      "survivalRateAll5": 0.375,
-      "avgCombatsPerRun": 2.6666666666666665,
-      "avgCombatTurns": 3.734375,
-      "avgMaxFloor": 2.4166666666666665,
-      "overallScore": 56.7474,
-      "powerIndex": 89.33,
+      "runs": 20,
+      "survivalRateFirst3": 0.65,
+      "survivalRateAll5": 0.35,
+      "avgCombatsPerRun": 3,
+      "avgCombatTurns": 3,
+      "avgMaxFloor": 2.75,
+      "overallScore": 60.5,
+      "powerIndex": 90,
       "powerIndexComponents": {
-        "S5": 37.5,
-        "S3": 62.5,
-        "F": 48.33333333333333,
+        "S5": 35,
+        "S3": 65,
+        "F": 55.00000000000001,
         "T": 100,
         "E": 75,
         "R": 100
@@ -94,60 +103,85 @@
         "openingTurnDamage": 21,
         "firstTwoTurnDamage": 42,
         "firstResourceSpendTurn": 1
-      }
+      },
+      "enchantmentPickupRate": 0.45,
+      "enchantmentContributionScore": 1.025,
+      "afflictionContributionPenalty": 0.7
     },
     {
       "characterId": "chronomancer",
-      "runs": 24,
-      "survivalRateFirst3": 0.7916666666666666,
-      "survivalRateAll5": 0.5416666666666666,
-      "avgCombatsPerRun": 3.5833333333333335,
-      "avgCombatTurns": 2.744186046511628,
-      "avgMaxFloor": 3.125,
-      "overallScore": 74,
-      "powerIndex": 91.08,
+      "runs": 20,
+      "survivalRateFirst3": 0.85,
+      "survivalRateAll5": 0.6,
+      "avgCombatsPerRun": 3.6,
+      "avgCombatTurns": 2.1944444444444446,
+      "avgMaxFloor": 3.35,
+      "overallScore": 79,
+      "powerIndex": 87.98,
       "powerIndexComponents": {
-        "S5": 54.166666666666664,
-        "S3": 79.16666666666666,
-        "F": 62.5,
-        "T": 100,
+        "S5": 60,
+        "S3": 85,
+        "F": 67,
+        "T": 93.88888888888889,
         "E": 75,
         "R": 100
       },
       "starterDamageProfile": {
-        "openingTurnDamage": 12,
-        "firstTwoTurnDamage": 30,
+        "openingTurnDamage": 18,
+        "firstTwoTurnDamage": 42,
         "firstResourceSpendTurn": 2
-      }
+      },
+      "enchantmentPickupRate": 0.6,
+      "enchantmentContributionScore": 1.3,
+      "afflictionContributionPenalty": 0
     },
     {
       "characterId": "alchemist",
-      "runs": 24,
-      "survivalRateFirst3": 0.7083333333333334,
-      "survivalRateAll5": 0.5,
-      "avgCombatsPerRun": 2.875,
-      "avgCombatTurns": 3.608695652173913,
-      "avgMaxFloor": 2.7916666666666665,
-      "overallScore": 65.8533,
-      "powerIndex": 90.29,
+      "runs": 20,
+      "survivalRateFirst3": 0.85,
+      "survivalRateAll5": 0.6,
+      "avgCombatsPerRun": 3,
+      "avgCombatTurns": 3.55,
+      "avgMaxFloor": 3.2,
+      "overallScore": 76.425,
+      "powerIndex": 90.85,
       "powerIndexComponents": {
-        "S5": 50,
-        "S3": 70.83333333333334,
-        "F": 55.833333333333336,
+        "S5": 60,
+        "S3": 85,
+        "F": 64,
         "T": 100,
         "E": 75,
-        "R": 100
+        "R": 95
       },
       "starterDamageProfile": {
-        "openingTurnDamage": 22,
-        "firstTwoTurnDamage": 48,
-        "firstResourceSpendTurn": 2
-      }
+        "openingTurnDamage": 10,
+        "firstTwoTurnDamage": 24,
+        "firstResourceSpendTurn": 1
+      },
+      "enchantmentPickupRate": 0.7,
+      "enchantmentContributionScore": 1.5,
+      "afflictionContributionPenalty": 0.3
     }
   ],
   "enemies": [
     {
-      "enemyId": "enemy_0_1773057479752_5j17xvye1",
+      "enemyId": "enemy_0_1774093499489_flz6700ps",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 6,
+      "threatLevel": 106
+    },
+    {
+      "enemyId": "enemy_1_1774093499489_ypkn1peh9",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 6,
+      "threatLevel": 106
+    },
+    {
+      "enemyId": "enemy_0_1774093472188_guheu8dj0",
       "encounters": 1,
       "victories": 0,
       "defeats": 1,
@@ -155,7 +189,7 @@
       "threatLevel": 105
     },
     {
-      "enemyId": "enemy_1_1773057479752_p18xgro57",
+      "enemyId": "enemy_1_1774093472188_62ydbu9hv",
       "encounters": 1,
       "victories": 0,
       "defeats": 1,
@@ -163,7 +197,71 @@
       "threatLevel": 105
     },
     {
-      "enemyId": "enemy_0_1773057390655_ijry6krkh",
+      "enemyId": "enemy_0_1774093494538_62ydbu9hv",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_1_1774093494539_84s6ip234",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_0_1774093499411_62ydbu9hv",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_1_1774093499411_84s6ip234",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_0_1774093543421_4ccefz1qg",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_1_1774093543421_qqg8mec8r",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_0_1774093599394_cfenckxod",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_1_1774093599394_8wx86i8ww",
+      "encounters": 1,
+      "victories": 0,
+      "defeats": 1,
+      "avgTurnsToDefeat": 5,
+      "threatLevel": 105
+    },
+    {
+      "enemyId": "enemy_0_1774093469516_xv1yv46n0",
       "encounters": 1,
       "victories": 0,
       "defeats": 1,
@@ -171,7 +269,7 @@
       "threatLevel": 104
     },
     {
-      "enemyId": "enemy_1_1773057390655_2xrlfaa25",
+      "enemyId": "enemy_1_1774093469516_n38teo0he",
       "encounters": 1,
       "victories": 0,
       "defeats": 1,
@@ -179,164 +277,87 @@
       "threatLevel": 104
     },
     {
-      "enemyId": "enemy_0_1773057398665_intvmg4au",
+      "enemyId": "enemy_0_1774093472284_3g15fuedd",
       "encounters": 1,
       "victories": 0,
       "defeats": 1,
       "avgTurnsToDefeat": 4,
       "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_1_1773057398666_7kf5lahbz",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_0_1773057403803_ijry6krkh",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_1_1773057403803_2xrlfaa25",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_0_1773057406281_ijry6krkh",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_1_1773057406281_2xrlfaa25",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_0_1773057429739_884xpro77",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_1_1773057429739_tiunj079m",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_0_1773057504824_j9zii4va7",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_1_1773057504824_nba0ee219",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 4,
-      "threatLevel": 104
-    },
-    {
-      "enemyId": "enemy_0_1773057492563_dvqyiy7qb",
-      "encounters": 1,
-      "victories": 0,
-      "defeats": 1,
-      "avgTurnsToDefeat": 3,
-      "threatLevel": 103
     }
   ],
   "analysis": {
-    "survivalSpreadFirst3": 0.3333,
-    "survivalSpreadAll5": 0.1667,
-    "avgCombatTurnsSpread": 1.2022,
-    "avgMaxFloorSpread": 0.9167,
-    "overallScoreSpread": 24.9494,
-    "powerSpread": 4.79,
+    "survivalSpreadFirst3": 0.2,
+    "survivalSpreadAll5": 0.25,
+    "avgCombatTurnsSpread": 1.3864,
+    "avgMaxFloorSpread": 0.65,
+    "overallScoreSpread": 18.5,
+    "powerSpread": 7.24,
     "powerBand": {
-      "top": "chronomancer",
+      "top": "alchemist",
       "mid": [
-        "alchemist",
+        "informant",
         "puppeteer",
-        "tactician",
-        "brute"
+        "chronomancer",
+        "tactician"
       ],
-      "bottom": "informant"
+      "bottom": "brute"
     },
     "means": {
-      "survivalRateFirst3": 0.7013888888888888,
-      "avgCombatTurns": 3.425328043164223,
-      "avgMaxFloor": 2.7430555555555554,
-      "overallScore": 64.69515,
-      "powerIndex": 88.90166666666666
+      "survivalRateFirst3": 0.7416666666666666,
+      "avgCombatTurns": 2.6468013468013467,
+      "avgMaxFloor": 2.941666666666667,
+      "overallScore": 69.00416666666668,
+      "powerIndex": 88.36000000000001
     },
     "stdDevs": {
-      "survivalRateFirst3": 0.11132791348528749,
-      "avgCombatTurns": 0.4280748501247965,
-      "avgMaxFloor": 0.33282658239782664,
-      "overallScore": 8.898217715128874,
-      "powerIndex": 1.5732918426732592
+      "survivalRateFirst3": 0.08374896350934073,
+      "avgCombatTurns": 0.48826985068289663,
+      "avgMaxFloor": 0.24734703466093053,
+      "overallScore": 6.5375265561389675,
+      "powerIndex": 2.499193203149101
     },
     "outliers": [
       {
-        "characterId": "informant",
+        "characterId": "puppeteer",
         "flags": [
-          "low_early_survival",
-          "progression_lag",
           "low_overall_score"
         ],
         "zScores": {
-          "survivalRateFirst3": -1.809,
-          "avgCombatTurns": 1.2173,
-          "avgMaxFloor": -1.6066,
-          "overallScore": -1.6458
-        }
-      },
-      {
-        "characterId": "tactician",
-        "flags": [
-          "dominant_overall_score"
-        ],
-        "zScores": {
-          "survivalRateFirst3": 1.1852,
-          "avgCombatTurns": -1.0883,
-          "avgMaxFloor": 1.0224,
-          "overallScore": 1.1581
+          "survivalRateFirst3": -1.0945,
+          "avgCombatTurns": 0.7234,
+          "avgMaxFloor": -0.7749,
+          "overallScore": -1.3008
         }
       },
       {
         "characterId": "chronomancer",
         "flags": [
+          "high_early_survival",
           "dominant_overall_score"
         ],
         "zScores": {
-          "survivalRateFirst3": 0.8109,
-          "avgCombatTurns": -1.5912,
-          "avgMaxFloor": 1.1476,
-          "overallScore": 1.0457
+          "survivalRateFirst3": 1.2935,
+          "avgCombatTurns": -0.9264,
+          "avgMaxFloor": 1.6509,
+          "overallScore": 1.529
+        }
+      },
+      {
+        "characterId": "alchemist",
+        "flags": [
+          "high_early_survival"
+        ],
+        "zScores": {
+          "survivalRateFirst3": 1.2935,
+          "avgCombatTurns": 1.8498,
+          "avgMaxFloor": 1.0444,
+          "overallScore": 1.1351
         }
       }
     ]
+  },
+  "diagnostics": {
+    "illegalRunTransitions": [],
+    "unknownActionTypes": []
   }
 }

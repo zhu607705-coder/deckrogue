@@ -1,0 +1,48 @@
+name: windows-installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/windows-installer.yml'
+      - 'electron-builder.json'
+      - 'electron/**'
+      - 'scripts/desktop/**'
+      - 'scripts/validation/check_release_readiness.ts'
+      - 'scripts/validation/playwright_electron_smoke.ts'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run dist:win
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deckrogue-windows-installer
+          path: |
+            dist-desktop/*.exe
+            reports/desktop/windows-installer.json
+          if-no-files-found: error

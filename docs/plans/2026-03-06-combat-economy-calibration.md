@@ -232,7 +232,7 @@ git commit -m "feat: calibrate economy progression"
 ### Task 5: Update report and verify the whole calibration pass
 
 **Files:**
-- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/development_report_2026-03-06.md`
+- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/development-reports/project-development-report.md`
 - Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md`
 
 **Step 1: Update report content**
@@ -267,7 +267,7 @@ Expected: all checks pass and output artifacts reflect tightened combat and econ
 **Step 3: Commit**
 
 ```bash
-git add /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/development_report_2026-03-06.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/numerics
+git add /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/development-reports/project-development-report.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/numerics
 git commit -m "docs: record combat and economy calibration pass"
 ```
 

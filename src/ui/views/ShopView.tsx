@@ -1,30 +1,61 @@
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { CardView } from '@/ui/views/CardView';
 import { Coins, Hammer, Trash2, FlaskConical } from 'lucide-react';
 import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narrative/numericSystem';
 import worldLoreData from '@/content/data/worldLore.json';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
+import { GlossaryText } from '@/ui/components/GlossaryText';
+import { getUiLabelZh } from '@/ui/content/terminology';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
+import type { RunCardInstance, RelicDef, PotionDef as CorePotionDef } from '@/core/types/actions';
 
-export function ShopView({ engine }: { engine: GameEngine }) {
+interface ShopRelic extends RelicDef {
+  inscription?: string;
+  flavorText?: string;
+  corrupted?: boolean;
+  price: number;
+}
+
+interface ShopPotion extends CorePotionDef {
+  price: number;
+}
+
+interface WorldLore {
+  viewAtmosphere?: {
+    Shop?: string;
+    [key: string]: string | undefined;
+  };
+  npcDialogueTemplates?: {
+    merchant?: string[];
+    [key: string]: string[] | undefined;
+  };
+  [key: string]: unknown;
+}
+
+export function ShopView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const potionRuntime = getPotionRuntimeConfig();
-  const WORLD_LORE = worldLoreData as any;
+  const WORLD_LORE = worldLoreData as WorldLore;
   const cards = engine.state.shopCards;
   const relics = engine.state.shopRelics;
   const potions = engine.state.shopPotions;
   const player = engine.state.player;
-  const canUpgrade = player.deck.some(c => !c.isUpgraded && c.upgrade) && player.gold >= 50;
-  const canRemove = player.gold >= engine.state.cardRemovalCost && player.deck.length > 0;
+  const roomSummary = renderModel?.room?.kind === 'shop' ? renderModel.room : null;
+  const playerGold = renderModel?.player.gold ?? player.gold;
+  const playerDeckCount = renderModel?.player.deckCount ?? player.deck.length;
+  const playerPotionCount = renderModel?.player.potionCount ?? player.potions.length;
+  const canUpgrade = roomSummary?.canUpgrade ?? (player.deck.some(c => !c.isUpgraded && c.upgrade) && playerGold >= 50);
+  const canRemove = roomSummary?.canRemove ?? (playerGold >= engine.state.cardRemovalCost && playerDeckCount > 0);
   const [mixA, setMixA] = useState<number>(0);
-  const [mixB, setMixB] = useState<number>(Math.min(1, Math.max(0, player.potions.length - 1)));
+  const [mixB, setMixB] = useState<number>(Math.min(1, Math.max(0, playerPotionCount - 1)));
   const potionChoices = player.potions.map((id, idx) => ({
     index: idx,
     id,
-    def: (potionsData as any[]).find(p => p.id === id)
+    def: (potionsData as unknown as ShopPotion[]).find(p => p.id === id)
   }));
-  const canMix = player.potions.length >= 2 && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
+  const canMix = (roomSummary?.canMix ?? (playerPotionCount >= 2)) && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
   const relicIconSrc = (id: string) => `/assets/relics/${id}.png`;
   const potionIconSrc = (id: string) => `/assets/potions/${id}.png`;
   
@@ -40,46 +71,115 @@ export function ShopView({ engine }: { engine: GameEngine }) {
   return (
     <BackgroundImage 
       src={backgroundSrc} 
-      className="flex flex-col h-full text-slate-200 p-8 items-center overflow-y-auto"
-      overlayOpacity={0.6}
+      className="campaign-shell flex h-full flex-col items-center overflow-y-auto px-4 py-8 text-slate-200 md:px-8"
+      overlayOpacity={0.68}
     >
-      <div className="relative z-10 flex flex-col h-full w-full items-center">
-      <div className="absolute top-3 right-3 w-16 h-16 sm:top-4 sm:right-4 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full border-4 border-yellow-600/50 overflow-hidden shadow-2xl bg-slate-900/80">
+      <div className="relative z-10 flex h-full w-full max-w-6xl flex-col items-center">
+      <div className="absolute right-4 top-5 h-16 w-16 overflow-hidden rounded-full border-4 border-yellow-600/50 bg-slate-900/80 shadow-2xl sm:h-24 sm:w-24 lg:h-32 lg:w-32">
         <img
           src={merchantImage}
-          alt="Merchant"
+          alt="商贩"
           className="w-full h-full object-cover object-center"
           onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.merchant)}
         />
       </div>
       
-      <div className="mb-8 flex items-center justify-between w-full max-w-5xl sticky top-0 bg-slate-950/80 backdrop-blur-md p-4 z-10 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="text-3xl font-bold font-serif flex items-center gap-4">
-          <span className="text-yellow-400">黑市拾荒者</span>
-        </div>
-        <div className="flex items-center gap-2 text-yellow-400 bg-slate-900/80 px-4 py-2 rounded-full border border-yellow-900/50 shadow-inner">
-          <Coins size={18} className="text-yellow-400" />
-          <span className="font-bold">{player.gold}</span>
-          <span className="text-slate-500 text-sm">信用筹码</span>
+      <div className="mb-8 w-full border-b border-white/10 pb-8 text-left">
+        <div className="campaign-kicker">{getUiLabelZh('Scavenger Exchange')}</div>
+        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="campaign-title campaign-poster-title text-[clamp(2.4rem,4vw,4.4rem)] leading-[0.94] text-yellow-100">
+              黑市拾荒者
+            </h1>
+            <p className="campaign-copy mt-4 text-sm md:text-base">
+              这页只负责判断三件事：当前构筑缺什么、哪些购买真正值得、哪些服务会把你推进下一段构筑转折。
+            </p>
+          </div>
+          <div className="campaign-section flex items-center gap-3 self-start px-4 py-3 text-yellow-300">
+            <Coins size={18} className="text-yellow-400" />
+            <span className="text-lg font-semibold">{playerGold}</span>
+            <span className="text-xs uppercase tracking-[0.18em] text-stone-400">信用筹码</span>
+          </div>
         </div>
       </div>
-      <div className="w-full max-w-5xl mb-6 rounded-xl border border-yellow-900/40 bg-slate-950/65 px-4 py-3 text-sm leading-6 text-yellow-100/75">
-        {WORLD_LORE?.viewAtmosphere?.Shop}
-      </div>
-      <div className="w-full max-w-5xl mb-6 rounded-xl border border-yellow-700/30 bg-yellow-950/10 px-4 py-3 text-sm leading-6 text-yellow-100/85 italic">
-        “{merchantLine}”
+      <div className="campaign-section mb-6 grid w-full gap-4 p-4 md:grid-cols-[1.3fr_0.7fr]">
+        <div>
+          <div className="campaign-kicker">{getUiLabelZh('Atmosphere')}</div>
+          <div className="campaign-copy mt-2 text-sm md:text-base">
+            <GlossaryText text={WORLD_LORE?.viewAtmosphere?.Shop || ''} />
+          </div>
+        </div>
+        <div className="campaign-decision-column md:pl-5">
+          <div className="campaign-kicker">{getUiLabelZh('Merchant Note')}</div>
+          <p className="campaign-copy mt-2 text-sm italic text-yellow-100/85">“{merchantLine}”</p>
+        </div>
       </div>
       
-      <div className="w-full max-w-5xl mb-8 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-xl">
-        <h2 className="text-2xl font-serif text-yellow-400 mb-6 pb-2 border-b border-slate-700">记忆印痕</h2>
+      <div className="campaign-section mb-8 w-full p-6">
+        <div className="mb-6 border-b border-white/10 pb-3">
+          <div className="campaign-kicker">{getUiLabelZh('Acquisition')}</div>
+          <h2 className="campaign-title mt-3 text-2xl text-yellow-200">记忆印痕</h2>
+        </div>
         <div className="flex flex-wrap justify-center gap-6">
-          {cards.map((card: any, index: number) => {
+          {cards.map((card: RunCardInstance, index: number) => {
             const basePrice = card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50;
             const price = engine.getAdjustedShopPrice(basePrice);
-            const canAfford = player.gold >= price;
+            const canAfford = playerGold >= price;
+            
+            const deckArchetype = player.deck.reduce((acc: Record<string, number>, c: RunCardInstance) => {
+              if (c.type === 'Attack') acc.attack = (acc.attack || 0) + 1;
+              if (c.type === 'Skill') acc.skill = (acc.skill || 0) + 1;
+              if (c.type === 'Power') acc.power = (acc.power || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            const getBuildFitTags = (): string[] => {
+              const tags: string[] = [];
+              const attackCount = deckArchetype.attack || 0;
+              const skillCount = deckArchetype.skill || 0;
+              
+              if (card.type === 'Attack' && attackCount < 5) {
+                tags.push('补充攻击');
+              } else if (card.type === 'Skill' && skillCount < 5) {
+                tags.push('补充技能');
+              }
+              
+              if (card.type === 'Power' && (deckArchetype.power || 0) < 3) {
+                tags.push('能力核心');
+              }
+              
+              if (card.rarity === 'Rare') {
+                tags.push('稀有强化');
+              }
+              
+              if (tags.length === 0) {
+                tags.push('可选');
+              }
+              
+              return tags.slice(0, 2);
+            };
+            
+            const buildFitTags = getBuildFitTags();
             
             return (
-              <div key={card.instanceId} className="flex flex-col items-center gap-3 group">
+              <div key={card.instanceId} className="campaign-choice flex max-w-[22rem] flex-col items-center gap-3 p-4 group">
+                <div className="campaign-kicker">{getUiLabelZh('Offer')} {index + 1}</div>
+                <div className="flex flex-wrap justify-center gap-1">
+                  {buildFitTags.map((tag, i) => (
+                    <span 
+                      key={i}
+                      className={`px-2 py-0.5 text-xs font-bold rounded border ${
+                        tag === '补充攻击' ? 'bg-red-900/60 border-red-500/50 text-red-300' :
+                        tag === '补充技能' ? 'bg-blue-900/60 border-blue-500/50 text-blue-300' :
+                        tag === '能力核心' ? 'bg-purple-900/60 border-purple-500/50 text-purple-300' :
+                        tag === '稀有强化' ? 'bg-yellow-900/60 border-yellow-500/50 text-yellow-300' :
+                        'bg-slate-700/60 border-slate-500/50 text-slate-300'
+                      }`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <CardView card={card} disabled={!canAfford} />
                 <button 
                   onClick={() => engine.buyShopCard(card.instanceId, basePrice)}
@@ -87,6 +187,8 @@ export function ShopView({ engine }: { engine: GameEngine }) {
                   className={`px-5 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 transition-all duration-300 shadow-lg
                     ${canAfford ? 'bg-yellow-900/60 border-yellow-500 text-yellow-400 hover:bg-yellow-900 hover:scale-105 hover:shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
                   `}
+                  data-keyboard-option={index < 10 ? String(index + 1) : undefined}
+                  data-keyboard-focus="true"
                 >
                   <Coins size={16} /> {price}
                 </button>
@@ -96,18 +198,21 @@ export function ShopView({ engine }: { engine: GameEngine }) {
         </div>
       </div>
 
-      <div className="w-full max-w-5xl mb-8 grid grid-cols-2 gap-8">
-        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-xl">
-          <h2 className="text-2xl font-serif text-emerald-400 mb-6 pb-2 border-b border-slate-700">遗物</h2>
+      <div className="mb-8 grid w-full gap-8 lg:grid-cols-2">
+        <div className="campaign-section p-6">
+          <div className="mb-6 border-b border-white/10 pb-3">
+            <div className="campaign-kicker">{getUiLabelZh('Permanent Edge')}</div>
+            <h2 className="campaign-title mt-3 text-2xl text-emerald-200">遗物</h2>
+          </div>
           <div className="flex flex-col gap-4">
-            {relics.map((relicId: string) => {
-              const relic = relicsData.find(r => r.id === relicId);
+            {relics.map((relicId: string, index: number) => {
+              const relic = relicsData.find(r => r.id === relicId) as ShopRelic | undefined;
               if (!relic) return null;
               const basePrice = relic.price;
               const price = engine.getAdjustedShopPrice(basePrice);
-              const canAfford = player.gold >= price;
+              const canAfford = playerGold >= price;
               return (
-                <div key={relic.id} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-300 group" title={`${relic.description}${(relic as any).inscription ? `\n铭文：${(relic as any).inscription}` : ''}${(relic as any).flavorText ? `\n遗言：${(relic as any).flavorText}` : ''}${(relic as any).corrupted ? ' [Corrupted Relic]' : ''}`}>
+                <div key={relic.id} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-300 group" title={`${relic.description}${relic.inscription ? `\n铭文：${relic.inscription}` : ''}${relic.flavorText ? `\n遗言：${relic.flavorText}` : ''}${relic.corrupted ? ' [腐化遗物]' : ''}`}>
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center text-yellow-400 border-2 border-yellow-500/30 overflow-hidden group-hover:scale-110 transition-transform duration-300 shadow-lg">
                       <img
@@ -120,11 +225,11 @@ export function ShopView({ engine }: { engine: GameEngine }) {
                     <div>
                       <div className="font-bold text-emerald-400 text-lg">{relic.name}</div>
                       <div className="text-sm text-slate-400">{relic.description}</div>
-                      {(relic as any).inscription && (
-                        <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">铭文：{(relic as any).inscription}</div>
+                      {relic.inscription && (
+                        <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">铭文：{relic.inscription}</div>
                       )}
-                      {(relic as any).flavorText && (
-                        <div className="text-[11px] italic text-emerald-200/70 mt-0.5 line-clamp-1">“{String((relic as any).flavorText).replace(/^“|”$/g, '')}”</div>
+                      {relic.flavorText && (
+                        <div className="text-[11px] italic text-emerald-200/70 mt-0.5 line-clamp-1">“{String(relic.flavorText).replace(/^“|”$/g, '')}”</div>
                       )}
                     </div>
                   </div>
@@ -134,6 +239,8 @@ export function ShopView({ engine }: { engine: GameEngine }) {
                     className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 shrink-0 transition-all duration-300 shadow-lg
                       ${canAfford ? 'bg-yellow-900/60 border-yellow-500 text-yellow-400 hover:bg-yellow-900 hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
                     `}
+                    data-keyboard-option={cards.length + index < 10 ? String(cards.length + index + 1) : undefined}
+                    data-keyboard-focus="true"
                   >
                     <Coins size={16} /> {price}
                   </button>
@@ -144,17 +251,20 @@ export function ShopView({ engine }: { engine: GameEngine }) {
           </div>
         </div>
 
-        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-xl">
-          <h2 className="text-2xl font-serif text-blue-400 mb-6 pb-2 border-b border-slate-700">药剂</h2>
+        <div className="campaign-section p-6">
+          <div className="mb-6 border-b border-white/10 pb-3">
+            <div className="campaign-kicker">{getUiLabelZh('Volatile Tools')}</div>
+            <h2 className="campaign-title mt-3 text-2xl text-blue-200">药剂</h2>
+          </div>
           <div className="flex flex-col gap-4">
             {potions.map((potionId: string, index: number) => {
-              const potion = potionsData.find(p => p.id === potionId);
+              const potion = potionsData.find(p => p.id === potionId) as ShopPotion | undefined;
               if (!potion) return null;
               const basePrice = potion.price;
               const price = engine.getAdjustedShopPrice(basePrice);
-              const canAfford = player.gold >= price && player.potions.length < potionRuntime.slotLimit;
+              const canAfford = playerGold >= price && playerPotionCount < potionRuntime.slotLimit;
               return (
-                <div key={`${potion.id}-${index}`} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-300 group" title={`${potion.description} (Toxicity +${(potion as any).toxicity ?? 1})`}>
+                <div key={`${potion.id}-${index}`} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-300 group" title={`${potion.description} (Toxicity +${potion.toxicity ?? 1})`}>
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center text-blue-400 border-2 border-blue-500/30 overflow-hidden group-hover:scale-110 transition-transform duration-300 shadow-lg">
                       <img
@@ -175,6 +285,8 @@ export function ShopView({ engine }: { engine: GameEngine }) {
                     className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 shrink-0 transition-all duration-300 shadow-lg
                       ${canAfford ? 'bg-yellow-900/60 border-yellow-500 text-yellow-400 hover:bg-yellow-900 hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
                     `}
+                    data-keyboard-option={cards.length + relics.length + index < 10 ? String(cards.length + relics.length + index + 1) : undefined}
+                    data-keyboard-focus="true"
                   >
                     <Coins size={16} /> {price}
                   </button>
@@ -186,8 +298,11 @@ export function ShopView({ engine }: { engine: GameEngine }) {
         </div>
       </div>
 
-      <div className="w-full max-w-5xl bg-slate-900/50 p-6 rounded-2xl border border-slate-800 shadow-xl mb-12">
-        <h2 className="text-2xl font-serif text-slate-300 mb-6 pb-2 border-b border-slate-700">服务</h2>
+      <div className="campaign-section mb-12 w-full p-6">
+        <div className="mb-6 border-b border-white/10 pb-3">
+          <div className="campaign-kicker">Services</div>
+          <h2 className="campaign-title mt-3 text-2xl text-stone-100">服务</h2>
+        </div>
         <div className="flex gap-6 justify-center flex-wrap">
           <button 
             onClick={() => engine.enterUpgrade('Shop')}
@@ -195,6 +310,7 @@ export function ShopView({ engine }: { engine: GameEngine }) {
             className={`px-6 py-5 rounded-2xl border-2 flex items-center gap-4 transition-all w-64 shadow-lg
               ${canUpgrade ? 'bg-slate-800 border-emerald-500 hover:bg-slate-700 hover:scale-105 cursor-pointer text-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed text-slate-500'}
             `}
+            data-keyboard-focus="true"
           >
             <Hammer size={28} />
             <div className="text-left">
@@ -209,6 +325,7 @@ export function ShopView({ engine }: { engine: GameEngine }) {
             className={`px-6 py-5 rounded-2xl border-2 flex items-center gap-4 transition-all w-64 shadow-lg
               ${canRemove ? 'bg-slate-800 border-red-500 hover:bg-slate-700 hover:scale-105 cursor-pointer text-red-400 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed text-slate-500'}
             `}
+            data-keyboard-focus="true"
           >
             <Trash2 size={28} />
             <div className="text-left">
@@ -216,10 +333,28 @@ export function ShopView({ engine }: { engine: GameEngine }) {
               <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> {engine.state.cardRemovalCost} 信用筹码</div>
             </div>
           </button>
+
+          <button
+            onClick={() => engine.enterShopEnchant()}
+            disabled={!(roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) || playerGold < engine.getAdjustedShopPrice(65)}
+            className={`px-6 py-5 rounded-2xl border-2 flex items-center gap-4 transition-all w-64 shadow-lg
+              ${(roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) && playerGold >= engine.getAdjustedShopPrice(65)
+                ? 'bg-slate-800 border-amber-500 hover:bg-slate-700 hover:scale-105 cursor-pointer text-amber-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed text-slate-500'}
+            `}
+            data-keyboard-focus="true"
+          >
+            <FlaskConical size={28} />
+            <div className="text-left">
+              <div className="font-bold text-lg">附魔服务</div>
+              <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> {engine.getAdjustedShopPrice(65)} 信用筹码</div>
+            </div>
+          </button>
         </div>
 
-        <div className="mt-8 w-full max-w-3xl mx-auto rounded-2xl border border-cyan-900/50 bg-slate-800/80 p-6 shadow-lg">
-          <div className="text-cyan-300 font-bold mb-4 flex items-center gap-2 text-lg"><FlaskConical size={20} /> 炼金调和</div>
+        <div className="campaign-section mt-8 w-full max-w-3xl self-center p-6">
+          <div className="campaign-kicker">Alchemy Station</div>
+          <div className="campaign-title mt-3 mb-4 flex items-center gap-2 text-xl text-cyan-200"><FlaskConical size={20} /> 炼金调和</div>
           <div className="flex flex-wrap gap-4 items-end">
             <label className="text-sm text-slate-300 flex flex-col gap-2">
               <span className="font-medium">药剂 A</span>
@@ -242,20 +377,24 @@ export function ShopView({ engine }: { engine: GameEngine }) {
               }}
               disabled={!canMix}
               className={`px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-300 shadow-lg ${canMix ? 'bg-cyan-900/50 border-cyan-500 text-cyan-300 hover:bg-cyan-900/70 hover:scale-105 hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]' : 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'}`}
+              data-keyboard-focus="true"
             >
               蒸馏
             </button>
           </div>
-          <div className="mt-3 text-sm text-slate-400">调和会消耗两瓶药剂，并返还一瓶更危险的配方。</div>
+          <div className="campaign-copy mt-3 text-sm">调和会消耗两瓶药剂，并返还一瓶更危险的配方。</div>
         </div>
       </div>
 
-      <button 
-        onClick={() => engine.leaveCurrentRoomToMap()}
-        className="px-10 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border-2 border-slate-600 hover:border-slate-500 transition-all duration-300 shadow-lg hover:scale-105 mt-auto"
-      >
-        离开据点
-      </button>
+      <div className="mt-auto flex w-full justify-center">
+        <button 
+          onClick={() => engine.leaveCurrentRoomToMap()}
+          className="campaign-action px-10 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-stone-100"
+          data-keyboard-focus="true"
+        >
+          离开据点
+        </button>
+      </div>
       </div>
     </BackgroundImage>
   );

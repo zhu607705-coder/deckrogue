@@ -1,5 +1,6 @@
-import type { CardDef, GameState, MetaProfile } from '@/core/types';
+import type { CardDef, GameState, MetaProfile, RunCardInstance } from '@/core/types';
 import { getAscensionLevelConfig, getAscensionMaxLevel, metaBalance } from '@/core/balance/metaBalance';
+import { createRunCardInstance, normalizeRunCardInstance } from '@/core/combat/runCardInstance';
 import { cardsData } from '@/content/narrative/numericSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
 import { systemRandom } from '@/infrastructure/rng/systemRandom';
@@ -15,12 +16,12 @@ function pickRandom<T>(items: T[], rng?: () => number): T | null {
   return items[Math.floor(roll * items.length)] ?? items[0];
 }
 
-function addCardToDeck(state: GameState, cardId: string, ctx: MetaInjectionContext, mutate?: (card: CardDef) => CardDef): boolean {
+function addCardToDeck(state: GameState, cardId: string, ctx: MetaInjectionContext, mutate?: (card: RunCardInstance) => CardDef | RunCardInstance): boolean {
   const def = (cardsData as any[]).find((c) => c.id === cardId);
   if (!def) return false;
-  let card = { ...(def as any), instanceId: ctx.generateId() } as CardDef;
-  if (mutate) card = mutate(card);
-  state.player.deck.push(card);
+  const baseCard = createRunCardInstance(def as CardDef, ctx.generateId());
+  const mutated = mutate ? mutate(baseCard) : baseCard;
+  state.player.deck.push(normalizeRunCardInstance(mutated, ctx.generateId));
   return true;
 }
 
@@ -79,7 +80,7 @@ export function applyMetaProfileToNewRunState(state: GameState, meta: MetaProfil
       for (let i = 0; i < benefits.addRandomRareCard; i++) {
         const picked = pickRandom(rarePool, ctx.rng);
         if (picked) {
-          state.player.deck.push({ ...(picked as any), instanceId: ctx.generateId() } as CardDef);
+          state.player.deck.push(createRunCardInstance(picked as CardDef, ctx.generateId()) as RunCardInstance);
         }
       }
     }
@@ -135,10 +136,26 @@ export function applyMetaProfileToNewRunState(state: GameState, meta: MetaProfil
     state.metaRuntime.ascensionEnemyHpMultiplier = Math.max(1, Number(ascCfg.enemyHpMultiplier) || 1);
     state.metaRuntime.ascensionEnemyDamageMultiplier = Math.max(1, Number(ascCfg.enemyDamageMultiplier) || 1);
     state.metaRuntime.ascensionEliteUpgradeChance = Math.max(0, Math.min(0.9, Number(ascCfg.eliteUpgradeChance) || 0));
-    const startingCurseId = typeof ascCfg.startingCurseCardId === 'string' ? ascCfg.startingCurseCardId : '';
-    if (startingCurseId) {
-      state.metaRuntime.ascensionStartingCurseId = startingCurseId;
-      addCardToDeck(state, startingCurseId, ctx);
+    state.metaRuntime.ascensionIntentAggroBias = Math.max(0, Number(ascCfg.intentAggroBias) || 0);
+    const mapWeightDelta = ascCfg.mapWeightDelta;
+    if (mapWeightDelta && typeof mapWeightDelta === 'object') {
+      state.metaRuntime.ascensionMapWeightDelta = {
+        elite: Number(mapWeightDelta.elite) || 0,
+        event: Number(mapWeightDelta.event) || 0,
+        shop: Number(mapWeightDelta.shop) || 0,
+        rest: Number(mapWeightDelta.rest) || 0
+      };
+    }
+    const hpMultiplier = Math.max(0.5, Math.min(1.5, Number(ascCfg.playerMaxHpMultiplier) || 1));
+    if (hpMultiplier !== 1) {
+      state.player.maxHp = Math.max(1, Math.floor(state.player.maxHp * hpMultiplier));
+      state.player.hp = Math.min(state.player.hp, state.player.maxHp);
+    }
+    const startingCurseIds = Array.isArray(ascCfg.startingCurseCardIds) ? ascCfg.startingCurseCardIds : [];
+    for (const curseId of startingCurseIds) {
+      if (typeof curseId === 'string' && curseId) {
+        addCardToDeck(state, curseId, ctx);
+      }
     }
   }
 

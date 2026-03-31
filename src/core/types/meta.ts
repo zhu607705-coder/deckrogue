@@ -20,10 +20,14 @@ export interface MetaPreferences {
   selectedStartingRelicId: string | null;
   selectedBackgroundId: string | null;
   selectedAscension: number;
+  selectedDoctrineId: string | null;
+  animationSpeed: 'fast' | 'normal' | 'reduced';
+  animationQuality: 'high' | 'balanced' | 'reduced';
 }
 
 export interface MetaProgressionState {
   ascensionUnlockedLevel: number;
+  ascensionUnlockedLevelByCharacter: Record<string, number>;
 }
 
 export interface MartyrRelic {
@@ -35,6 +39,12 @@ export interface MartyrRelic {
   voxLogTail?: string[];
 }
 
+export interface RunPreset {
+  doctrineId: string | null;
+  startingRelicId: string | null;
+  backgroundId: string | null;
+}
+
 export interface RunSummary {
   runId: string;
   reachedFloor: number;
@@ -44,6 +54,16 @@ export interface RunSummary {
   earnedWarpEchoes: number;
   isVictory: boolean;
   voxLogTail?: string[];
+  chapterReached: number;
+  bossKilledIds: string[];
+  endingArchetype: string;
+  topResourceUsed: string;
+  controlUptime: number;
+  poisonContribution: number;
+  runPreset: RunPreset;
+  mirrorZoneVisited: boolean;
+  branchCardsTaken: string[];
+  secondaryResourcePeak: number;
 }
 
 export interface MetaProfile {
@@ -57,4 +77,7 @@ export interface MetaProfile {
   achievements: MetaAchievementsState;
   preferences: MetaPreferences;
   progression: MetaProgressionState;
+  unlockedDoctrines: string[];
+  branchCodexProgress: Record<string, number>;
+  branchAchievementCounts: Record<string, number>;
 }

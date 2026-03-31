@@ -100,7 +100,7 @@ export class ConditionalAction extends BaseAction {
     // Push in reverse so execution order matches array order when popped from the front.
     for (let i = actions.length - 1; i >= 0; i--) {
       const action = ActionFactoryV2.createAction(actions[i]);
-      queue.pushFront(action, { ...this.context }, 'card');
+      queue.pushFront(action, { ...this.context }, 0);
     }
   }
 }
@@ -124,7 +124,7 @@ export class ConditionalKillAction extends BaseAction {
     const actions = this.spec.trueActions || [];
     for (let i = actions.length - 1; i >= 0; i--) {
       const action = ActionFactoryV2.createAction(actions[i]);
-      queue.pushFront(action, { ...this.context }, 'card');
+      queue.pushFront(action, { ...this.context }, 0);
     }
   }
 }
@@ -404,8 +404,9 @@ export class HealConstructAction extends BaseAction {
     if (this.constructAtkBonus > 0) {
       target.atk += this.constructAtkBonus;
     }
+    const attackSuffix = this.constructAtkBonus > 0 ? `，攻击 +${this.constructAtkBonus}` : '';
     combat.warpPulse = {
-      text: `核心重构完成：${target.name} 修复至满值${this.constructAtkBonus > 0 ? `，ATK +${this.constructAtkBonus}` : ''}`,
+      text: `核心重构完成：${target.name} 修复至满值${attackSuffix}`,
       tone: 'faith'
     };
   }
@@ -507,7 +508,8 @@ export class TransmuteElementsAction extends BaseAction {
 
     this.context = this.getContextFromQueue(queue);
 
-    const heal = combat.player.elements.length * 2;
+    const healPerElement = Math.max(1, this.spec.amount || 2);
+    const heal = combat.player.elements.length * healPerElement;
     combat.player.hp = Math.min(combat.player.maxHp, combat.player.hp + heal);
     state.player.hp = combat.player.hp;
     combat.player.elements = [];
@@ -743,7 +745,7 @@ export class GainIntelAction extends BaseAction {
     state.player.intel += this.amount;
     if (state.combat) {
       (state.combat.player as any).intel = state.player.intel;
-      state.combat.warpPulse = { text: `Intel +${this.amount} (${state.player.intel})`, tone: 'faith' };
+      state.combat.warpPulse = { text: `情报 +${this.amount}（当前 ${state.player.intel}）`, tone: 'faith' };
     }
   }
 }
@@ -761,7 +763,7 @@ export class SpendIntelAction extends BaseAction {
     state.player.intel = Math.max(0, state.player.intel - this.amount);
     if (state.combat) {
       (state.combat.player as any).intel = state.player.intel;
-      state.combat.warpPulse = { text: `Intel -${this.amount} (${state.player.intel})`, tone: 'neutral' };
+      state.combat.warpPulse = { text: `情报 -${this.amount}（当前 ${state.player.intel}）`, tone: 'neutral' };
     }
   }
 }
@@ -845,7 +847,7 @@ export class MutateCardAction extends BaseAction {
     combat.discardPile.push(clone);
     state.player.deck.push(clone);
     combat.warpPulse = {
-      text: `${this.context.card?.name || 'A card'} mutates into ${targetCard.name}`,
+      text: `${this.context.card?.name || '一张牌'}蜕变为 ${targetCard.name}`,
       tone: 'warp'
     };
   }
@@ -905,7 +907,7 @@ export class PurgeEnemyBuffsAction extends BaseAction {
       const currentZeal = (combat.player.statuses['Zeal'] as number) || 0;
       combat.player.statuses['Zeal'] = currentZeal + zealGained;
       combat.warpPulse = { 
-        text: `Purged ${buffsRemoved} buff(s), gained ${zealGained} Zeal`, 
+        text: `净除 ${buffsRemoved} 项增益，获得 ${zealGained} 点狂热`, 
         tone: 'faith' 
       };
     }
@@ -950,7 +952,7 @@ export class PrecisionThrowDamageAction extends BaseAction {
     
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
-      text: hasVulnerable ? `Precision throw hits vulnerable target for ${damage}!` : `Precision throw deals ${damage} damage`,
+      text: hasVulnerable ? `精准投掷命中易伤目标，造成 ${damage} 点伤害。` : `精准投掷造成 ${damage} 点伤害。`,
       tone: 'neutral'
     };
   }
@@ -989,7 +991,7 @@ export class ForceEnemyAttackAction extends BaseAction {
     
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
-      text: `${attacker.name || attacker.id} attacks ${target.name || target.id}!`,
+      text: `${attacker.name || attacker.id} 强制攻击 ${target.name || target.id}。`,
       tone: 'danger'
     };
   }
@@ -1031,9 +1033,50 @@ export class SolventDamageAction extends BaseAction {
     
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
-      text: `Solvent deals ${damage} damage (block bonus: ${Math.floor(block / 2)})`,
+      text: `溶解剂造成 ${damage} 点伤害（格挡转化加成 ${Math.floor(block / 2)}）。`,
       tone: 'neutral'
     };
+  }
+}
+
+export class TriggerPoisonOnTargetAction extends BaseAction {
+  private target: CardTarget;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Enemy';
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    for (const targetInfo of targets) {
+      const poisonAmount = targetInfo.entity.statuses['Poison'] || 0;
+
+      if (poisonAmount > 0) {
+        const damageContext: DamageContext = {
+          amount: poisonAmount,
+          sourceType: 'system',
+          sourceId: 'poison_trigger',
+          targetType: targetInfo.type,
+          targetId: targetInfo.id,
+          modifiers: [],
+          isTrueDamage: true,
+          ignoreBlock: true
+        };
+        const actualDamage = combatSystem.applyDamage(state, damageContext);
+        targetInfo.entity.statuses['Poison'] = 0;
+
+        combat.warpPulse = {
+          text: `毒蚀爆发：造成 ${actualDamage} 点伤害。`,
+          tone: 'danger'
+        };
+      }
+    }
   }
 }
 
@@ -1051,7 +1094,7 @@ export class GainTimeLayerAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.timeLayer = Math.min(10, (combat.player.timeLayer || 0) + this.amount);
-    combat.warpPulse = { text: `时间层 +${this.amount} (${combat.player.timeLayer})`, tone: 'warp' };
+    combat.warpPulse = { text: `时间层 +${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'warp' };
   }
 }
 
@@ -1069,7 +1112,7 @@ export class SpendTimeLayerAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.timeLayer = Math.max(0, (combat.player.timeLayer || 0) - this.amount);
-    combat.warpPulse = { text: `时间层 -${this.amount} (${combat.player.timeLayer})`, tone: 'neutral' };
+    combat.warpPulse = { text: `时间层 -${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'neutral' };
   }
 }
 
@@ -1087,7 +1130,7 @@ export class GainThreadAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.thread = Math.min(10, (combat.player.thread || 0) + this.amount);
-    combat.warpPulse = { text: `线程 +${this.amount} (${combat.player.thread})`, tone: 'faith' };
+    combat.warpPulse = { text: `丝线 +${this.amount}（当前 ${combat.player.thread}）`, tone: 'faith' };
   }
 }
 
@@ -1105,7 +1148,7 @@ export class SpendThreadAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.thread = Math.max(0, (combat.player.thread || 0) - this.amount);
-    combat.warpPulse = { text: `线程 -${this.amount} (${combat.player.thread})`, tone: 'neutral' };
+    combat.warpPulse = { text: `丝线 -${this.amount}（当前 ${combat.player.thread}）`, tone: 'neutral' };
   }
 }
 
@@ -1123,7 +1166,7 @@ export class GainConcoctionAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.concoction = Math.min(10, (combat.player.concoction || 0) + this.amount);
-    combat.warpPulse = { text: `调配 +${this.amount} (${combat.player.concoction})`, tone: 'faith' };
+    combat.warpPulse = { text: `调配 +${this.amount}（当前 ${combat.player.concoction}）`, tone: 'faith' };
   }
 }
 
@@ -1141,7 +1184,7 @@ export class SpendConcoctionAction extends BaseAction {
     
     this.context = this.getContextFromQueue(queue);
     combat.player.concoction = Math.max(0, (combat.player.concoction || 0) - this.amount);
-    combat.warpPulse = { text: `调配 -${this.amount} (${combat.player.concoction})`, tone: 'neutral' };
+    combat.warpPulse = { text: `调配 -${this.amount}（当前 ${combat.player.concoction}）`, tone: 'neutral' };
   }
 }
 
@@ -1277,7 +1320,7 @@ export class BuffAllConstructsAction extends BaseAction {
       c.hp = Math.min(c.hp + this.hpBonus, c.maxHp);
       c.atk += this.atkBonus;
     });
-    combat.warpPulse = { text: `构造体强化 +${this.hpBonus}HP +${this.atkBonus}ATK`, tone: 'faith' };
+    combat.warpPulse = { text: `构造体强化：生命 +${this.hpBonus}，攻击 +${this.atkBonus}`, tone: 'faith' };
   }
 }
 
@@ -1302,13 +1345,23 @@ export class TriggerAllReactionsAction extends BaseAction {
     for (let i = 0; i < this.times; i++) {
       totalDamage += elements.length * 4 + Math.max(0, uniqueElements - 1) * 2;
     }
-    
+
+    let totalActualDamage = 0;
     combat.enemies.forEach(enemy => {
       if (enemy.hp > 0) {
-        enemy.hp -= totalDamage;
+        totalActualDamage += combatSystem.applyDamage(state, {
+          amount: totalDamage,
+          sourceType: 'system',
+          sourceId: 'trigger_all_reactions',
+          targetType: 'enemy',
+          targetId: enemy.id,
+          modifiers: [],
+          isTrueDamage: false,
+          ignoreBlock: false
+        });
       }
     });
-    combat.warpPulse = { text: `元素反应 ×${this.times}：${totalDamage}伤害`, tone: 'faith' };
+    combat.warpPulse = { text: `元素反应 ×${this.times}：共造成 ${totalActualDamage} 点伤害`, tone: 'faith' };
   }
 }
 

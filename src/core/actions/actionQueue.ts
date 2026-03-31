@@ -1,202 +1,184 @@
-import { GameState } from '@/core/types';
+import type { GameState } from '@/core/types';
 
-export interface IAction {
-  readonly type: string;
-  execute(state: GameState, queue: ActionQueue): void | Promise<void>;
-}
+export type ActionId = string;
 
 export interface IActionContext {
-  source: 'player' | 'enemy' | 'system' | string;
+  state?: GameState;
+  timestamp?: number;
+  source: string;
   sourceId?: string;
-  targetId?: string;
   cardId?: string;
   cardInstanceId?: string;
   card?: any;
-  doubleDamage?: boolean;
+  targetId?: string;
   isTrueDamage?: boolean;
+  doubleDamage?: boolean;
+}
+
+export interface IAction {
+  type: string;
+  execute(state: GameState, queue: ActionQueue): void;
+  setContext?(context: IActionContext): void;
 }
 
 export interface QueuedAction {
+  id: ActionId;
   action: IAction;
   context: IActionContext;
   priority: number;
-  source: 'card' | 'relic' | 'synergy' | 'system';
+  timestamp: number;
 }
 
-export type ActionQueueCallback = (action: IAction, context: IActionContext) => void;
+export interface ActionQueueConfig {
+  maxQueueSize: number;
+  processingMode: 'sequential' | 'parallel';
+  priorityOrder: 'fifo' | 'priority';
+}
+
+export const DEFAULT_ACTION_QUEUE_CONFIG: ActionQueueConfig = {
+  maxQueueSize: 100,
+  processingMode: 'sequential',
+  priorityOrder: 'priority',
+};
 
 export class ActionQueue {
   private queue: QueuedAction[] = [];
-  private isProcessing: boolean = false;
-  private onActionStart?: ActionQueueCallback;
-  private onActionEnd?: ActionQueueCallback;
-  private maxQueueSize: number = 100;
-  private state: GameState | null = null;
-  public _currentContext: IActionContext = { source: 'player' };
+  private config: ActionQueueConfig;
+  private _state: 'idle' | 'processing' = 'idle';
+  private _currentContext: IActionContext = { source: 'player' };
+  private callbacks: {
+    onActionComplete?: (action: IAction, state: GameState) => void;
+    onQueueEmpty?: (state: GameState) => void;
+  } = {};
 
-  constructor(state?: GameState) {
-    this.state = state || null;
+  constructor(config: ActionQueueConfig = DEFAULT_ACTION_QUEUE_CONFIG) {
+    this.config = config;
   }
 
-  setState(state: GameState): void {
-    this.state = state;
-  }
-
-  setCallbacks(onStart?: ActionQueueCallback, onEnd?: ActionQueueCallback): void {
-    this.onActionStart = onStart;
-    this.onActionEnd = onEnd;
-  }
-
-  push(
-    action: IAction, 
-    context: IActionContext, 
-    priority: number = 0,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
-  ): void {
-    if (this.queue.length >= this.maxQueueSize) {
-      console.warn('ActionQueue: Maximum queue size reached, dropping action');
-      return;
-    }
-
-    const queuedAction: QueuedAction = { action, context, priority, source };
+  enqueue(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
+    const id = `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const insertIndex = this.queue.findIndex(qa => qa.priority < priority);
-    if (insertIndex === -1) {
-      this.queue.push(queuedAction);
-    } else {
-      this.queue.splice(insertIndex, 0, queuedAction);
-    }
-  }
+    const queuedAction: QueuedAction = {
+      id,
+      action,
+      context,
+      priority,
+      timestamp: Date.now(),
+    };
 
-  pushFront(
-    action: IAction, 
-    context: IActionContext,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
-  ): void {
-    if (this.queue.length >= this.maxQueueSize) {
-      console.warn('ActionQueue: Maximum queue size reached, dropping action');
-      return;
+    if (this.queue.length >= this.config.maxQueueSize) {
+      console.warn('Action queue is full, dropping oldest action');
+      this.queue.shift();
     }
 
-    const highestPriority = this.queue.length > 0 ? this.queue[0].priority + 1 : 100;
-    this.push(action, context, highestPriority, source);
+    this.queue.push(queuedAction);
+
+    if (this.config.priorityOrder === 'priority') {
+      this.queue.sort((a, b) => b.priority - a.priority);
+    }
+
+    return id;
   }
 
-  pushBack(
-    action: IAction, 
-    context: IActionContext,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
-  ): void {
-    const lowestPriority = this.queue.length > 0 ? this.queue[this.queue.length - 1].priority - 1 : 0;
-    this.push(action, context, lowestPriority, source);
+  push(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
+    return this.enqueue(action, context, priority);
   }
 
-  pop(): QueuedAction | undefined {
-    return this.queue.shift();
+  pushBack(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
+    const id = `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const queuedAction: QueuedAction = {
+      id,
+      action,
+      context,
+      priority,
+      timestamp: Date.now(),
+    };
+
+    this.queue.push(queuedAction);
+    return id;
   }
 
-  peek(): QueuedAction | undefined {
-    return this.queue[0];
+  pushFront(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
+    const id = `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const queuedAction: QueuedAction = {
+      id,
+      action,
+      context,
+      priority,
+      timestamp: Date.now(),
+    };
+
+    this.queue.unshift(queuedAction);
+    return id;
+  }
+
+  dequeue(): QueuedAction | null {
+    return this.queue.shift() || null;
+  }
+
+  peek(): QueuedAction | null {
+    return this.queue[0] || null;
   }
 
   clear(): void {
     this.queue = [];
   }
 
+  size(): number {
+    return this.queue.length;
+  }
+
+  isEmpty(): boolean {
+    return this.queue.length === 0;
+  }
+
+  getAll(): QueuedAction[] {
+    return [...this.queue];
+  }
+
+  getQueueSnapshot(): QueuedAction[] {
+    return this.getAll();
+  }
+
+  setState(state: 'idle' | 'processing'): void {
+    this._state = state;
+  }
+
+  get isProcessingQueue(): boolean {
+    return this._state === 'processing';
+  }
+
   get length(): number {
     return this.queue.length;
   }
 
-  get isEmpty(): boolean {
-    return this.queue.length === 0;
+  setCallbacks(callbacks: {
+    onActionComplete?: (action: IAction, state: GameState) => void;
+    onQueueEmpty?: (state: GameState) => void;
+  }): void {
+    this.callbacks = callbacks;
   }
 
-  get isProcessingQueue(): boolean {
-    return this.isProcessing;
-  }
-
-  async processQueue(): Promise<void> {
-    if (this.isProcessing || !this.state) return;
+  processQueue(state: GameState): void {
+    this._state = 'processing';
     
-    this.isProcessing = true;
-
-    try {
-      while (this.queue.length > 0 && this.state) {
-        const queuedAction = this.queue.shift();
-        if (!queuedAction) break;
-
-        const { action, context } = queuedAction;
-
-        this._currentContext = context;
-
-        if (this.onActionStart) {
-          this.onActionStart(action, context);
-        }
-
-        try {
-          await action.execute(this.state, this);
-        } catch (error) {
-          console.error(`ActionQueue: Error executing action ${action.type}:`, error);
-        }
-
-        if (this.onActionEnd) {
-          this.onActionEnd(action, context);
-        }
-
-        await this.yieldControl();
+    while (this.queue.length > 0) {
+      const queuedAction = this.dequeue();
+      if (queuedAction) {
+        this._currentContext = queuedAction.context;
+        queuedAction.action.execute(state, this);
+        this.callbacks.onActionComplete?.(queuedAction.action, state);
       }
-    } finally {
-      this.isProcessing = false;
     }
-  }
-
-  processQueueSync(): void {
-    if (this.isProcessing || !this.state) return;
     
-    this.isProcessing = true;
-
-    try {
-      while (this.queue.length > 0 && this.state) {
-        const queuedAction = this.queue.shift();
-        if (!queuedAction) break;
-
-        const { action, context } = queuedAction;
-
-        this._currentContext = context;
-
-        if (this.onActionStart) {
-          this.onActionStart(action, context);
-        }
-
-        try {
-          action.execute(this.state, this);
-        } catch (error) {
-          console.error(`ActionQueue: Error executing action ${action.type}:`, error);
-        }
-
-        if (this.onActionEnd) {
-          this.onActionEnd(action, context);
-        }
-      }
-    } finally {
-      this.isProcessing = false;
-    }
+    this._state = 'idle';
+    this.callbacks.onQueueEmpty?.(state);
   }
 
-  private async yieldControl(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
-  }
-
-  getQueueSnapshot(): Array<{ type: string; priority: number; source: string }> {
-    return this.queue.map(qa => ({
-      type: qa.action.type,
-      priority: qa.priority,
-      source: qa.source
-    }));
-  }
-
-  getCurrentContext(): IActionContext {
-    return this._currentContext;
+  processQueueSync(state: GameState): void {
+    this.processQueue(state);
   }
 }
 

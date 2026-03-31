@@ -1,0 +1,276 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-03-21",
+  "combatExperience": {
+    "feedbackRhythm": {
+      "name": "统一反馈节拍",
+      "stages": [
+        {
+          "id": "play_confirm",
+          "name": "出牌确认",
+          "description": "卡牌被打出时的视觉/音效反馈",
+          "requiredElements": ["卡牌放大", "轨迹动画", "目标高亮"],
+          "timing": "immediate",
+          "priority": 1
+        },
+        {
+          "id": "hit_block_break",
+          "name": "命中/格挡/破防",
+          "description": "伤害结算时的反馈",
+          "requiredElements": ["伤害数字弹出", "格挡闪光", "破防震动"],
+          "timing": "after_play",
+          "priority": 2
+        },
+        {
+          "id": "status_apply",
+          "name": "状态施加",
+          "description": "Buff/Debuff 应用时的反馈",
+          "requiredElements": ["状态图标出现", "层数变化", "目标闪烁"],
+          "timing": "after_hit",
+          "priority": 3
+        },
+        {
+          "id": "resource_change",
+          "name": "资源变化",
+          "description": "能量、HP、资源点变化反馈",
+          "requiredElements": ["数值动画", "颜色变化", "图标脉动"],
+          "timing": "concurrent",
+          "priority": 4
+        },
+        {
+          "id": "kill",
+          "name": "击杀",
+          "description": "敌人被击败时的反馈",
+          "requiredElements": ["死亡动画", "掉落物提示", "战斗日志"],
+          "timing": "after_damage",
+          "priority": 5
+        },
+        {
+          "id": "turn_end",
+          "name": "结算收束",
+          "description": "回合结束时的综合反馈",
+          "requiredElements": ["手牌弃置动画", "状态衰减", "回合指示"],
+          "timing": "end_of_turn",
+          "priority": 6
+        }
+      ]
+    },
+    "animationSpeed": {
+      "name": "动画速度档位",
+      "profiles": {
+        "fast": {
+          "name": "快速",
+          "multiplier": 0.5,
+          "description": "适合熟练玩家，快速跳过动画"
+        },
+        "normal": {
+          "name": "正常",
+          "multiplier": 1.0,
+          "description": "默认速度，平衡体验与效率"
+        },
+        "reduced": {
+          "name": "减少动画",
+          "multiplier": 0.3,
+          "description": "无障碍模式，最小化动画干扰"
+        }
+      },
+      "defaultProfile": "normal"
+    },
+    "enemyIntent": {
+      "name": "敌人意图可读性",
+      "requirements": [
+        {
+          "id": "action_type",
+          "name": "当前会做什么",
+          "description": "清晰显示敌人即将执行的动作类型",
+          "iconMapping": {
+            "attack": "剑/拳头图标",
+            "defend": "盾牌图标",
+            "buff": "增益图标",
+            "debuff": "减益图标",
+            "special": "特殊图标"
+          }
+        },
+        {
+          "id": "damage_type",
+          "name": "伤害或控制类型",
+          "description": "区分物理、魔法、真实伤害等",
+          "visualCues": {
+            "physical": "红色",
+            "magic": "紫色",
+            "true": "白色",
+            "control": "蓝色"
+          }
+        },
+        {
+          "id": "high_risk_warning",
+          "name": "高风险前摇",
+          "description": "对高伤害或致命攻击的预警",
+          "thresholds": {
+            "warning": "伤害 >= 30% 最大HP",
+            "critical": "伤害 >= 50% 最大HP",
+            "lethal": "伤害 >= 当前HP"
+          }
+        }
+      ]
+    },
+    "statusIcons": {
+      "name": "Buff/状态图标规范",
+      "requirements": [
+        {
+          "id": "icon_hierarchy",
+          "name": "图标层级",
+          "description": "状态图标的显示优先级",
+          "priority": ["生命相关", "行动相关", "资源相关", "其他"]
+        },
+        {
+          "id": "text_abbreviation",
+          "name": "文案简称",
+          "description": "状态名称的简短显示",
+          "maxLength": 6
+        },
+        {
+          "id": "tooltip_order",
+          "name": "Tooltip 信息顺序",
+          "description": "悬停时显示的信息顺序",
+          "order": ["名称", "当前层数", "效果描述", "剩余回合"]
+        },
+        {
+          "id": "visual_grouping",
+          "name": "正负状态视觉分组",
+          "description": "增益和减益的视觉区分",
+          "positive": "绿色/金色边框",
+          "negative": "红色/紫色边框",
+          "neutral": "灰色边框"
+        }
+      ]
+    },
+    "hudLayers": {
+      "name": "HUD 收敛层级",
+      "layers": [
+        {
+          "id": "turn_decision",
+          "name": "当前回合决策必需信息",
+          "priority": 1,
+          "elements": ["HP", "能量", "格挡", "手牌", "敌人意图"]
+        },
+        {
+          "id": "build_longterm",
+          "name": "构筑/长期信息",
+          "priority": 2,
+          "elements": ["遗物", "药水", "腐化", "共鸣"]
+        }
+      ]
+    }
+  },
+  "nonCombatInterfaces": {
+    "reward": {
+      "name": "奖励界面",
+      "requirements": [
+        {
+          "id": "first_screen_clarity",
+          "name": "首屏清晰度",
+          "description": "首屏内讲清楚'这页能做什么'",
+          "mustHave": ["标题：选取1张记忆印痕", "卡牌预览", "跳过按钮"]
+        },
+        {
+          "id": "option_hints",
+          "name": "选项提示",
+          "description": "每张卡牌提示它更偏什么方向",
+          "categories": ["生存", "输出", "控制", "资源", "构筑转折"]
+        }
+      ]
+    },
+    "shop": {
+      "name": "商店界面",
+      "requirements": [
+        {
+          "id": "worth_judgment",
+          "name": "值得判断",
+          "description": "快速判断值不值得买",
+          "mustHave": ["价格显示", "买得起/买不起视觉区分", "卡牌预览"]
+        },
+        {
+          "id": "build_fit",
+          "name": "构筑适配",
+          "description": "判断是否适合当前构筑",
+          "mustHave": ["卡牌类型标签", "与现有卡组的协同提示"]
+        }
+      ]
+    },
+    "event": {
+      "name": "事件界面",
+      "requirements": [
+        {
+          "id": "risk_assessment",
+          "name": "风险评估",
+          "description": "快速判断风险",
+          "mustHave": ["选项后果提示", "风险等级标识"]
+        },
+        {
+          "id": "immediate_benefit",
+          "name": "即时收益",
+          "description": "显示即时收益",
+          "mustHave": ["奖励预览", "资源变化预览"]
+        },
+        {
+          "id": "long_term_impact",
+          "name": "长期影响",
+          "description": "提示长期影响",
+          "mustHave": ["可能的后续事件提示", "遗物/卡牌影响"]
+        }
+      ]
+    },
+    "upgrade": {
+      "name": "升级界面",
+      "requirements": [
+        {
+          "id": "why_upgrade",
+          "name": "为什么值得升",
+          "description": "解释为什么这张更值得升",
+          "mustHave": ["升级前后对比", "提升幅度显示"]
+        },
+        {
+          "id": "main_improvement",
+          "name": "主要提升点",
+          "description": "升级后主要提升什么",
+          "categories": ["伤害提升", "费用降低", "效果增强", "范围扩大"]
+        }
+      ]
+    }
+  },
+  "victoryDefeat": {
+    "victory": {
+      "name": "胜利页面",
+      "requirements": [
+        {
+          "id": "conclusion",
+          "name": "收束感",
+          "description": "强调战斗收束和奖励预期"
+        },
+        {
+          "id": "reward_preview",
+          "name": "奖励预期",
+          "description": "显示即将获得的奖励"
+        }
+      ],
+      "reuseAssets": ["run_summary", "diagnostics"]
+    },
+    "defeat": {
+      "name": "失败页面",
+      "requirements": [
+        {
+          "id": "cause_analysis",
+          "name": "失败原因",
+          "description": "强调失败原因分析"
+        },
+        {
+          "id": "next_direction",
+          "name": "下一局方向",
+          "description": "提示下一局可能的改进方向"
+        }
+      ],
+      "reuseAssets": ["run_summary", "diagnostics"]
+    }
+  }
+}

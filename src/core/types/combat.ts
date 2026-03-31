@@ -1,5 +1,5 @@
 import type { ActiveEventState, MapNode } from '@/core/types/events';
-import type { CardDef, CharacterDef } from '@/core/types/actions';
+import type { CardDef, CharacterDef, RunCardInstance } from '@/core/types/actions';
 
 export interface PlayerState {
   hp: number;
@@ -8,7 +8,7 @@ export interface PlayerState {
   maxEnergy: number;
   gold: number;
   intel: number;
-  deck: CardDef[];
+  deck: RunCardInstance[];
   relics: string[];
   potions: string[];
   corruption: number;
@@ -29,7 +29,7 @@ export interface CombatState {
     block: number;
     energy: number;
     statuses: Record<string, number>;
-    delayedCards: { card: CardDef; turns: number; targetId?: string }[];
+    delayedCards: { card: RunCardInstance; turns: number; targetId?: string }[];
     constructs: {
       id: string;
       name: string;
@@ -47,7 +47,7 @@ export interface CombatState {
     damageTakenThisTurn?: number;
     damageTakenLastTurn?: number;
     intel?: number;
-    lastPlayedCard?: CardDef;
+    lastPlayedCard?: RunCardInstance;
     devotion: number;
     corruptionAxis: number;
     axisDisposition: 'devotion' | 'corruption' | 'balanced';
@@ -74,10 +74,10 @@ export interface CombatState {
     autonomyState?: 'Normal' | 'Martyr' | 'ChaosEgg';
     autonomyTurns?: number;
   }[];
-  drawPile: CardDef[];
-  hand: CardDef[];
-  discardPile: CardDef[];
-  exhaustPile: CardDef[];
+  drawPile: RunCardInstance[];
+  hand: RunCardInstance[];
+  discardPile: RunCardInstance[];
+  exhaustPile: RunCardInstance[];
   turn: number;
   isPlayerTurn: boolean;
   warpTide: number;
@@ -96,10 +96,20 @@ export interface CombatState {
     phaseName: string;
     phaseHint?: string;
     enteredTurn: number;
-    currentPlayerTurnCards: CardDef[];
-    previousPlayerTurnCards: CardDef[];
+    currentPlayerTurnCards: RunCardInstance[];
+    previousPlayerTurnCards: RunCardInstance[];
     flags?: Record<string, number | boolean | string>;
   };
+}
+
+
+export interface EnchantContext {
+  source: 'Event' | 'Rest' | 'Shop';
+  enchantmentId: string;
+  title?: string;
+  description?: string;
+  price?: number;
+  returnScreen?: 'Event' | 'Rest' | 'Shop';
 }
 
 export interface GameState {
@@ -113,15 +123,16 @@ export interface GameState {
   map: MapNode[];
   currentNodeId: string | null;
   activeEvent?: ActiveEventState | null;
-  rewardCards: CardDef[];
-  shopCards: CardDef[];
+  rewardCards: RunCardInstance[];
+  shopCards: RunCardInstance[];
   shopRelics: string[];
   shopPotions: string[];
   cardRemovalCost: number;
-  screen: 'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'GameOver' | 'Victory';
+  screen: 'Launcher' | 'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'Enchant' | 'GameOver' | 'Victory';
   upgradeReturnScreen?: 'Rest' | 'Shop';
   pendingNodeResolution?: boolean;
   campfireChoiceLocked?: boolean;
+  enchantContext?: EnchantContext | null;
   pendingUpgradeRefund?: boolean;
   metaRuntime?: {
     unlockedPoolIds: string[];
@@ -133,8 +144,25 @@ export interface GameState {
     ascensionEnemyDamageMultiplier?: number;
     ascensionEliteUpgradeChance?: number;
     ascensionStartingCurseId?: string;
+    ascensionIntentAggroBias?: number;
+    ascensionMapWeightDelta?: {
+      elite?: number;
+      event?: number;
+      shop?: number;
+      rest?: number;
+    };
   };
   combatVoxLog?: string[];
   lastCombatVoxLog?: string[];
   lastDeathVoxLog?: string[];
+  mirrorZoneVisited?: boolean;
+  branchCardsTaken?: string[];
+  combatRestartCheckpoint?: {
+    nodeId: string;
+    nodeType: 'Combat' | 'Elite' | 'Boss';
+    stateSnapshot: Partial<GameState>;
+    rngState: number;
+    pendingNodeResolution?: boolean;
+  };
+  secondaryResourcePeak?: number;
 }

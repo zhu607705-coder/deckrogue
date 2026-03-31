@@ -6,37 +6,32 @@ interface MapIconProps {
   alt?: string;
 }
 
-const DEFAULT_ICON = '/assets/map/map_event.png';
+const DEFAULT_ICON = '/assets/map/map_event.svg';
 
-const getIconPaths = (type: string): { png: string; svg: string } => {
+const getIconPath = (type: string): string => {
   const baseName = `map_${type.toLowerCase()}`;
-  return {
-    png: `/assets/map/${baseName}.png`,
-    svg: `/assets/map/${baseName}.svg`
-  };
+  return `/assets/map/${baseName}.svg`;
 };
 
 export function MapIcon({ type, className = '', alt }: MapIconProps) {
-  const paths = useMemo(() => getIconPaths(type), [type]);
+  const iconSrc = useMemo(() => getIconPath(type), [type]);
   const [currentSrc, setCurrentSrc] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [fallbackCount, setFallbackCount] = useState(0);
   
   useEffect(() => {
     setIsLoading(true);
-    setFallbackCount(0);
     
     const img = new Image();
     img.onload = () => {
-      setCurrentSrc(paths.png);
+      setCurrentSrc(iconSrc);
       setIsLoading(false);
     };
     img.onerror = () => {
-      setCurrentSrc(paths.svg);
+      setCurrentSrc(DEFAULT_ICON);
       setIsLoading(false);
     };
-    img.src = paths.png;
-  }, [paths]);
+    img.src = iconSrc;
+  }, [iconSrc]);
   
   if (isLoading) {
     return (
@@ -51,11 +46,7 @@ export function MapIcon({ type, className = '', alt }: MapIconProps) {
       className={className}
       onError={(e) => {
         const target = e.currentTarget;
-        if (fallbackCount === 0 && target.src.endsWith('.png')) {
-          setFallbackCount(1);
-          target.src = paths.svg;
-        } else if (fallbackCount === 1) {
-          setFallbackCount(2);
+        if (target.src !== DEFAULT_ICON) {
           target.src = DEFAULT_ICON;
         } else {
           target.style.opacity = '0.3';

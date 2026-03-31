@@ -8,7 +8,9 @@
       "minReachedFloor": 1
     },
     "rewards": {
-      "backgrounds": ["bg_military_archive"]
+      "backgrounds": [
+        "bg_military_archive"
+      ]
     }
   },
   {
@@ -19,7 +21,24 @@
       "minReachedFloor": 4
     },
     "rewards": {
-      "unlockedPoolIds": ["gather_intel", "wire_guard"]
+      "unlockedPoolIds": [
+        "gather_intel",
+        "wire_guard"
+      ]
+    }
+  },
+  {
+    "id": "act2_explorer",
+    "title": "深入敌境",
+    "description": "抵达第8层或以上。",
+    "conditions": {
+      "minReachedFloor": 8
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "temporal_shield",
+        "elemental_shield"
+      ]
     }
   },
   {
@@ -30,21 +49,105 @@
       "requireVictory": true
     },
     "rewards": {
-      "startingRelics": ["lantern"],
-      "backgrounds": ["bg_cathedral_black"]
+      "startingRelics": [
+        "lantern"
+      ],
+      "backgrounds": [
+        "bg_cathedral_black"
+      ]
     }
   },
   {
     "id": "chronomancer_master",
     "title": "时间主宰",
-    "description": "使用 Chronomancer 通关。",
+    "description": "使用时术师通关。",
     "conditions": {
       "requireVictory": true,
       "characterId": "chronomancer"
     },
     "rewards": {
-      "cardSkins": ["skin_time_chronomancer"],
-      "unlockedPoolIds": ["time_warp", "time_bomb"]
+      "cardSkins": [
+        "skin_time_chronomancer"
+      ],
+      "unlockedPoolIds": [
+        "time_warp",
+        "time_bomb"
+      ]
+    }
+  },
+  {
+    "id": "brute_master",
+    "title": "狂战士之路",
+    "description": "使用狂战士通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "brute"
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "rage_slam",
+        "execute_target"
+      ]
+    }
+  },
+  {
+    "id": "puppeteer_master",
+    "title": "傀儡大师",
+    "description": "使用傀儡师通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "puppeteer"
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "construct_army",
+        "detonate_construct"
+      ]
+    }
+  },
+  {
+    "id": "alchemist_master",
+    "title": "炼金术士",
+    "description": "使用炼金术士通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "alchemist"
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "grand_experiment",
+        "universal_solvent"
+      ]
+    }
+  },
+  {
+    "id": "informant_master",
+    "title": "情报之王",
+    "description": "使用情报官通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "informant"
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "intel_network",
+        "checkmate"
+      ]
+    }
+  },
+  {
+    "id": "tactician_master",
+    "title": "战术大师",
+    "description": "使用战术家通关。",
+    "conditions": {
+      "requireVictory": true,
+      "characterId": "tactician"
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "tactical_superiority",
+        "grand_design"
+      ]
     }
   },
   {
@@ -56,19 +159,56 @@
       "minCorruption": 100
     },
     "rewards": {
-      "startingRelics": ["martyrs_mark"],
-      "backgrounds": ["bg_chaos_rift"]
+      "startingRelics": [
+        "martyrs_mark"
+      ],
+      "backgrounds": [
+        "bg_chaos_rift"
+      ]
+    }
+  },
+  {
+    "id": "corruption_master",
+    "title": "混沌化身",
+    "description": "腐化值达到150并通关。",
+    "conditions": {
+      "requireVictory": true,
+      "minCorruption": 150
+    },
+    "rewards": {
+      "startingRelics": [
+        "mark_of_chaos"
+      ],
+      "backgrounds": [
+        "bg_chaos_warp"
+      ]
     }
   },
   {
     "id": "faith_kept",
     "title": "信仰未泯",
-    "description": "以虔诚值50+结束一局。",
+    "description": "以虔敬值 50+ 结束一局。",
     "conditions": {
       "minDevotion": 50
     },
     "rewards": {
-      "startingRelics": ["inquisitor_rosary"]
+      "startingRelics": [
+        "inquisitor_rosary"
+      ]
+    }
+  },
+  {
+    "id": "faith_master",
+    "title": "帝皇庇佑",
+    "description": "以虔敬值 100+ 通关。",
+    "conditions": {
+      "requireVictory": true,
+      "minDevotion": 100
+    },
+    "rewards": {
+      "startingRelics": [
+        "seal_of_martyrdom"
+      ]
     }
   },
   {
@@ -79,7 +219,24 @@
       "minRelicCount": 6
     },
     "rewards": {
-      "unlockedPoolIds": ["anchor", "vajra"]
+      "unlockedPoolIds": [
+        "anchor",
+        "vajra"
+      ]
+    }
+  },
+  {
+    "id": "relic_master",
+    "title": "遗物大师",
+    "description": "单局持有10件及以上遗物。",
+    "conditions": {
+      "minRelicCount": 10
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "bag_of_prep",
+        "lantern"
+      ]
     }
   },
   {
@@ -90,29 +247,80 @@
       "maxDeckSize": 12
     },
     "rewards": {
-      "unlockedPoolIds": ["go_dark"]
+      "unlockedPoolIds": [
+        "go_dark"
+      ]
+    }
+  },
+  {
+    "id": "minimalist",
+    "title": "极简主义大师",
+    "description": "单局结束时牌库不超过8张并通关。",
+    "conditions": {
+      "requireVictory": true,
+      "maxDeckSize": 8
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "shadow_step",
+        "vanishing_strike"
+      ]
     }
   },
   {
     "id": "quartermaster",
     "title": "军需主管",
-    "description": "单局获得至少10点 Requisition。",
+    "description": "单局获得至少 10 点军需点。",
     "conditions": {
       "minEarnedRequisition": 10
     },
     "rewards": {
-      "unlockedPoolIds": ["chain_reaction"]
+      "unlockedPoolIds": [
+        "chain_reaction"
+      ]
+    }
+  },
+  {
+    "id": "quartermaster_master",
+    "title": "后勤大师",
+    "description": "单局获得至少 20 点军需点。",
+    "conditions": {
+      "minEarnedRequisition": 20
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "double_down",
+        "calculated_risk"
+      ]
     }
   },
   {
     "id": "warp_listener",
     "title": "聆听亚空间",
-    "description": "单局获得至少3点 Warp Echoes。",
+    "description": "单局获得至少 3 点亚空间回响。",
     "conditions": {
       "minEarnedWarpEchoes": 3
     },
     "rewards": {
-      "backgrounds": ["bg_warp_observatory"]
+      "backgrounds": [
+        "bg_warp_observatory"
+      ]
+    }
+  },
+  {
+    "id": "warp_master",
+    "title": "亚空间行者",
+    "description": "单局获得至少 6 点亚空间回响。",
+    "conditions": {
+      "minEarnedWarpEchoes": 6
+    },
+    "rewards": {
+      "startingRelics": [
+        "warp_distorter"
+      ],
+      "backgrounds": [
+        "bg_eldar_void"
+      ]
     }
   },
   {
@@ -123,7 +331,9 @@
       "requiresMartyrLegacyCreated": true
     },
     "rewards": {
-      "cardSkins": ["skin_martyr_echo"]
+      "cardSkins": [
+        "skin_martyr_echo"
+      ]
     }
   },
   {
@@ -135,8 +345,400 @@
       "maxCurrentHpPctAtEnd": 0.3
     },
     "rewards": {
-      "startingRelics": ["vajra"]
+      "startingRelics": [
+        "vajra"
+      ]
+    }
+  },
+  {
+    "id": "edge_runner",
+    "title": "边缘行者",
+    "description": "在最大生命值10%以下完成一局胜利。",
+    "conditions": {
+      "requireVictory": true,
+      "maxCurrentHpPctAtEnd": 0.1
+    },
+    "rewards": {
+      "startingRelics": [
+        "burning_blood"
+      ]
+    }
+  },
+  {
+    "id": "speedrun",
+    "title": "速通大师",
+    "description": "在30分钟内完成一局胜利。",
+    "conditions": {
+      "requireVictory": true,
+      "maxRunTimeMinutes": 30
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "quick_cycle",
+        "swift_sigil"
+      ]
+    }
+  },
+  {
+    "id": "perfectionist",
+    "title": "完美主义",
+    "description": "以满生命值完成一局胜利。",
+    "conditions": {
+      "requireVictory": true,
+      "minCurrentHpPctAtEnd": 1
+    },
+    "rewards": {
+      "startingRelics": [
+        "seal_of_omnissiah"
+      ]
+    }
+  },
+  {
+    "id": "enchanter",
+    "title": "附魔师",
+    "description": "单局中成功附魔5张卡牌。",
+    "conditions": {
+      "minEnchantmentsApplied": 5
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "blood_rune",
+        "ward_seal"
+      ]
+    }
+  },
+  {
+    "id": "potion_master",
+    "title": "药剂大师",
+    "description": "单局中使用10瓶药剂。",
+    "conditions": {
+      "minPotionsUsed": 10
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "alchemical_mix",
+        "volatile_mixture"
+      ]
+    }
+  },
+  {
+    "id": "chapter1_clear",
+    "title": "第一章征服者",
+    "description": "击败第一章首领。",
+    "conditions": {
+      "chapterReached": 1,
+      "requireVictory": false
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "chapter1_bonus_pool"
+      ]
+    }
+  },
+  {
+    "id": "chapter2_clear",
+    "title": "第二章征服者",
+    "description": "击败第二章首领。",
+    "conditions": {
+      "chapterReached": 2,
+      "requireVictory": false
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "chapter2_bonus_pool"
+      ],
+      "startingRelics": [
+        "field_compass"
+      ]
+    }
+  },
+  {
+    "id": "chapter3_clear",
+    "title": "第三章征服者",
+    "description": "击败第三章首领。",
+    "conditions": {
+      "chapterReached": 3,
+      "requireVictory": true
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "chapter3_bonus_pool"
+      ],
+      "startingRelics": [
+        "codex_chip"
+      ],
+      "backgrounds": [
+        "bg_void_observatory"
+      ]
+    }
+  },
+  {
+    "id": "poison_master",
+    "title": "毒素大师",
+    "description": "单局中中毒贡献超过 40% 总伤害。",
+    "conditions": {
+      "poisonContribution": 0.4
+    },
+    "rewards": {
+      "startingRelics": [
+        "silent_beads"
+      ]
+    }
+  },
+  {
+    "id": "control_master",
+    "title": "控制大师",
+    "description": "单局中控制时间超过 60% 战斗回合。",
+    "conditions": {
+      "controlUptime": 0.6
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "control_bonus_pool"
+      ]
+    }
+  },
+  {
+    "id": "attrition_master",
+    "title": "消耗大师",
+    "description": "单局中平均战斗回合数超过 12 回合。",
+    "conditions": {
+      "avgCombatTurns": 12
+    },
+    "rewards": {
+      "startingRelics": [
+        "coolant_phial"
+      ]
+    }
+  },
+  {
+    "id": "glass_cannon",
+    "title": "玻璃大炮",
+    "description": "单局中受到的总伤害不超过最大生命值的 200%。",
+    "conditions": {
+      "totalDamageTakenRatio": 2
+    },
+    "rewards": {
+      "startingRelics": [
+        "ember_pin"
+      ]
+    }
+  },
+  {
+    "id": "doctrine_master",
+    "title": "教义大师",
+    "description": "使用全部 6 种教条各通关一次。",
+    "conditions": {
+      "allDoctrinesCleared": true
+    },
+    "rewards": {
+      "backgrounds": [
+        "bg_martyr_shrine"
+      ]
+    }
+  },
+  {
+    "id": "upgrade_collector",
+    "title": "升级收藏家",
+    "description": "单局中激活 5 个以上升级。",
+    "conditions": {
+      "activeUpgradesCount": 5
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "upgrade_bonus_pool"
+      ]
+    }
+  },
+  {
+    "id": "pact_survivor",
+    "title": "契约幸存者",
+    "description": "单局中激活 3 个以上契约并通关。",
+    "conditions": {
+      "activePactsCount": 3,
+      "requireVictory": true
+    },
+    "rewards": {
+      "startingRelics": [
+        "grave_oil"
+      ]
+    }
+  },
+  {
+    "id": "meta_initiate",
+    "title": "局外初学者",
+    "description": "完成 10 局游戏。",
+    "conditions": {
+      "totalRunsCompleted": 10
+    },
+    "rewards": {
+      "startingRelics": [
+        "surgical_thread"
+      ]
+    }
+  },
+  {
+    "id": "meta_veteran",
+    "title": "局外老兵",
+    "description": "完成 50 局游戏。",
+    "conditions": {
+      "totalRunsCompleted": 50
+    },
+    "rewards": {
+      "startingRelics": [
+        "martyr_coin"
+      ],
+      "backgrounds": [
+        "bg_forgotten_foundry"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv1",
+    "title": "难度 Lv1 通关",
+    "description": "任意角色在难度 Lv1 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 1
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "desperate_guard",
+        "bloodline_focus"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv2",
+    "title": "难度 Lv2 通关",
+    "description": "任意角色在难度 Lv2 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 2
+    },
+    "rewards": {
+      "unlockedPoolIds": []
+    }
+  },
+  {
+    "id": "clear_lv3",
+    "title": "难度 Lv3 通关",
+    "description": "任意角色在难度 Lv3 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 3
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "forced_opening",
+        "grim_discipline"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv4",
+    "title": "难度 Lv4 通关",
+    "description": "任意角色在难度 Lv4 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 4
+    },
+    "rewards": {
+      "unlockedPoolIds": []
+    }
+  },
+  {
+    "id": "clear_lv5",
+    "title": "难度 Lv5 通关",
+    "description": "任意角色在难度 Lv5 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 5
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "pain_dividend",
+        "sealed_wager"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv6",
+    "title": "难度 Lv6 通关",
+    "description": "任意角色在难度 Lv6 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 6
+    },
+    "rewards": {
+      "unlockedPoolIds": []
+    }
+  },
+  {
+    "id": "clear_lv7",
+    "title": "难度 Lv7 通关",
+    "description": "任意角色在难度 Lv7 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 7
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "last_shelter",
+        "cruel_precision"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv8",
+    "title": "难度 Lv8 通关",
+    "description": "任意角色在难度 Lv8 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 8
+    },
+    "rewards": {
+      "unlockedPoolIds": []
+    }
+  },
+  {
+    "id": "clear_lv9",
+    "title": "难度 Lv9 通关",
+    "description": "任意角色在难度 Lv9 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 9
+    },
+    "rewards": {
+      "unlockedPoolIds": [
+        "black_standard",
+        "death_contract"
+      ]
+    }
+  },
+  {
+    "id": "clear_lv10",
+    "title": "难度 Lv10 通关",
+    "description": "任意角色在难度 Lv10 首次通关。",
+    "hidden": false,
+    "conditions": {
+      "requireVictory": true,
+      "minAscensionLevel": 10
+    },
+    "rewards": {
+      "unlockedPoolIds": [],
+      "titles": [
+        "Ascension Master"
+      ]
     }
   }
 ]
-

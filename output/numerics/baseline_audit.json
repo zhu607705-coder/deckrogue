@@ -2,20 +2,20 @@
   "options": {
     "runsPerClass": 1,
     "maxFloors": 3,
-    "maxCombatTurns": 3
+    "maxCombatTurns": 8
   },
   "scanCounts": {
     "economy": 110,
     "formulas": 51,
-    "runtime": 4250
+    "runtime": 10436
   },
   "summary": {
     "errors": 0,
-    "warnings": 6
+    "warnings": 15
   },
   "anomalySummary": {
     "errors": 0,
-    "warnings": 0
+    "warnings": 9
   },
   "driftSummary": {
     "errors": 0,
@@ -88,5 +88,69 @@
       "perilChance": 0.6039
     }
   ],
-  "findings": []
+  "findings": [
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.afterSelect.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.entered.Combat.f0.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.combatStep.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.afterReward.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.entered.Combat.f1.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.combatStep.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.afterReward.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.entered.Event.f2.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    },
+    {
+      "kind": "Negative",
+      "severity": "warn",
+      "source": "runtime",
+      "path": "brute.run0.afterEvent.character.rewardWeights.controlCardPenalty",
+      "value": -0.25
+    }
+  ]
 }

@@ -38,6 +38,10 @@
       {
         "intent": "block",
         "weight": 1
+      },
+      {
+        "intent": "break_the_line",
+        "weight": 1
       }
     ],
     "moves": {
@@ -53,6 +57,36 @@
           "type": "GainBlock",
           "amount": 6,
           "target": "Self"
+        }
+      ],
+      "break_the_line": [
+        {
+          "type": "ConditionalDamage",
+          "condition": {
+            "type": "PlayerHasDebuffConsecutiveTurns",
+            "statuses": [
+              "Weak",
+              "Poison"
+            ],
+            "turns": 2
+          },
+          "trueDamage": 8,
+          "falseDamage": 0,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalApply",
+          "condition": {
+            "type": "PlayerHasDebuffConsecutiveTurns",
+            "statuses": [
+              "Weak",
+              "Poison"
+            ],
+            "turns": 2
+          },
+          "applyStatus": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
         }
       ]
     },
@@ -541,6 +575,10 @@
       {
         "intent": "copy_strike",
         "weight": 2
+      },
+      {
+        "intent": "counter_surveillance",
+        "weight": 1
       }
     ],
     "moves": {
@@ -557,6 +595,27 @@
           "type": "DealDamage",
           "amount": 12,
           "target": "Enemy"
+        }
+      ],
+      "counter_surveillance": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "RemoveStatus",
+          "status": [
+            "Weak",
+            "Vulnerable"
+          ],
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "DamageBoost",
+          "amount": 4,
+          "target": "Self"
         }
       ]
     },
@@ -583,6 +642,10 @@
       {
         "intent": "throw_concoction",
         "weight": 2
+      },
+      {
+        "intent": "neutralizing_tonic",
+        "weight": 1
       }
     ],
     "moves": {
@@ -607,6 +670,23 @@
           "type": "DealDamage",
           "amount": 14,
           "target": "Enemy"
+        }
+      ],
+      "neutralizing_tonic": [
+        {
+          "type": "RemoveStatus",
+          "status": "Poison",
+          "amount": 6,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "scaling": {
+            "type": "PoisonRemoved",
+            "divisor": 3
+          },
+          "target": "Self"
         }
       ]
     },
@@ -684,5 +764,1508 @@
     "keywords": [
       "boss"
     ]
+  },
+  {
+    "id": "coolant_hound",
+    "name": "冷却猎犬",
+    "maxHp": 45,
+    "minHp": 42,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "beast",
+      "mechanical"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "bite",
+        "weight": 4
+      },
+      {
+        "intent": "spray",
+        "weight": 3
+      },
+      {
+        "intent": "cool_run",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "bite": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ],
+      "spray": [
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "cool_run": [
+        {
+          "type": "GainBlock",
+          "amount": 7,
+          "target": "Self"
+        },
+        {
+          "type": "RemoveAnyDebuff",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "机械猎犬，冷却液管道暴露在外，四足机械追猎者，蒸汽朋克风格",
+    "description": "失控的冷却系统会在追猎中不断喷射低温液体。"
+  },
+  {
+    "id": "servo_confessor",
+    "name": "伺服告解士",
+    "maxHp": 52,
+    "minHp": 46,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "religious",
+      "mechanical"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "verdict",
+        "weight": 4
+      },
+      {
+        "intent": "confess",
+        "weight": 3
+      },
+      {
+        "intent": "absolve",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "verdict": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        }
+      ],
+      "confess": [
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "absolve": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "PlayerPlayed3CardsThisTurn"
+          },
+          "trueActions": [
+            {
+              "type": "ApplyStatus",
+              "status": "Strength",
+              "amount": 2,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "机械化的告解士，穿着宗教风格铠甲，手持审判之锤，蒸汽朋克风格",
+    "description": "逻辑审判者会根据你的出牌频率来增强自己的力量。"
+  },
+  {
+    "id": "reactor_thrall",
+    "name": "反应炉奴工",
+    "maxHp": 58,
+    "minHp": 50,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "buff",
+      "explosive"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "charge",
+        "weight": 3
+      },
+      {
+        "intent": "vent",
+        "weight": 4
+      },
+      {
+        "intent": "rupture",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "charge": [
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ],
+      "vent": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy",
+          "hits": 2
+        }
+      ],
+      "rupture": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "SurvivedNConsecutiveTurns",
+            "turns": 2
+          },
+          "trueActions": [
+            {
+              "type": "DealDamage",
+              "amount": 18,
+              "target": "Enemy"
+            },
+            {
+              "type": "LoseHP",
+              "amount": 6,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "被反应炉能量辐射奴役的工人，身体因辐射而发光，周围有蒸汽和能量泄漏，末日蒸汽朋克风格",
+    "description": "反应炉奴工会积蓄能量并在达到临界点时爆发，但也会自损。"
+  },
+  {
+    "id": "data_leech",
+    "name": "数据吸蚀者",
+    "maxHp": 44,
+    "minHp": 38,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "insect",
+      "debuff",
+      "resource_drain"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "drain",
+        "weight": 4
+      },
+      {
+        "intent": "scramble",
+        "weight": 3
+      },
+      {
+        "intent": "skim",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "drain": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "PlayerDrawLess",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "scramble": [
+        {
+          "type": "RandomCardCostIncrease",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "skim": [
+        {
+          "type": "GainBlock",
+          "amount": 8,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "数据形态的吸蚀生物，半机械结构，从数据流中吸取能量，科幻机械风格",
+    "description": "数据吸蚀者会吸取你的手牌价值并干扰你的资源收益。"
+  },
+  {
+    "id": "iron_choir_twin_a",
+    "name": "铁唱双生体-A",
+    "maxHp": 40,
+    "minHp": 36,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "twin",
+      "synergy"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "chorus",
+        "weight": 3
+      },
+      {
+        "intent": "stab",
+        "weight": 4
+      },
+      {
+        "intent": "resonate",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "chorus": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TwinAlive",
+            "twinId": "iron_choir_twin_b"
+          },
+          "trueActions": [
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "Self"
+            },
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "iron_choir_twin_b"
+            }
+          ]
+        }
+      ],
+      "stab": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        }
+      ],
+      "resonate": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TwinDied",
+            "twinId": "iron_choir_twin_b"
+          },
+          "trueActions": [
+            {
+              "type": "ApplyStatus",
+              "status": "Strength",
+              "amount": 3,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "双生机械歌手的一半，穿着铁制咏唱袍，另一半不在视野中，蒸汽朋克歌剧风格",
+    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。"
+  },
+  {
+    "id": "iron_choir_twin_b",
+    "name": "铁唱双生体-B",
+    "maxHp": 40,
+    "minHp": 36,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "twin",
+      "synergy"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "chorus",
+        "weight": 3
+      },
+      {
+        "intent": "stab",
+        "weight": 4
+      },
+      {
+        "intent": "resonate",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "chorus": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TwinAlive",
+            "twinId": "iron_choir_twin_a"
+          },
+          "trueActions": [
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "Self"
+            },
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "iron_choir_twin_a"
+            }
+          ]
+        }
+      ],
+      "stab": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        }
+      ],
+      "resonate": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TwinDied",
+            "twinId": "iron_choir_twin_a"
+          },
+          "trueActions": [
+            {
+              "type": "ApplyStatus",
+              "status": "Strength",
+              "amount": 3,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "铁唱双生体的另一半，与A形成和声时会获得额外格挡，蒸汽朋克歌剧风格",
+    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。"
+  },
+  {
+    "id": "scrap_surgeon",
+    "name": "废钢术士",
+    "maxHp": 62,
+    "minHp": 55,
+    "tier": 2,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "healer",
+      "support"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "mend",
+        "weight": 3
+      },
+      {
+        "intent": "saw",
+        "weight": 4
+      },
+      {
+        "intent": "sterilize",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "mend": [
+        {
+          "type": "Heal",
+          "amount": 8,
+          "target": "Self"
+        },
+        {
+          "type": "Heal",
+          "amount": 8,
+          "target": "AllEnemies"
+        }
+      ],
+      "saw": [
+        {
+          "type": "DealDamage",
+          "amount": 11,
+          "target": "Enemy"
+        }
+      ],
+      "sterilize": [
+        {
+          "type": "RemoveStatus",
+          "status": [
+            "Poison",
+            "Weak"
+          ],
+          "amount": 4,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "废钢术士手持巨型手术锯，周围散落着机械零件和工具，疯狂医生风格，蒸汽朋克",
+    "description": "废钢术士会治疗所有敌人并移除自身的负面状态。"
+  },
+  {
+    "id": "sanctum_praetor",
+    "name": "圣所禁卫长",
+    "maxHp": 126,
+    "minHp": 118,
+    "tier": 2,
+    "isElite": true,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "armored",
+      "purifier"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "fortify",
+        "weight": 4
+      },
+      {
+        "intent": "judgment",
+        "weight": 4
+      },
+      {
+        "intent": "purity_drive",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "fortify": [
+        {
+          "type": "GainBlock",
+          "amount": 16,
+          "target": "Self"
+        }
+      ],
+      "judgment": [
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        }
+      ],
+      "purity_drive": [
+        {
+          "type": "RemoveAnyDebuff",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "圣所禁卫长穿着厚重的机械铠甲，手持巨大的净化之锤，周围有神圣光芒和齿轮结构，蒸汽朋克圣殿武士风格",
+    "description": "圣所禁卫长会用高额格挡和净化来抵挡你的进攻。"
+  },
+  {
+    "id": "overclocked_abbot",
+    "name": "超频修院长",
+    "maxHp": 112,
+    "minHp": 104,
+    "tier": 2,
+    "isElite": true,
+    "chapterUnlock": 2,
+    "keywords": [
+      "humanoid",
+      "ritual",
+      "explosive"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "chant",
+        "weight": 3
+      },
+      {
+        "intent": "lash",
+        "weight": 4
+      },
+      {
+        "intent": "overclock",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "chant": [
+        {
+          "type": "ApplyStatus",
+          "status": "Ritual",
+          "amount": 1,
+          "target": "Self"
+        }
+      ],
+      "lash": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy",
+          "hits": 2
+        }
+      ],
+      "overclock": [
+        {
+          "type": "DealDamage",
+          "amount": 22,
+          "target": "Enemy"
+        },
+        {
+          "type": "LoseHP",
+          "amount": 5,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "超频修院长身体因过载而发出红光，周围有能量波动的光环，手持仪式鞭，蒸汽朋克狂热修士风格",
+    "description": "超频修院长会不断积蓄仪式层数并在过载时造成巨大伤害，但也会自损。"
+  },
+  {
+    "id": "fusion_censer",
+    "name": "熔融圣炉",
+    "maxHp": 136,
+    "minHp": 126,
+    "tier": 2,
+    "isElite": true,
+    "chapterUnlock": 2,
+    "keywords": [
+      "object",
+      "summoner",
+      "fire"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "stoke",
+        "weight": 3
+      },
+      {
+        "intent": "flare",
+        "weight": 4
+      },
+      {
+        "intent": "pressure_wave",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "stoke": [
+        {
+          "type": "Summon",
+          "enemyId": "coolant_hound",
+          "target": "Self"
+        }
+      ],
+      "flare": [
+        {
+          "type": "ApplyStatus",
+          "status": "Burn",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        }
+      ],
+      "pressure_wave": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "熔融圣炉是一个巨大的机械香炉，内部燃烧着火焰，周围有蒸汽和烟气，蒸汽朋克宗教仪式风格",
+    "description": "熔融圣炉会召唤冷却猎犬并用灼烧和压力波来压制玩家。"
+  },
+  {
+    "id": "cathedral_engine",
+    "name": "圣堂引擎",
+    "maxHp": 360,
+    "minHp": 340,
+    "tier": 3,
+    "isBoss": true,
+    "chapterUnlock": 2,
+    "keywords": [
+      "boss",
+      "armored",
+      "explosive",
+      "phase_boss"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "iron_litany",
+        "weight": 5
+      },
+      {
+        "intent": "overheat_mass",
+        "weight": 3
+      },
+      {
+        "intent": "cooling_breach",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "iron_litany": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 18,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "巨大的机械引擎，混合了教堂哥特式和蒸汽朋克风格，内部有熔岩般的能量流动，蒸汽和热量从缝隙中喷出，末日机械圣所风格",
+    "description": "圣堂引擎会在战斗中进入不同的过热阶段，用护甲循环和冷却破坏来压制玩家。"
+  },
+  {
+    "id": "logic_saint",
+    "name": "逻辑圣者",
+    "maxHp": 320,
+    "minHp": 300,
+    "tier": 3,
+    "isBoss": true,
+    "chapterUnlock": 2,
+    "keywords": [
+      "boss",
+      "control",
+      "judge",
+      "phase_boss"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "edict_cycle",
+        "weight": 4
+      },
+      {
+        "intent": "forbidden_proof",
+        "weight": 3
+      },
+      {
+        "intent": "final_axiom",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "edict_cycle": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "逻辑圣者是一个人形机械，混合了法官和赛博朋克风格，手持发光的几何图形，周围有数据和逻辑流动，高等智慧机械风格",
+    "description": "逻辑圣者会用牌序惩罚、复制伤害和强制弃牌来压制玩家。"
+  },
+  {
+    "id": "spore_wretch",
+    "name": "毒孢孽物",
+    "maxHp": 60,
+    "minHp": 54,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "beast",
+      "poison",
+      "summoner"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "spit",
+        "weight": 4
+      },
+      {
+        "intent": "shed",
+        "weight": 3
+      },
+      {
+        "intent": "bloom",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "spit": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "shed": [
+        {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "AllEnemies"
+        }
+      ],
+      "bloom": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "SurvivedNConsecutiveTurns",
+            "turns": 2
+          },
+          "trueActions": [
+            {
+              "type": "ApplyStatus",
+              "status": "Strength",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "毒孢孽物是一个变异的生物，身上覆盖着孢子，会在战斗中释放有毒孢子，病态绿色和紫色混合，生物机械风格",
+    "description": "毒孢孽物会在存活足够长时间后变强。"
+  },
+  {
+    "id": "rot_hound",
+    "name": "腐化猎犬",
+    "maxHp": 64,
+    "minHp": 58,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "beast",
+      "poison",
+      "strength"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "gnaw",
+        "weight": 4
+      },
+      {
+        "intent": "septic_bite",
+        "weight": 3
+      },
+      {
+        "intent": "howl",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "gnaw": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        }
+      ],
+      "septic_bite": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "howl": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TotalAllyPoisonThreshold",
+            "threshold": 6
+          },
+          "trueActions": [
+            {
+              "type": "ApplyStatus",
+              "status": "Strength",
+              "amount": 2,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art": "腐化猎犬是被瘟疫感染的野兽，身体腐烂但仍然凶猛，周围有腐败气体，末日生物风格",
+    "description": "腐化猎犬会在同伴中毒足够多时变强。"
+  },
+  {
+    "id": "plague_choir",
+    "name": "疫病咏者",
+    "maxHp": 54,
+    "minHp": 48,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "support",
+      "debuff"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "chant",
+        "weight": 3
+      },
+      {
+        "intent": "dirge",
+        "weight": 4
+      },
+      {
+        "intent": "murmur",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "chant": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 1,
+          "target": "AllEnemies"
+        }
+      ],
+      "dirge": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy",
+          "hits": 2
+        }
+      ],
+      "murmur": [
+        {
+          "type": "ApplyStatus",
+          "status": "HealReduction",
+          "amount": 50,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "疫病咏者穿着破烂的长袍，周围有瘟疫光环，用歌声散播疾病，黑暗奇幻风格",
+    "description": "疫病咏者会用歌声削弱你的治疗效果。"
+  },
+  {
+    "id": "cyst_bearer",
+    "name": "囊肿承载体",
+    "maxHp": 70,
+    "minHp": 62,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "armor",
+      "death_rattle"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "swell",
+        "weight": 4
+      },
+      {
+        "intent": "rupture",
+        "weight": 3
+      },
+      {
+        "intent": "spill",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "swell": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        }
+      ],
+      "rupture": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "LoseHP",
+          "amount": 6,
+          "target": "Self"
+        }
+      ],
+      "spill": [
+        {
+          "type": "OnDeath",
+          "target": "Enemy",
+          "effect": {
+            "type": "ApplyStatus",
+            "status": "Poison",
+            "amount": 3,
+            "target": "Enemy"
+          }
+        }
+      ]
+    },
+    "art": "囊肿承载体身体上长满了巨大的囊肿，内部充满液体，死亡时会破裂释放毒素，恐怖风格",
+    "description": "囊肿承载体死亡时会爆炸并对你施加毒液。"
+  },
+  {
+    "id": "grave_mender",
+    "name": "墓池缝合者",
+    "maxHp": 74,
+    "minHp": 66,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "healer",
+      "poison_removal"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "mend",
+        "weight": 3
+      },
+      {
+        "intent": "cleanse_rot",
+        "weight": 3
+      },
+      {
+        "intent": "cut",
+        "weight": 4
+      }
+    ],
+    "moves": {
+      "mend": [
+        {
+          "type": "Heal",
+          "amount": 10,
+          "target": "Self"
+        }
+      ],
+      "cleanse_rot": [
+        {
+          "type": "RemoveStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "Self"
+        }
+      ],
+      "cut": [
+        {
+          "type": "DealDamage",
+          "amount": 11,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "墓池缝合者手持巨剪，能够治愈同伴并移除毒素，身体由缝合的尸体组成，恐怖外科风格",
+    "description": "墓池缝合者会治疗同伴并移除它们的毒素。"
+  },
+  {
+    "id": "blight_larva",
+    "name": "病斑幼体",
+    "maxHp": 40,
+    "minHp": 34,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "beast",
+      "summoner",
+      "explosive"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "sting",
+        "weight": 4
+      },
+      {
+        "intent": "nest",
+        "weight": 3
+      },
+      {
+        "intent": "burst",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "sting": [
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "nest": [
+        {
+          "type": "Summon",
+          "enemyId": "blight_larva",
+          "target": "Self"
+        }
+      ],
+      "burst": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "LoseHP",
+          "amount": 9,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "病斑幼体是小型昆虫生物，会召唤同伴并在死亡时自爆，昆虫群落风格",
+    "description": "病斑幼体会召唤同伴并在死亡时造成伤害。"
+  },
+  {
+    "id": "mire_guard",
+    "name": "泥沼守卫",
+    "maxHp": 78,
+    "minHp": 70,
+    "tier": 3,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "armor",
+      "debuff"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "smother",
+        "weight": 4
+      },
+      {
+        "intent": "drag_down",
+        "weight": 3
+      },
+      {
+        "intent": "sink",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "smother": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ],
+      "drag_down": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "sink": [
+        {
+          "type": "GainBlock",
+          "amount": 12,
+          "target": "Self"
+        },
+        {
+          "type": "RemoveAnyDebuff",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "泥沼守卫是沉浸在腐败泥沼中的骑士，会拖慢敌人并获得防御，黑暗沼泽风格",
+    "description": "泥沼守卫会用多重 debuff 和高格挡来拖慢你的节奏。"
+  },
+  {
+    "id": "plague_abbot",
+    "name": "疫病院长",
+    "maxHp": 128,
+    "minHp": 118,
+    "tier": 3,
+    "isElite": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "ritual",
+      "poison"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "blessing",
+        "weight": 3
+      },
+      {
+        "intent": "brand",
+        "weight": 4
+      },
+      {
+        "intent": "anoint",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "blessing": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 1,
+          "target": "AllEnemies"
+        }
+      ],
+      "brand": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "anoint": [
+        {
+          "type": "ApplyStatus",
+          "status": "Ritual",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "疫病院长穿着腐烂的宗教服饰，手持祝福之杖，周围有疫病光环，黑暗宗教风格",
+    "description": "疫病院长会用仪式和毒素来惩罚你的拖延。"
+  },
+  {
+    "id": "maggot_reliquary",
+    "name": "蛆虫圣髑匣",
+    "maxHp": 142,
+    "minHp": 132,
+    "tier": 3,
+    "isElite": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "object",
+      "summoner",
+      "poison"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "spill",
+        "weight": 3
+      },
+      {
+        "intent": "crush",
+        "weight": 4
+      },
+      {
+        "intent": "birth",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "spill": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 4,
+          "target": "Enemy"
+        }
+      ],
+      "crush": [
+        {
+          "type": "DealDamage",
+          "amount": 20,
+          "target": "Enemy"
+        }
+      ],
+      "birth": [
+        {
+          "type": "Summon",
+          "enemyId": "blight_larva",
+          "target": "Self"
+        },
+        {
+          "type": "Summon",
+          "enemyId": "blight_larva",
+          "target": "Self"
+        }
+      ]
+    },
+    "art": "蛆虫圣髑匣是一个巨大的金属容器，内部充满了蛆虫，会召唤病斑幼体，恐怖炼金术风格",
+    "description": "蛆虫圣髑匣会召唤大量幼体并用毒素压制你。"
+  },
+  {
+    "id": "corrupt_titanus",
+    "name": "腐败巨躯",
+    "maxHp": 164,
+    "minHp": 150,
+    "tier": 3,
+    "isElite": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "beast",
+      "armor",
+      "heavy_hitter"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "slam",
+        "weight": 4
+      },
+      {
+        "intent": "ooze_armor",
+        "weight": 3
+      },
+      {
+        "intent": "pestilent_roar",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "slam": [
+        {
+          "type": "DealDamage",
+          "amount": 24,
+          "target": "Enemy"
+        }
+      ],
+      "ooze_armor": [
+        {
+          "type": "GainBlock",
+          "amount": 18,
+          "target": "Self"
+        }
+      ],
+      "pestilent_roar": [
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "腐败巨躯是一个巨大的畸形生物，身体由腐烂的肉和金属组成，会用沉重的攻击碾压敌人，巨型怪物风格",
+    "description": "腐败巨躯会用高伤害和厚甲来碾压你的防御。"
+  },
+  {
+    "id": "catacomb_matron",
+    "name": "地窖主母",
+    "maxHp": 136,
+    "minHp": 124,
+    "tier": 3,
+    "isElite": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "humanoid",
+      "summoner",
+      "lifesteal"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "brood_call",
+        "weight": 3
+      },
+      {
+        "intent": "lacerate",
+        "weight": 4
+      },
+      {
+        "intent": "venom_milk",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "brood_call": [
+        {
+          "type": "Summon",
+          "enemyId": "rot_hound",
+          "target": "Self"
+        }
+      ],
+      "lacerate": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy",
+          "hits": 2
+        }
+      ],
+      "venom_milk": [
+        {
+          "type": "Heal",
+          "amount": 6,
+          "target": "AllEnemies"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "地窖主母是一个巨大的女性形态生物，周围有子嗣环绕，会治疗敌人并对你施加毒素，母巢生物风格",
+    "description": "地窖主母会用召唤和治疗来拖慢战斗节奏，同时对你施加毒素压力。"
+  },
+  {
+    "id": "pox_cathedral",
+    "name": "疫祸圣堂母体",
+    "maxHp": 390,
+    "minHp": 370,
+    "tier": 3,
+    "isBoss": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "boss",
+      "poison",
+      "summoner",
+      "phase_boss"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "festering_hymn",
+        "weight": 4
+      },
+      {
+        "intent": "cathedral_bloom",
+        "weight": 3
+      },
+      {
+        "intent": "rotting_apotheosis",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "festering_hymn": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "疫祸圣堂母体是一个巨大的有机结构，混合了教堂哥特式和病变生物风格，内部流淌着毒素，疫病大教堂概念图",
+    "description": "疫祸圣堂母体会在战斗中召唤幼体并用持续的毒素压力来压制玩家。"
+  },
+  {
+    "id": "the_mire_saint",
+    "name": "泥潭圣者",
+    "maxHp": 360,
+    "minHp": 340,
+    "tier": 3,
+    "isBoss": true,
+    "chapterUnlock": 3,
+    "keywords": [
+      "boss",
+      "control",
+      "debuff",
+      "phase_boss"
+    ],
+    "intentPolicy": [
+      {
+        "intent": "dragging_sermon",
+        "weight": 4
+      },
+      {
+        "intent": "sinking_mass",
+        "weight": 3
+      },
+      {
+        "intent": "final_decay",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "dragging_sermon": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art": "泥潭圣者是一个人形机械，混合了法官和泥沼生物风格，身体由腐烂的泥浆和金属组成，末日沼泽风格",
+    "description": "泥潭圣者会用资源拖慢和状态惩罚来压制玩家，在半血后更加危险。"
   }
 ]

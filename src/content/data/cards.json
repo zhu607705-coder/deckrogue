@@ -1,7 +1,7 @@
 [
   {
     "id": "strike",
-    "name": "Strike",
+    "name": "打击",
     "rarity": "Starter",
     "cost": 1,
     "type": "Attack",
@@ -9,7 +9,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 5 damage.",
+    "text": "造成 5 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -19,8 +19,8 @@
     ],
     "art_prompt": "A dynamic action shot of a glowing sword striking a dark silhouette, sparks flying, fantasy art style",
     "upgrade": {
-      "name": "Strike+",
-      "text": "Deal 8 damage.",
+      "name": "打击+",
+      "text": "造成 8 点伤害。",
       "actions": [
         {
           "type": "DealDamage",
@@ -33,7 +33,7 @@
   },
   {
     "id": "defend",
-    "name": "Defend",
+    "name": "防御",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
@@ -41,7 +41,7 @@
     "tags": [
       "defend"
     ],
-    "text": "Gain 4 block.",
+    "text": "获得 4 点格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -51,8 +51,8 @@
     ],
     "art_prompt": "A sturdy metallic shield glowing with blue magical energy, blocking a shadowy attack, fantasy art style",
     "upgrade": {
-      "name": "Defend+",
-      "text": "Gain 7 block.",
+      "name": "防御+",
+      "text": "获得 7 点格挡。",
       "actions": [
         {
           "type": "GainBlock",
@@ -65,7 +65,7 @@
   },
   {
     "id": "gather_intel",
-    "name": "Gather Intel",
+    "name": "收集情报",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -73,7 +73,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Gain 1 Intel. Draw 1 card.",
+    "text": "获得 1 点情报。 抽 2 张牌。",
     "actions": [
       {
         "type": "GainIntel",
@@ -88,8 +88,8 @@
     ],
     "art_prompt": "A mysterious glowing blue orb floating above an open ancient tome, dark library background, fantasy art style",
     "upgrade": {
-      "name": "Gather Intel+",
-      "text": "Gain 3 Intel. Draw 2 cards.",
+      "name": "收集情报+",
+      "text": "获得 3 点情报。抽 2 张牌。",
       "actions": [
         {
           "type": "GainIntel",
@@ -107,7 +107,7 @@
   },
   {
     "id": "precision_strike",
-    "name": "Precision Strike",
+    "name": "精准打击",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
@@ -116,7 +116,7 @@
       "intel",
       "strike"
     ],
-    "text": "If you have 1 Intel, spend it to deal 9 damage. Otherwise deal 6 damage.",
+    "text": "若你拥有 1 点情报，则消耗它并造成 9 点伤害；否则造成 6 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -147,8 +147,8 @@
     ],
     "art_prompt": "A sniper's crosshair locking onto a glowing weak point on a monster's armor, high tech fantasy art style",
     "upgrade": {
-      "name": "Precision Strike+",
-      "text": "If you have 1 Intel, spend it to deal 16 damage. Otherwise deal 8 damage.",
+      "name": "精准打击+",
+      "text": "若你拥有 1 点情报，则消耗它并造成 16 点伤害；否则造成 8 点伤害。",
       "actions": [
         {
           "type": "Conditional",
@@ -182,7 +182,7 @@
   },
   {
     "id": "bash",
-    "name": "Bash",
+    "name": "重击",
     "rarity": "Starter",
     "cost": 2,
     "type": "Attack",
@@ -190,7 +190,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 12 damage. Apply 2 Vulnerable.",
+    "text": "造成 12 点伤害。 施加 2 层易伤。",
     "actions": [
       {
         "type": "DealDamage",
@@ -206,8 +206,8 @@
     ],
     "art_prompt": "A massive heavy warhammer smashing into the ground, creating a shockwave, aggressive fantasy art style",
     "upgrade": {
-      "name": "Bash+",
-      "text": "Deal 18 damage. Apply 3 Vulnerable.",
+      "name": "重击+",
+      "text": "造成 18 点伤害。施加 3 层易伤。",
       "actions": [
         {
           "type": "DealDamage",
@@ -226,13 +226,13 @@
   },
   {
     "id": "flex",
-    "name": "Flex",
+    "name": "肌肉爆发",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Gain 2 Strength.",
+    "text": "获得 2 点力量。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -243,8 +243,8 @@
     ],
     "art_prompt": "A muscular warrior glowing with intense red aura, flexing their arms, powerful fantasy art style",
     "upgrade": {
-      "name": "Flex+",
-      "text": "Gain 3 Strength.",
+      "name": "肌肉爆发+",
+      "text": "获得 3 点力量。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -258,7 +258,7 @@
   },
   {
     "id": "quick_slash",
-    "name": "Quick Slash",
+    "name": "快斩",
     "rarity": "Starter",
     "cost": 1,
     "type": "Attack",
@@ -266,7 +266,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 4 damage. Draw 1 card.",
+    "text": "造成 4 点伤害。 抽 1 张牌。",
     "actions": [
       {
         "type": "DealDamage",
@@ -281,8 +281,8 @@
     ],
     "art_prompt": "A blur of motion showing a dagger slicing through the air with green afterimages, fast fantasy art style",
     "upgrade": {
-      "name": "Quick Slash+",
-      "text": "Deal 8 damage. Draw 1 card.",
+      "name": "快斩+",
+      "text": "造成 8 点伤害。抽 1 张牌。",
       "actions": [
         {
           "type": "DealDamage",
@@ -300,13 +300,13 @@
   },
   {
     "id": "acrobatics",
-    "name": "Acrobatics",
+    "name": "杂技闪避",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Draw 2 cards. Discard 1 card.",
+    "text": "抽 2 张牌。 弃掉 1 张牌。",
     "actions": [
       {
         "type": "Draw",
@@ -321,8 +321,8 @@
     ],
     "art_prompt": "A nimble rogue performing a mid-air backflip over a trap, dynamic perspective, fantasy art style",
     "upgrade": {
-      "name": "Acrobatics+",
-      "text": "Draw 4 cards. Discard 1 card.",
+      "name": "杂技闪避+",
+      "text": "抽 4 张牌。弃掉 1 张牌。",
       "actions": [
         {
           "type": "Draw",
@@ -340,7 +340,7 @@
   },
   {
     "id": "expose_weakness",
-    "name": "Expose Weakness",
+    "name": "暴露弱点",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -348,7 +348,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Spend 2 Intel: Apply 3 Vulnerable and 2 Weak.",
+    "text": "消耗 2 点情报：施加 3 层易伤和 2 层虚弱。",
     "actions": [
       {
         "type": "Conditional",
@@ -379,8 +379,8 @@
     ],
     "art_prompt": "A glowing magical monocle revealing the skeletal structure and weak points of a monster, analytical fantasy art style",
     "upgrade": {
-      "name": "Expose Weakness+",
-      "text": "Spend 2 Intel: Apply 3 Vulnerable and 3 Weak.",
+      "name": "暴露弱点+",
+      "text": "消耗 2 点情报：施加 3 层易伤和 3 层虚弱。",
       "actions": [
         {
           "type": "Conditional",
@@ -414,7 +414,7 @@
   },
   {
     "id": "cleave",
-    "name": "Cleave",
+    "name": "劈砍",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -422,7 +422,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 8 damage to ALL enemies.",
+    "text": "对全体异端造成 8 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -432,8 +432,8 @@
     ],
     "art_prompt": "A wide sweeping arc of red energy from a massive sword, cutting through multiple shadowy figures, fantasy art style",
     "upgrade": {
-      "name": "Cleave+",
-      "text": "Deal 11 damage to ALL enemies.",
+      "name": "劈砍+",
+      "text": "对全体异端造成 11 点伤害。",
       "actions": [
         {
           "type": "DealDamage",
@@ -446,7 +446,7 @@
   },
   {
     "id": "body_slam",
-    "name": "Body Slam",
+    "name": "躯体撞击",
     "rarity": "Common",
     "cost": 0,
     "type": "Attack",
@@ -454,7 +454,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal damage equal to your Block.",
+    "text": "造成等同于你当前格挡值的伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -464,14 +464,14 @@
     ],
     "art_prompt": "A heavily armored knight tackling a monster with full force, shield first, heavy impact fantasy art style",
     "upgrade": {
-      "name": "Body Slam+",
+      "name": "躯体撞击+",
       "cost": 0
     },
     "character": "brute"
   },
   {
     "id": "shrug_it_off",
-    "name": "Shrug It Off",
+    "name": "甩开",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -479,7 +479,7 @@
     "tags": [
       "defend"
     ],
-    "text": "Gain 8 Block. Draw 1 card.",
+    "text": "获得 8 点格挡。 抽 1 张牌。",
     "actions": [
       {
         "type": "GainBlock",
@@ -494,8 +494,8 @@
     ],
     "art_prompt": "A warrior casually brushing off arrows bouncing off their thick metallic armor, resilient fantasy art style",
     "upgrade": {
-      "name": "Shrug It Off+",
-      "text": "Gain 11 Block. Draw 1 card.",
+      "name": "甩开+",
+      "text": "获得 11 点格挡。抽 1 张牌。",
       "actions": [
         {
           "type": "GainBlock",
@@ -513,7 +513,7 @@
   },
   {
     "id": "pommel_strike",
-    "name": "Pommel Strike",
+    "name": "柄击",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -521,7 +521,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 9 damage. Draw 1 card.",
+    "text": "造成 9 点伤害。 抽 1 张牌。",
     "actions": [
       {
         "type": "DealDamage",
@@ -536,8 +536,8 @@
     ],
     "art_prompt": "A close up of a sword's heavy pommel smashing into a monster's face, disorienting impact, fantasy art style",
     "upgrade": {
-      "name": "Pommel Strike+",
-      "text": "Deal 10 damage. Draw 2 cards.",
+      "name": "柄击+",
+      "text": "造成 10 点伤害。抽 2 张牌。",
       "actions": [
         {
           "type": "DealDamage",
@@ -561,7 +561,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Double your Strength.",
+    "text": "使你的力量翻倍。",
     "actions": [
       {
         "type": "DoubleStatus",
@@ -571,7 +571,7 @@
     ],
     "art_prompt": "A warrior screaming as fiery aura erupts from their body, breaking magical chains, intense anime fantasy art style",
     "upgrade": {
-      "name": "Limit Break+",
+      "name": "极限突破祷令+",
       "cost": 0
     },
     "character": "brute",
@@ -579,7 +579,7 @@
   },
   {
     "id": "deadly_poison",
-    "name": "Deadly Poison",
+    "name": "致命毒药",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -587,7 +587,7 @@
     "tags": [
       "poison"
     ],
-    "text": "Apply 3 Poison.",
+    "text": "施加 3 层中毒。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -598,8 +598,8 @@
     ],
     "art_prompt": "A glass vial dripping with glowing toxic green liquid onto a dagger blade, dark fantasy art style",
     "upgrade": {
-      "name": "Deadly Poison+",
-      "text": "Apply 7 Poison.",
+      "name": "致命毒药+",
+      "text": "施加 7 层中毒。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -613,7 +613,7 @@
   },
   {
     "id": "bouncing_flask",
-    "name": "Bouncing Flask",
+    "name": "弹跳烧瓶",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -621,7 +621,7 @@
     "tags": [
       "poison"
     ],
-    "text": "Apply 4 Poison to a random enemy 3 times.",
+    "text": "对随机异端施加 4 层中毒，共触发 3 次。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -644,8 +644,8 @@
     ],
     "art_prompt": "A glowing green potion flask bouncing erratically between multiple shadowy enemies, splashing acid, dynamic fantasy art style",
     "upgrade": {
-      "name": "Bouncing Flask+",
-      "text": "Apply 5 Poison to a random enemy 3 times.",
+      "name": "弹跳烧瓶+",
+      "text": "对随机异端施加 5 层中毒，共触发 3 次。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -679,7 +679,7 @@
     "tags": [
       "poison"
     ],
-    "text": "Double the enemy's Poison.",
+    "text": "使目标的中毒层数翻倍。",
     "actions": [
       {
         "type": "DoubleStatus",
@@ -689,7 +689,7 @@
     ],
     "art_prompt": "A magical chemical reaction causing green toxic fumes to violently explode and expand, alchemical fantasy art style",
     "upgrade": {
-      "name": "Catalyst+",
+      "name": "毒剂催化祷文+",
       "cost": 0
     },
     "character": "tactician",
@@ -697,7 +697,7 @@
   },
   {
     "id": "time_bomb",
-    "name": "Time Bomb",
+    "name": "时间炸弹",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
@@ -707,7 +707,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Delay 2: Deal 14 damage.",
+    "text": "延迟 2 回合： 造成 14 点伤害。",
     "actions": [
       {
         "type": "Delay",
@@ -726,7 +726,7 @@
   },
   {
     "id": "time_warp",
-    "name": "Time Warp",
+    "name": "时间扭曲",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
@@ -735,7 +735,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Trigger a delayed card immediately.",
+    "text": "立刻引爆一张延迟牌。",
     "actions": [
       {
         "type": "TriggerDelay"
@@ -746,7 +746,7 @@
   },
   {
     "id": "deja_vu",
-    "name": "Deja Vu",
+    "name": "既视感",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -755,7 +755,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Return the last played card to your hand. It costs 0 this turn.",
+    "text": "将上一张打出的牌返回手牌。本回合它的费用变为 0。",
     "actions": [
       {
         "type": "ReturnLastCard",
@@ -776,7 +776,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Gain 3 Energy. Draw 3 cards. Skip your next draw phase.",
+    "text": "获得 3 点能量。 抽 3 张牌。 跳过你的下一次抽牌阶段。",
     "actions": [
       {
         "type": "GainEnergy",
@@ -799,7 +799,7 @@
   },
   {
     "id": "stasis_field",
-    "name": "Stasis Field",
+    "name": "静滞力场",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Power",
@@ -808,7 +808,7 @@
       "warp",
       "psyker"
     ],
-    "text": "At the start of your turn, if you have 2+ delayed cards, gain 5 Block.",
+    "text": "在你的回合开始时，若你有至少 2 张延迟牌，则获得 5 点格挡。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -831,7 +831,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Restore all HP lost last turn.",
+    "text": "恢复你上一回合失去的全部生命值。",
     "actions": [
       {
         "type": "Revive"
@@ -843,7 +843,7 @@
   },
   {
     "id": "chronos_rift",
-    "name": "Chronos Rift",
+    "name": "时序裂隙",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
@@ -853,7 +853,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Deal 8 damage. Delay 3: Deal 8 damage.",
+    "text": "造成 8 点伤害。 延迟 3 回合： 造成 8 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -886,7 +886,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Deal 5 damage to ALL enemies. Deals 3 more damage for each delayed card.",
+    "text": "对全体异端造成 5 点伤害。每有 1 张延迟牌，额外造成 3 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -904,7 +904,7 @@
   },
   {
     "id": "memory_fragment",
-    "name": "Memory Fragment",
+    "name": "记忆碎片",
     "rarity": "Common",
     "cost": 2,
     "type": "Skill",
@@ -913,7 +913,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Draw 3 cards. The next Attack you play this turn costs 1 less.",
+    "text": "抽 3 张牌。你本回合打出的下一张攻击牌费用减少 1。",
     "actions": [
       {
         "type": "Draw",
@@ -931,7 +931,7 @@
   },
   {
     "id": "scrap_golem",
-    "name": "Scrap Golem",
+    "name": "废料魔像",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
@@ -939,7 +939,7 @@
     "tags": [
       "summon"
     ],
-    "text": "Summon a Scrap Golem (8 HP, 2 ATK). Trench Cover: it absorbs 50% of damage you take until destroyed.",
+    "text": "召唤一个废料魔像（8 生命值，2 攻击力）。堑壕掩护：在其被摧毁前，它会吸收你所受伤害的 50%。",
     "actions": [
       {
         "type": "Summon",
@@ -951,13 +951,13 @@
   },
   {
     "id": "wire_guard",
-    "name": "Wire Guard",
+    "name": "铁丝防御",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Gain 6 Block. If you have a Construct, gain 4 more.",
+    "text": "获得 6 点格挡。 若你拥有构造体，则额外获得 4 点格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -983,13 +983,13 @@
   },
   {
     "id": "spark_shock",
-    "name": "Spark Shock",
+    "name": "电火冲击",
     "rarity": "Starter",
     "cost": 1,
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "Deal 6 damage. Constructs gain 1 ATK this turn.",
+    "text": "造成 6 点伤害。 构造体 获得 1 攻击力 本回合.",
     "actions": [
       {
         "type": "DealDamage",
@@ -1006,13 +1006,13 @@
   },
   {
     "id": "overdrive",
-    "name": "Overdrive",
+    "name": "过载驱动",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "All Constructs deal 3x their ATK as damage, then are destroyed.",
+    "text": "所有构造体各自以 3 倍攻击力造成伤害，然后被摧毁。",
     "actions": [
       {
         "type": "ConstructOverdrive",
@@ -1033,7 +1033,7 @@
       "warp",
       "psyker"
     ],
-    "text": "50% of damage you take is redirected to your nearest Construct.",
+    "text": "你受到的 50% 伤害会转移给最近的构造体。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -1048,13 +1048,13 @@
   },
   {
     "id": "wire_acrobatics",
-    "name": "Wire Acrobatics",
+    "name": "钢索翻腾",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Draw 1 card. If you have a Construct, draw 1 more.",
+    "text": "抽 1 张牌。 若你拥有构造体，则额外抽 1 张牌。",
     "actions": [
       {
         "type": "Draw",
@@ -1078,13 +1078,13 @@
   },
   {
     "id": "gear_storm",
-    "name": "Gear Storm",
+    "name": "齿轮风暴",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "Deal 6 damage to ALL enemies. Deals 2 more for each Construct.",
+    "text": "对全体异端造成 6 点伤害。 每有 1 个构造体，额外造成 2 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1101,13 +1101,13 @@
   },
   {
     "id": "core_rebuild",
-    "name": "Core Rebuild",
+    "name": "核心重构",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Consume 1 other Construct. Fully heal a Construct and it gains +2 ATK.",
+    "text": "吞耗 1 个其他构造体。将一个构造体完全修复，并使其获得 +2 攻击力。",
     "actions": [
       {
         "type": "HealConstruct",
@@ -1120,13 +1120,13 @@
   },
   {
     "id": "proxied_war",
-    "name": "Proxied War",
+    "name": "代理战争",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
     "targeting": "RandomEnemy",
     "tags": [],
-    "text": "Force a random enemy to attack another random enemy.",
+    "text": "强制一名随机异端攻击另一名随机异端。",
     "actions": [
       {
         "type": "ForceEnemyAttack"
@@ -1145,7 +1145,7 @@
     "tags": [
       "summon"
     ],
-    "text": "Destroy all Constructs. For each destroyed, the Mega Construct gains +15 HP and +4 ATK. If none are destroyed, take 15 true damage and summon a failed 10 HP construct.",
+    "text": "摧毁所有构造体。每摧毁 1 个，巨构体获得 +15 生命值与 +4 攻击力。若没有构造体被摧毁，则承受 15 点真实伤害，并召唤一个失败的 10 生命值构造体。",
     "actions": [
       {
         "type": "SummonMegaConstruct",
@@ -1164,13 +1164,13 @@
   },
   {
     "id": "element_spark",
-    "name": "Element Spark",
+    "name": "元素火花",
     "rarity": "Starter",
     "cost": 0,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Add 1 random Element to your Element Pool. Draw 1 card. Gain 4 Block.",
+    "text": "向你的元素池加入 1 个随机元素。 抽 1 张牌。 获得 4 点格挡。",
     "actions": [
       {
         "type": "AddRandomElement",
@@ -1192,7 +1192,7 @@
   },
   {
     "id": "fire_arrow",
-    "name": "Fire Arrow",
+    "name": "火焰箭",
     "rarity": "Starter",
     "cost": 1,
     "type": "Attack",
@@ -1200,7 +1200,7 @@
     "tags": [
       "fire"
     ],
-    "text": "Deal 8 damage. Add Fire to Element Pool.",
+    "text": "造成 8 点伤害。向元素池加入 1 个火元素。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1217,7 +1217,7 @@
   },
   {
     "id": "frost_armor",
-    "name": "Frost Armor",
+    "name": "霜结护甲",
     "rarity": "Starter",
     "cost": 1,
     "type": "Skill",
@@ -1225,7 +1225,7 @@
     "tags": [
       "frost"
     ],
-    "text": "Gain 8 Block. Add Frost to Element Pool.",
+    "text": "获得 8 点格挡。向元素池加入 1 个霜元素。",
     "actions": [
       {
         "type": "GainBlock",
@@ -1242,13 +1242,13 @@
   },
   {
     "id": "element_siphon",
-    "name": "Element Siphon",
+    "name": "元素虹吸",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Gain 1 random Element.",
+    "text": "获得 1 个随机元素。",
     "actions": [
       {
         "type": "AddRandomElement",
@@ -1260,7 +1260,7 @@
   },
   {
     "id": "fire_bomb",
-    "name": "Fire Bomb",
+    "name": "燃火弹",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -1268,7 +1268,7 @@
     "tags": [
       "fire"
     ],
-    "text": "Deal 4 damage. Apply 3 Burn. Add Fire.",
+    "text": "造成 4 点伤害。施加 3 层灼烧。向元素池加入 1 个火元素。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1291,7 +1291,7 @@
   },
   {
     "id": "acid_spray",
-    "name": "Acid Spray",
+    "name": "酸雾喷射",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -1299,7 +1299,7 @@
     "tags": [
       "acid"
     ],
-    "text": "Deal 4 damage. Add Acid.",
+    "text": "造成 4 点伤害。向元素池加入 1 个酸元素。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1322,7 +1322,7 @@
     "type": "Skill",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "Trigger all Element reactions in your pool.",
+    "text": "触发你元素池中的全部元素反应。",
     "actions": [
       {
         "type": "TriggerReactions"
@@ -1340,7 +1340,7 @@
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "Deal 15 damage. If you have 3+ different Elements, deal double damage.",
+    "text": "造成 15 点伤害。 若你拥有至少 3 种不同元素，则伤害翻倍。",
     "actions": [
       {
         "type": "ElementalOverloadDamage",
@@ -1354,13 +1354,13 @@
   },
   {
     "id": "alchemical_transmute",
-    "name": "Alchemical Transmute",
+    "name": "炼金转化",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Consume all Elements. Heal 3 HP per Element.",
+    "text": "消耗全部元素。每有 1 个元素，恢复 3 点生命值。",
     "actions": [
       {
         "type": "TransmuteElements",
@@ -1372,7 +1372,7 @@
   },
   {
     "id": "universal_solvent",
-    "name": "Universal Solvent",
+    "name": "万能溶剂",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -1380,7 +1380,7 @@
     "tags": [
       "acid"
     ],
-    "text": "Deal 3 damage to ALL enemies. Deals 2 extra damage per Block they have. Add Acid.",
+    "text": "对全体异端造成 3 点伤害。目标每有 1 点格挡，此牌额外造成 2 点伤害。向元素池加入 1 个酸元素。",
     "actions": [
       {
         "type": "SolventDamage",
@@ -1397,13 +1397,13 @@
   },
   {
     "id": "turn_the_tables",
-    "name": "Turn the Tables",
+    "name": "扭转局势",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
     "targeting": "Enemy",
     "tags": [],
-    "text": "Redirect an enemy's intent to another random enemy.",
+    "text": "将一个目标的意图转移给另一个随机目标。",
     "actions": [
       {
         "type": "RedirectIntent"
@@ -1414,7 +1414,7 @@
   },
   {
     "id": "temp_worker",
-    "name": "Temp Worker",
+    "name": "临时工",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -1422,7 +1422,7 @@
     "tags": [
       "summon"
     ],
-    "text": "Summon a Temp Guard (5 HP, Taunt). Overflow damage dealt to it is transferred to you.",
+    "text": "召唤一个临时护卫（5 生命值，嘲讽）。溢出的伤害会转移到你身上。",
     "actions": [
       {
         "type": "Summon",
@@ -1434,13 +1434,13 @@
   },
   {
     "id": "precision_throw",
-    "name": "Precision Throw",
+    "name": "精准投掷",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "Deal 6 damage. If the enemy has Block, deal 9 instead.",
+    "text": "造成 6 点伤害。 若目标拥有格挡，则改为造成 9 点伤害。",
     "actions": [
       {
         "type": "PrecisionThrowDamage",
@@ -1460,7 +1460,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Gain 1 Energy. Skip your next draw phase.",
+    "text": "获得 1 点能量。 跳过你的下一次抽牌阶段。",
     "actions": [
       {
         "type": "GainEnergy",
@@ -1479,13 +1479,13 @@
   },
   {
     "id": "full_scan",
-    "name": "Full Scan",
+    "name": "全面扫描",
     "rarity": "Uncommon",
     "cost": 0,
     "type": "Skill",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "Reveal all enemy intents for 1 turn.",
+    "text": "在 1 回合内揭示所有敌人的意图。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -1499,13 +1499,13 @@
   },
   {
     "id": "emergency_measure",
-    "name": "Emergency Measure",
+    "name": "紧急措施",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Gain 4 Block. If HP < 30%, gain 12 instead.",
+    "text": "获得 4 点格挡。 若生命值低于 30%，则改为获得 12 点格挡。",
     "actions": [
       {
         "type": "EmergencyBlock",
@@ -1525,7 +1525,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Your next Attack this turn deals double damage.",
+    "text": "你本回合打出的下一张攻击牌伤害翻倍。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -1540,13 +1540,13 @@
   },
   {
     "id": "jamming_signal",
-    "name": "Jamming Signal",
+    "name": "干扰信号",
     "rarity": "Uncommon",
     "cost": 0,
     "type": "Skill",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "Enemies cannot gain Block until the end of their next turn.",
+    "text": "敌人直到其下个回合结束前都无法获得格挡。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -1560,7 +1560,7 @@
   },
   {
     "id": "go_dark",
-    "name": "Go Dark",
+    "name": "潜行",
     "rarity": "Uncommon",
     "cost": 0,
     "type": "Skill",
@@ -1570,7 +1570,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Spend 1 Intel. Gain 1 Stealth.",
+    "text": "消耗 1 点情报。获得 1 层潜行。",
     "actions": [
       {
         "type": "Conditional",
@@ -1597,7 +1597,7 @@
   },
   {
     "id": "chaos_taint",
-    "name": "Chaos Taint",
+    "name": "混沌污染",
     "rarity": "Starter",
     "cost": 0,
     "type": "Skill",
@@ -1606,14 +1606,14 @@
       "Curse",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. A dead draw born of corruption.",
+    "text": "诅咒。无法打出。这是由腐化孕生的废牌。",
     "actions": [],
     "art_prompt": "A blackened parchment covered in writhing warp sigils, dark fantasy",
     "character": "All"
   },
   {
     "id": "bleak_omen",
-    "name": "Bleak Omen",
+    "name": "凶兆",
     "rarity": "Starter",
     "cost": 0,
     "type": "Skill",
@@ -1622,14 +1622,14 @@
       "Curse",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. The omen lingers in your hand and mind.",
+    "text": "诅咒。无法打出。凶兆会同时滞留在你的手中与心智里。",
     "actions": [],
     "art_prompt": "A spectral omen card shrouded in cold mist and ash, dark fantasy",
     "character": "All"
   },
   {
     "id": "soul_smite",
-    "name": "Soul Smite",
+    "name": "灵魂惩戒",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -1638,7 +1638,7 @@
       "warp",
       "psyker"
     ],
-    "text": "Deal 7 warp damage. Increase Warp Tide by 5 and test Perils of the Warp.",
+    "text": "造成 7 亚空间伤害. 使亚空间潮汐提高 5 点，并进行一次亚空间灾祸检定。",
     "actions": [
       {
         "type": "DealWarpDamage",
@@ -1656,8 +1656,8 @@
     "art_prompt": "A psyker hurling a soul-lance through a cathedral nave, grimdark warhammer style",
     "character": "All",
     "upgrade": {
-      "name": "Soul Smite+",
-      "text": "Deal 10 warp damage. Increase Warp Tide by 5 and test Perils of the Warp.",
+      "name": "灵魂惩戒+",
+      "text": "造成 10 点亚空间伤害。使亚空间潮汐提高 5 点，并进行一次亚空间灾祸检定。",
       "actions": [
         {
           "type": "DealWarpDamage",
@@ -1709,7 +1709,7 @@
   },
   {
     "id": "litany_of_faith",
-    "name": "Litany of Faith",
+    "name": "信仰祷文",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -1718,7 +1718,7 @@
       "faith",
       "support"
     ],
-    "text": "Lower Warp Tide by 20. Gain 6 block. Gain 8 Devotion.",
+    "text": "使亚空间潮汐降低 20 点。 获得 6 点格挡。 获得 8 点虔敬。",
     "actions": [
       {
         "type": "ModifyWarpTide",
@@ -1740,7 +1740,7 @@
   },
   {
     "id": "emperors_mercy",
-    "name": "Emperor's Mercy",
+    "name": "帝皇仁慈",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -1749,7 +1749,7 @@
       "faith",
       "command"
     ],
-    "text": "Purge Fear and reduce Corruption. Gain 30 Devotion. If you have a construct, sacrifice it; otherwise lose 6 HP.",
+    "text": "净除恐惧并降低腐化。获得 30 点虔敬。若你拥有构造体，则将其献祭；否则失去 6 点生命值。",
     "actions": [
       {
         "type": "EmperorMercy"
@@ -1760,7 +1760,7 @@
   },
   {
     "id": "warp_rift",
-    "name": "Warp Rift",
+    "name": "亚空间裂隙",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -1770,7 +1770,7 @@
       "psyker",
       "terrain"
     ],
-    "text": "Create a Warp Rift for 3 turns: all units gain 5 Corruption each round, warp power is amplified, and Perils are more likely. Increase Warp Tide by 12.",
+    "text": "制造持续 3 回合的亚空间裂隙：所有单位每回合获得 5 点腐化，亚空间力量被放大，灾祸更易发生。亚空间潮汐提高 12 点。",
     "actions": [
       {
         "type": "CreateWarpRift",
@@ -1831,8 +1831,8 @@
     "art_prompt": "A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style",
     "character": "All",
     "upgrade": {
-      "name": "Gaze of the Abyss+",
-      "text": "Gain 4 Energy. Increase Corruption by 15. If Corruption >= 50, this card mutates into Flesh Tentacle.",
+      "name": "凝视深渊+",
+      "text": "获得 4 点能量。腐化 +15。若腐化 >= 50，此牌异变为【血肉触须】。",
       "actions": [
         {
           "type": "GainEnergy",
@@ -1862,7 +1862,7 @@
   },
   {
     "id": "flesh_tentacle",
-    "name": "Flesh Tentacle",
+    "name": "血肉触手",
     "rarity": "Special",
     "cost": 1,
     "type": "Attack",
@@ -1872,7 +1872,7 @@
       "mutated",
       "unplayable_normal"
     ],
-    "text": "Deal damage equal to half your Corruption. Heal for the same amount. This card can only be obtained through mutation.",
+    "text": "造成等同于你一半腐化值的伤害。 并恢复等量生命值。 此牌只能通过异变获得。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1896,8 +1896,8 @@
     "art_prompt": "A grotesque mass of writhing flesh tentacles erupting from corrupted flesh, warhammer chaos mutation style",
     "character": "All",
     "upgrade": {
-      "name": "Flesh Tentacle+",
-      "text": "Deal damage equal to half your Corruption + 5. Heal for the same amount.",
+      "name": "血肉触手+",
+      "text": "造成等同于你一半腐化值再加 5 点的伤害，并恢复等量生命值。",
       "actions": [
         {
           "type": "DealDamage",
@@ -1922,7 +1922,7 @@
   },
   {
     "id": "chainsword_sweep",
-    "name": "Chainsword Sweep",
+    "name": "链锯横扫",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -1932,7 +1932,7 @@
       "tech",
       "seal_slot"
     ],
-    "text": "Deal 6 damage. This card has 2 Seal slots for Purity Seals.",
+    "text": "造成 6 点伤害。 此牌拥有 2 个纯净封印槽，可装配纯净封印。",
     "actions": [
       {
         "type": "DealDamage",
@@ -1944,8 +1944,8 @@
     "art_prompt": "A space marine chainsword sweeping through the air with teeth spinning, warhammer 40k style",
     "character": "All",
     "upgrade": {
-      "name": "Chainsword Sweep+",
-      "text": "Deal 9 damage. This card has 2 Seal slots for Purity Seals.",
+      "name": "链锯横扫+",
+      "text": "造成 9 点伤害。此牌拥有 2 个纯净封印槽，可装配纯净封印。",
       "actions": [
         {
           "type": "DealDamage",
@@ -1980,14 +1980,14 @@
     "art_prompt": "A mechanical cogitator spirit awakening with glowing eyes in a gothic machine, warhammer mechanicus style",
     "character": "All",
     "upgrade": {
-      "name": "Awaken Machine Spirit+",
+      "name": "唤醒机魂+",
       "cost": 1
     },
     "lastWords": "“机魂苏醒了。它先学会的第一句话是拒绝服从。”"
   },
   {
     "id": "overheat",
-    "name": "Overheat",
+    "name": "过热",
     "rarity": "Special",
     "cost": -1,
     "type": "Status",
@@ -1997,7 +1997,7 @@
       "unplayable",
       "tech"
     ],
-    "text": "Unplayable. At the end of your turn, take 2 damage. If you have Block, lose 5 Block.",
+    "text": "无法打出。回合结束时，受到 2 点伤害。若你拥有格挡，则失去 5 点格挡。",
     "actions": [],
     "art_prompt": "A mechanical component glowing red hot with steam venting, warhammer mechanicus style",
     "character": "All"
@@ -2047,8 +2047,8 @@
     "art_prompt": "A space marine in golden armor surrounded by holy fire and wrath, warhammer 40k style",
     "character": "All",
     "upgrade": {
-      "name": "Emperor's Wrath+",
-      "text": "Deal 10 damage. If your Zeal is greater than 12, deal 35 damage instead and apply Blind.",
+      "name": "帝皇之怒+",
+      "text": "造成 10 点伤害。若你的狂热值大于 12，则改为造成 35 点伤害并施加【致盲】。",
       "actions": [
         {
           "type": "Conditional",
@@ -2083,7 +2083,7 @@
   },
   {
     "id": "trial_of_heretics",
-    "name": "Trial of Heretics",
+    "name": "异端审判",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -2093,7 +2093,7 @@
       "faith",
       "purge"
     ],
-    "text": "Remove all buffs from the target. Gain 3 Zeal for each buff removed.",
+    "text": "移除目标全部增益状态。每移除 1 个，获得 3 点狂热。",
     "actions": [
       {
         "type": "PurgeEnemyBuffs",
@@ -2103,8 +2103,8 @@
     "art_prompt": "An inquisitor holding a flaming sword pronouncing judgment on heretics, warhammer 40k style",
     "character": "All",
     "upgrade": {
-      "name": "Trial of Heretics+",
-      "text": "Remove all buffs from the target. Gain 4 Zeal for each buff removed.",
+      "name": "异端审判+",
+      "text": "移除目标全部增益状态。每移除 1 个，获得 4 点狂热。",
       "actions": [
         {
           "type": "PurgeEnemyBuffs",
@@ -2154,7 +2154,7 @@
       "Curse",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. Your flesh rebels against the implant.",
+    "text": "诅咒。无法打出。你的血肉正在抗拒植入物。",
     "actions": [],
     "character": "All",
     "art_prompt": "A magical shield rejecting an incoming attack, defensive fantasy art style"
@@ -2170,7 +2170,7 @@
       "Curse",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. The martyr rejects hollow offerings.",
+    "text": "诅咒。无法打出。殉道者拒绝空洞的供奉。",
     "actions": [],
     "character": "All",
     "art_prompt": "Golden coins and treasure swirling around, temptation fantasy art style"
@@ -2186,7 +2186,7 @@
       "Curse",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. Your skull still rings with the tear's whisper.",
+    "text": "诅咒。无法打出。裂隙的低语仍在你的颅骨中回响。",
     "actions": [],
     "character": "All",
     "art_prompt": "A psychic attack rebounding back at the caster, magical feedback fantasy art style"
@@ -2203,7 +2203,7 @@
       "DoubleRemoveCost",
       "Unplayable"
     ],
-    "text": "Curse. Unplayable. Remove cost is doubled.",
+    "text": "诅咒。无法打出。移除费用翻倍。",
     "actions": [],
     "character": "All",
     "art_prompt": "Shadowy figures watching from the corners, paranoid dark fantasy art style"
@@ -3820,7 +3820,7 @@
     "tags": [
       "summon"
     ],
-    "text": "消耗 2 条线程：召唤一个强化魔像 (12 HP, 4 ATK, 嘲讽)。否则召唤一个废料魔像。",
+    "text": "消耗 2 条线程：召唤一个强化魔像 (12 生命值, 4 攻击力, 嘲讽)。否则召唤一个废料魔像。",
     "actions": [
       {
         "type": "Conditional",
@@ -3848,7 +3848,7 @@
     ],
     "upgrade": {
       "name": "强化魔像+",
-      "text": "消耗 2 条线程：召唤一个强化魔像 (16 HP, 5 ATK, 嘲讽)。否则召唤一个废料魔像。",
+      "text": "消耗 2 条线程：召唤一个强化魔像（16 生命值，5 攻击力，嘲讽）。否则召唤一个废料魔像。",
       "actions": [
         {
           "type": "Conditional",
@@ -4288,7 +4288,7 @@
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "Deal 7 damage. Spend 1 Concoction: trigger all element reactions and gain 3 Block.",
+    "text": "造成 7 点伤害。消耗 1 点调和剂：触发全部元素反应，并获得 3 点格挡。",
     "actions": [
       {
         "type": "DealDamage",
@@ -4577,7 +4577,7 @@
     ],
     "upgrade": {
       "name": "酸浴+",
-      "text": "施加 6 层中毒。获得 1 点调配。",
+      "text": "施加 5 层中毒。获得 1 点调配。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -4747,7 +4747,7 @@
   },
   {
     "id": "intel_surge",
-    "name": "Intel Surge",
+    "name": "情报涌动",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -4755,7 +4755,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Gain 2 Intel. Draw 1 card.",
+    "text": "获得 2 点情报。 抽 1 张牌。",
     "actions": [
       {
         "type": "GainIntel",
@@ -4772,7 +4772,7 @@
   },
   {
     "id": "predictive_strike",
-    "name": "Predictive Strike",
+    "name": "预测打击",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -4781,7 +4781,7 @@
       "intel",
       "strike"
     ],
-    "text": "Spend 1 Intel: Deal 15 damage and draw 1 card. Otherwise deal 8 damage.",
+    "text": "消耗 1 点情报：造成 15 点伤害并抽 1 张牌。 否则 造成 8 点伤害.",
     "actions": [
       {
         "type": "Conditional",
@@ -4819,7 +4819,7 @@
   },
   {
     "id": "shadow_meld",
-    "name": "Shadow Meld",
+    "name": "暗影交融",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -4827,7 +4827,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Gain 1 Intel. Gain 1 Stealth. Draw 1 card.",
+    "text": "获得 1 点情报。 获得 1 潜行。 抽 1 张牌。",
     "actions": [
       {
         "type": "GainIntel",
@@ -4850,7 +4850,7 @@
   },
   {
     "id": "information_broker",
-    "name": "Information Broker",
+    "name": "情报掮客",
     "rarity": "Rare",
     "cost": 1,
     "type": "Skill",
@@ -4858,7 +4858,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Spend 2 Intel: Draw 3 cards and gain 1 energy. Otherwise gain 2 Intel.",
+    "text": "消耗 2 点情报：抽 3 张牌并获得 1 点能量。 否则 获得 2 情报.",
     "actions": [
       {
         "type": "Conditional",
@@ -4896,7 +4896,7 @@
   },
   {
     "id": "deadly_secrets",
-    "name": "Deadly Secrets",
+    "name": "致命秘密",
     "rarity": "Rare",
     "cost": 2,
     "type": "Attack",
@@ -4904,7 +4904,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Spend all Intel. Deal 8 damage for each Intel spent.",
+    "text": "消耗全部情报。每消耗 1 点情报，造成 8 点伤害。",
     "actions": [
       {
         "type": "SpendAllIntel"
@@ -4923,7 +4923,7 @@
   },
   {
     "id": "crushing_blow_all",
-    "name": "Crushing Blow",
+    "name": "全体粉碎",
     "rarity": "Common",
     "cost": 2,
     "type": "Attack",
@@ -4931,7 +4931,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 14 damage. If this kills, gain 1 Strength.",
+    "text": "造成 14 点伤害。 若此牌完成击杀，则获得 1 点力量。",
     "actions": [
       {
         "type": "DealDamage",
@@ -4954,7 +4954,7 @@
   },
   {
     "id": "thick_skin",
-    "name": "Thick Skin",
+    "name": "厚皮甲",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -4962,7 +4962,7 @@
     "tags": [
       "defend"
     ],
-    "text": "Gain 10 Block. If you took damage last turn, gain 2 Strength.",
+    "text": "获得 10 点格挡。 若你上一回合受过伤，则获得 2 点力量。",
     "actions": [
       {
         "type": "GainBlock",
@@ -4988,13 +4988,13 @@
   },
   {
     "id": "berserker_rage",
-    "name": "Berserker Rage",
+    "name": "狂战之怒",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Lose 3 HP. Gain 3 Strength. Lose 1 Dexterity.",
+    "text": "失去 3 生命值。 获得 3 点力量。 失去 1 敏捷.",
     "actions": [
       {
         "type": "LoseHp",
@@ -5018,7 +5018,7 @@
   },
   {
     "id": "last_stand_all",
-    "name": "Last Stand",
+    "name": "全体死守",
     "rarity": "Rare",
     "cost": 2,
     "type": "Attack",
@@ -5026,7 +5026,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal damage equal to your missing HP. Gain 1 energy if this kills.",
+    "text": "造成等同于你已损失生命值的伤害。若这一击击杀目标，则获得 1 点能量。",
     "actions": [
       {
         "type": "DealDamage",
@@ -5052,13 +5052,13 @@
   },
   {
     "id": "unbreakable",
-    "name": "Unbreakable",
+    "name": "不可破坏",
     "rarity": "Rare",
     "cost": 3,
     "type": "Power",
     "targeting": "Self",
     "tags": [],
-    "text": "Whenever you take damage, gain 1 Block.",
+    "text": "每当你受到伤害时，获得 1 点格挡。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -5071,7 +5071,7 @@
   },
   {
     "id": "fortify_position",
-    "name": "Fortify Position",
+    "name": "固守阵地",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -5079,7 +5079,7 @@
     "tags": [
       "defend"
     ],
-    "text": "Gain 12 Block. You cannot play Attacks this turn.",
+    "text": "获得 12 点格挡。 你本回合不能打出攻击牌。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5097,13 +5097,13 @@
   },
   {
     "id": "calculated_risk",
-    "name": "Calculated Risk",
+    "name": "计算风险",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "Draw 2 cards. If your hand has 5+ cards, gain 2 energy.",
+    "text": "抽 2 张牌。 若你手牌数至少为 5 张，则获得 2 点能量。",
     "actions": [
       {
         "type": "Draw",
@@ -5129,7 +5129,7 @@
   },
   {
     "id": "tactical_superiority",
-    "name": "Tactical Superiority",
+    "name": "战术优势",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -5137,7 +5137,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 8 damage. If you have more Block than the enemy has HP, deal 20 instead.",
+    "text": "造成 8 点伤害。 若你的格挡值高于目标当前生命值，则改为造成 20 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -5164,7 +5164,7 @@
   },
   {
     "id": "perfect_defense",
-    "name": "Perfect Defense",
+    "name": "完美防御",
     "rarity": "Rare",
     "cost": 2,
     "type": "Skill",
@@ -5172,7 +5172,7 @@
     "tags": [
       "defend"
     ],
-    "text": "Gain Block equal to your current Block + 8. Retain your Block this turn.",
+    "text": "获得等同于你当前格挡值外加 8 点的格挡。本回合保留格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5194,7 +5194,7 @@
   },
   {
     "id": "checkmate",
-    "name": "Checkmate",
+    "name": "将军",
     "rarity": "Rare",
     "cost": 3,
     "type": "Attack",
@@ -5202,7 +5202,7 @@
     "tags": [
       "strike"
     ],
-    "text": "Deal 10 damage. If the enemy has 0 Block, deal 30 damage instead.",
+    "text": "造成 10 点伤害。 若目标拥有 0 点格挡，则改为造成 30 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -5229,7 +5229,7 @@
   },
   {
     "id": "temporal_stasis",
-    "name": "Temporal Stasis",
+    "name": "时间静止",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -5237,7 +5237,7 @@
     "tags": [
       "time"
     ],
-    "text": "Spend 1 Time Layer: Freeze the enemy for 1 turn (they skip their turn). Otherwise gain 1 Time Layer.",
+    "text": "消耗 1 点时间层：冻结敌人 1 回合，使其跳过行动。否则获得 1 点时间层。",
     "actions": [
       {
         "type": "Conditional",
@@ -5269,7 +5269,7 @@
   },
   {
     "id": "paradox_wave",
-    "name": "Paradox Wave",
+    "name": "悖论波动",
     "rarity": "Rare",
     "cost": 2,
     "type": "Attack",
@@ -5277,7 +5277,7 @@
     "tags": [
       "time"
     ],
-    "text": "Spend 2 Time Layers: Deal 20 damage to all enemies and replay the last card you played this turn. Otherwise deal 8 damage to all.",
+    "text": "消耗 2 点时间层：对全体异端造成 20 点伤害，并重放你本回合打出的上一张牌。否则对全体异端造成 8 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -5312,7 +5312,7 @@
   },
   {
     "id": "future_sight_all",
-    "name": "Future Sight",
+    "name": "全体预知",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -5320,7 +5320,7 @@
     "tags": [
       "time"
     ],
-    "text": "Gain 1 Time Layer. Look at the top 3 cards of your draw pile and put them back in any order.",
+    "text": "获得 1 点时间层。查看你牌库顶的 3 张牌，并以任意顺序放回。",
     "actions": [
       {
         "type": "GainTimeLayer",
@@ -5335,7 +5335,7 @@
   },
   {
     "id": "eternal_return",
-    "name": "Eternal Return",
+    "name": "永恒回归",
     "rarity": "Rare",
     "cost": 3,
     "type": "Skill",
@@ -5343,7 +5343,7 @@
     "tags": [
       "time"
     ],
-    "text": "Spend 3 Time Layers: Return to the state at the start of this combat (HP, deck, etc). Keep all Time Layers.",
+    "text": "消耗 3 点时间层：将自身恢复到本场战斗开始时的状态（生命值、牌库等）。保留全部时间层。",
     "actions": [
       {
         "type": "Conditional",
@@ -5366,7 +5366,7 @@
   },
   {
     "id": "marionette_dance",
-    "name": "Marionette Dance",
+    "name": "提线木偶",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -5374,7 +5374,7 @@
     "tags": [
       "construct"
     ],
-    "text": "Spend 2 Threads: All your constructs attack twice this turn. Otherwise gain 1 Thread.",
+    "text": "消耗 2 条线程：你所有构造体本回合攻击两次。否则获得 1 条线程。",
     "actions": [
       {
         "type": "Conditional",
@@ -5406,7 +5406,7 @@
   },
   {
     "id": "soul_binding",
-    "name": "Soul Binding",
+    "name": "灵魂束缚",
     "rarity": "Rare",
     "cost": 2,
     "type": "Skill",
@@ -5414,7 +5414,7 @@
     "tags": [
       "construct"
     ],
-    "text": "Spend 3 Threads: Bind the enemy's soul into a new construct with their HP as stats. Otherwise gain 1 Thread.",
+    "text": "消耗 3 条线程：将敌人的灵魂束缚进新的构造体，其属性取决于敌人的生命值。否则获得 1 条线程。",
     "actions": [
       {
         "type": "Conditional",
@@ -5443,7 +5443,7 @@
   },
   {
     "id": "clockwork_soldier",
-    "name": "Clockwork Soldier",
+    "name": "发条士兵",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -5451,7 +5451,7 @@
     "tags": [
       "construct"
     ],
-    "text": "Spend 1 Thread: Create a 15/15 construct with Taunt. Otherwise create a 8/8 construct.",
+    "text": "消耗 1 条线程：生成一个 15/15 且带嘲讽的构造体。否则生成一个 8/8 构造体。",
     "actions": [
       {
         "type": "Conditional",
@@ -5487,7 +5487,7 @@
   },
   {
     "id": "puppet_mastery",
-    "name": "Puppet Mastery",
+    "name": "傀儡精通",
     "rarity": "Rare",
     "cost": 3,
     "type": "Power",
@@ -5495,7 +5495,7 @@
     "tags": [
       "construct"
     ],
-    "text": "Whenever a construct dies, gain 2 Threads and draw 1 card.",
+    "text": "每当一个构造体死亡时，获得 2 条线程并抽 1 张牌。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -5508,7 +5508,7 @@
   },
   {
     "id": "grand_design",
-    "name": "Grand Design",
+    "name": "宏伟设计",
     "rarity": "Rare",
     "cost": 2,
     "type": "Skill",
@@ -5516,7 +5516,7 @@
     "tags": [
       "construct"
     ],
-    "text": "Spend 2 Threads: All constructs gain +5 HP and +5 ATK permanently. Otherwise gain 1 Thread.",
+    "text": "消耗 2 条线程：所有构造体永久获得 +5 生命值和 +5 攻击力。否则获得 1 条线程。",
     "actions": [
       {
         "type": "Conditional",
@@ -5547,7 +5547,7 @@
   },
   {
     "id": "elemental_fusion_all",
-    "name": "Elemental Fusion",
+    "name": "全体融合",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -5555,7 +5555,7 @@
     "tags": [
       "element"
     ],
-    "text": "Spend 1 Concoction: Add 2 random elements and trigger all element reactions. Otherwise gain 1 Concoction.",
+    "text": "消耗 1 点调和剂：加入 2 个随机元素并触发全部元素反应。否则获得 1 点调和剂。",
     "actions": [
       {
         "type": "Conditional",
@@ -5588,7 +5588,7 @@
   },
   {
     "id": "philosopher_stone",
-    "name": "Philosopher Stone",
+    "name": "贤者之石",
     "rarity": "Rare",
     "cost": 3,
     "type": "Power",
@@ -5596,7 +5596,7 @@
     "tags": [
       "element"
     ],
-    "text": "At the start of each turn, gain 1 Concoction and add 1 random element.",
+    "text": "在每个回合开始时，获得 1 点调和剂并加入 1 个随机元素。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -5609,7 +5609,7 @@
   },
   {
     "id": "grand_transmutation",
-    "name": "Grand Transmutation",
+    "name": "宏大炼金",
     "rarity": "Rare",
     "cost": 2,
     "type": "Skill",
@@ -5617,7 +5617,7 @@
     "tags": [
       "element"
     ],
-    "text": "Spend 2 Concoctions: Transform all cards in your hand into random Rare cards. Otherwise gain 1 Concoction.",
+    "text": "消耗 2 点调和剂：将你手中的所有牌转化为随机稀有牌。否则获得 1 点调和剂。",
     "actions": [
       {
         "type": "Conditional",
@@ -5646,7 +5646,7 @@
   },
   {
     "id": "catalyst_overload",
-    "name": "Catalyst Overload",
+    "name": "催化剂过载",
     "rarity": "Rare",
     "cost": 1,
     "type": "Attack",
@@ -5654,7 +5654,7 @@
     "tags": [
       "element"
     ],
-    "text": "Spend all Concoctions. Deal 10 damage for each Concoction spent. Trigger all element reactions 3 times.",
+    "text": "消耗全部调和剂。每点调和剂造成 10 点伤害，并将全部元素反应额外触发 3 次。",
     "actions": [
       {
         "type": "SpendAllConcoction"
@@ -5677,7 +5677,7 @@
   },
   {
     "id": "dead_drop",
-    "name": "Dead Drop",
+    "name": "死信投递",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -5685,7 +5685,7 @@
     "tags": [
       "intel"
     ],
-    "text": "Gain 1 Intel. If this is the first card you play this turn, draw 1 card.",
+    "text": "获得 1 点情报。 若这是你本回合打出的第一张牌，则抽 1 张牌。",
     "actions": [
       {
         "type": "GainIntel",
@@ -5710,7 +5710,7 @@
   },
   {
     "id": "smoke_interrogation",
-    "name": "Smoke Interrogation",
+    "name": "烟幕审讯",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -5719,7 +5719,7 @@
       "intel",
       "control"
     ],
-    "text": "Gain 6 Block. Apply 2 Weak. If the target intends to Attack, gain 1 Intel.",
+    "text": "获得 6 点格挡。 施加 2 层虚弱。 若目标意图为攻击，则获得 1 点情报。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5750,7 +5750,7 @@
   },
   {
     "id": "mark_for_dissection",
-    "name": "Mark for Dissection",
+    "name": "解剖标记",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -5759,7 +5759,7 @@
       "intel",
       "setup"
     ],
-    "text": "Apply 2 Vulnerable. Gain 1 Intel. If the target already has Weak, draw 1 card.",
+    "text": "施加 2 层易伤。 获得 1 点情报。 若目标已带有虚弱，则抽 1 张牌。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -5791,7 +5791,7 @@
   },
   {
     "id": "silent_execution",
-    "name": "Silent Execution",
+    "name": "静默处决",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
@@ -5800,7 +5800,7 @@
       "intel",
       "assassin"
     ],
-    "text": "Deal 7 damage. If the target has Weak or Vulnerable, spend 1 Intel to deal 10 additional damage and gain 1 Stealth.",
+    "text": "造成 7 点伤害。 若目标带有虚弱或易伤，则消耗 1 点情报，额外造成 10 点伤害并获得 1 层潜行。",
     "actions": [
       {
         "type": "DealDamage",
@@ -5846,7 +5846,7 @@
   },
   {
     "id": "blackmail_file",
-    "name": "Blackmail File",
+    "name": "勒索档案",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -5855,7 +5855,7 @@
       "intel",
       "control"
     ],
-    "text": "Spend up to 2 Intel. For each Intel spent, apply 1 Weak and 1 Vulnerable to all enemies and draw 1 card.",
+    "text": "最多消耗 2 点情报。每消耗 1 点，对全体异端施加 1 层虚弱和 1 层易伤，并抽 1 张牌。",
     "actions": [
       {
         "type": "Conditional",
@@ -5924,7 +5924,7 @@
   },
   {
     "id": "quietus_protocol",
-    "name": "Quietus Protocol",
+    "name": "肃灭协议",
     "rarity": "Rare",
     "cost": 2,
     "type": "Attack",
@@ -5933,7 +5933,7 @@
       "intel",
       "finisher"
     ],
-    "text": "Deal 10 damage. Spend all Intel. Deal 8 additional damage per Intel spent. If the target has both Weak and Vulnerable, gain 1 Energy.",
+    "text": "造成 10 点伤害。 消耗全部情报。每消耗 1 点，额外造成 8 点伤害。若目标同时带有虚弱和易伤，则获得 1 点能量。",
     "actions": [
       {
         "type": "DealDamage",
@@ -5981,7 +5981,7 @@
   },
   {
     "id": "attrition_plan",
-    "name": "Attrition Plan",
+    "name": "耗竭计划",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -5990,7 +5990,7 @@
       "control",
       "poison"
     ],
-    "text": "Apply 1 Weak and 2 Poison to all enemies. Draw 1 card.",
+    "text": "对全体异端施加 1 层虚弱和 2 层中毒。 抽 1 张牌。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6014,7 +6014,7 @@
   },
   {
     "id": "measured_breach",
-    "name": "Measured Breach",
+    "name": "审慎破袭",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
@@ -6023,7 +6023,7 @@
       "control",
       "assassin"
     ],
-    "text": "Deal 8 damage. Deal 6 additional damage if the target has Weak or Poison. If the target has both, draw 1 card.",
+    "text": "造成 8 点伤害。 若目标带有虚弱或中毒，额外造成 6 点伤害。 若目标同时带有两者，则抽 1 张牌。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6064,7 +6064,7 @@
   },
   {
     "id": "nerve_agent",
-    "name": "Nerve Agent",
+    "name": "神经毒剂",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -6073,7 +6073,7 @@
       "poison",
       "concoction"
     ],
-    "text": "Apply 2 Poison and 1 Weak. If the target already has Poison, gain 1 Concoction.",
+    "text": "施加 2 层中毒和 1 层虚弱。若目标已经中毒，则获得 1 点调和剂。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6106,7 +6106,7 @@
   },
   {
     "id": "caustic_reserve",
-    "name": "Caustic Reserve",
+    "name": "蚀性储备",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -6116,7 +6116,7 @@
       "concoction",
       "defense"
     ],
-    "text": "Gain 1 Concoction. Apply 4 Poison. If the target has Weak, gain 4 Block.",
+    "text": "获得 1 点调和剂。施加 4 层中毒。若目标带有虚弱，则获得 4 点格挡。",
     "actions": [
       {
         "type": "GainConcoction",
@@ -6148,7 +6148,7 @@
   },
   {
     "id": "frost_distillate",
-    "name": "Frost Distillate",
+    "name": "霜馏剂",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -6158,7 +6158,7 @@
       "frost",
       "defense"
     ],
-    "text": "Gain 7 Block. Add Frost. If any enemy has Poison, gain 1 Concoction.",
+    "text": "获得 7 点格挡。 加入霜元素。 若任一目标带有中毒，则获得 1 点调和剂。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6189,7 +6189,7 @@
   },
   {
     "id": "volatile_catalyst",
-    "name": "Volatile Catalyst",
+    "name": "挥发催化剂",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -6198,7 +6198,7 @@
       "element",
       "concoction"
     ],
-    "text": "Deal 6 damage. Trigger Poison on the target once. Add 1 random Element.",
+    "text": "造成 6 点伤害。 立刻结算目标一次中毒伤害。 加入 1 个随机元素。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6218,7 +6218,7 @@
   },
   {
     "id": "reflux_chamber",
-    "name": "Reflux Chamber",
+    "name": "回流腔室",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -6227,7 +6227,7 @@
       "concoction",
       "healing"
     ],
-    "text": "Spend 1 Concoction. Heal 6 HP and draw 1 card. If you have added Acid this combat, heal 4 more HP.",
+    "text": "消耗 1 点调和剂。恢复 6 点生命值并抽 1 张牌。若你本场战斗加入过酸元素，则额外恢复 4 点生命值。",
     "actions": [
       {
         "type": "Conditional",
@@ -6272,7 +6272,7 @@
   },
   {
     "id": "mercurial_shell",
-    "name": "Mercurial Shell",
+    "name": "汞化外壳",
     "rarity": "Rare",
     "cost": 2,
     "type": "Skill",
@@ -6282,7 +6282,7 @@
       "defense",
       "poison"
     ],
-    "text": "Gain 12 Block. Gain 2 Concoction. At end of turn, trigger Poison on all enemies once.",
+    "text": "获得 12 点格挡。 获得 2 点调和剂。回合结束时，对全体异端各触发一次中毒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6340,7 +6340,7 @@
       "disruption",
       "ritual"
     ],
-    "text": "若敌人拥有 Strength 或 Ritual，移除 2 层并抽 1 张牌。",
+    "text": "若敌人拥有 力量 或 仪式，移除 2 层并抽 1 张牌。",
     "actions": [
       {
         "type": "Conditional",
@@ -6415,7 +6415,7 @@
       "debuff",
       "efficiency"
     ],
-    "text": "造成 5 伤害；若目标拥有 debuff，额外造成 5。",
+    "text": "造成 5 伤害；若目标拥有 减益状态，额外造成 5。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6450,7 +6450,7 @@
       "defense",
       "card_draw"
     ],
-    "text": "移除自身 1 debuff，抽 1 张牌。",
+    "text": "移除自身 1 减益状态，抽 1 张牌。",
     "actions": [
       {
         "type": "RemoveAnyDebuff",
@@ -6513,7 +6513,7 @@
       "control",
       "defense"
     ],
-    "text": "施加 1 Weak，获得 7 格挡。",
+    "text": "施加 1 虚弱，获得 7 格挡。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6541,7 +6541,7 @@
       "control",
       "energy"
     ],
-    "text": "所有敌人获得 1 Weak；若其中任一敌人拥有 Strength，获得 1 能量。",
+    "text": "所有敌人获得 1 虚弱；若其中任一敌人拥有 力量，获得 1 能量。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6578,7 +6578,7 @@
       "poison",
       "removal"
     ],
-    "text": "造成 9 伤害；若目标有 Poison，移除其最多 3 Poison 并额外造成等量伤害。",
+    "text": "造成 9 伤害；若目标有 中毒，移除其最多 3 中毒 并额外造成等量伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6614,7 +6614,7 @@
       "defense",
       "poison_removal"
     ],
-    "text": "获得 10 格挡；移除自身 1 Poison。",
+    "text": "获得 10 格挡；移除自身 1 中毒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6642,7 +6642,7 @@
       "debuff",
       "card_draw"
     ],
-    "text": "造成 5 伤害；若目标有 debuff，抽 1 张牌。",
+    "text": "造成 5 伤害；若目标有 减益状态，抽 1 张牌。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6677,7 +6677,7 @@
       "armor_piercing",
       "poison"
     ],
-    "text": "造成 15 伤害；若目标拥有 12+ 格挡或 8+ Poison，改为 23。",
+    "text": "造成 15 伤害；若目标拥有 12+ 格挡或 8+ 中毒，改为 23。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6714,7 +6714,7 @@
       "control",
       "energy"
     ],
-    "text": "所有敌人 1 Weak; 若任一敌人有 Poison，获得 1 能量。",
+    "text": "所有敌人 1 虚弱; 若任一敌人有 中毒，获得 1 能量。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6750,7 +6750,7 @@
       "defense",
       "card_draw"
     ],
-    "text": "获得 7 格挡并抽 1 张牌；若有 debuff，再获得 5 格挡。",
+    "text": "获得 7 格挡并抽 1 张牌；若有 减益状态，再获得 5 格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6825,7 +6825,7 @@
       "defense",
       "card_draw"
     ],
-    "text": "移除自身 1 Weak/1 Frail/1 Poison 中的一种；抽 1 张牌。",
+    "text": "移除自身 1 虚弱/1 脆弱/1 中毒 中的一种；抽 1 张牌。",
     "actions": [
       {
         "type": "RemoveAnyDebuff",
@@ -6852,7 +6852,7 @@
       "damage",
       "debuff"
     ],
-    "text": "造成 7 伤害；若目标有 Weak 或 Poison，再造成 7。",
+    "text": "造成 7 伤害；若目标有 虚弱 或 中毒，再造成 7。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6887,7 +6887,7 @@
       "defense",
       "debuff"
     ],
-    "text": "获得 6 格挡；本回合你施加的第一个 debuff 额外 +1 层。",
+    "text": "获得 6 格挡；本回合你施加的第一个 减益状态 额外 +1 层。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6904,7 +6904,7 @@
   },
   {
     "id": "mirror_probe",
-    "name": "Mirror Probe",
+    "name": "镜宫探针",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -6913,7 +6913,7 @@
       "mirror",
       "probe"
     ],
-    "text": "Draw 1 card if target has any debuffs.",
+    "text": "若目标拥有任意减益状态，则抽 1 张牌。",
     "actions": [
       {
         "type": "ConditionalDraw",
@@ -6927,7 +6927,7 @@
   },
   {
     "id": "silver_guard",
-    "name": "Silver Guard",
+    "name": "银卫护障",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -6936,7 +6936,7 @@
       "mirror",
       "defense"
     ],
-    "text": "Gain 9 Block. Gain 3 more if you spent a resource this turn.",
+    "text": "获得 9 点格挡。 若你本回合消耗过资源，则额外获得 3 点格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6955,7 +6955,7 @@
   },
   {
     "id": "fracture_strike",
-    "name": "Fracture Strike",
+    "name": "裂伤打击",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -6964,7 +6964,7 @@
       "mirror",
       "attack"
     ],
-    "text": "Deal 8 damage. Deal 5 more if target has Weak, Vulnerable, or Poison.",
+    "text": "造成 8 点伤害。 若目标带有虚弱、易伤或中毒，额外造成 5 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6988,7 +6988,7 @@
   },
   {
     "id": "borrowed_pattern",
-    "name": "Borrowed Pattern",
+    "name": "借用范式",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -6997,7 +6997,7 @@
       "mirror",
       "utility"
     ],
-    "text": "Copy the leftmost Skill in your hand at 50% effect value.",
+    "text": "复制你手牌最左侧的技能牌，效果为原本的 50%。",
     "actions": [
       {
         "type": "CopyLeftmostSkill",
@@ -7009,7 +7009,7 @@
   },
   {
     "id": "refraction_dart",
-    "name": "Refraction Dart",
+    "name": "折光飞矢",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -7018,7 +7018,7 @@
       "mirror",
       "attack"
     ],
-    "text": "Deal 6 damage. Draw 1 if this hits a debuffed enemy.",
+    "text": "造成 6 点伤害。 若此牌命中带有减益状态的目标，则抽 1 张牌。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7037,7 +7037,7 @@
   },
   {
     "id": "hush_field",
-    "name": "Hush Field",
+    "name": "缄默力场",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7046,7 +7046,7 @@
       "mirror",
       "control"
     ],
-    "text": "Apply 1 Weak to all enemies.",
+    "text": "对全体异端施加 1 层虚弱。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -7059,7 +7059,7 @@
   },
   {
     "id": "echo_step",
-    "name": "Echo Step",
+    "name": "回响步",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7068,7 +7068,7 @@
       "mirror",
       "energy"
     ],
-    "text": "Gain 1 Energy at the start of your next turn.",
+    "text": "在你的下一回合开始时获得 1 点能量。",
     "actions": [
       {
         "type": "DelayedEnergy",
@@ -7080,7 +7080,7 @@
   },
   {
     "id": "glass_molt",
-    "name": "Glass Molt",
+    "name": "玻壳蜕落",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -7089,7 +7089,7 @@
       "mirror",
       "purify"
     ],
-    "text": "Remove 1 debuff from yourself and draw 1 card.",
+    "text": "移除自身 1 个减益状态并抽 1 张牌。",
     "actions": [
       {
         "type": "RemoveSelfDebuff",
@@ -7105,7 +7105,7 @@
   },
   {
     "id": "mirror_tax",
-    "name": "Mirror Tax",
+    "name": "镜税",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -7114,7 +7114,7 @@
       "mirror",
       "attack"
     ],
-    "text": "Deal 14 damage. Deal 8 more if target has Block.",
+    "text": "造成 14 点伤害。 若目标拥有格挡，额外造成 8 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7133,7 +7133,7 @@
   },
   {
     "id": "soft_reset",
-    "name": "Soft Reset",
+    "name": "软重置",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -7142,7 +7142,7 @@
       "mirror",
       "utility"
     ],
-    "text": "The first time you spend a resource this turn, refund 1.",
+    "text": "你本回合第一次消耗资源时，返还 1 点该资源。",
     "actions": [
       {
         "type": "ResourceRefund",
@@ -7154,7 +7154,7 @@
   },
   {
     "id": "palace_signal",
-    "name": "Palace Signal",
+    "name": "宫廷讯号",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Power",
@@ -7163,7 +7163,7 @@
       "mirror",
       "defense"
     ],
-    "text": "Whenever you draw a 0-cost card for the first time each turn, gain 3 Block.",
+    "text": "每回合第一次抽到费用为 0 的牌时，获得 3 点格挡。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -7180,7 +7180,7 @@
   },
   {
     "id": "shard_harvest",
-    "name": "Shard Harvest",
+    "name": "裂片收获",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -7189,7 +7189,7 @@
       "mirror",
       "attack"
     ],
-    "text": "Deal 12 damage. If this kills, gain 1 random resource.",
+    "text": "造成 12 点伤害。 若此牌完成击杀，则获得 1 点随机资源。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7209,7 +7209,7 @@
   },
   {
     "id": "planted_witness",
-    "name": "Planted Witness",
+    "name": "预埋证人",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -7218,7 +7218,7 @@
       "informant",
       "evidence"
     ],
-    "text": "Gain 1 Evidence. Draw 1 if target already has a debuff.",
+    "text": "获得 1 点证据。若目标已有减益状态，则抽 1 张牌。",
     "actions": [
       {
         "type": "GainResource",
@@ -7237,7 +7237,7 @@
   },
   {
     "id": "mirror_tail",
-    "name": "Mirror Tail",
+    "name": "镜影尾迹",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7246,7 +7246,7 @@
       "informant",
       "defense"
     ],
-    "text": "Gain 7 Block. Apply 2 Weak. Gain 1 Evidence if enemy will attack this turn.",
+    "text": "获得 7 点格挡。 施加 2 层虚弱。 若目标本回合将要攻击，则获得 1 点证据。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7272,7 +7272,7 @@
   },
   {
     "id": "sealed_testimony",
-    "name": "Sealed Testimony",
+    "name": "封缄证词",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -7281,7 +7281,7 @@
       "informant",
       "attack"
     ],
-    "text": "Deal 7 damage. If you have Evidence, spend 1 to ignore 8 Block.",
+    "text": "造成 7 点伤害。 若你拥有证据，则消耗 1 点，无视目标 8 点格挡。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7302,7 +7302,7 @@
   },
   {
     "id": "false_identity",
-    "name": "False Identity",
+    "name": "伪装身份",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7311,7 +7311,7 @@
       "informant",
       "control"
     ],
-    "text": "The first Weak you apply this turn gains +1 stack. Draw 1.",
+    "text": "你本回合第一次施加的虚弱额外 +1 层。抽 1 张牌。",
     "actions": [
       {
         "type": "BonusNextDebuff",
@@ -7328,7 +7328,7 @@
   },
   {
     "id": "cross_examiner",
-    "name": "Cross Examiner",
+    "name": "交叉诘问",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -7337,7 +7337,7 @@
       "informant",
       "attack"
     ],
-    "text": "Deal 10 damage. If target has both Weak and Vulnerable, deal 12 more.",
+    "text": "造成 10 点伤害。 若目标同时带有虚弱和易伤，额外造成 12 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7360,7 +7360,7 @@
   },
   {
     "id": "evidence_laundering",
-    "name": "Evidence Laundering",
+    "name": "证据洗白",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -7369,7 +7369,7 @@
       "informant",
       "control"
     ],
-    "text": "Spend up to 2 Evidence. For each, apply 1 Weak to all enemies and draw 1.",
+    "text": "最多消耗 2 点证据。每消耗 1 点，对全体异端施加 1 层虚弱并抽 1 张牌。",
     "actions": [
       {
         "type": "SpendResourceUpTo",
@@ -7394,7 +7394,7 @@
   },
   {
     "id": "sudden_confession",
-    "name": "Sudden Confession",
+    "name": "骤然供认",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -7403,7 +7403,7 @@
       "informant",
       "control"
     ],
-    "text": "Apply 3 Vulnerable to target. If you spend 1 Evidence, draw 1 on first hit this turn.",
+    "text": "对目标施加 3 层易伤。若你消耗 1 点证据，则你本回合第一次命中时抽 1 张牌。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -7425,7 +7425,7 @@
   },
   {
     "id": "terminal_verdict",
-    "name": "Terminal Verdict",
+    "name": "终局裁断",
     "rarity": "Rare",
     "cost": 3,
     "type": "Attack",
@@ -7434,7 +7434,7 @@
       "informant",
       "attack"
     ],
-    "text": "Deal 14 damage. Spend all Evidence, deal 8 damage per. If target dies, refund 1 Energy.",
+    "text": "造成 14 点伤害。 消耗全部证据。每点证据额外造成 8 点伤害。 若目标死亡，则返还 1 点能量。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7462,7 +7462,7 @@
   },
   {
     "id": "bloody_grin",
-    "name": "Bloody Grin",
+    "name": "血腥狞笑",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -7471,7 +7471,7 @@
       "brute",
       "rage"
     ],
-    "text": "Lose 3 HP. Gain 1 Rage. Draw 1.",
+    "text": "失去 3 生命值。 获得 1 点狂怒。 抽 1.",
     "actions": [
       {
         "type": "LoseHP",
@@ -7492,7 +7492,7 @@
   },
   {
     "id": "skull_crack",
-    "name": "Skull Crack",
+    "name": "裂颅重击",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -7501,7 +7501,7 @@
       "brute",
       "attack"
     ],
-    "text": "Deal 9 damage. If you have Rage, spend 1 to apply 1 Vulnerable.",
+    "text": "造成 9 点伤害。 若你拥有狂怒，则消耗 1 点并施加 1 层易伤。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7523,7 +7523,7 @@
   },
   {
     "id": "meat_shield",
-    "name": "Meat Shield",
+    "name": "血肉盾墙",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7532,7 +7532,7 @@
       "brute",
       "defense"
     ],
-    "text": "Gain 9 Block. If you took damage this turn, gain 1 Rage.",
+    "text": "获得 9 点格挡。 若你本回合受过伤，则获得 1 点狂怒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7552,7 +7552,7 @@
   },
   {
     "id": "chain_maul",
-    "name": "Chain Maul",
+    "name": "链锤猛砸",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -7561,7 +7561,7 @@
       "brute",
       "attack"
     ],
-    "text": "Deal 6x2 damage. If target HP below 50%, second hit deals 3 more.",
+    "text": "造成 6 点伤害，共攻击 2 次。 若目标生命值低于 50%，第二击额外造成 3 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7582,7 +7582,7 @@
   },
   {
     "id": "war_feast",
-    "name": "War Feast",
+    "name": "战场盛宴",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -7591,7 +7591,7 @@
       "brute",
       "rage"
     ],
-    "text": "Lose 6 HP. Heal 10 HP. Gain 2 Rage.",
+    "text": "失去 6 生命值. 恢复 10 生命值。 获得 2 点狂怒。",
     "actions": [
       {
         "type": "LoseHP",
@@ -7612,7 +7612,7 @@
   },
   {
     "id": "berserk_step",
-    "name": "Berserk Step",
+    "name": "狂战步伐",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -7621,7 +7621,7 @@
       "brute",
       "defense"
     ],
-    "text": "Gain 6 Block. The next Attack card this turn costs 1 less.",
+    "text": "获得 6 点格挡。 你本回合打出的下一张攻击牌费用减少 1。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7637,7 +7637,7 @@
   },
   {
     "id": "pit_execution",
-    "name": "Pit Execution",
+    "name": "深坑处决",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -7646,7 +7646,7 @@
       "brute",
       "attack"
     ],
-    "text": "Deal 16 damage. If this kills, heal 6 HP and gain 1 Rage.",
+    "text": "造成 16 点伤害。 若此牌完成击杀，则恢复 6 点生命值并获得 1 点狂怒。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7676,7 +7676,7 @@
   },
   {
     "id": "red_howl",
-    "name": "Red Howl",
+    "name": "猩红嚎叫",
     "rarity": "Rare",
     "cost": 3,
     "type": "Attack",
@@ -7685,7 +7685,7 @@
       "brute",
       "attack"
     ],
-    "text": "Spend all Rage. Deal 12 base damage, +7 per Rage spent. Gain Block equal to half Rage spent.",
+    "text": "消耗全部狂怒。基础造成 12 点伤害，每点狂怒额外 +7。获得等同于所耗狂怒一半的格挡。",
     "actions": [
       {
         "type": "SpendAllResourceEffect",
@@ -7710,7 +7710,7 @@
   },
   {
     "id": "briefing_order",
-    "name": "Briefing Order",
+    "name": "战前号令",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -7719,7 +7719,7 @@
       "tactician",
       "command"
     ],
-    "text": "Gain 1 Command. Draw 1 if you haven't attacked yet this turn.",
+    "text": "获得 1 点指挥。若你本回合尚未攻击，则抽 1 张牌。",
     "actions": [
       {
         "type": "GainResource",
@@ -7738,7 +7738,7 @@
   },
   {
     "id": "shield_signal",
-    "name": "Shield Signal",
+    "name": "盾列信号",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7747,7 +7747,7 @@
       "tactician",
       "defense"
     ],
-    "text": "Gain 10 Block. If you have Command, gain 2 more.",
+    "text": "获得 10 点格挡。 若你拥有指挥，则额外获得 2 点格挡。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7767,7 +7767,7 @@
   },
   {
     "id": "precise_rotation",
-    "name": "Precise Rotation",
+    "name": "精准轮转",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7776,7 +7776,7 @@
       "tactician",
       "draw"
     ],
-    "text": "Spend 1 Command. Draw 2, discard 1.",
+    "text": "消耗 1 点指挥。抽 2 张牌，再弃掉 1 张牌。",
     "actions": [
       {
         "type": "SpendResourceEffect",
@@ -7796,7 +7796,7 @@
   },
   {
     "id": "formation_break",
-    "name": "Formation Break",
+    "name": "破阵",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -7805,7 +7805,7 @@
       "tactician",
       "attack"
     ],
-    "text": "Deal 8 damage. Deal 5 more if you gained Block this turn.",
+    "text": "造成 8 点伤害。 若你本回合获得过格挡，额外造成 5 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7824,7 +7824,7 @@
   },
   {
     "id": "line_adjustment",
-    "name": "Line Adjustment",
+    "name": "阵线调整",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7833,7 +7833,7 @@
       "tactician",
       "utility"
     ],
-    "text": "The next card this turn costs 1 less. If you have Command, draw 1 instead.",
+    "text": "你本回合打出的下一张牌费用减少 1。若你拥有指挥，则改为抽 1 张牌。",
     "actions": [
       {
         "type": "NextCardCostDown",
@@ -7852,7 +7852,7 @@
   },
   {
     "id": "reserve_line",
-    "name": "Reserve Line",
+    "name": "预备阵线",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -7861,7 +7861,7 @@
       "tactician",
       "defense"
     ],
-    "text": "Gain 14 Block. Retain 1 card at end of turn.",
+    "text": "获得 14 点格挡。 保留 1 张牌 at 回合结束时.",
     "actions": [
       {
         "type": "GainBlock",
@@ -7877,7 +7877,7 @@
   },
   {
     "id": "coordinated_breach",
-    "name": "Coordinated Breach",
+    "name": "协同破袭",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -7886,7 +7886,7 @@
       "tactician",
       "attack"
     ],
-    "text": "Deal 12 damage. Spend 1 Command to also apply 2 Weak.",
+    "text": "造成 12 点伤害。 消耗 1 点指挥，额外施加 2 层虚弱。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7908,7 +7908,7 @@
   },
   {
     "id": "grand_doctrine",
-    "name": "Grand Doctrine",
+    "name": "大战略条令",
     "rarity": "Rare",
     "cost": 3,
     "type": "Power",
@@ -7917,7 +7917,7 @@
       "tactician",
       "power"
     ],
-    "text": "Whenever you first gain 12+ Block each turn, gain 1 Command. Whenever you first spend Command each turn, draw 1.",
+    "text": "每回合第一次获得至少 12 点格挡时，获得 1 点指挥。每回合第一次消耗指挥时，抽 1 张牌。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -7947,7 +7947,7 @@
   },
   {
     "id": "glass_marionette",
-    "name": "Glass Marionette",
+    "name": "玻璃傀影",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -7956,7 +7956,7 @@
       "puppeteer",
       "summon"
     ],
-    "text": "Summon a 3/1 Mirror Puppet. If you have Thread, it gains +2 Attack.",
+    "text": "召唤一个 3/1 的镜像傀儡。若你拥有线程，它额外获得 +2 攻击力。",
     "actions": [
       {
         "type": "Summon",
@@ -7977,7 +7977,7 @@
   },
   {
     "id": "echo_string",
-    "name": "Echo String",
+    "name": "回响丝线",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -7986,7 +7986,7 @@
       "puppeteer",
       "thread"
     ],
-    "text": "Gain 1 Thread. Draw 1 if you control any puppets.",
+    "text": "获得 1 条线程。若你控制任意傀儡，则抽 1 张牌。",
     "actions": [
       {
         "type": "GainResource",
@@ -8005,7 +8005,7 @@
   },
   {
     "id": "shard_dance",
-    "name": "Shard Dance",
+    "name": "裂片之舞",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -8014,7 +8014,7 @@
       "puppeteer",
       "attack"
     ],
-    "text": "Deal 5 damage and have all puppets deal 3 damage.",
+    "text": "造成 5 点伤害，并让所有傀儡各造成 3 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -8030,7 +8030,7 @@
   },
   {
     "id": "borrowed_face",
-    "name": "Borrowed Face",
+    "name": "借面",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -8039,7 +8039,7 @@
       "puppeteer",
       "utility"
     ],
-    "text": "The next time a puppet dies this turn, draw 2 cards.",
+    "text": "本回合下一次有傀儡死亡时，抽 2 张牌。",
     "actions": [
       {
         "type": "TriggerOnPuppetDeath",
@@ -8053,7 +8053,7 @@
   },
   {
     "id": "silver_curtain",
-    "name": "Silver Curtain",
+    "name": "银幕落幕",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -8062,7 +8062,7 @@
       "puppeteer",
       "defense"
     ],
-    "text": "All puppets gain 4 Block and deal +2 attack.",
+    "text": "所有傀儡获得 4 点格挡并额外造成 2 点攻击伤害。",
     "actions": [
       {
         "type": "PuppetBuff",
@@ -8074,7 +8074,7 @@
   },
   {
     "id": "reflected_stage",
-    "name": "Reflected Stage",
+    "name": "镜像舞台",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Power",
@@ -8083,7 +8083,7 @@
       "puppeteer",
       "power"
     ],
-    "text": "The first summoned creature each turn gains +1 turn duration.",
+    "text": "每回合第一次召唤的单位持续时间额外 +1 回合。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -8100,7 +8100,7 @@
   },
   {
     "id": "cut_the_strings",
-    "name": "Cut the Strings",
+    "name": "断线",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -8109,7 +8109,7 @@
       "puppeteer",
       "attack"
     ],
-    "text": "Sacrifice all puppets. Each one deals 7 damage.",
+    "text": "牺牲所有傀儡。每个傀儡各造成 7 点伤害。",
     "actions": [
       {
         "type": "SacrificeAllPuppets",
@@ -8120,7 +8120,7 @@
   },
   {
     "id": "palace_of_doubles",
-    "name": "Palace of Doubles",
+    "name": "双影宫廷",
     "rarity": "Rare",
     "cost": 3,
     "type": "Skill",
@@ -8129,7 +8129,7 @@
       "puppeteer",
       "summon"
     ],
-    "text": "Immediately summon 2 Mirror Puppets. For each Thread you have, one gains +1/+1.",
+    "text": "立刻召唤 2 个镜像傀儡。每有 1 条线程，其中一个额外获得 +1/+ 1。",
     "actions": [
       {
         "type": "Summon",
@@ -8157,7 +8157,7 @@
   },
   {
     "id": "afterimage_tick",
-    "name": "Afterimage Tick",
+    "name": "残像时刻",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -8166,7 +8166,7 @@
       "chronomancer",
       "timelayer"
     ],
-    "text": "Gain 1 TimeLayer. Draw 1 at the start of next turn.",
+    "text": "获得 1 点时间层。下一回合开始时抽 1 张牌。",
     "actions": [
       {
         "type": "GainResource",
@@ -8183,7 +8183,7 @@
   },
   {
     "id": "delay_refraction",
-    "name": "Delay Refraction",
+    "name": "延迟折光",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -8192,7 +8192,7 @@
       "chronomancer",
       "defense"
     ],
-    "text": "Gain 7 Block. The next card this turn triggers again at 50% value next turn.",
+    "text": "获得 7 点格挡。 你本回合打出的下一张牌会在下一回合以 50% 效果再次触发。",
     "actions": [
       {
         "type": "GainBlock",
@@ -8208,7 +8208,7 @@
   },
   {
     "id": "split_second",
-    "name": "Split Second",
+    "name": "瞬裂时刻",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -8217,7 +8217,7 @@
       "chronomancer",
       "attack"
     ],
-    "text": "Deal 8 damage. If you have TimeLayer, deal 4 again next turn.",
+    "text": "造成 8 点伤害。 若你拥有时间层，则下一回合再次造成 4 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -8238,7 +8238,7 @@
   },
   {
     "id": "borrow_tomorrow",
-    "name": "Borrow Tomorrow",
+    "name": "借取明日",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -8247,7 +8247,7 @@
       "chronomancer",
       "energy"
     ],
-    "text": "Gain 1 Energy next turn. Draw 1 less at end of this turn.",
+    "text": "下一回合获得 1 点能量。你本回合结束时少抽 1 张牌。",
     "actions": [
       {
         "type": "DelayedEnergy",
@@ -8263,7 +8263,7 @@
   },
   {
     "id": "stolen_window",
-    "name": "Stolen Window",
+    "name": "窃时窗口",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -8272,7 +8272,7 @@
       "chronomancer",
       "timelayer"
     ],
-    "text": "Gain 2 TimeLayer. If you have 3+ TimeLayer, draw 2.",
+    "text": "获得 2 点时间层。若你拥有至少 3 点时间层，则抽 2 张牌。",
     "actions": [
       {
         "type": "GainResource",
@@ -8293,7 +8293,7 @@
   },
   {
     "id": "echo_punishment",
-    "name": "Echo Punishment",
+    "name": "回响惩戒",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Attack",
@@ -8302,7 +8302,7 @@
       "chronomancer",
       "attack"
     ],
-    "text": "Deal 10 damage. Deal 2 for each debuff on target.",
+    "text": "造成 10 点伤害。 造成 2 每有 1 个 减益状态 on 目标.",
     "actions": [
       {
         "type": "DealDamage",
@@ -8321,7 +8321,7 @@
   },
   {
     "id": "fractured_hour",
-    "name": "Fractured Hour",
+    "name": "碎裂时辰",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Power",
@@ -8330,7 +8330,7 @@
       "chronomancer",
       "power"
     ],
-    "text": "The first time a delay effect triggers each turn, gain 3 Block.",
+    "text": "每回合第一次有延迟效果触发时，获得 3 点格挡。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -8347,7 +8347,7 @@
   },
   {
     "id": "palimpsest_loop",
-    "name": "Palimpsest Loop",
+    "name": "重写回环",
     "rarity": "Rare",
     "cost": 3,
     "type": "Skill",
@@ -8356,7 +8356,7 @@
       "chronomancer",
       "power"
     ],
-    "text": "Choose a card played this turn. At start of next turn, replay it at no cost once.",
+    "text": "选择你本回合打出的一张牌。在下一回合开始时免费重放一次。",
     "actions": [
       {
         "type": "SelectCardForReplay",
@@ -8368,7 +8368,7 @@
   },
   {
     "id": "prism_seed",
-    "name": "Prism Seed",
+    "name": "棱镜种子",
     "rarity": "Common",
     "cost": 0,
     "type": "Skill",
@@ -8377,7 +8377,7 @@
       "alchemist",
       "concoction"
     ],
-    "text": "Gain 1 Concoction and add 1 random element.",
+    "text": "获得 1 点调和剂并加入 1 个随机元素。",
     "actions": [
       {
         "type": "GainResource",
@@ -8393,7 +8393,7 @@
   },
   {
     "id": "caustic_glass",
-    "name": "Caustic Glass",
+    "name": "蚀性晶片",
     "rarity": "Common",
     "cost": 1,
     "type": "Attack",
@@ -8402,7 +8402,7 @@
       "alchemist",
       "attack"
     ],
-    "text": "Deal 6 damage. Apply 3 Poison. If you added an element this turn, apply 1 Weak.",
+    "text": "造成 6 点伤害。 施加 3 层中毒。 若你本回合加入过元素，则施加 1 层虚弱。",
     "actions": [
       {
         "type": "DealDamage",
@@ -8428,7 +8428,7 @@
   },
   {
     "id": "distill_barrier",
-    "name": "Distill Barrier",
+    "name": "馏化屏障",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -8437,7 +8437,7 @@
       "alchemist",
       "defense"
     ],
-    "text": "Gain 8 Block. If you have 2 different elements, heal 3.",
+    "text": "获得 8 点格挡。 若你拥有 2 种不同元素，则恢复 3 点生命值。",
     "actions": [
       {
         "type": "GainBlock",
@@ -8456,7 +8456,7 @@
   },
   {
     "id": "chromatic_bath",
-    "name": "Chromatic Bath",
+    "name": "综合色浴",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -8465,7 +8465,7 @@
       "alchemist",
       "concoction"
     ],
-    "text": "Trigger a random element reaction. If you have Concoction, draw 1.",
+    "text": "触发一个随机元素反应。若你拥有调和剂，则抽 1 张牌。",
     "actions": [
       {
         "type": "TriggerRandomElementReaction"
@@ -8483,7 +8483,7 @@
   },
   {
     "id": "mercury_lace",
-    "name": "Mercury Lace",
+    "name": "水银绞线",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Skill",
@@ -8492,7 +8492,7 @@
       "alchemist",
       "attack"
     ],
-    "text": "Spend 1 Concoction. Apply 2 Poison to all enemies. Gain 10 Block.",
+    "text": "消耗 1 点调和剂。对全体异端施加 2 层中毒，并获得 10 点格挡。",
     "actions": [
       {
         "type": "SpendResourceEffect",
@@ -8514,7 +8514,7 @@
   },
   {
     "id": "vitriol_prism",
-    "name": "Vitriol Prism",
+    "name": "胆矾棱镜",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Attack",
@@ -8523,7 +8523,7 @@
       "alchemist",
       "attack"
     ],
-    "text": "Deal 7 damage. If target has Poison, deal 7 again.",
+    "text": "造成 7 点伤害。 若目标带有中毒，则再造成 7 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -8543,7 +8543,7 @@
   },
   {
     "id": "refined_chamber",
-    "name": "Refined Chamber",
+    "name": "精炼腔室",
     "rarity": "Uncommon",
     "cost": 2,
     "type": "Power",
@@ -8552,7 +8552,7 @@
       "alchemist",
       "power"
     ],
-    "text": "The first time you gain Concoction each turn, heal 2 HP.",
+    "text": "每回合第一次获得调和剂时，恢复 2 点生命值。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -8570,7 +8570,7 @@
   },
   {
     "id": "perfect_solvent",
-    "name": "Perfect Solvent",
+    "name": "完美溶剂",
     "rarity": "Rare",
     "cost": 3,
     "type": "Skill",
@@ -8579,7 +8579,7 @@
       "alchemist",
       "attack"
     ],
-    "text": "Spend all Concoction. For each, trigger an element reaction and apply 2 Poison to all enemies.",
+    "text": "消耗全部调和剂。每点调和剂都会触发一次元素反应，并对全体异端施加 2 层中毒。",
     "actions": [
       {
         "type": "SpendAllResourceEffect",
@@ -8598,5 +8598,354 @@
       }
     ],
     "character": "alchemist"
+  },
+  {
+    "id": "desperate_guard",
+    "name": "绝境防卫",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend",
+      "ascensionExclusive"
+    ],
+    "text": "获得 12 点格挡。 若你本回合未受伤，下一回合少抽 1 张牌。",
+    "difficultyRequired": 3,
+    "achievementUnlockId": "clear_lv3",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "bloodline_focus",
+    "name": "血脉聚焦",
+    "rarity": "Rare",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "draw",
+      "ascensionExclusive"
+    ],
+    "text": "失去 3 生命值。 抽 2 张牌。",
+    "difficultyRequired": 3,
+    "achievementUnlockId": "clear_lv3",
+    "actions": [
+      {
+        "type": "LoseHp",
+        "amount": 3,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "forced_opening",
+    "name": "强迫破绽",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike",
+      "ascensionExclusive"
+    ],
+    "text": "造成 8 点伤害。 若目标处于满生命值，则改为造成 20 点伤害。 获得 1 层易伤。",
+    "difficultyRequired": 5,
+    "achievementUnlockId": "clear_lv5",
+    "actions": [
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetFullHp"
+        },
+        "ifTrue": {
+          "type": "DealDamage",
+          "amount": 20,
+          "target": "Enemy"
+        },
+        "ifFalse": {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "grim_discipline",
+    "name": "冷酷军纪",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "purify",
+      "draw",
+      "ascensionExclusive"
+    ],
+    "text": "移除自身 1 个减益状态。若你的生命值低于 50%，则抽 1 张牌。",
+    "difficultyRequired": 5,
+    "achievementUnlockId": "clear_lv5",
+    "actions": [
+      {
+        "type": "RemoveSelfDebuff",
+        "stacks": 1
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HpPercentBelow",
+          "threshold": 0.5
+        },
+        "effect": {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "pain_dividend",
+    "name": "苦痛红利",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "sustain",
+      "energy",
+      "ascensionExclusive"
+    ],
+    "text": "失去 6 生命值。 获得 2 点能量。",
+    "difficultyRequired": 7,
+    "achievementUnlockId": "clear_lv7",
+    "actions": [
+      {
+        "type": "LoseHp",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "GainEnergy",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "sealed_wager",
+    "name": "封缄赌约",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "costReduction",
+      "ascensionExclusive"
+    ],
+    "text": "你本回合打出的下一张牌费用减少 1。战斗结束时失去 2 点生命值。",
+    "difficultyRequired": 7,
+    "achievementUnlockId": "clear_lv7",
+    "actions": [
+      {
+        "type": "ModifyNextCardCost",
+        "amount": -1,
+        "target": "Self"
+      },
+      {
+        "type": "EndOfCombatEffect",
+        "effect": {
+          "type": "LoseHp",
+          "amount": 2,
+          "target": "Self"
+        }
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "last_shelter",
+    "name": "最后庇护",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "defend",
+      "purify",
+      "ascensionExclusive"
+    ],
+    "text": "获得 20 点格挡。 净除 1 减益状态. 下一回合, 失去 1 能量.",
+    "difficultyRequired": 9,
+    "achievementUnlockId": "clear_lv9",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 20,
+        "target": "Self"
+      },
+      {
+        "type": "RemoveSelfDebuff",
+        "stacks": 1
+      },
+      {
+        "type": "ModifyEnergy",
+        "amount": -1,
+        "target": "Self"
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "cruel_precision",
+    "name": "残酷精准",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strike",
+      "ascensionExclusive"
+    ],
+    "text": "造成 12 点伤害。 若目标带有减益状态，额外造成 20 点伤害。 若目标存活，则获得 1 层脆弱。",
+    "difficultyRequired": 9,
+    "achievementUnlockId": "clear_lv9",
+    "actions": [
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasDebuff"
+        },
+        "ifTrue": {
+          "type": "DealDamage",
+          "amount": 32,
+          "target": "Enemy"
+        },
+        "ifFalse": {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetSurvived"
+        },
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "black_standard",
+    "name": "黑旗",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "power",
+      "sustain",
+      "ascensionExclusive"
+    ],
+    "text": "回合结束时失去 3 点生命值，并获得 1 点力量与 1 点敏捷。",
+    "difficultyRequired": 10,
+    "achievementUnlockId": "clear_lv10",
+    "actions": [
+      {
+        "type": "EndOfTurnEffect",
+        "effect": [
+          {
+            "type": "LoseHp",
+            "amount": 3,
+            "target": "Self"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Strength",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Dexterity",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "character": "All"
+  },
+  {
+    "id": "death_contract",
+    "name": "死契",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "damage",
+      "buff",
+      "ascensionExclusive"
+    ],
+    "text": "你本回合打出的所有牌伤害翻倍。若你赢得战斗，则失去 15 点生命值；若你失败，则失去 5 点生命值。",
+    "difficultyRequired": 10,
+    "achievementUnlockId": "clear_lv10",
+    "actions": [
+      {
+        "type": "MultiplyDamage",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "EndOfCombatEffect",
+        "effect": {
+          "type": "Conditional",
+          "condition": {
+            "type": "CombatResult"
+          },
+          "ifTrue": {
+            "type": "LoseHp",
+            "amount": 15,
+            "target": "Self"
+          },
+          "ifFalse": {
+            "type": "LoseHp",
+            "amount": 5,
+            "target": "Self"
+          }
+        }
+      }
+    ],
+    "character": "All"
   }
 ]

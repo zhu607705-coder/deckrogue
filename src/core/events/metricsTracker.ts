@@ -64,6 +64,8 @@ export class MetricsTracker {
   private currentRun: RunMetrics | null = null;
   private combatStartTime: number = 0;
   private achievements: Achievement[] = [];
+  private currentTurnDamage: number = 0;
+  private maxTurnDamage: number = 0;
 
   constructor() {
     this.initializeAchievements();
@@ -161,6 +163,14 @@ export class MetricsTracker {
   recordDamageDealt(amount: number): void {
     if (!this.currentRun) return;
     this.currentRun.combatMetrics.totalDamageDealt += amount;
+    this.currentTurnDamage += amount;
+    if (this.currentTurnDamage > this.maxTurnDamage) {
+      this.maxTurnDamage = this.currentTurnDamage;
+    }
+  }
+
+  resetTurnDamage(): void {
+    this.currentTurnDamage = 0;
   }
 
   recordDamageReceived(amount: number): void {
@@ -311,7 +321,7 @@ export class MetricsTracker {
   }
 
   private calculateMaxDamageInOneTurn(): number {
-    return 0;
+    return this.maxTurnDamage;
   }
 
   getStatisticsSummary(): string {

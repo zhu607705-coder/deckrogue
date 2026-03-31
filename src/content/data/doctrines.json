@@ -1,0 +1,155 @@
+[
+  {
+    "id": "doctrine_precision",
+    "name": "精准教义",
+    "description": "开局获得 +1 Intel 或等价职业资源；前 3 层控制/精准卡 reward 权重 +18%",
+    "unlockCondition": {
+      "type": "default"
+    },
+    "effects": [
+      {
+        "type": "GainResource",
+        "resource": "intel",
+        "amount": 1
+      },
+      {
+        "type": "RewardWeightBonus",
+        "cardTags": ["control", "precision"],
+        "bonus": 0.18,
+        "floors": [1, 2, 3]
+      }
+    ],
+    "flavorText": "精准是效率的基础。"
+  },
+  {
+    "id": "doctrine_attrition",
+    "name": "消耗教义",
+    "description": "前 3 场战斗每场第一次施加 debuff 后获得 4 格挡；毒素/拖回合相关 reward 权重 +18%",
+    "unlockCondition": {
+      "type": "chapterClear",
+      "chapter": 2
+    },
+    "effects": [
+      {
+        "type": "FirstDebuffBlock",
+        "block": 4,
+        "combats": 3
+      },
+      {
+        "type": "RewardWeightBonus",
+        "cardTags": ["poison", "attrition"],
+        "bonus": 0.18
+      }
+    ],
+    "flavorText": "消耗敌人，直到他们无法反抗。"
+  },
+  {
+    "id": "doctrine_sanctuary",
+    "name": "庇护教义",
+    "description": "开局恢复效果 +15%，第一章 Rest 价值提高；防御/净化类 reward 权重 +15%",
+    "unlockCondition": {
+      "type": "achievement",
+      "achievementId": "boss_slayer"
+    },
+    "effects": [
+      {
+        "type": "HealBonus",
+        "bonus": 0.15
+      },
+      {
+        "type": "RestBonus",
+        "chapter": 1,
+        "bonus": 0.15
+      },
+      {
+        "type": "RewardWeightBonus",
+        "cardTags": ["defense", "purify"],
+        "bonus": 0.15,
+        "chapters": [1]
+      }
+    ],
+    "flavorText": "庇护所是最后的防线。"
+  },
+  {
+    "id": "doctrine_overclock",
+    "name": "超频教义",
+    "description": "开局第一回合获得 1 临时能量；前 2 层攻击牌 reward 权重 +15%；每章首场战斗开局 1 Vulnerable",
+    "unlockCondition": {
+      "type": "achievementCount",
+      "achievementCategory": "mastery",
+      "count": 2
+    },
+    "effects": [
+      {
+        "type": "FirstTurnEnergy",
+        "energy": 1
+      },
+      {
+        "type": "RewardWeightBonus",
+        "cardTags": ["attack"],
+        "bonus": 0.15,
+        "floors": [1, 2]
+      },
+      {
+        "type": "FirstCombatDebuff",
+        "status": "Vulnerable",
+        "stacks": 1,
+        "perChapter": true
+      }
+    ],
+    "flavorText": "超频带来力量，也带来风险。"
+  },
+  {
+    "id": "doctrine_heresy",
+    "name": "异端教义",
+    "description": "开局获得 1 pact slot 折扣；混沌/风险收益事件权重 +20%；每章第一次事件多 1 个高风险选项",
+    "unlockCondition": {
+      "type": "currency",
+      "currency": "warpEchoes",
+      "amount": 25
+    },
+    "effects": [
+      {
+        "type": "PactSlotDiscount",
+        "discount": 1
+      },
+      {
+        "type": "EventWeightBonus",
+        "eventTags": ["chaos", "highRisk"],
+        "bonus": 0.20
+      },
+      {
+        "type": "ExtraEventOption",
+        "optionType": "highRisk",
+        "perChapter": true
+      }
+    ],
+    "flavorText": "异端之路充满未知，但也充满可能。"
+  },
+  {
+    "id": "doctrine_salvage",
+    "name": "拆解教义",
+    "description": "开局 +40 Gold；商店 card removal 初始价格 -15%；普通 card reward 稀有度提升 +5%",
+    "unlockCondition": {
+      "type": "statTotal",
+      "stat": "salvagedRequisition",
+      "amount": 40
+    },
+    "effects": [
+      {
+        "type": "GainGold",
+        "amount": 40
+      },
+      {
+        "type": "ShopDiscount",
+        "item": "cardRemoval",
+        "discount": 0.15
+      },
+      {
+        "type": "RewardRarityBonus",
+        "bonus": 0.05
+      }
+    ],
+    "flavorText": "拆解旧物，为新路铺石。"
+  }
+]

@@ -1,0 +1,224 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-03-21",
+  "priorityLevels": {
+    "P0": {
+      "name": "Critical",
+      "description": "游戏崩溃、存档损坏、核心流程阻塞",
+      "responseTime": "立即修复",
+      "examples": [
+        "游戏启动崩溃",
+        "战斗无法结束",
+        "存档无法加载",
+        "卡牌无法打出"
+      ]
+    },
+    "P1": {
+      "name": "High",
+      "description": "核心功能异常、数值严重失衡",
+      "responseTime": "24小时内修复",
+      "examples": [
+        "Boss 战无法胜利",
+        "关键卡牌效果错误",
+        "HP 计算错误导致必死"
+      ]
+    },
+    "P2": {
+      "name": "Medium",
+      "description": "功能异常但有替代方案、体验受损",
+      "responseTime": "本周内修复",
+      "examples": [
+        "UI 显示错误",
+        "动画播放异常",
+        "部分卡牌描述不准确"
+      ]
+    },
+    "P3": {
+      "name": "Low",
+      "description": "小问题、优化建议",
+      "responseTime": "排期修复",
+      "examples": [
+        "文案错别字",
+        "图标对齐问题",
+        "性能优化建议"
+      ]
+    }
+  },
+  "categories": {
+    "numeric": {
+      "name": "数值",
+      "description": "伤害、治疗、资源计算错误",
+      "regressionTests": [
+        "test_damage_calculation",
+        "test_healing_calculation",
+        "test_resource_accumulation",
+        "test_block_calculation"
+      ],
+      "commonCauses": [
+        "乘法叠加顺序错误",
+        "取整方式不一致",
+        "负数处理不当",
+        "边界值未检查"
+      ]
+    },
+    "trigger_order": {
+      "name": "触发顺序",
+      "description": "事件触发时机或顺序错误",
+      "regressionTests": [
+        "test_on_play_triggers",
+        "test_on_damage_triggers",
+        "test_on_death_triggers",
+        "test_turn_start_triggers",
+        "test_turn_end_triggers"
+      ],
+      "commonCauses": [
+        "事件注册顺序错误",
+        "优先级未设置",
+        "异步操作未等待",
+        "状态检查时机错误"
+      ]
+    },
+    "death_settlement": {
+      "name": "死亡结算",
+      "description": "角色/敌人死亡时的结算错误",
+      "regressionTests": [
+        "test_player_death",
+        "test_enemy_death",
+        "test_multi_kill_order",
+        "test_on_death_effects"
+      ],
+      "commonCauses": [
+        "死亡状态未正确标记",
+        "遗物效果未触发",
+        "奖励未正确发放",
+        "后续战斗状态残留"
+      ]
+    },
+    "status_stacking": {
+      "name": "状态叠加",
+      "description": "Buff/Debuff 叠加逻辑错误",
+      "regressionTests": [
+        "test_vulnerable_stacking",
+        "test_weak_stacking",
+        "test_poison_stacking",
+        "test_strength_stacking",
+        "test_artifact_interaction"
+      ],
+      "commonCauses": [
+        "叠加类型混淆",
+        "负值处理错误",
+        "清除逻辑遗漏",
+        "UI 显示不同步"
+      ]
+    },
+    "card_copy_generation": {
+      "name": "复制/生成卡",
+      "description": "卡牌复制或生成逻辑错误",
+      "regressionTests": [
+        "test_card_copy",
+        "test_card_generation",
+        "test_temporary_cards",
+        "test_exhaust_interaction"
+      ],
+      "commonCauses": [
+        "实例 ID 未正确生成",
+        "升级状态未保留",
+        "临时卡未正确移除",
+        "卡组索引错误"
+      ]
+    },
+    "turn_start_end": {
+      "name": "回合开始/结束",
+      "description": "回合切换时的触发错误",
+      "regressionTests": [
+        "test_turn_start_draw",
+        "test_turn_end_discard",
+        "test_turn_end_exhaust",
+        "test_energy_reset"
+      ],
+      "commonCauses": [
+        "触发器遗漏",
+        "状态重置不完整",
+        "能量计算错误",
+        "手牌上限未检查"
+      ]
+    },
+    "ui_expression": {
+      "name": "UI 表达",
+      "description": "界面显示或交互错误",
+      "regressionTests": [
+        "test_card_tooltip",
+        "test_status_icons",
+        "test_enemy_intent_display",
+        "test_reward_screen"
+      ],
+      "commonCauses": [
+        "数据绑定错误",
+        "状态更新未触发渲染",
+        "样式冲突",
+        "响应式布局问题"
+      ]
+    },
+    "save_replay": {
+      "name": "存档/回放",
+      "description": "存档保存或加载错误",
+      "regressionTests": [
+        "test_save_load_cycle",
+        "test_run_summary",
+        "test_meta_profile",
+        "test_combat_restart"
+      ],
+      "commonCauses": [
+        "序列化不完整",
+        "版本迁移缺失",
+        "状态引用未深拷贝",
+        "RNG 状态未保存"
+      ]
+    }
+  },
+  "regressionTestTemplate": {
+    "name": "",
+    "category": "",
+    "priority": "",
+    "description": "",
+    "steps": [],
+    "expectedResult": "",
+    "actualResult": "",
+    "relatedCards": [],
+    "relatedEnemies": [],
+    "relatedRelics": [],
+    "fixedIn": "",
+    "verifiedIn": ""
+  },
+  "bugReportTemplate": {
+    "id": "",
+    "title": "",
+    "priority": "",
+    "category": "",
+    "description": "",
+    "stepsToReproduce": [],
+    "expectedBehavior": "",
+    "actualBehavior": "",
+    "saveFile": "",
+    "screenshots": [],
+    "logs": [],
+    "environment": {
+      "version": "",
+      "platform": "",
+      "browser": ""
+    },
+    "relatedContent": {
+      "cards": [],
+      "enemies": [],
+      "relics": [],
+      "events": []
+    },
+    "status": "open",
+    "assignedTo": "",
+    "createdAt": "",
+    "updatedAt": "",
+    "fixedIn": "",
+    "verifiedIn": "",
+    "regressionTests": []
+  }
+}

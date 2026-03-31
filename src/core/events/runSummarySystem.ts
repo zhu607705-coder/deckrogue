@@ -69,6 +69,20 @@ export function computeRunSummary(state: GameState): RunSummary {
     earnedRequisition,
     earnedWarpEchoes,
     isVictory,
-    voxLogTail: [...(state.lastDeathVoxLog || state.lastCombatVoxLog || state.combatVoxLog || [])].slice(-5)
+    voxLogTail: [...(state.lastDeathVoxLog || state.lastCombatVoxLog || state.combatVoxLog || [])].slice(-5),
+    chapterReached: Math.ceil(reachedFloor / 8),
+    bossKilledIds: [],
+    endingArchetype: 'unknown',
+    topResourceUsed: 'gold',
+    controlUptime: 0,
+    poisonContribution: 0,
+    runPreset: {
+      doctrineId: null,
+      startingRelicId: null,
+      backgroundId: null
+    },
+    mirrorZoneVisited: state.mirrorZoneVisited ?? false,
+    branchCardsTaken: state.branchCardsTaken ?? [],
+    secondaryResourcePeak: state.secondaryResourcePeak ?? 0
   };
 }

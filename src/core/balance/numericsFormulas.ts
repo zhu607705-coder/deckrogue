@@ -2,6 +2,13 @@ import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 import { applyArmorDiminishing, applyRiskAdjustment, applySoftCap, applyTriggerRate, applyTurnDiscount, applyVarianceDiscount, clampNonNegative } from '@/core/balance/numericsPolicy';
 import type { PriceQuote, ValuationModifiers, VarianceClass } from '@/core/balance/numericsTypes';
 
+export const VARIANCE_FACTORS: Record<VarianceClass, number> = {
+  stable: 1.00,
+  conditional: 0.90,
+  risky: 0.80,
+  chaotic: 0.70,
+};
+
 function applyModifiers(baseEVU: number, modifiers: ValuationModifiers = {}): number {
   const timed = applyTurnDiscount(baseEVU, modifiers.timingTurns);
   const triggered = applyTriggerRate(timed, modifiers.triggerRate);

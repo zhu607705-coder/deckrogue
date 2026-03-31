@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Trophy, X, Search, Lock, CheckCircle2, Gift, Sparkles } from 'lucide-react';
 import { getAchievementDefs, type AchievementDef } from '@/features/achievements/achievementSystem';
 import { globalEventBus, loadMetaProfile } from '@/core';
+import { getUiLabelZh } from '@/ui/content/terminology';
 
 function rewardLines(def: AchievementDef): string[] {
   const rewards = def.rewards || {};
@@ -21,7 +22,7 @@ function conditionSummary(def: AchievementDef): string[] {
   if (c.characterId) out.push(`限定角色：${c.characterId}`);
   if (typeof c.minReachedFloor === 'number') out.push(`达到楼层：${c.minReachedFloor}+`);
   if (typeof c.minCorruption === 'number') out.push(`腐化值：${c.minCorruption}+`);
-  if (typeof c.minDevotion === 'number') out.push(`虔诚值：${c.minDevotion}+`);
+  if (typeof c.minDevotion === 'number') out.push(`虔敬值：${c.minDevotion}+`);
   if (typeof c.minRelicCount === 'number') out.push(`遗物数量：${c.minRelicCount}+`);
   if (typeof c.maxDeckSize === 'number') out.push(`牌库大小：≤ ${c.maxDeckSize}`);
   if (typeof c.minEarnedRequisition === 'number') out.push(`本局征用点收益：${c.minEarnedRequisition}+`);
@@ -100,7 +101,7 @@ export function AchievementOverlay({
           <div>
             <div className="flex items-center gap-2 text-slate-100">
               <Trophy size={18} className="text-emerald-300" />
-              <h2 className="text-lg sm:text-xl font-serif tracking-wide">成就 / Achievements</h2>
+              <h2 className="text-lg sm:text-xl font-serif tracking-wide">成就 / {getUiLabelZh('Achievements')}</h2>
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
               已解锁 {unlockedCount}/{total} · 最近新增 {(profile.achievements?.lastUnlockedIds || []).length}

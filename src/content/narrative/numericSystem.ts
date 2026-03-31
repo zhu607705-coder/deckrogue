@@ -3,11 +3,40 @@ import rawEnemiesData from '@/content/data/enemies.json';
 import rawPotionsData from '@/content/data/potions.json';
 import rawRelicsData from '@/content/data/relics.json';
 import rawNumericConfig from '@/content/data/numericConfig.json';
+import rawCardEnchantmentsData from '@/content/data/cardEnchantments.json';
 import { STORY_EVENTS as RAW_STORY_EVENTS } from '@/content/narrative/storyEvents';
-import type { CardDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core';
+import type { CardDef, CardAfflictionDef, CardEnchantmentDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core';
 
 export interface NumericConfig {
   version: number;
+  chapters?: {
+    chapter2?: {
+      nodeWeights?: {
+        floor_11_12?: Record<string, number>;
+        floor_13_15?: Record<string, number>;
+        floor_16?: Record<string, number>;
+      };
+      enemyFloorEligibility?: {
+        floor_11_12?: { allow?: string[]; exclude?: string[] };
+        floor_13_15?: { allow?: string[]; exclude?: string[] };
+        floor_16?: { allow?: string[]; exclude?: string[] };
+      };
+      bossPool?: string[];
+    };
+    chapter3?: {
+      nodeWeights?: {
+        floor_19_20?: Record<string, number>;
+        floor_21_23?: Record<string, number>;
+        floor_24?: Record<string, number>;
+      };
+      enemyFloorEligibility?: {
+        floor_19_20?: { allow?: string[]; exclude?: string[] };
+        floor_21_23?: { allow?: string[]; exclude?: string[] };
+        floor_24?: { allow?: string[]; exclude?: string[] };
+      };
+      bossPool?: string[];
+    };
+  };
   cards: { byId: Record<string, Record<string, unknown>> };
   potions: {
     byId: Record<string, Record<string, unknown>>;
@@ -141,12 +170,14 @@ export const enemiesData: EnemyDef[] = applyEntityOverrides(rawEnemiesData as un
 export const potionsData: PotionDef[] = applyEntityOverrides(rawPotionsData as unknown as PotionDef[], numericConfig.potions?.byId);
 export const relicsData: RelicDef[] = applyEntityOverrides(rawRelicsData as unknown as RelicDef[], numericConfig.relics?.byId);
 export const STORY_EVENTS: StoryEventDef[] = applyStoryEventOverrides(RAW_STORY_EVENTS);
+export const cardEnchantmentsData: Array<CardEnchantmentDef | CardAfflictionDef> = deepClone(rawCardEnchantmentsData as Array<CardEnchantmentDef | CardAfflictionDef>);
 
 const cardMap = new Map(cardsData.map((c) => [c.id, c]));
 const enemyMap = new Map(enemiesData.map((e) => [e.id, e]));
 const potionMap = new Map(potionsData.map((p) => [p.id, p]));
 const relicMap = new Map(relicsData.map((r) => [r.id, r]));
 const storyEventMap = new Map(STORY_EVENTS.map((e) => [e.id, e]));
+const cardEnchantmentMap = new Map(cardEnchantmentsData.map((entry) => [entry.id, entry]));
 
 export function getNumericConfig(): NumericConfig {
   return numericConfig;
@@ -332,6 +363,11 @@ export function getStoryEventOptionPresentation(
           gains: ['获得升级攻击牌《处决斩击》'],
           costs: [`虔诚值设为 ${n.desecrateDevotionSetTo ?? 0}`, `下场战斗亚空间潮汐 +${n.desecrateWarpTideBonus ?? 30}`]
         };
+      case 'martyr_inscribe_oath':
+        return {
+          gains: ['选择 1 张攻击或技能牌，获得附魔《血色铭文》'],
+          costs: [`失去 ${Math.max(1, Number((runtime as any)?.inscribeHpLoss ?? 6))} 点生命值`]
+        };
       case 'martyr_continue_remove':
         return {
           gains: [`还能移除 ${Math.max(0, Number(runtime?.freeRemovalsRemaining ?? 0))} 张牌`],
@@ -377,6 +413,11 @@ export function getStoryEventOptionPresentation(
         return {
           gains: ['获得奇物《审判官玫瑰》（战斗开始获得格挡）'],
           costs: [`受到 ${n.takeRosarySelfDamage ?? 10} 点伤害`]
+        };
+      case 'legacy_inscribe_sigil':
+        return {
+          gains: ['选择 1 张攻击或技能牌，获得附魔《迅捷刻印》'],
+          costs: ['放弃其他遗物分支']
         };
     }
   }
@@ -470,3 +511,7 @@ export function getSingleSlimeRoomBoostConfig() {
 }
 
 export { numericConfig };
+
+export function getCardEnchantmentDefById(id: string): CardEnchantmentDef | CardAfflictionDef | undefined {
+  return cardEnchantmentMap.get(id);
+}

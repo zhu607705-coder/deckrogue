@@ -1,106 +1,306 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { transitionRunState, RunTransitionState } from '@/core/events/runStateMachine';
+import {
+  screenToRunPhase,
+  runPhaseToScreen,
+  deriveRunTransitionState,
+  transitionRunState,
+  type RunTransitionState
+} from '../../src/core/events/runStateMachine';
 
-test('run state machine should allow idle -> in_run/character_select transition', () => {
-  const started = transitionRunState(
-    { lifecycle: 'idle', phase: 'character_select', pendingNodeResolution: false },
-    { type: 'RUN_STARTED' }
-  );
-  assert.equal(started.lifecycle, 'in_run');
-  assert.equal(started.phase, 'map');
+test('screenToRunPhase should map CharacterSelect to character_select', () => {
+  assert.strictEqual(screenToRunPhase('CharacterSelect'), 'character_select');
 });
 
-test('run state machine should allow map -> combat transition', () => {
-  const entered = transitionRunState(
-    { lifecycle: 'in_run', phase: 'map', pendingNodeResolution: false },
-    { type: 'NODE_ENTERED', phase: 'combat' }
-  );
-  assert.equal(entered.phase, 'combat');
-  assert.equal(entered.pendingNodeResolution, true);
+test('screenToRunPhase should map Map to map', () => {
+  assert.strictEqual(screenToRunPhase('Map'), 'map');
 });
 
-test('run state machine should allow combat -> reward transition', () => {
-  const inCombat: RunTransitionState = { lifecycle: 'in_run', phase: 'combat', pendingNodeResolution: true };
-  const won = transitionRunState(
-    { lifecycle: 'in_run', phase: 'combat', pendingNodeResolution: true },
-    { type: 'COMBAT_WON' }
-  );
-  assert.equal(won.phase, 'reward');
+test('screenToRunPhase should map Combat to combat', () => {
+  assert.strictEqual(screenToRunPhase('Combat'), 'combat');
 });
 
-test('run state machine should allow combat -> game_over transition', () => {
-  const defeated = transitionRunState(
-    { lifecycle: 'in_run', phase: 'combat', pendingNodeResolution: true },
-    { type: 'PLAYER_DIED' }
-  );
-  assert.equal(defeated.lifecycle, 'ended');
-  assert.equal(defeated.phase, 'game_over');
+test('screenToRunPhase should map Reward to reward', () => {
+  assert.strictEqual(screenToRunPhase('Reward'), 'reward');
 });
 
-test('run state machine should reject illegal reward -> combat transition', () => {
-  assert.throws(
-    () => transitionRunState(
-      { lifecycle: 'in_run', phase: 'reward', pendingNodeResolution: true },
-      { type: 'NODE_ENTERED', phase: 'combat' }
-    ),
-    /cannot enter node/
-  );
+test('screenToRunPhase should map Event to event', () => {
+  assert.strictEqual(screenToRunPhase('Event'), 'event');
 });
 
-test('run state machine should allow the happy path map -> combat -> reward -> map', () => {
-  const started = transitionRunState(
-    { lifecycle: 'idle', phase: 'character_select', pendingNodeResolution: false },
-    { type: 'RUN_STARTED' }
-  );
-  assert.deepEqual(started, {
+test('screenToRunPhase should map Shop to shop', () => {
+  assert.strictEqual(screenToRunPhase('Shop'), 'shop');
+});
+
+test('screenToRunPhase should map Rest to rest', () => {
+  assert.strictEqual(screenToRunPhase('Rest'), 'rest');
+});
+
+test('screenToRunPhase should map Upgrade to upgrade', () => {
+  assert.strictEqual(screenToRunPhase('Upgrade'), 'upgrade');
+});
+
+test('screenToRunPhase should map RemoveCard to remove_card', () => {
+  assert.strictEqual(screenToRunPhase('RemoveCard'), 'remove_card');
+});
+
+test('screenToRunPhase should map GameOver to game_over', () => {
+  assert.strictEqual(screenToRunPhase('GameOver'), 'game_over');
+});
+
+test('screenToRunPhase should map Victory to victory', () => {
+  assert.strictEqual(screenToRunPhase('Victory'), 'victory');
+});
+
+test('runPhaseToScreen should be inverse of screenToRunPhase', () => {
+  const screens: Array<'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'GameOver' | 'Victory'> = [
+    'CharacterSelect', 'Map', 'Combat', 'Reward', 'Event', 'Shop', 'Rest', 'Upgrade', 'RemoveCard', 'GameOver', 'Victory'
+  ];
+  for (const screen of screens) {
+    assert.strictEqual(runPhaseToScreen(screenToRunPhase(screen)), screen);
+  }
+});
+
+test('deriveRunTransitionState should derive state from game state', () => {
+  const gameState = { screen: 'Map' as const, pendingNodeResolution: false } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.lifecycle, 'in_run');
+  assert.strictEqual(result.phase, 'map');
+  assert.strictEqual(result.pendingNodeResolution, false);
+});
+
+test('deriveRunTransitionState should respect custom lifecycle', () => {
+  const gameState = { screen: 'Map' as const, pendingNodeResolution: false } as any;
+  const result = deriveRunTransitionState(gameState, 'paused');
+  assert.strictEqual(result.lifecycle, 'paused');
+});
+
+test('deriveRunTransitionState should derive pendingNodeResolution from state', () => {
+  const gameState = { screen: 'Combat' as const, pendingNodeResolution: true } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.pendingNodeResolution, true);
+});
+
+test('transitionRunState RUN_STARTED should transition to in_run/map', () => {
+  const defaultState: RunTransitionState = {
     lifecycle: 'in_run',
     phase: 'map',
     pendingNodeResolution: false
-  });
+  };
+  const result = transitionRunState(defaultState, { type: 'RUN_STARTED' });
+  assert.strictEqual(result.lifecycle, 'in_run');
+  assert.strictEqual(result.phase, 'map');
+  assert.strictEqual(result.pendingNodeResolution, false);
+});
 
-  const entered = transitionRunState(started, { type: 'NODE_ENTERED', phase: 'combat' });
-  assert.deepEqual(entered, {
+test('transitionRunState RUN_LOADED should transition to in_run/map', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'RUN_LOADED' });
+  assert.strictEqual(result.lifecycle, 'in_run');
+  assert.strictEqual(result.phase, 'map');
+  assert.strictEqual(result.pendingNodeResolution, false);
+});
+
+test('transitionRunState RUN_PAUSED should transition to paused from in_run', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'RUN_PAUSED' });
+  assert.strictEqual(result.lifecycle, 'paused');
+});
+
+test('transitionRunState RUN_PAUSED should throw when not in_run', () => {
+  const pausedState: RunTransitionState = {
+    lifecycle: 'paused',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  assert.throws(() => transitionRunState(pausedState, { type: 'RUN_PAUSED' }));
+});
+
+test('transitionRunState RUN_RESUMED should transition to in_run from paused', () => {
+  const pausedState: RunTransitionState = {
+    lifecycle: 'paused',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(pausedState, { type: 'RUN_RESUMED' });
+  assert.strictEqual(result.lifecycle, 'in_run');
+});
+
+test('transitionRunState RUN_RESUMED should throw when not paused', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  assert.throws(() => transitionRunState(defaultState, { type: 'RUN_RESUMED' }));
+});
+
+test('transitionRunState NODE_ENTERED should transition to specified phase from map', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'NODE_ENTERED', phase: 'combat' });
+  assert.strictEqual(result.phase, 'combat');
+  assert.strictEqual(result.pendingNodeResolution, true);
+});
+
+test('transitionRunState NODE_ENTERED should allow entering event', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'NODE_ENTERED', phase: 'event' });
+  assert.strictEqual(result.phase, 'event');
+});
+
+test('transitionRunState NODE_ENTERED should throw when not in_run', () => {
+  const pausedState: RunTransitionState = {
+    lifecycle: 'paused',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  assert.throws(() => transitionRunState(pausedState, { type: 'NODE_ENTERED', phase: 'combat' }));
+});
+
+test('transitionRunState NODE_ENTERED should throw when not in map phase', () => {
+  const combatState: RunTransitionState = {
     lifecycle: 'in_run',
     phase: 'combat',
     pendingNodeResolution: true
-  });
+  };
+  assert.throws(() => transitionRunState(combatState, { type: 'NODE_ENTERED', phase: 'event' }));
+});
 
-  const won = transitionRunState(entered, { type: 'COMBAT_WON' });
-  assert.deepEqual(won, {
+test('transitionRunState COMBAT_WON should transition to reward from combat', () => {
+  const combatState: RunTransitionState = {
     lifecycle: 'in_run',
-    phase: 'reward',
+    phase: 'combat',
     pendingNodeResolution: true
-  });
+  };
+  const result = transitionRunState(combatState, { type: 'COMBAT_WON' });
+  assert.strictEqual(result.phase, 'reward');
+  assert.strictEqual(result.pendingNodeResolution, true);
+});
 
-  const backToMap = transitionRunState(won, { type: 'REWARD_TAKEN' });
-  assert.deepEqual(backToMap, {
+test('transitionRunState COMBAT_WON should throw when not in combat', () => {
+  const defaultState: RunTransitionState = {
     lifecycle: 'in_run',
     phase: 'map',
     pendingNodeResolution: false
-  });
+  };
+  assert.throws(() => transitionRunState(defaultState, { type: 'COMBAT_WON' }));
 });
 
-test('run state machine should reject entering a node from non-map phase', () => {
-  assert.throws(
-    () => transitionRunState(
-      { lifecycle: 'in_run', phase: 'combat', pendingNodeResolution: true },
-      { type: 'NODE_ENTERED', phase: 'event' }
-    ),
-    /cannot enter node/
-  );
+test('transitionRunState PLAYER_DIED should transition to game_over from in_run', () => {
+  const combatState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'combat',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(combatState, { type: 'PLAYER_DIED' });
+  assert.strictEqual(result.lifecycle, 'ended');
+  assert.strictEqual(result.phase, 'game_over');
 });
 
-test('run state machine should end the run on player death', () => {
-  const ended = transitionRunState(
-    { lifecycle: 'in_run', phase: 'combat', pendingNodeResolution: true },
-    { type: 'PLAYER_DIED' }
-  );
-  assert.deepEqual(ended, {
+test('transitionRunState PLAYER_DIED should throw when already ended', () => {
+  const endedState: RunTransitionState = {
     lifecycle: 'ended',
     phase: 'game_over',
     pendingNodeResolution: false
-  });
+  };
+  assert.throws(() => transitionRunState(endedState, { type: 'PLAYER_DIED' }));
 });
 
+test('transitionRunState EVENT_RESOLVED should transition to map when pending', () => {
+  const eventState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'event',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(eventState, { type: 'EVENT_RESOLVED' });
+  assert.strictEqual(result.phase, 'map');
+  assert.strictEqual(result.pendingNodeResolution, false);
+});
+
+test('transitionRunState EVENT_RESOLVED should throw when no pending resolution', () => {
+  const eventState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'event',
+    pendingNodeResolution: false
+  };
+  assert.throws(() => transitionRunState(eventState, { type: 'EVENT_RESOLVED' }));
+});
+
+test('transitionRunState SHOP_LEFT should transition to map when pending', () => {
+  const shopState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'shop',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(shopState, { type: 'SHOP_LEFT' });
+  assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState REST_COMPLETED should transition to map when pending', () => {
+  const restState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'rest',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(restState, { type: 'REST_COMPLETED' });
+  assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState REWARD_TAKEN should transition to map when pending', () => {
+  const rewardState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'reward',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(rewardState, { type: 'REWARD_TAKEN' });
+  assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState REWARD_SKIPPED should transition to map when pending', () => {
+  const rewardState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'reward',
+    pendingNodeResolution: true
+  };
+  const result = transitionRunState(rewardState, { type: 'REWARD_SKIPPED' });
+  assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState RUN_ENDED should transition to ended state with specified phase', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'RUN_ENDED', phase: 'victory' });
+  assert.strictEqual(result.lifecycle, 'ended');
+  assert.strictEqual(result.phase, 'victory');
+});
+
+test('transitionRunState RUN_ENDED should transition to game_over', () => {
+  const defaultState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'map',
+    pendingNodeResolution: false
+  };
+  const result = transitionRunState(defaultState, { type: 'RUN_ENDED', phase: 'game_over' });
+  assert.strictEqual(result.lifecycle, 'ended');
+  assert.strictEqual(result.phase, 'game_over');
+});

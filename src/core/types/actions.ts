@@ -42,6 +42,7 @@ export interface ActionSpec {
     | 'AddRandomElement'
     | 'AddElement'
     | 'TriggerReactions'
+    | 'TriggerAllReactions'
     | 'ElementalOverloadDamage'
     | 'TransmuteElements'
     | 'SolventDamage'
@@ -70,7 +71,8 @@ export interface ActionSpec {
     | 'GainThread'
     | 'SpendThread'
     | 'GainConcoction'
-    | 'SpendConcoction';
+    | 'SpendConcoction'
+    | 'TriggerPoisonOnTarget';
   amount?: number;
   bonus?: number;
   status?: string;
@@ -108,6 +110,32 @@ export interface ActionSpec {
   times?: number;
 }
 
+export type CardModifierEffect =
+  | { type: 'damage'; amount: number }
+  | { type: 'block'; amount: number }
+  | { type: 'cost'; amount: number }
+  | { type: 'draw'; amount: number }
+  | { type: 'professionResource'; amount: number; resource: 'intel' | 'timeLayer' | 'thread' | 'concoction' };
+
+export interface CardModifierDef {
+  id: string;
+  name: string;
+  scope: 'persistent' | 'combat';
+  effect: CardModifierEffect;
+  description: string;
+  tone?: 'blessing' | 'ward' | 'warp' | 'hex';
+  icon?: string;
+  applicableTo?: ('Attack' | 'Skill')[];
+}
+
+export interface CardEnchantmentDef extends CardModifierDef {
+  scope: 'persistent';
+}
+
+export interface CardAfflictionDef extends CardModifierDef {
+  scope: 'combat';
+}
+
 export interface CardDef {
   id: string;
   name: string;
@@ -125,6 +153,14 @@ export interface CardDef {
   artUrl?: string;
   character?: string;
   lastWords?: string;
+}
+
+export interface RunCardInstance extends CardDef {
+  instanceId: string;
+  baseCardId: string;
+  runtimeBase: CardDef;
+  persistentEnchantments: CardEnchantmentDef[];
+  combatAfflictions: CardAfflictionDef[];
 }
 
 export interface EnemyDef {
@@ -148,6 +184,7 @@ export interface CharacterDef {
   archetype?: string[];
   extendedPool?: string[];
   specialResource?: 'timeLayer' | 'thread' | 'concoction';
+  secondaryResource?: 'evidence' | 'rage' | 'command';
 }
 
 export interface PotionDef {

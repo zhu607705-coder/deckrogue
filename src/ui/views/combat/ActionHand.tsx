@@ -1,6 +1,7 @@
 import React from 'react';
 import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';
+import { getCardNameZh } from '@/ui/content/terminology';
 import { grimdarkTerminology } from '@/ui/theme';
 
 interface ActionHandProps {
@@ -13,6 +14,7 @@ interface ActionHandProps {
   handleCardClick: (card: any) => void;
   getDynamicCardText: (card: any) => string;
   getPreviewCost: (card: any) => number;
+  tutorialHighlightActive?: boolean;
 }
 
 export function ActionHand({
@@ -24,7 +26,8 @@ export function ActionHand({
   GLOSSARY,
   handleCardClick,
   getDynamicCardText,
-  getPreviewCost
+  getPreviewCost,
+  tutorialHighlightActive = false
 }: ActionHandProps) {
   const state = engine.state.combat!;
   const player = state.player;
@@ -39,15 +42,17 @@ export function ActionHand({
           disabled={!state.isPlayerTurn}
           className="grimdark-end-turn-btn"
           title={state.isPlayerTurn ? '结束当前战术周期' : '等待敌袭阶段'}
+          data-keyboard-end-turn="true"
+          data-keyboard-focus="true"
         >
           <span className="grimdark-end-turn-text">结束周期</span>
-          <span className="grimdark-end-turn-sub">END TURN</span>
+          <span className="grimdark-end-turn-sub">敌袭结算</span>
         </button>
       </div>
       
       {/* 手牌区域 */}
-      <div className="flex justify-center gap-2 mb-4 grimdark-hand">
-        {state.hand.map((card: any) => (
+      <div className={`flex justify-center gap-2 mb-4 grimdark-hand ${tutorialHighlightActive ? 'grimdark-hand--guided' : ''}`}>
+        {state.hand.map((card: any, index: number) => (
           <div
             key={card.instanceId}
             className={`grimdark-card-wrapper ${selectedCard === card.instanceId ? 'grimdark-card-wrapper--selected' : ''}`}
@@ -59,6 +64,13 @@ export function ActionHand({
               selected={selectedCard === card.instanceId}
               disabled={!state.isPlayerTurn || (card.tags || []).includes('Unplayable') || player.energy < getPreviewCost(card)}
               onClick={() => handleCardClick(card)}
+              rootProps={{
+                'data-keyboard-option': String(index + 1),
+                'data-keyboard-focus': 'true',
+                'data-keyboard-card-index': String(index + 1),
+                'data-keyboard-card': card.instanceId,
+                'aria-label': `${index + 1}. ${getCardNameZh(card)}`
+              }}
             />
           </div>
         ))}
@@ -70,6 +82,7 @@ export function ActionHand({
           onClick={() => setShowDrawPile(true)}
           className="grimdark-pile-btn grimdark-pile-btn--draw"
           title={`查看${terms.game.drawPile.name}`}
+          data-keyboard-focus="true"
         >
           <span className="grimdark-pile-icon">📚</span>
           <span className="grimdark-pile-name">{terms.game.drawPile.name}</span>
@@ -79,6 +92,7 @@ export function ActionHand({
           onClick={() => setShowDiscardPile(true)}
           className="grimdark-pile-btn grimdark-pile-btn--discard"
           title={`查看${terms.game.discardPile.name}`}
+          data-keyboard-focus="true"
         >
           <span className="grimdark-pile-icon">🗑️</span>
           <span className="grimdark-pile-name">{terms.game.discardPile.name}</span>

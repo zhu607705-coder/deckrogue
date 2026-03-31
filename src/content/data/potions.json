@@ -1,8 +1,8 @@
 [
   {
     "id": "healing_potion",
-    "name": "Healing Potion",
-    "description": "Heal 20% of your Max HP.",
+    "name": "疗愈药剂",
+    "description": "恢复等同于你最大生命值 20% 的生命。",
     "price": 65,
     "toxicity": 1,
     "tags": [
@@ -16,8 +16,8 @@
   },
   {
     "id": "strength_potion",
-    "name": "Strength Potion",
-    "description": "Gain 2 Strength.",
+    "name": "力量药剂",
+    "description": "获得 2 层力量。",
     "price": 80,
     "toxicity": 2,
     "tags": [
@@ -33,8 +33,8 @@
   },
   {
     "id": "block_potion",
-    "name": "Block Potion",
-    "description": "Gain 12 Block.",
+    "name": "格挡药剂",
+    "description": "获得 12 点格挡。",
     "price": 65,
     "toxicity": 1,
     "tags": [
@@ -49,8 +49,8 @@
   },
   {
     "id": "energy_potion",
-    "name": "Energy Potion",
-    "description": "Gain 2 Energy.",
+    "name": "能量药剂",
+    "description": "获得 2 点能量。",
     "price": 110,
     "toxicity": 2,
     "tags": [
@@ -64,8 +64,8 @@
   },
   {
     "id": "weak_potion",
-    "name": "Weak Potion",
-    "description": "Apply 3 Weak to all enemies.",
+    "name": "虚弱药剂",
+    "description": "对全体异端施加 3 层虚弱。",
     "price": 75,
     "toxicity": 2,
     "tags": [
@@ -81,8 +81,8 @@
   },
   {
     "id": "combo_brew",
-    "name": "Combo Brew",
-    "description": "Your next card is cast twice this turn.",
+    "name": "连携酿剂",
+    "description": "你本回合打出的下一张牌会结算两次。",
     "price": 140,
     "toxicity": 2,
     "tags": [
@@ -95,8 +95,8 @@
   },
   {
     "id": "sacrificial_elixir",
-    "name": "Sacrificial Elixir",
-    "description": "Lose 15 HP. Gain 3 Energy and 3 Strength.",
+    "name": "献祭灵药",
+    "description": "失去 15 点生命。获得 3 点能量与 3 层力量。",
     "price": 150,
     "toxicity": 3,
     "tags": [
@@ -110,8 +110,8 @@
   },
   {
     "id": "dice_water",
-    "name": "Dice Water",
-    "description": "Roll a d6. Gain that much Energy, then draw (7-roll) cards.",
+    "name": "骰命之水",
+    "description": "掷出一个六面骰。获得等同点数的能量，然后抽取 7 减去点数的牌。",
     "price": 130,
     "toxicity": 2,
     "tags": [
@@ -125,8 +125,8 @@
   },
   {
     "id": "liquid_lightning",
-    "name": "Liquid Lightning",
-    "description": "Gain 3 Energy. Become Electrified (take self-damage when playing cards) this turn.",
+    "name": "液态雷霆",
+    "description": "获得 3 点能量。本回合进入感电状态，出牌时会承受自损伤害。",
     "price": 140,
     "toxicity": 3,
     "tags": [
@@ -140,8 +140,8 @@
   },
   {
     "id": "purifying_tears",
-    "name": "Purifying Tears",
-    "description": "Exhaust all Curse/Status cards in hand. Deal 15 true damage per card to the highest-HP enemy.",
+    "name": "净化之泪",
+    "description": "放逐手中所有诅咒牌与状态牌。每放逐 1 张，对生命值最高的异端造成 15 点真实伤害。",
     "price": 155,
     "toxicity": 2,
     "tags": [
@@ -155,8 +155,8 @@
   },
   {
     "id": "mutagenic_draft",
-    "name": "Mutagenic Draft",
-    "description": "Gain 2 Energy, 8 Block, and 2 Strength. Apply 2 Poison to yourself.",
+    "name": "诱变草案",
+    "description": "获得 2 点能量、8 点格挡与 2 层力量。对自身施加 2 层中毒。",
     "price": 160,
     "toxicity": 3,
     "tags": [
@@ -170,8 +170,8 @@
   },
   {
     "id": "hexagrammatic_wards",
-    "name": "Hexagrammatic Wards",
-    "description": "Gain Hex Ward (3 turns). Warp Tide -10. Psychic Perils are reduced while warded.",
+    "name": "六芒禁护",
+    "description": "获得持续 3 回合的护咒。亚空间潮汐 -10。处于护咒期间，灵能灾厄会减弱。",
     "price": 145,
     "toxicity": 2,
     "tags": [

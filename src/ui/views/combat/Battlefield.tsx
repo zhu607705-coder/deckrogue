@@ -2,11 +2,32 @@ import React from 'react';
 import { Shield, Sword, Heart, Clock, Layers, FlaskConical } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { GameEngine } from '@/core';
+import type { IntentDisplay } from '@/types';
 import { CardView } from '@/ui/views/CardView';
 import { WarpDeceptionText } from '@/ui/overlays/WarpDeceptionText';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
-import { enemiesData } from '@/content/narrative/numericSystem';
+import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narrative/numericSystem';
 import { grimdarkTerminology } from '@/ui/theme';
+import { clampCombatInteger, clampCombatPercent, getIntentThreatLevel } from './combatViewModel';
+import { COMBAT_BEATS, triggerCombatBeat, triggerScreenShake } from '@/ui/motion';
+
+type RuntimeCombat = NonNullable<GameEngine['state']['combat']>;
+type RuntimeEnemy = RuntimeCombat['enemies'][number];
+type RuntimePlayer = RuntimeCombat['player'];
+type RuntimeConstruct = NonNullable<RuntimePlayer['constructs']>[number];
+type RuntimeDelayedCard = NonNullable<RuntimePlayer['delayedCards']>[number];
+type PreviewCard = RuntimeCombat['hand'][number];
+type AxisGaugeEntity = Pick<RuntimePlayer, 'devotion' | 'corruptionAxis' | 'axisDisposition'> & { autonomyState?: string };
+type RuntimeIntentTelemetry = {
+  enemyId: string;
+  laneY: number;
+  enemyX: number;
+  mode: 'direct' | 'taunt' | 'cover';
+  frontlineAbsorb: number;
+  frontlineLabel: string;
+  playerDamage: number;
+  frontlineOverflow: number;
+};
 
 interface BattlefieldProps {
   engine: GameEngine;
@@ -17,21 +38,23 @@ interface BattlefieldProps {
   handleEnemyClick: (enemyId: string) => void;
   frontlineWreckage: { label: string; timestamp: number } | null;
   intentDeceptionTick: number;
-  maybeMasqueradeIntent: (enemy: any, intent: any) => any;
-  getIntentDisplay: (enemy: any) => any;
-  getEnemyStandeeClass: (enemy: any) => string;
+  maybeMasqueradeIntent: (enemy: RuntimeEnemy, intent: IntentDisplay) => IntentDisplay;
+  getIntentDisplay: (enemy: RuntimeEnemy) => IntentDisplay;
+  getEnemyStandeeClass: (enemy: RuntimeEnemy) => string;
   renderEnemyStatuses: (statuses: Record<string, number>) => React.ReactNode | null;
-  renderAxisGauge: (entity: any) => React.ReactNode;
+  renderAxisGauge: (entity: AxisGaugeEntity) => React.ReactNode;
   formatHitBreakdown: (hits: number[]) => string;
   hasIntelRead: boolean;
-  selectedCardPreview: any;
-  getPreviewCost: (card: any) => number;
+  selectedCardPreview: PreviewCard | null;
+  selectedCardTargetLabel: string;
+  getPreviewCost: (card: PreviewCard) => number;
   playerPortrait: string;
   playerName: string;
   playerHpPct: number;
   playerHpNow: number;
   playerMaxHpNow: number;
-  intentTelemetry: any[];
+  intentTelemetry: RuntimeIntentTelemetry[];
+  tutorialHighlightActive?: boolean;
 }
 
 export function Battlefield({
@@ -51,17 +74,37 @@ export function Battlefield({
   formatHitBreakdown,
   hasIntelRead,
   selectedCardPreview,
+  selectedCardTargetLabel,
   getPreviewCost,
   playerPortrait,
   playerName,
   playerHpPct,
   playerHpNow,
   playerMaxHpNow,
-  intentTelemetry
+  intentTelemetry,
+  tutorialHighlightActive = false
 }: BattlefieldProps) {
   const state = engine.state.combat!;
   const player = state.player;
   const terms = grimdarkTerminology;
+  const enemyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const defeatedEnemyIdsRef = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    state.enemies.forEach((enemy) => {
+      if (enemy.hp > 0) {
+        defeatedEnemyIdsRef.current.delete(enemy.id);
+        return;
+      }
+      if (defeatedEnemyIdsRef.current.has(enemy.id)) return;
+      const element = enemyRefs.current[enemy.id];
+      if (element) {
+        triggerCombatBeat(element, COMBAT_BEATS.KILL);
+        triggerScreenShake('light');
+      }
+      defeatedEnemyIdsRef.current.add(enemy.id);
+    });
+  }, [state.enemies]);
 
   return (
     <div className="relative flex-1 flex items-center justify-between gap-8 px-8 xl:px-12 grimdark-battlefield">
@@ -72,10 +115,13 @@ export function Battlefield({
       <div className="flex flex-col items-center grimdark-player-section">
         <div className={`player-standee grimdark-player-standee ${state.isPlayerTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>
           {/* 意图显示 */}
-          <div className="player-standee__intent grimdark-intent">
+          <div className={`player-standee__intent grimdark-intent ${tutorialHighlightActive ? 'grimdark-intent--guided' : ''}`}>
             <div className="player-standee__intentIcon grimdark-intent-icon">{state.isPlayerTurn ? '✦' : '⏳'}</div>
             <div className="player-standee__intentValue grimdark-intent-value">
               {state.isPlayerTurn ? '指挥者行动' : '敌袭等待'}
+            </div>
+            <div className="player-standee__intentMeta">
+              {state.isPlayerTurn ? '先看能量、手牌和敌方风险' : '等待敌方结算完成'}
             </div>
           </div>
           
@@ -83,13 +129,13 @@ export function Battlefield({
           {selectedCardPreview && (
             <div className="player-standee__castPreview grimdark-cast-preview">
               <div className="player-standee__castName grimdark-cast-name">{selectedCardPreview.name}</div>
-              <div className="player-standee__castMeta grimdark-cast-meta">
-                <span>目标: {selectedCardPreview.targeting === 'AllEnemies' ? '全体异端' : selectedCardPreview.targeting}</span>
-                <span>消耗: {getPreviewCost(selectedCardPreview)}</span>
-                <span>剩余: {Math.max(0, player.energy - getPreviewCost(selectedCardPreview))} 机魂</span>
+                <div className="player-standee__castMeta grimdark-cast-meta">
+                  <span>目标: {selectedCardTargetLabel}</span>
+                  <span>消耗: {getPreviewCost(selectedCardPreview)}</span>
+                  <span>剩余: {clampCombatInteger(player.energy - getPreviewCost(selectedCardPreview))} 机魂</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* 玩家立绘框架 */}
           <div className="player-standee__frame grimdark-player-frame">
@@ -112,10 +158,10 @@ export function Battlefield({
           <div className="player-standee__hud grimdark-player-hud">
             {/* 玻璃管生命值 */}
             <div className="player-standee__tubeVitals grimdark-tube-vitals">
-              <div className="player-standee__glassTube grimdark-glass-tube" title={`${terms.resources.hp.name} ${Math.max(0, player.hp)}/${player.maxHp}`}>
+              <div className="player-standee__glassTube grimdark-glass-tube" title={`${terms.resources.hp.name} ${clampCombatInteger(player.hp)}/${clampCombatInteger(player.maxHp, 1)}`}>
                 <div className={`player-standee__bloodFill grimdark-blood-fill ${playerHpPct < 30 ? 'is-critical' : ''}`} style={{ height: `${playerHpPct}%` }} />
                 <div className="player-standee__glassHighlight grimdark-glass-highlight" />
-                <div className="player-standee__glassCracks grimdark-glass-cracks" style={{ opacity: `${Math.max(0, (100 - playerHpPct) / 120)}` }} />
+                <div className="player-standee__glassCracks grimdark-glass-cracks" style={{ opacity: `${Math.max(0, clampCombatPercent(100 - playerHpPct) / 120)}` }} />
               </div>
               <div className="player-standee__tubeText grimdark-tube-text">
                 <span className="label grimdark-label">肉体</span>
@@ -158,7 +204,7 @@ export function Battlefield({
             {renderAxisGauge(player)}
           </div>
         </div>
-        
+
         {/* 元素显示 */}
         {player.elements && player.elements.length > 0 && (
           <div className="flex gap-1 mt-2 grimdark-elements">
@@ -171,7 +217,7 @@ export function Battlefield({
         {/* 延迟卡牌 */}
         {player.delayedCards && player.delayedCards.length > 0 && (
           <div className="flex gap-1 mt-4 grimdark-delayed-cards">
-            {player.delayedCards.map((d: any, i: number) => (
+            {player.delayedCards.map((d: RuntimeDelayedCard, i: number) => (
               <div key={i} className="grimdark-delayed-card" title={d.card.name}>
                 <span>{d.card.name}</span>
                 <span className="grimdark-delayed-turns">{d.turns}</span>
@@ -184,7 +230,7 @@ export function Battlefield({
       {/* 前线阵地 */}
       <div className="relative z-10 flex-1 max-w-[420px] h-full mx-2 grimdark-frontline-zone">
         <svg
-          className="absolute inset-0 w-full h-full z-10 pointer-events-none grimdark-intent-svg"
+          className="absolute inset-0 w-full h-full z-0 pointer-events-none grimdark-intent-svg"
           style={{ filter: 'drop-shadow(0 0 6px rgba(139, 26, 26, 0.4))' }}
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -263,64 +309,68 @@ export function Battlefield({
         </svg>
 
         <div className="absolute inset-y-6 left-1/2 -translate-x-1/2 w-[82%] rounded-2xl border border-dashed grimdark-frontline-container">
-          <div className="absolute top-3 text-[10px] tracking-[0.26em] uppercase grimdark-frontline-label">
-            {terms.combat.frontline.name} / FRONTLINE
-          </div>
+          <div className="pt-8 pb-4 px-4 h-full flex flex-col">
+            <div className="text-[10px] tracking-[0.26em] uppercase grimdark-frontline-label mb-3">
+              {terms.combat.frontline.name}
+            </div>
 
-          {(player.constructs?.length || 0) > 0 ? (
-            <div className="flex flex-wrap justify-center gap-3 px-4 grimdark-constructs">
-              {player.constructs.map((c: any, i: number) => (
+            <div className="flex-1 flex items-center justify-center">
+              {(player.constructs?.length || 0) > 0 ? (
+                <div className="flex flex-wrap justify-center gap-3 grimdark-constructs">
+                  {player.constructs.map((c: RuntimeConstruct, i: number) => (
+                    <motion.div
+                      key={`${c.id}-${i}`}
+                      whileHover={{ scale: 1.04 }}
+                      className={`grimdark-construct ${
+                        c.taunt
+                          ? 'grimdark-construct--taunt'
+                          : (c.damageSharePct || 0) > 0
+                            ? 'grimdark-construct--cover'
+                            : 'grimdark-construct--normal'
+                      }`}
+                      title={
+                        c.taunt
+                          ? '嘲讽：优先承受攻击（溢出可能穿透）'
+                          : (c.damageSharePct || 0) > 0
+                            ? `战壕掩体：分担约 ${Math.round((c.damageSharePct || 0) * 100)}% 玩家受击伤害`
+                            : c.name
+                      }
+                    >
+                      <div className="grimdark-construct-name">{c.name}</div>
+                      <div className="grimdark-construct-stat grimdark-construct-stat--hp">
+                        <Heart size={10} /> {c.hp}/{c.maxHp}
+                      </div>
+                      <div className="grimdark-construct-stat grimdark-construct-stat--atk">
+                        <Sword size={10} /> {c.atk}
+                      </div>
+                      <div className="grimdark-construct-type">
+                        {c.taunt ? '嘲讽拦截' : (c.damageSharePct || 0) > 0 ? `战壕掩体 ${Math.round((c.damageSharePct || 0) * 100)}%` : '前线单元'}
+                      </div>
+                      {c.taunt && <Shield size={11} className="grimdark-construct-icon" />}
+                      {!c.taunt && (c.damageSharePct || 0) > 0 && (
+                        <div className="grimdark-construct-badge">掩体</div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              ) : frontlineWreckage ? (
                 <motion.div
-                  key={`${c.id}-${i}`}
-                  whileHover={{ scale: 1.04 }}
-                  className={`grimdark-construct ${
-                    c.taunt
-                      ? 'grimdark-construct--taunt'
-                      : (c.damageSharePct || 0) > 0
-                        ? 'grimdark-construct--cover'
-                        : 'grimdark-construct--normal'
-                  }`}
-                  title={
-                    c.taunt
-                      ? '嘲讽：优先承受攻击（溢出可能穿透）'
-                      : (c.damageSharePct || 0) > 0
-                        ? `战壕掩体：分担约 ${Math.round((c.damageSharePct || 0) * 100)}% 玩家受击伤害`
-                        : c.name
-                  }
+                  initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grimdark-wreckage"
                 >
-                  <div className="grimdark-construct-name">{c.name}</div>
-                  <div className="grimdark-construct-stat grimdark-construct-stat--hp">
-                    <Heart size={10} /> {c.hp}/{c.maxHp}
-                  </div>
-                  <div className="grimdark-construct-stat grimdark-construct-stat--atk">
-                    <Sword size={10} /> {c.atk}
-                  </div>
-                  <div className="grimdark-construct-type">
-                    {c.taunt ? '嘲讽拦截' : (c.damageSharePct || 0) > 0 ? `战壕掩体 ${Math.round((c.damageSharePct || 0) * 100)}%` : '前线单元'}
-                  </div>
-                  {c.taunt && <Shield size={11} className="grimdark-construct-icon" />}
-                  {!c.taunt && (c.damageSharePct || 0) > 0 && (
-                    <div className="grimdark-construct-badge">掩体</div>
-                  )}
+                  <div className="grimdark-wreckage-glow" />
+                  <div className="grimdark-wreckage-ember" />
+                  <span className="grimdark-wreckage-text">{frontlineWreckage.label}</span>
                 </motion.div>
-              ))}
+              ) : (
+                <div className="grimdark-frontline-empty">
+                  防线空缺
+                </div>
+              )}
             </div>
-          ) : frontlineWreckage ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="grimdark-wreckage"
-            >
-              <div className="grimdark-wreckage-glow" />
-              <div className="grimdark-wreckage-ember" />
-              <span className="grimdark-wreckage-text">{frontlineWreckage.label}</span>
-            </motion.div>
-          ) : (
-            <div className="grimdark-frontline-empty">
-              防线空缺 / NO FRONTLINE
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -345,9 +395,13 @@ export function Battlefield({
               intent.tone === 'block' ? 'grimdark-intent--block' :
               intent.tone === 'status' ? 'grimdark-intent--status' :
               intent.tone === 'hybrid' ? 'grimdark-intent--hybrid' : 'grimdark-intent--neutral';
+            const threatLevel = getIntentThreatLevel(intent);
             return (
           <div 
             key={enemy.id} 
+            ref={(element) => {
+              enemyRefs.current[enemy.id] = element;
+            }}
             className={[
               'enemy-standee grimdark-enemy-standee',
               standeeClass,
@@ -360,16 +414,57 @@ export function Battlefield({
             onClick={() => handleEnemyClick(enemy.id)}
             onMouseEnter={() => setHoveredEnemyId(enemy.id)}
             onMouseLeave={() => setHoveredEnemyId(null)}
+            role="button"
+            tabIndex={0}
+            data-keyboard-focus="true"
+            data-keyboard-target="true"
+            data-keyboard-enemy-id={enemy.id}
+            aria-label={enemy.name}
           >
             {/* 敌人意图 */}
             <div className={`enemy-standee__intent grimdark-enemy-intent ${toneClass}`}>
-              <div className="enemy-standee__intentIcon grimdark-enemy-intent-icon">{intent.icon}</div>
-              <div className="enemy-standee__intentValue grimdark-enemy-intent-value">{intent.text}</div>
+              <div className="enemy-standee__intentHeader">
+                <div className="enemy-standee__intentIcon grimdark-enemy-intent-icon">{intent.icon}</div>
+                <div className="enemy-standee__intentTextBlock">
+                  <div className="enemy-standee__intentValue grimdark-enemy-intent-value">{intent.text}</div>
+                  <div className="enemy-standee__intentMeta">{threatLevel}</div>
+                </div>
+              </div>
               {intent.isWarpMasquerade && (
                 <div className="grimdark-masquerade-badge">
                   伪装
                 </div>
               )}
+              {intent.breakdown.totalDamage > 0 && (() => {
+                const playerMaxHp = engine.state.player.maxHp;
+                const playerHp = engine.state.player.hp;
+                const damageRatio = intent.breakdown.totalDamage / playerMaxHp;
+                const isLethal = intent.breakdown.totalDamage >= playerHp;
+                const isCritical = damageRatio >= 0.5;
+                const isWarning = damageRatio >= 0.3;
+                if (isLethal) {
+                  return (
+                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--lethal" title="致命伤害预警">
+                      <span>⚠️ 致命</span>
+                    </div>
+                  );
+                }
+                if (isCritical) {
+                  return (
+                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--critical" title="高风险伤害预警">
+                      <span>⚠️ 危险</span>
+                    </div>
+                  );
+                }
+                if (isWarning) {
+                  return (
+                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--warning" title="中等风险伤害预警">
+                      <span>⚡ 警告</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {hasIntelRead && (intent.breakdown.totalDamage > 0 || intent.breakdown.block > 0 || intent.breakdown.statuses.length > 0 || intent.breakdown.extras.length > 0) && (
                 <div className="enemy-standee__intentBreakdown grimdark-intent-breakdown">
                   {intent.breakdown.totalDamage > 0 && (
@@ -385,7 +480,7 @@ export function Battlefield({
                       <strong>+<WarpDeceptionText realValue={intent.breakdown.block} warpTide={state.warpTide} type="block" /></strong>
                     </div>
                   )}
-                  {intent.breakdown.statuses.slice(0, 2).map((s: any, idx: number) => (
+                  {intent.breakdown.statuses.slice(0, 2).map((s, idx: number) => (
                     <div
                       key={`${s.status}_${idx}`}
                       className="enemy-standee__intentChip grimdark-intent-chip grimdark-intent-chip--status"

@@ -2,7 +2,7 @@
   {
     "id": "burning_blood",
     "name": "殉道者炽血瓶",
-    "description": "At the end of combat, heal 6 HP.",
+    "description": "战斗结束时，恢复 6 点生命。",
     "price": 140,
     "tags": [
       "flesh",
@@ -20,7 +20,7 @@
   {
     "id": "bag_of_prep",
     "name": "战术预备囊",
-    "description": "At the start of each combat, draw 2 extra cards.",
+    "description": "每场战斗开始时，额外抽 2 张牌。",
     "price": 190,
     "tags": [
       "draw",
@@ -38,7 +38,7 @@
   {
     "id": "vajra",
     "name": "战斗祷钉",
-    "description": "At the start of each combat, gain 1 Strength.",
+    "description": "每场战斗开始时，获得 1 层力量。",
     "price": 165,
     "tags": [
       "damage",
@@ -58,7 +58,7 @@
   {
     "id": "anchor",
     "name": "虚空系泊锚",
-    "description": "Start each combat with 10 Block.",
+    "description": "每场战斗开始时，获得 10 点格挡。",
     "price": 145,
     "tags": [
       "defense",
@@ -77,7 +77,7 @@
   {
     "id": "lantern",
     "name": "尸蜡引魂灯",
-    "description": "Gain 1 Energy at the start of each combat.",
+    "description": "每场战斗开始时，获得 1 点能量。",
     "price": 175,
     "tags": [
       "energy",
@@ -95,7 +95,7 @@
   {
     "id": "heretics_metronome",
     "name": "异端节律仪",
-    "description": "Each turn, your 4th card costs 0. When triggered, suffer 3 HP loss.",
+    "description": "每回合你的第 4 张牌费用变为 0。触发时失去 3 点生命。",
     "price": 200,
     "tags": [
       "frequency",
@@ -112,7 +112,7 @@
   {
     "id": "zealots_chain",
     "name": "狂信徒锁链",
-    "description": "If you play more than 6 cards in a turn, gain +1 Energy next turn.",
+    "description": "若你一回合内打出超过 6 张牌，下回合获得 1 点能量。",
     "price": 190,
     "tags": [
       "frequency",
@@ -129,7 +129,7 @@
   {
     "id": "warp_distorter",
     "name": "亚空间畸变仪",
-    "description": "At the start of your turn, cards in hand randomize their costs (0-3).",
+    "description": "你的回合开始时，手牌费用会在 0 至 3 之间随机变化。",
     "price": 225,
     "tags": [
       "chaos",
@@ -146,7 +146,7 @@
   {
     "id": "ruined_reactor",
     "name": "残毁等离子反应堆",
-    "description": "Gain +1 Energy each turn. Every 3 turns, suffer 8 radiation damage.",
+    "description": "每回合获得 1 点能量。每经过 3 回合，承受 8 点辐射伤害。",
     "price": 235,
     "tags": [
       "energy",
@@ -163,7 +163,7 @@
   {
     "id": "mark_of_chaos",
     "name": "混沌烙印",
-    "description": "Shop cards, relics, and potions cost half. Every purchase adds a random Curse card to your deck.",
+    "description": "商店中的卡牌、遗物与药剂价格减半。每次购买后，向牌库加入 1 张随机诅咒。",
     "price": 260,
     "tags": [
       "curse",
@@ -183,7 +183,7 @@
   {
     "id": "corrupted_tome",
     "name": "渎神抄本",
-    "description": "At the start of combat, gain 1 Energy and 1 Strength for each Curse in your deck.",
+    "description": "每场战斗开始时，你牌库中每有 1 张诅咒，便获得 1 点能量与 1 层力量。",
     "price": 255,
     "tags": [
       "curse",
@@ -204,7 +204,7 @@
   {
     "id": "corrupted_relic",
     "name": "失落圣骨匣",
-    "description": "Each turn gain +2 Strength, but gain 10 Corruption axis. Embrace power, hasten mutation.",
+    "description": "每回合获得 2 层力量，但增加 10 点腐化轴。拥抱力量，加速异变。",
     "price": 240,
     "tags": [
       "corruption",
@@ -224,7 +224,7 @@
   {
     "id": "martyrs_censer",
     "name": "殉道者香炉",
-    "description": "At the start of your turn while below 50% HP, gain Devotion and steady your fear.",
+    "description": "若你生命低于 50%，则在回合开始时获得虔敬，并稳住心神。",
     "price": 185,
     "tags": [
       "faith",
@@ -242,7 +242,7 @@
   {
     "id": "nurgles_blessing",
     "name": "纳垢赐瘴",
-    "description": "You are immune to Poison and Bleed. Whenever you would receive these status effects, gain 5 Corruption instead.",
+    "description": "你免疫中毒与流血。每当你本应获得这些状态时，改为获得 5 点腐化。",
     "price": 220,
     "tags": [
       "corruption",
@@ -266,7 +266,7 @@
   {
     "id": "mechanicus_coolant",
     "name": "机神冷却圣油",
-    "description": "Whenever you draw an Overheat card, Exhaust it and gain 1 Energy.",
+    "description": "每当你抽到过热牌时，放逐该牌并获得 1 点能量。",
     "price": 195,
     "tags": [
       "tech",
@@ -286,7 +286,7 @@
   {
     "id": "seal_of_martyrdom",
     "name": "殉道封蜡",
-    "description": "A Purity Seal that can be attached to a card. When the card is played, lose 3 HP and draw 2 cards.",
+    "description": "可附着于任意卡牌的纯洁封印。该牌打出时，失去 3 点生命并抽 2 张牌。",
     "price": 150,
     "tags": [
       "seal",
@@ -318,7 +318,7 @@
   {
     "id": "seal_of_exterminatus",
     "name": "灭绝令封蜡",
-    "description": "A Purity Seal that can be attached to an Attack card. The attack ignores Block and Armor. If it doesn't kill the target, Exile the card.",
+    "description": "可附着于攻击牌的纯洁封印。该攻击无视格挡与护甲；若未击杀目标，则放逐此牌。",
     "price": 180,
     "tags": [
       "seal",
@@ -343,7 +343,7 @@
   {
     "id": "seal_of_defiance",
     "name": "抗命封蜡",
-    "description": "A Purity Seal that can be attached to a Skill card. If you take no damage this turn, retain the card.",
+    "description": "可附着于技能牌的纯洁封印。若你本回合未受伤害，则保留此牌。",
     "price": 160,
     "tags": [
       "seal",
@@ -367,7 +367,7 @@
   {
     "id": "seal_of_omnissiah",
     "name": "欧姆弥赛亚封蜡",
-    "description": "A Purity Seal that can be attached to a card. When played, reduce the cost of a random Tech card in your hand by 1 this turn.",
+    "description": "可附着于任意卡牌的纯洁封印。打出时，本回合令手中 1 张随机机械牌费用降低 1。",
     "price": 170,
     "tags": [
       "seal",
@@ -443,7 +443,7 @@
   {
     "id": "chaos_sanctum_relic",
     "name": "混沌圣物",
-    "description": "每打出一张牌，随机对一名敌人造成 2-6 点伤害。",
+    "description": "每打出一张牌，随机对一名异端造成 2-6 点伤害。",
     "price": 280,
     "trigger": "Passive",
     "corrupted": true,
@@ -456,5 +456,1217 @@
     },
     "inscription": "封印匣内不该存在的圣物碎片，它憎恶沉默，渴望见血。",
     "flavorText": "“我没有打开匣子。是匣子先打开了我。”"
+  },
+  {
+    "id": "wiretap_rosary",
+    "name": "窃听念珠",
+    "description": "每回合首次施加虚弱时，获得 1 点情报。",
+    "price": 150,
+    "tags": [
+      "intel",
+      "control"
+    ],
+    "trigger": "OnApplyWeak",
+    "effect": {
+      "type": "GainIntel",
+      "amount": 1
+    },
+    "inscription": "一枚沾着前任主人血迹的念珠，它会记住每一次情报的窃取。",
+    "flavorText": "“每一声低语都是金币。”"
+  },
+  {
+    "id": "surgical_lens",
+    "name": "手术透镜",
+    "description": "每回合首次对虚弱或易伤异端使用攻击时，造成 4 点额外伤害。",
+    "price": 200,
+    "tags": [
+      "intel",
+      "damage"
+    ],
+    "trigger": "OnAttackWeakVulnerable",
+    "effect": {
+      "type": "DealDamage",
+      "amount": 4,
+      "target": "Enemy"
+    },
+    "inscription": "精密分析透镜能在弱点处聚集致命能量。",
+    "flavorText": "“看清弱点，一击必杀。”"
+  },
+  {
+    "id": "black_ledger",
+    "name": "黑账本",
+    "description": "当带有虚弱或易伤的异端死亡时，抽 1 张牌并获得 12 金币。",
+    "price": 180,
+    "tags": [
+      "intel",
+      "economy"
+    ],
+    "trigger": "OnKillWithDebuff",
+    "effect": {
+      "type": "DrawAndGainGold",
+      "drawAmount": 1,
+      "goldAmount": 12
+    },
+    "inscription": "记录着无数秘密的黑账本，每一条秘密都可以换算成金币。",
+    "flavorText": "“每一行都是一条人命，每一页都是纯利。”"
+  },
+  {
+    "id": "dissolution_crucible",
+    "name": "溶解坩埚",
+    "description": "每回合首次获得炼金混合物时，添加 1 个随机元素。",
+    "price": 160,
+    "tags": [
+      "alchemy",
+      "element"
+    ],
+    "trigger": "OnGainConcoction",
+    "effect": {
+      "type": "AddRandomElement",
+      "amount": 1
+    },
+    "inscription": "溶解一切物质的坩埚，唯一的例外是金子。",
+    "flavorText": "“炼金术的本质是转化，不是毁灭。”"
+  },
+  {
+    "id": "venom_alembic",
+    "name": "毒液蒸馏器",
+    "description": "毒素每次发作多造成 1 点伤害。每场战斗首个死于毒素的异端授予 1 点炼金混合物。",
+    "price": 220,
+    "tags": [
+      "poison",
+      "alchemy"
+    ],
+    "trigger": "PoisonTick",
+    "effect": {
+      "type": "IncreasePoisonDamage",
+      "amount": 1
+    },
+    "inscription": "毒液在蒸馏器中浓缩，每一滴都是死亡的精华。",
+    "flavorText": "“死亡不在于剂量，而在于积累。”"
+  },
+  {
+    "id": "cooling_retort",
+    "name": "冷却蒸馏瓶",
+    "description": "若回合结束时拥有 2 个或更多元素，获得 5 点格挡并移除自身 1 个减益。",
+    "price": 190,
+    "tags": [
+      "element",
+      "defense"
+    ],
+    "trigger": "EndOfTurnWithElements",
+    "condition": {
+      "type": "HasElements",
+      "amount": 2
+    },
+    "effect": {
+      "type": "GainBlockAndRemoveDebuff",
+      "blockAmount": 5,
+      "debuffAmount": 1
+    },
+    "inscription": "冷却蒸馏瓶会在元素充盈时自动运作，将多余的能量转化为防御。",
+    "flavorText": "“平衡才是最好的冷却剂。”"
+  },
+  {
+    "id": "attrition_engine",
+    "name": "消耗引擎",
+    "description": "同时拥有虚弱和中毒的异端造成的伤害降低 25%。每场战斗首次对同一目标同时施加这两种状态时，获得 1 点能量。",
+    "price": 250,
+    "tags": [
+      "control",
+      "poison",
+      "intel"
+    ],
+    "trigger": "Passive",
+    "effect": {
+      "type": "Composite",
+      "effects": [
+        {
+          "type": "DebuffDamageReduction",
+          "statuses": [
+            "Weak",
+            "Poison"
+          ],
+          "reduction": 0.25
+        },
+        {
+          "type": "OnApplyBothDebuffs",
+          "effect": {
+            "type": "GainEnergy",
+            "amount": 1
+          }
+        }
+      ]
+    },
+    "inscription": "消耗引擎将异端的痛苦转化为战斗的优势。",
+    "flavorText": "“让他们在痛苦中消耗自己。”"
+  },
+  {
+    "id": "evidence_furnace",
+    "name": "证据熔炉",
+    "description": "每回合首次在卡牌上消耗情报或炼金混合物时，抽 1 张牌。",
+    "price": 230,
+    "tags": [
+      "intel",
+      "alchemy",
+      "draw"
+    ],
+    "trigger": "OnSpendResource",
+    "condition": {
+      "type": "FirstSpendThisTurn"
+    },
+    "effect": {
+      "type": "Draw",
+      "amount": 1
+    },
+    "inscription": "证据熔炉将情报和炼金混合物转化为新的机遇。",
+    "flavorText": "“证据燃烧殆尽，真相浮出水面。”"
+  },
+  {
+    "id": "quiet_lab_key",
+    "name": "静室钥匙",
+    "description": "消耗生命或最大生命的的事件选项额外提供 25 金币和 1 瓶随机药水。",
+    "price": 270,
+    "tags": [
+      "event",
+      "economy"
+    ],
+    "trigger": "Passive",
+    "effect": {
+      "type": "EventBonus",
+      "goldBonus": 25,
+      "potionBonus": 1
+    },
+    "inscription": "这把钥匙能打开所有禁忌实验室的大门。",
+    "flavorText": "“禁忌知识的代价不仅是金币。”"
+  },
+  {
+    "id": "coolant_spine",
+    "name": "冷却脊柱",
+    "description": "每回合第一次受到 8+ 伤害时，获得 6 格挡并移除 1 易伤。",
+    "price": 150,
+    "tags": [
+      "chapter2",
+      "defense",
+      "control"
+    ],
+    "trigger": "OnTakeDamage",
+    "condition": {
+      "type": "DamageThreshold",
+      "threshold": 8
+    },
+    "effect": {
+      "type": "GainBlockAndRemoveDebuff",
+      "blockAmount": 6,
+      "debuffType": "Vulnerable",
+      "debuffAmount": 1
+    },
+    "inscription": "冰冷的金属脊椎能够在你受伤时自动启动冷却协议。",
+    "flavorText": "“冷却系统永远比伤害来得及时。”"
+  },
+  {
+    "id": "servo_abacus",
+    "name": "伺服算盘",
+    "description": "每回合打出第 4 张牌后抽 1 张牌。",
+    "price": 160,
+    "tags": [
+      "chapter2",
+      "card_draw"
+    ],
+    "trigger": "OnPlayCard",
+    "condition": {
+      "type": "CardCountThisTurn",
+      "count": 4
+    },
+    "effect": {
+      "type": "DrawCards",
+      "amount": 1
+    },
+    "inscription": "精密的齿轮记录着你的每一次出牌。",
+    "flavorText": "“算得清每一张牌，才能算得清每一场胜利。”"
+  },
+  {
+    "id": "logic_brand",
+    "name": "逻辑烙印",
+    "description": "攻击命中带有 虚弱/易伤/脆弱 的异端时追加 2 真实伤害。",
+    "price": 200,
+    "tags": [
+      "chapter2",
+      "damage",
+      "control"
+    ],
+    "trigger": "OnAttackHit",
+    "condition": {
+      "type": "TargetHasAnyStatus",
+      "statuses": [
+        "Weak",
+        "Vulnerable",
+        "Frail"
+      ]
+    },
+    "effect": {
+      "type": "DealTrueDamage",
+      "amount": 2,
+      "target": "Enemy"
+    },
+    "inscription": "逻辑教条的烙印会在异端的伤口上燃烧。",
+    "flavorText": "“每一个弱点都是逻辑的胜利。”"
+  },
+  {
+    "id": "penitent_cooling_mask",
+    "name": "忏悔冷凝面具",
+    "description": "回合结束时若你拥有 10 点或以上格挡，恢复 2 生命。",
+    "price": 190,
+    "tags": [
+      "chapter2",
+      "defense",
+      "healing"
+    ],
+    "trigger": "EndOfTurn",
+    "condition": {
+      "type": "BlockThreshold",
+      "threshold": 10
+    },
+    "effect": {
+      "type": "Heal",
+      "amount": 2,
+      "target": "Self"
+    },
+    "inscription": "忏悔者的面具会在格挡充足时滴下冷却液。",
+    "flavorText": "“每一次防御都是一次忏悔。”"
+  },
+  {
+    "id": "sacred_reactor_shard",
+    "name": "圣炉碎核",
+    "description": "战斗开始获得 1 能量；每 3 回合失去 5 生命。",
+    "price": 280,
+    "tags": [
+      "chapter2",
+      "energy",
+      "risk"
+    ],
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainEnergy",
+      "amount": 1,
+      "target": "Self"
+    },
+    "passive": {
+      "type": "EveryNthTurn",
+      "turns": 3,
+      "effect": {
+        "type": "LoseHP",
+        "amount": 5,
+        "target": "Self"
+      }
+    },
+    "inscription": "神圣反应炉的核心碎片，蕴含着巨大的能量，代价是持续的衰变。",
+    "flavorText": "“力量总有代价。”"
+  },
+  {
+    "id": "verdict_cog",
+    "name": "裁决齿轮",
+    "description": "异端首次低于 50% 生命时施加 1 易伤。",
+    "price": 220,
+    "tags": [
+      "chapter2",
+      "control",
+      "execution"
+    ],
+    "trigger": "OnEnemyBelowHalfHealth",
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Vulnerable",
+      "amount": 1,
+      "target": "Enemy"
+    },
+    "inscription": "裁决齿轮会在异端露出破绽时咬紧。",
+    "flavorText": "“半血以下，便是裁决之时。”"
+  },
+  {
+    "id": "reactive_incense",
+    "name": "反应熏香",
+    "description": "若上回合受到 减益，本回合开始获得 4 格挡和 1 力量。",
+    "price": 170,
+    "tags": [
+      "chapter2",
+      "defense",
+      "strength"
+    ],
+    "trigger": "StartOfTurn",
+    "condition": {
+      "type": "TookDebuffLastTurn"
+    },
+    "effect": {
+      "type": "GainBlockAndStrength",
+      "blockAmount": 4,
+      "strengthAmount": 1
+    },
+    "inscription": "机械圣所的熏香会对受创者产生奇妙的反应。",
+    "flavorText": "“伤害越多，反击越强。”"
+  },
+  {
+    "id": "abbot_sealant",
+    "name": "院长封脂",
+    "description": "每场战斗第一次移除自身负面状态后，抽 1 张牌并恢复 3 生命。",
+    "price": 210,
+    "tags": [
+      "chapter2",
+      "control",
+      "sustain"
+    ],
+    "trigger": "OnRemoveDebuff",
+    "condition": {
+      "type": "FirstRemovalThisCombat"
+    },
+    "effect": {
+      "type": "DrawAndHeal",
+      "drawAmount": 1,
+      "healAmount": 3
+    },
+    "inscription": "院长使用的密封剂能够加速伤口愈合。",
+    "flavorText": "“清除一个污点，挽回一点生命。”"
+  },
+  {
+    "id": "cathedral_key",
+    "name": "圣堂钥匙",
+    "description": "每场精英战后额外获得 25 金并从 3 瓶药水中选 1。",
+    "price": 300,
+    "tags": [
+      "chapter2",
+      "elite",
+      "reward"
+    ],
+    "trigger": "EndOfEliteCombat",
+    "effect": {
+      "type": "GainGoldAndChoosePotion",
+      "goldAmount": 25,
+      "potionCount": 1,
+      "potionChoices": 3
+    },
+    "inscription": "打开圣堂大门的钥匙，通往无尽的宝藏。",
+    "flavorText": "“每场胜利都是一把钥匙。”"
+  },
+  {
+    "id": "cooling_choir",
+    "name": "冷却唱诗机",
+    "description": "若手牌中没有费用 0 的牌，随机 1 张牌本回合费用 -1。",
+    "price": 250,
+    "tags": [
+      "chapter2",
+      "cost_reduction",
+      "card_manipulation"
+    ],
+    "trigger": "StartOfTurn",
+    "condition": {
+      "type": "NoZeroCostCards"
+    },
+    "effect": {
+      "type": "ReduceRandomCardCost",
+      "costReduction": 1,
+      "target": "Self"
+    },
+    "inscription": "唱诗班的机械会在无零费牌时自动调节。",
+    "flavorText": "“每一张牌都值得更低的价格。”"
+  },
+  {
+    "id": "rusted_axiom",
+    "name": "锈蚀公理板",
+    "description": "每回合第一次施加 虚弱 或 易伤 时，获得 1 点临时资源：情报 或本职业资源等值收益。",
+    "price": 270,
+    "tags": [
+      "chapter2",
+      "intel",
+      "synergy"
+    ],
+    "trigger": "OnApplyDebuff",
+    "condition": {
+      "type": "FirstDebuffThisTurn",
+      "statuses": [
+        "Weak",
+        "Vulnerable"
+      ]
+    },
+    "effect": {
+      "type": "GainTemporaryResource",
+      "resourceType": "Intel",
+      "amount": 1,
+      "alternativeResources": [
+        "Devotion",
+        "Corruption",
+        "Concoction"
+      ]
+    },
+    "inscription": "古老的公理板上刻着资源转换的秘法。",
+    "flavorText": "“每一种削弱都是情报的来源。”"
+  },
+  {
+    "id": "funeral_dynamo",
+    "name": "葬仪发电机",
+    "description": "若本回合击杀异端，下一回合开始获得 1 能量。",
+    "price": 260,
+    "tags": [
+      "chapter2",
+      "energy",
+      "momentum"
+    ],
+    "trigger": "OnKill",
+    "effect": {
+      "type": "DelayedGainEnergy",
+      "amount": 1,
+      "timing": "StartOfNextTurn"
+    },
+    "inscription": "葬礼上的发电机为下一场战斗蓄能。",
+    "flavorText": "“每一次击杀都是下一次爆发的起点。”"
+  },
+  {
+    "id": "spore_lantern",
+    "name": "孢灯",
+    "rarity": "Common",
+    "trigger": "StartCombat",
+    "description": "战斗开始对所有异端施加 1 中毒",
+    "effect": {
+      "type": "ApplyStatusAllEnemies",
+      "status": "Poison",
+      "amount": 1
+    },
+    "inscription": "孢子灯笼在战斗开始时释放有毒孢子。",
+    "flavorText": "照亮黑暗，也照亮死亡。"
+  },
+  {
+    "id": "fungal_veil",
+    "name": "菌幕",
+    "rarity": "Common",
+    "trigger": "EndTurn",
+    "description": "若你本回合施加过状态，获得 4 格挡",
+    "condition": {
+      "type": "AppliedStatusThisTurn"
+    },
+    "effect": {
+      "type": "GainBlock",
+      "amount": 4,
+      "target": "Self"
+    },
+    "inscription": "真菌形成的保护屏障。",
+    "flavorText": "防御来自攻击。"
+  },
+  {
+    "id": "grave_resonator",
+    "name": "墓池共振器",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每次异端因 中毒 结算失去生命时，获得 1 格挡，单回合上限 6",
+    "condition": {
+      "type": "EnemyTakePoisonDamage"
+    },
+    "effect": {
+      "type": "GainBlock",
+      "amount": 1,
+      "target": "Self",
+      "maxPerTurn": 6
+    },
+    "inscription": "墓池中的能量会被死亡的回响激活。",
+    "flavorText": "每一次死亡都在为下一次防御蓄力。"
+  },
+  {
+    "id": "marsh_vows",
+    "name": "沼婚誓戒",
+    "rarity": "Uncommon",
+    "trigger": "StartTurn",
+    "description": "若你的生命低于 50%，获得 1 力量",
+    "condition": {
+      "type": "HPLowerThanPercent",
+      "percent": 50
+    },
+    "effect": {
+      "type": "ApplyStatus",
+      "status": "Strength",
+      "amount": 1,
+      "target": "Self"
+    },
+    "inscription": "泥沼中的誓约戒指会在你脆弱时给予力量。",
+    "flavorText": "婚姻是坟墓，但力量是真。"
+  },
+  {
+    "id": "plague_filter",
+    "name": "疫病滤器",
+    "rarity": "Common",
+    "trigger": "Passive",
+    "description": "你第一次获得 中毒 时，改为只获得 1 层",
+    "condition": {
+      "type": "FirstTimeReceivePoison"
+    },
+    "effect": {
+      "type": "ModifyPoisonGain",
+      "amount": 1,
+      "target": "Self"
+    },
+    "inscription": "过滤器会将过量的疫病阻挡在外。",
+    "flavorText": "一次只需要一点点。"
+  },
+  {
+    "id": "rot_core",
+    "name": "腐核",
+    "rarity": "Rare",
+    "trigger": "EndTurn",
+    "description": "若异端总 中毒 ≥ 8，随机对一名异端造成 6 真伤",
+    "condition": {
+      "type": "TotalEnemyPoisonThreshold",
+      "threshold": 8
+    },
+    "effect": {
+      "type": "DealTrueDamageRandomEnemy",
+      "amount": 6,
+      "target": "Enemy"
+    },
+    "inscription": "腐烂的核心会在毒素积聚时释放毁灭性的能量。",
+    "flavorText": "腐核不创造生命，只终结生命。"
+  },
+  {
+    "id": "carrion_pendulum",
+    "name": "腐肉摆钟",
+    "rarity": "Rare",
+    "trigger": "StartTurn",
+    "description": "每 3 回合开始时，抽 1 张牌并恢复 3 生命",
+    "condition": {
+      "type": "EveryNthTurn",
+      "turns": 3
+    },
+    "effect": {
+      "type": "DrawAndHeal",
+      "drawAmount": 1,
+      "healAmount": 3,
+      "target": "Self"
+    },
+    "inscription": "腐肉摆钟的节奏与生命的轮回同步。",
+    "flavorText": "死亡是另一种形式的休息。"
+  },
+  {
+    "id": "septic_nails",
+    "name": "毒钉",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "攻击命中带有 中毒 的异端时追加 3 伤害",
+    "condition": {
+      "type": "AttackHitPoisonedEnemy"
+    },
+    "effect": {
+      "type": "DealBonusDamage",
+      "amount": 3,
+      "target": "Enemy"
+    },
+    "inscription": "毒钉会在毒液中浸泡得更加致命。",
+    "flavorText": "毒与钉，相得益彰。"
+  },
+  {
+    "id": "fly_sigil",
+    "name": "蝇印",
+    "rarity": "Rare",
+    "trigger": "EndCombat",
+    "description": "每场战斗后若你拥有 减益，恢复 5 生命",
+    "condition": {
+      "type": "HasDebuffAfterCombat"
+    },
+    "effect": {
+      "type": "Heal",
+      "amount": 5,
+      "target": "Self"
+    },
+    "inscription": "蝇群的印记会在混乱中带来治愈。",
+    "flavorText": "肮脏之中有洁净。"
+  },
+  {
+    "id": "mire_heart",
+    "name": "泥潭之心",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合第一次受到 10+ 伤害时，获得 8 格挡并抽 1 张牌",
+    "condition": {
+      "type": "TakeDamageThreshold",
+      "threshold": 10
+    },
+    "effect": {
+      "type": "GainBlockAndDraw",
+      "blockAmount": 8,
+      "drawAmount": 1,
+      "target": "Self"
+    },
+    "inscription": "泥潭之心会在危急时刻为你挡住伤害。",
+    "flavorText": "深陷泥沼，反而更加坚强。"
+  },
+  {
+    "id": "blight_censer",
+    "name": "病斑香炉",
+    "rarity": "Uncommon",
+    "trigger": "StartCombat",
+    "description": "全体异端获得 1 虚弱",
+    "effect": {
+      "type": "ApplyStatusAllEnemies",
+      "status": "Weak",
+      "amount": 1
+    },
+    "inscription": "病斑香炉在战斗开始时释放虚弱之烟。",
+    "flavorText": "所有生命都有弱点。"
+  },
+  {
+    "id": "catacomb_keys",
+    "name": "地窖钥串",
+    "rarity": "Rare",
+    "trigger": "Event",
+    "description": "第 3 章事件额外出现 1 个可选高风险分支",
+    "effect": {
+      "type": "AddExtraEventOption",
+      "chapter": 3
+    },
+    "inscription": "打开地窖大门的钥匙，通往最深的秘密。",
+    "flavorText": "每一把钥匙都通向一个被遗忘的角落。"
+  },
+  {
+    "id": "purge_hook",
+    "name": "净化钩爪",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每场战斗第一次移除自身 减益 后，获得 1 能量",
+    "condition": {
+      "type": "FirstRemoveDebuffPerCombat"
+    },
+    "effect": {
+      "type": "GainEnergy",
+      "amount": 1,
+      "target": "Self"
+    },
+    "inscription": "净化钩爪会在你清除污点时给予能量。",
+    "flavorText": "净化是一种力量的交换。"
+  },
+  {
+    "id": "rotedict",
+    "name": "腐判敕令",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "对拥有 虚弱、易伤、中毒 至少其二的异端造成伤害时追加 4 真伤",
+    "condition": {
+      "type": "EnemyHasAtLeastTwoDebuffs",
+      "statuses": [
+        "Weak",
+        "Vulnerable",
+        "Poison"
+      ]
+    },
+    "effect": {
+      "type": "DealBonusTrueDamage",
+      "amount": 4,
+      "target": "Enemy"
+    },
+    "inscription": "腐判敕令会在异端多重虚弱时给予致命一击。",
+    "flavorText": "真正的判决需要多重证据。"
+  },
+  {
+    "id": "field_compass",
+    "name": "野战罗盘",
+    "rarity": "Common",
+    "trigger": "StartRun",
+    "description": "开局 +25 金币",
+    "effect": {
+      "type": "GainGold",
+      "amount": 25
+    },
+    "isStartingRelic": true,
+    "inscription": "野战罗盘会指引你找到财富。",
+    "flavorText": "方向比速度更重要。"
+  },
+  {
+    "id": "silent_beads",
+    "name": "静默念珠",
+    "rarity": "Common",
+    "trigger": "Passive",
+    "description": "每场战斗第一次施加 虚弱/易伤/中毒 时抽 1 张牌",
+    "condition": {
+      "type": "FirstApplyDebuffPerCombat",
+      "statuses": [
+        "Weak",
+        "Vulnerable",
+        "Poison"
+      ]
+    },
+    "effect": {
+      "type": "Draw",
+      "amount": 1,
+      "target": "Self"
+    },
+    "isStartingRelic": true,
+    "inscription": "静默念珠会在你施加诅咒时给予启示。",
+    "flavorText": "沉默是最好的老师。"
+  },
+  {
+    "id": "coolant_phial",
+    "name": "冷却剂小瓶",
+    "rarity": "Common",
+    "trigger": "Passive",
+    "description": "第一章每场战斗第一次受到 10+ 伤害时获得 5 格挡",
+    "condition": {
+      "type": "TakeDamageThreshold",
+      "threshold": 10,
+      "chapter": 1,
+      "perCombat": true
+    },
+    "effect": {
+      "type": "GainBlock",
+      "amount": 5,
+      "target": "Self"
+    },
+    "isStartingRelic": true,
+    "inscription": "冷却剂小瓶会在危急时刻保护你。",
+    "flavorText": "冷静是生存的关键。"
+  },
+  {
+    "id": "surgical_thread",
+    "name": "手术缝线",
+    "rarity": "Common",
+    "trigger": "Passive",
+    "description": "第一章第一次 删牌 免费",
+    "condition": {
+      "type": "FirstCardRemoval",
+      "chapter": 1
+    },
+    "effect": {
+      "type": "FreeCardRemoval",
+      "amount": 1
+    },
+    "isStartingRelic": true,
+    "inscription": "手术缝线可以无痛移除不需要的部分。",
+    "flavorText": "切除弱点，强化整体。"
+  },
+  {
+    "id": "ember_pin",
+    "name": "余烬别针",
+    "rarity": "Common",
+    "trigger": "Passive",
+    "description": "第一章前 3 战斗第一次攻击额外 +2 伤害",
+    "condition": {
+      "type": "FirstAttackPerCombat",
+      "chapter": 1,
+      "combats": 3
+    },
+    "effect": {
+      "type": "BonusDamage",
+      "amount": 2
+    },
+    "isStartingRelic": true,
+    "inscription": "余烬别针会在你的第一次攻击中注入火焰。",
+    "flavorText": "第一击决定战局。"
+  },
+  {
+    "id": "codex_chip",
+    "name": "图鉴芯片",
+    "rarity": "Uncommon",
+    "trigger": "EndCombat",
+    "description": "每章第一场战斗后额外揭示 1 张 卡牌奖励",
+    "condition": {
+      "type": "FirstCombatPerChapter"
+    },
+    "effect": {
+      "type": "RevealExtraRewardCard",
+      "amount": 1
+    },
+    "isStartingRelic": true,
+    "inscription": "图鉴芯片会揭示更多选择。",
+    "flavorText": "知识就是选择。"
+  },
+  {
+    "id": "martyr_coin",
+    "name": "殉道者硬币",
+    "rarity": "Uncommon",
+    "trigger": "StartRun",
+    "description": "开局获得 6 点最大生命。每章首次事件失去 6 点当前生命。",
+    "effects": [
+      {
+        "type": "GainMaxHP",
+        "amount": 6
+      },
+      {
+        "type": "FirstEventHPLoss",
+        "amount": 6,
+        "perChapter": true
+      }
+    ],
+    "isStartingRelic": true,
+    "inscription": "殉道者硬币给予生命，但也索取代价。",
+    "flavorText": "生命是借来的，必须偿还。"
+  },
+  {
+    "id": "grave_oil",
+    "name": "墓穴油膏",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "第一章第一次 精英 战开局获得 1 虚弱 免疫一次",
+    "condition": {
+      "type": "FirstEliteCombat",
+      "chapter": 1
+    },
+    "effect": {
+      "type": "ImmuneStatusOnce",
+      "status": "Weak"
+    },
+    "isStartingRelic": true,
+    "inscription": "墓穴油膏会在精英战中保护你免受虚弱。",
+    "flavorText": "死亡的味道可以驱散虚弱。"
+  },
+  {
+    "id": "ledger_mask",
+    "name": "账目面具",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合首次施加虚弱或易伤时，获得 1 点证据。",
+    "effect": {
+      "type": "TriggerOnDebuffApply",
+      "statuses": [
+        "Weak",
+        "Vulnerable"
+      ],
+      "effect": {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "每一次指控都会留下刻痕。"
+  },
+  {
+    "id": "blood_ram",
+    "name": "血驱撞锤",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合首次受到 8 点或以上伤害时，获得 1 点狂怒。",
+    "effect": {
+      "type": "TriggerOnDamageTaken",
+      "threshold": 8,
+      "effect": {
+        "type": "GainResource",
+        "resource": "rage",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "痛楚会把胸中的火焰烧得更旺。"
+  },
+  {
+    "id": "command_pin",
+    "name": "军令徽针",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合首次在回合结束时拥有 12 点或以上格挡时，获得 1 点指挥。",
+    "effect": {
+      "type": "TriggerOnBlockThreshold",
+      "threshold": 12,
+      "effect": {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "秩序本身就是最锋利的武器。"
+  },
+  {
+    "id": "silver_threads",
+    "name": "银丝牵线",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合召出的第一个造物额外获得 1 点攻击。",
+    "effect": {
+      "type": "TriggerOnFirstSummon",
+      "effect": {
+        "type": "SummonBuff",
+        "attack": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "每一具傀儡都需要一只引路的手。"
+  },
+  {
+    "id": "cracked_hourglass",
+    "name": "龟裂沙漏",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合首次触发延迟效果时，抽 1 张牌。",
+    "effect": {
+      "type": "TriggerOnDelayEffect",
+      "effect": {
+        "type": "Draw",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "时间会碎裂，回声却会滞留。"
+  },
+  {
+    "id": "prism_crucible",
+    "name": "棱晶坩埚",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "每回合首次获得炼金混合物时，随机加入 1 种元素。",
+    "effect": {
+      "type": "TriggerOnResourceGain",
+      "resource": "concoction",
+      "effect": {
+        "type": "AddRandomElement"
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "元素会在战火熔炉中彼此交融。"
+  },
+  {
+    "id": "mirror_ink",
+    "name": "镜墨",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "攻击命中带有任意减益的异端时，额外造成 2 点伤害。",
+    "effect": {
+      "type": "OnAttackDebuffedEnemy",
+      "bonus": 2
+    },
+    "isStartingRelic": false,
+    "flavorText": "镜墨只会标记那些已经被标记的人。"
+  },
+  {
+    "id": "echo_buckle",
+    "name": "回响扣环",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每回合打出第 4 张牌后，获得 4 点格挡。",
+    "effect": {
+      "type": "OnCardPlayed",
+      "count": 4,
+      "effect": {
+        "type": "GainBlock",
+        "amount": 4
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "每一个动作都会在防线上留下回声。"
+  },
+  {
+    "id": "borrowed_crown",
+    "name": "借来王冠",
+    "rarity": "Uncommon",
+    "trigger": "StartRun",
+    "description": "每章首个事件额外出现 1 个高风险选项。",
+    "effect": {
+      "type": "ExtraEventOption",
+      "optionType": "highRisk",
+      "frequency": "perChapterFirst"
+    },
+    "isStartingRelic": false,
+    "flavorText": "那是一顶从明日借来的王冠。"
+  },
+  {
+    "id": "silent_mirror",
+    "name": "寂镜",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每场战斗中首次移除自身减益时，抽 1 张牌。",
+    "effect": {
+      "type": "OnRemoveSelfDebuff",
+      "effect": {
+        "type": "Draw",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "倒影只会在沉默中开口。"
+  },
+  {
+    "id": "fracture_lens",
+    "name": "裂痕透镜",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每回合首次命中带减益异端的攻击，额外造成 3 点伤害。",
+    "effect": {
+      "type": "OnFirstAttackDebuffed",
+      "bonus": 3
+    },
+    "isStartingRelic": false,
+    "flavorText": "裂纹会把内部的真相暴露出来。"
+  },
+  {
+    "id": "palace_abacus",
+    "name": "宫廷筹算盘",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "每回合首次消耗资源时，获得 3 点格挡。",
+    "effect": {
+      "type": "OnFirstResourceSpend",
+      "effect": {
+        "type": "GainBlock",
+        "amount": 3
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "每一份资源都被算入防线。"
+  },
+  {
+    "id": "shard_lantern",
+    "name": "裂片提灯",
+    "rarity": "Uncommon",
+    "trigger": "StartCombat",
+    "description": "战斗开始时，对 1 名随机异端施加 1 层虚弱。",
+    "effect": {
+      "type": "StartCombatEffect",
+      "effect": {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "stacks": 1,
+        "target": "RandomEnemy"
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "灯光会照出阴影刻意遮掩的东西。"
+  },
+  {
+    "id": "dream_sheath",
+    "name": "梦鞘",
+    "rarity": "Uncommon",
+    "trigger": "Passive",
+    "description": "若你本回合未受伤害，则在回合结束时获得 1 点临时资源。",
+    "effect": {
+      "type": "EndOfTurnEffect",
+      "condition": {
+        "type": "TookNoDamageThisTurn"
+      },
+      "effect": {
+        "type": "GainResource",
+        "resource": "random",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "未受伤者会以梦境为燃料。"
+  },
+  {
+    "id": "regent_seal",
+    "name": "摄政纹章",
+    "rarity": "Rare",
+    "trigger": "EndCombat",
+    "description": "每章首场精英战结束后，从 3 件遗物中选择 1 件。",
+    "effect": {
+      "type": "PostEliteChoice",
+      "count": 3,
+      "frequency": "perChapterFirst"
+    },
+    "isStartingRelic": false,
+    "flavorText": "摄政者的权威甚至能伸进奖赏名册。"
+  },
+  {
+    "id": "court_tax",
+    "name": "朝廷税契",
+    "rarity": "Rare",
+    "trigger": "StartCombat",
+    "description": "战斗开始时获得 1 点能量。每经过 3 回合失去 5 点生命。",
+    "effect": {
+      "type": "StartCombatEffect",
+      "effect": {
+        "type": "GainEnergy",
+        "amount": 1
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "朝廷总会拿走它应得的那一份。"
+  },
+  {
+    "id": "mirror_taxonomy",
+    "name": "镜廷谱系",
+    "rarity": "Rare",
+    "trigger": "EnterMirrorZone",
+    "description": "进入镜宫时，额外获得一次从 3 张分支牌中选择的机会。",
+    "effect": {
+      "type": "MirrorZoneEffect",
+      "effect": {
+        "type": "ExtraBranchChoice",
+        "count": 3
+      }
+    },
+    "isStartingRelic": false,
+    "flavorText": "分类会揭示原本看不见的路径。"
+  },
+  {
+    "id": "fatal_index",
+    "name": "致命索引",
+    "rarity": "Rare",
+    "trigger": "Passive",
+    "description": "攻击命中同时带有虚弱与中毒的异端时，额外造成 4 点真实伤害。",
+    "effect": {
+      "type": "OnAttackDoubleDebuffed",
+      "debuffs": [
+        "Weak",
+        "Poison"
+      ],
+      "trueDamage": 4
+    },
+    "isStartingRelic": false,
+    "flavorText": "索引会标出那些注定赴死的目标。"
+  },
+  {
+    "id": "mirror shard",
+    "name": "镜宫碎片",
+    "rarity": "Rare",
+    "trigger": "CombatEnd",
+    "description": "战斗结束时，若你打出过 3 张或以上攻击牌，获得 1 点临时证据。",
+    "effect": {
+      "type": "ConditionalResourceGain",
+      "condition": {
+        "type": "CardsPlayedThisTurn",
+        "cardType": "Attack",
+        "minimum": 3
+      },
+      "resource": "evidence",
+      "amount": 1
+    },
+    "isStartingRelic": false,
+    "pool": [
+      "mirror"
+    ],
+    "flavorText": "镜宫剥落的一枚残片，持续发出折射权能的嗡鸣。"
+  },
+  {
+    "id": "silver locket",
+    "name": "银质怀坠",
+    "rarity": "Rare",
+    "trigger": "CombatEnd",
+    "description": "战斗结束时，若你至少拥有 6 点证据，恢复 3 点生命。",
+    "effect": {
+      "type": "ConditionalHeal",
+      "condition": {
+        "type": "ResourceAmount",
+        "resource": "evidence",
+        "minimum": 6
+      },
+      "amount": 3
+    },
+    "isStartingRelic": false,
+    "pool": [
+      "mirror"
+    ],
+    "flavorText": "其中装着你的镜像肖像，它一直在凝视。"
+  },
+  {
+    "id": "fractured hourglass",
+    "name": "碎裂时漏",
+    "rarity": "Rare",
+    "trigger": "StartTurn",
+    "description": "每回合开始时，若你拥有指挥，则额外获得 1 点能量。",
+    "effect": {
+      "type": "ConditionalEnergyGain",
+      "condition": {
+        "type": "ResourceAmount",
+        "resource": "command",
+        "minimum": 1
+      },
+      "amount": 1
+    },
+    "isStartingRelic": false,
+    "pool": [
+      "mirror"
+    ],
+    "flavorText": "镜宫中的时间流速从不守同一条律令。"
   }
 ]
