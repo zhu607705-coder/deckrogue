@@ -9,5 +9,19 @@ coverage/
 .minimax/
 .playwright-cli/
 .trae/
+
+# Playwright 测试输出
 output/playwright/
 output/web-game/
+
+# 测试报告和截图
+output/**/screenshots/
+output/**/*report*.json
+output/**/browser-logs.txt
+output/**/combat-flow/
+
+# QA dogfood 测试输出
+dogfood-output/
+
+# Jest 快照差异
+*.test.actual.*
