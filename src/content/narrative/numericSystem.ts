@@ -5,7 +5,32 @@ import rawRelicsData from '@/content/data/relics.json';
 import rawNumericConfig from '@/content/data/numericConfig.json';
 import rawCardEnchantmentsData from '@/content/data/cardEnchantments.json';
 import { STORY_EVENTS as RAW_STORY_EVENTS } from '@/content/narrative/storyEvents';
-import type { CardDef, CardAfflictionDef, CardEnchantmentDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core';
+import {
+  analyzeRouteSignals as analyzeRouteSignalsFromCards,
+  getCardRouteAffinity,
+  getCardRouteAffinityTags,
+  enrichCardRouteSignals,
+  getCardRouteSignal,
+  getEventRouteSignal,
+  getGenericPowerIdsForCharacter,
+  getKnownRouteTagsForCharacter,
+  getRelicRouteTags,
+  getRouteSupportRelicIds,
+  getRouteTaxonomy,
+  getRouteTaxonomyForCharacter,
+  resolvePreferredRouteTag,
+  sortCardsByRouteAffinity,
+  sortRelicIdsByRouteAffinity,
+} from '@/content/narrative/routeSignals';
+import {
+  createEmptyRouteState,
+  deriveRouteStateFromDeck,
+  getPreferredRouteTagFromState,
+  recordRouteCommit,
+  maybeRecordRouteCommit,
+  syncRouteStateFromLegacyState,
+} from '@/content/narrative/routeState';
+import type { CardDef, CardAfflictionDef, CardEnchantmentDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core/types';
 
 export interface NumericConfig {
   version: number;
@@ -37,6 +62,22 @@ export interface NumericConfig {
       bossPool?: string[];
     };
   };
+  map?: {
+    runtime?: {
+      floorTypeCaps?: Record<string, number>;
+      openingRouteExpectation?: {
+        maxSpread?: number;
+        traversalDepth?: number;
+        weights?: Record<string, number>;
+        maxBranchesPerFloor?: Record<string, number>;
+      };
+      openingRouteContrast?: {
+        maxFloor?: number;
+        requireThirdFlavorOnFloor1?: boolean;
+        utilityTypes?: string[];
+      };
+    };
+  };
   cards: { byId: Record<string, Record<string, unknown>> };
   potions: {
     byId: Record<string, Record<string, unknown>>;
@@ -66,6 +107,21 @@ export interface NumericConfig {
     runtime?: { minSelectableWeight?: number };
     defs?: Record<string, Partial<Pick<StoryEventDef, 'floorMin' | 'floorMax' | 'weight'>>>;
     outcomes?: Record<string, any>;
+  };
+}
+
+export interface MapRuntimeConfig {
+  floorTypeCaps: Record<'Event' | 'Shop' | 'Rest' | 'Elite', number>;
+  openingRouteExpectation: {
+    maxSpread: number;
+    traversalDepth: number;
+    weights: Record<'Combat' | 'Elite' | 'Boss' | 'Event' | 'Shop' | 'Rest', number>;
+    maxBranchesPerFloor: Record<'floor_1' | 'floor_2', number>;
+  };
+  openingRouteContrast: {
+    maxFloor: number;
+    requireThirdFlavorOnFloor1: boolean;
+    utilityTypes: string[];
   };
 }
 
@@ -165,7 +221,7 @@ function applyStoryEventOverrides(source: StoryEventDef[]): StoryEventDef[] {
   return source.map((event) => deepMergePatch(deepClone(event), defs[event.id]));
 }
 
-export const cardsData: CardDef[] = applyEntityOverrides(rawCardsData as unknown as CardDef[], numericConfig.cards?.byId);
+export const cardsData: CardDef[] = enrichCardRouteSignals(applyEntityOverrides(rawCardsData as unknown as CardDef[], numericConfig.cards?.byId));
 export const enemiesData: EnemyDef[] = applyEntityOverrides(rawEnemiesData as unknown as EnemyDef[], numericConfig.enemies?.byId);
 export const potionsData: PotionDef[] = applyEntityOverrides(rawPotionsData as unknown as PotionDef[], numericConfig.potions?.byId);
 export const relicsData: RelicDef[] = applyEntityOverrides(rawRelicsData as unknown as RelicDef[], numericConfig.relics?.byId);
@@ -186,6 +242,29 @@ export function getNumericConfig(): NumericConfig {
 export function getCardDefById(id: string): CardDef | undefined {
   return cardMap.get(id);
 }
+
+export {
+  analyzeRouteSignalsFromCards as analyzeRouteSignals,
+  getCardRouteAffinity,
+  getCardRouteAffinityTags,
+  getCardRouteSignal,
+  getEventRouteSignal,
+  getGenericPowerIdsForCharacter,
+  getKnownRouteTagsForCharacter,
+  getRelicRouteTags,
+  getRouteSupportRelicIds,
+  getRouteTaxonomy,
+  getRouteTaxonomyForCharacter,
+  createEmptyRouteState,
+  deriveRouteStateFromDeck,
+  getPreferredRouteTagFromState,
+  recordRouteCommit,
+  maybeRecordRouteCommit,
+  syncRouteStateFromLegacyState,
+  resolvePreferredRouteTag,
+  sortCardsByRouteAffinity,
+  sortRelicIdsByRouteAffinity,
+};
 
 export function getEnemyDefById(id: string): EnemyDef | undefined {
   return enemyMap.get(id);
@@ -217,6 +296,45 @@ export function getPotionRuntimeConfig(): Required<NonNullable<NumericConfig['po
   return {
     slotLimit: Math.max(1, Math.floor(Number(numericConfig.potions?.runtime?.slotLimit ?? 3))),
     toxicityOverloadThreshold: Math.max(0, Math.floor(Number(numericConfig.potions?.runtime?.toxicityOverloadThreshold ?? 3)))
+  };
+}
+
+export function getMapRuntimeConfig(): MapRuntimeConfig {
+  const runtime = numericConfig.map?.runtime;
+  const floorTypeCaps = runtime?.floorTypeCaps || {};
+  const openingRouteExpectation = runtime?.openingRouteExpectation;
+  const openingRouteContrast = runtime?.openingRouteContrast;
+
+  return {
+    floorTypeCaps: {
+      Event: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Event ?? 1)))),
+      Shop: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Shop ?? 1)))),
+      Rest: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Rest ?? 1)))),
+      Elite: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Elite ?? 1)))),
+    },
+    openingRouteExpectation: {
+      maxSpread: Math.max(0, Math.min(50, Math.floor(Number(openingRouteExpectation?.maxSpread ?? 15)))),
+      traversalDepth: Math.max(1, Math.min(6, Math.floor(Number(openingRouteExpectation?.traversalDepth ?? 3)))),
+      weights: {
+        Combat: Number(openingRouteExpectation?.weights?.Combat ?? 2),
+        Elite: Number(openingRouteExpectation?.weights?.Elite ?? 5),
+        Boss: Number(openingRouteExpectation?.weights?.Boss ?? 0),
+        Event: Number(openingRouteExpectation?.weights?.Event ?? 2),
+        Shop: Number(openingRouteExpectation?.weights?.Shop ?? 1),
+        Rest: Number(openingRouteExpectation?.weights?.Rest ?? 1),
+      },
+      maxBranchesPerFloor: {
+        floor_1: Math.max(1, Math.min(4, Math.floor(Number(openingRouteExpectation?.maxBranchesPerFloor?.floor_1 ?? 2)))),
+        floor_2: Math.max(1, Math.min(4, Math.floor(Number(openingRouteExpectation?.maxBranchesPerFloor?.floor_2 ?? 2)))),
+      },
+    },
+    openingRouteContrast: {
+      maxFloor: Math.max(1, Math.min(6, Math.floor(Number(openingRouteContrast?.maxFloor ?? 3)))),
+      requireThirdFlavorOnFloor1: openingRouteContrast?.requireThirdFlavorOnFloor1 !== false,
+      utilityTypes: Array.isArray(openingRouteContrast?.utilityTypes) && openingRouteContrast.utilityTypes.length > 0
+        ? openingRouteContrast.utilityTypes.map((entry) => String(entry))
+        : ['Event', 'Shop', 'Rest'],
+    },
   };
 }
 
@@ -425,21 +543,27 @@ export function getStoryEventOptionPresentation(
   return undefined;
 }
 
-export function rollEnemyBaseHp(enemyDef: Pick<EnemyDef, 'hp_range'>, rng: () => number): number {
-  const min = Math.max(1, Math.floor(Number(enemyDef.hp_range?.[0] ?? 1)));
-  const max = Math.max(min, Math.floor(Number(enemyDef.hp_range?.[1] ?? min)));
+export function rollEnemyBaseHp(enemyDef: { hp_range?: [number, number]; minHp?: number; maxHp?: number }, rng: () => number): number {
+  let min: number, max: number;
+  if (Array.isArray(enemyDef.hp_range)) {
+    min = Math.max(1, Math.floor(Number(enemyDef.hp_range[0] ?? 1)));
+    max = Math.max(min, Math.floor(Number(enemyDef.hp_range[1] ?? min)));
+  } else {
+    min = Math.max(1, Math.floor(Number(enemyDef.minHp ?? 1)));
+    max = Math.max(min, Math.floor(Number(enemyDef.maxHp ?? min)));
+  }
   return min + Math.floor(rng() * (max - min + 1));
 }
 
 export function isEnemyEligibleForFloorByNumericRules(
-  enemyDef: { id: string; hp_range: [number, number]; keywords?: string[] },
+  enemyDef: { id: string; hp_range?: [number, number]; minHp?: number; maxHp?: number; keywords?: string[] },
   floor: number,
   nodeType: 'Combat' | 'Elite' | 'Boss'
 ): boolean {
   const rules = numericConfig.enemies?.runtime?.floorEligibility || {};
   const eliteRules = rules.elite || {};
   const combatRules = rules.combat || {};
-  const maxHp = enemyDef.hp_range?.[1] ?? 0;
+  const maxHp = enemyDef.hp_range?.[1] ?? enemyDef.maxHp ?? 0;
   const keywords = enemyDef.keywords || [];
 
   if (nodeType === 'Boss') return true;

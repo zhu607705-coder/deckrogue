@@ -15,6 +15,7 @@ const LEGACY_SCREEN_SET = new Set<LegacyScreen>([
   'Upgrade',
   'RemoveCard',
   'Enchant',
+  'RelicUpgrade',
   'GameOver',
   'Victory',
 ]);
@@ -43,10 +44,38 @@ export interface LegacyStateProjection {
   currentNodeId: string | null;
   screen: LegacyScreen;
   pendingNodeResolution: boolean;
+  routeState: GameState['routeState'];
+  surfaceContext: GameState['surfaceContext'];
+  roomSession: GameState['roomSession'];
   campfireChoiceLocked: boolean;
 }
 
+function cloneRouteState(routeState: GameState['routeState']): GameState['routeState'] {
+  if (!routeState) return null;
+  return {
+    primaryTag: routeState.primaryTag,
+    secondaryTag: routeState.secondaryTag,
+    confidence: routeState.confidence,
+    stage: routeState.stage,
+    recentCommits: routeState.recentCommits.map((commit) => ({ ...commit })),
+  };
+}
+
+function cloneSurfaceContext(surfaceContext: GameState['surfaceContext']): GameState['surfaceContext'] {
+  if (!surfaceContext) return null;
+  return {
+    upgradeReturnScreen: surfaceContext.upgradeReturnScreen,
+    relicUpgradeReturnScreen: surfaceContext.relicUpgradeReturnScreen,
+    enchantReturnScreen: surfaceContext.enchantReturnScreen,
+    enchantContext: surfaceContext.enchantContext ? { ...surfaceContext.enchantContext } : null,
+    campfireChoiceLocked: surfaceContext.campfireChoiceLocked,
+    isEventFreeCardRemovalMode: surfaceContext.isEventFreeCardRemovalMode,
+    pendingUpgradeRefund: surfaceContext.pendingUpgradeRefund,
+  };
+}
+
 export function projectRuleSnapshotToLegacyState(snapshot: RuleSnapshot): LegacyStateProjection {
+  const surfaceContext = cloneSurfaceContext(snapshot.surfaceContext ?? null);
   return {
     characterId: snapshot.player.characterId,
     player: {
@@ -70,7 +99,19 @@ export function projectRuleSnapshotToLegacyState(snapshot: RuleSnapshot): Legacy
     })),
     currentNodeId: snapshot.map.currentNodeId,
     screen: coerceLegacyScreen(snapshot.lifecycle.screen),
-    pendingNodeResolution: !!snapshot.lifecycle.pendingNodeResolution,
-    campfireChoiceLocked: false,
+    pendingNodeResolution: !!(snapshot.roomSession ?? snapshot.lifecycle.pendingNodeResolution),
+    routeState: cloneRouteState(snapshot.routeState ?? null),
+    surfaceContext,
+    roomSession: snapshot.roomSession
+      ? {
+          token: snapshot.roomSession.token,
+          nodeId: snapshot.roomSession.nodeId,
+          ownerKind: snapshot.roomSession.ownerKind,
+          resolverKind: snapshot.roomSession.resolverKind,
+          surfaceStack: [...snapshot.roomSession.surfaceStack],
+          status: snapshot.roomSession.status,
+        }
+      : null,
+    campfireChoiceLocked: !!surfaceContext?.campfireChoiceLocked,
   };
 }

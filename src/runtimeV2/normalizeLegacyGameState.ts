@@ -1,8 +1,46 @@
 import type { GameState } from '@/core/types';
 import { screenToRunPhase } from '@/core/events/runStateMachine';
+import { deriveSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
 import type { RuleSnapshot } from './contracts';
+import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
+import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
+
+function cloneRouteState(routeState: GameState['routeState']): RuleSnapshot['routeState'] {
+  if (!routeState) return null;
+  return {
+    primaryTag: routeState.primaryTag,
+    secondaryTag: routeState.secondaryTag,
+    confidence: routeState.confidence,
+    stage: routeState.stage,
+    recentCommits: routeState.recentCommits.map((commit) => ({ ...commit })),
+  };
+}
+
+function cloneSurfaceContext(surfaceContext: GameState['surfaceContext']): RuleSnapshot['surfaceContext'] {
+  if (!surfaceContext) return null;
+  return {
+    upgradeReturnScreen: surfaceContext.upgradeReturnScreen,
+    relicUpgradeReturnScreen: surfaceContext.relicUpgradeReturnScreen,
+    enchantReturnScreen: surfaceContext.enchantReturnScreen,
+    enchantContext: surfaceContext.enchantContext ? { ...surfaceContext.enchantContext } : null,
+    campfireChoiceLocked: surfaceContext.campfireChoiceLocked,
+    isEventFreeCardRemovalMode: surfaceContext.isEventFreeCardRemovalMode,
+    pendingUpgradeRefund: surfaceContext.pendingUpgradeRefund,
+  };
+}
 
 export function normalizeLegacyGameState(state: GameState, legacySaveData?: object): RuleSnapshot {
+  const knownRouteTags = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
+  const routeState = state.routeState ?? (
+    knownRouteTags.length > 0 ? deriveRouteStateFromDeck(state.player.deck, knownRouteTags, null) : null
+  );
+  const surfaceContext = state.surfaceContext ?? deriveSurfaceContextFromLegacyState(state, {
+    isEventFreeCardRemovalMode:
+      state.screen === 'RemoveCard' &&
+      !!state.activeEvent &&
+      state.activeEvent.stage === 'free_remove' &&
+      Number(state.activeEvent.data?.freeRemovalsRemaining || 0) > 0,
+  });
   return {
     schemaVersion: 2,
     engineVersion: 'runtime-v2-draft',
@@ -10,7 +48,7 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
     lifecycle: {
       screen: state.screen,
       phase: screenToRunPhase(state.screen),
-      pendingNodeResolution: !!state.pendingNodeResolution
+      pendingNodeResolution: !!(state.roomSession ?? state.pendingNodeResolution)
     },
     player: {
       characterId: state.character?.id || null,
@@ -35,6 +73,18 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
         next: [...node.next]
       }))
     },
+    routeState: cloneRouteState(routeState),
+    surfaceContext: cloneSurfaceContext(surfaceContext),
+    roomSession: state.roomSession
+      ? {
+          token: state.roomSession.token,
+          nodeId: state.roomSession.nodeId,
+          ownerKind: state.roomSession.ownerKind,
+          resolverKind: state.roomSession.resolverKind,
+          surfaceStack: [...state.roomSession.surfaceStack],
+          status: state.roomSession.status,
+        }
+      : null,
     combat: state.combat
       ? {
           turn: state.combat.turn,
