@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { GameEngine } from '@/core';
 import type { RenderModel } from '@/runtimeV2';
 import { CardView } from '@/ui/views/CardView';
-import { Coins, Hammer, Trash2, FlaskConical } from 'lucide-react';
+import { Coins, Hammer, Trash2, FlaskConical, Skull } from 'lucide-react';
 import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narrative/numericSystem';
-import worldLoreData from '@/content/data/worldLore.json';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { GlossaryText } from '@/ui/components/GlossaryText';
 import { getUiLabelZh } from '@/ui/content/terminology';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import type { RunCardInstance, RelicDef, PotionDef as CorePotionDef } from '@/core/types/actions';
+import { uiWorldLore } from '@/ui/content/worldLore';
+import { buildShopRouteAdvice } from '@/ui/views/shopRouteAdvisor';
 
 interface ShopRelic extends RelicDef {
   inscription?: string;
@@ -37,7 +38,7 @@ interface WorldLore {
 
 export function ShopView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const potionRuntime = getPotionRuntimeConfig();
-  const WORLD_LORE = worldLoreData as WorldLore;
+  const WORLD_LORE = uiWorldLore as WorldLore;
   const cards = engine.state.shopCards;
   const relics = engine.state.shopRelics;
   const potions = engine.state.shopPotions;
@@ -48,6 +49,37 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
   const playerPotionCount = renderModel?.player.potionCount ?? player.potions.length;
   const canUpgrade = roomSummary?.canUpgrade ?? (player.deck.some(c => !c.isUpgraded && c.upgrade) && playerGold >= 50);
   const canRemove = roomSummary?.canRemove ?? (playerGold >= engine.state.cardRemovalCost && playerDeckCount > 0);
+  const canEnchantService =
+    (roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) &&
+    playerGold >= engine.getAdjustedShopPrice(65);
+  const cardOffers = cards.map((card) => {
+    const basePrice = card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50;
+    return {
+      card,
+      basePrice,
+      price: engine.getAdjustedShopPrice(basePrice),
+    };
+  });
+  const relicOffers = relics
+    .map((relicId) => {
+      const relic = relicsData.find(r => r.id === relicId) as ShopRelic | undefined;
+      if (!relic) return null;
+      return {
+        relic,
+        basePrice: relic.price,
+        price: engine.getAdjustedShopPrice(relic.price),
+      };
+    })
+    .filter((offer): offer is { relic: ShopRelic; basePrice: number; price: number } => !!offer);
+  const shopRouteAdvice = buildShopRouteAdvice({
+    characterId: engine.state.character?.id,
+    deck: player.deck,
+    gold: playerGold,
+    cardOffers: cardOffers.map(({ card, price }) => ({ card, price })),
+    relicOffers: relicOffers.map(({ relic, price }) => ({ relicId: relic.id, price })),
+    canUpgrade,
+    canEnchant: canEnchantService,
+  });
   const [mixA, setMixA] = useState<number>(0);
   const [mixB, setMixB] = useState<number>(Math.min(1, Math.max(0, playerPotionCount - 1)));
   const potionChoices = player.potions.map((id, idx) => ({
@@ -59,13 +91,16 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
   const relicIconSrc = (id: string) => `/assets/relics/${id}.png`;
   const potionIconSrc = (id: string) => `/assets/potions/${id}.png`;
   
-  const [backgroundIndex] = useState(() => systemRandomInt(VIEW_BACKGROUNDS.shop.length));
-  const backgroundSrc = VIEW_BACKGROUNDS.shop[backgroundIndex].desktop;
+  const [backgroundIndex] = useState(() => 
+    VIEW_BACKGROUNDS.shop.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.shop.length) : 0
+  );
+  const backgroundSrc = VIEW_BACKGROUNDS.shop[backgroundIndex]?.desktop || '';
   const merchantImage = '/assets/shop/shop_merchant.png';
   const [merchantLine] = useState(() => {
     const lines = (WORLD_LORE?.npcDialogueTemplates?.merchant || []) as string[];
     if (!lines.length) return '货在这，命也在这。风险自负。';
-    return lines[systemRandomInt(lines.length)];
+    const lineIndex = systemRandomInt(lines.length);
+    return lines[lineIndex] || '货在这，命也在这。风险自负。';
   });
 
   return (
@@ -114,6 +149,21 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
           <p className="campaign-copy mt-2 text-sm italic text-yellow-100/85">“{merchantLine}”</p>
         </div>
       </div>
+      {shopRouteAdvice.primaryHint && (
+        <div className="campaign-section mb-8 w-full max-w-4xl px-5 py-3 text-sm text-yellow-100">
+          当前路线：{shopRouteAdvice.preferredRouteLabel || '未成型'} · 推荐先做
+          <span className="mx-1 font-semibold text-yellow-300">
+            {shopRouteAdvice.primaryHint.targetType === 'card'
+              ? '补一张路线记忆印痕'
+              : shopRouteAdvice.primaryHint.targetType === 'relic'
+                ? '拿一件路线遗物'
+                : shopRouteAdvice.primaryHint.targetId === 'upgrade'
+                  ? '锻造强化'
+                  : '附魔服务'}
+          </span>
+          · {shopRouteAdvice.primaryHint.reason}
+        </div>
+      )}
       
       <div className="campaign-section mb-8 w-full p-6">
         <div className="mb-6 border-b border-white/10 pb-3">
@@ -121,10 +171,9 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
           <h2 className="campaign-title mt-3 text-2xl text-yellow-200">记忆印痕</h2>
         </div>
         <div className="flex flex-wrap justify-center gap-6">
-          {cards.map((card: RunCardInstance, index: number) => {
-            const basePrice = card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50;
-            const price = engine.getAdjustedShopPrice(basePrice);
+          {cardOffers.map(({ card, basePrice, price }, index: number) => {
             const canAfford = playerGold >= price;
+            const routeHint = shopRouteAdvice.cardHints[card.instanceId];
             
             const deckArchetype = player.deck.reduce((acc: Record<string, number>, c: RunCardInstance) => {
               if (c.type === 'Attack') acc.attack = (acc.attack || 0) + 1;
@@ -179,6 +228,11 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                       {tag}
                     </span>
                   ))}
+                  {routeHint && (
+                    <span className="rounded border border-emerald-500/40 bg-emerald-900/40 px-2 py-0.5 text-xs font-bold text-emerald-200">
+                      当前路线强化：{routeHint.routeLabel}
+                    </span>
+                  )}
                 </div>
                 <CardView card={card} disabled={!canAfford} />
                 <button 
@@ -205,12 +259,9 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <h2 className="campaign-title mt-3 text-2xl text-emerald-200">遗物</h2>
           </div>
           <div className="flex flex-col gap-4">
-            {relics.map((relicId: string, index: number) => {
-              const relic = relicsData.find(r => r.id === relicId) as ShopRelic | undefined;
-              if (!relic) return null;
-              const basePrice = relic.price;
-              const price = engine.getAdjustedShopPrice(basePrice);
+            {relicOffers.map(({ relic, basePrice, price }, index: number) => {
               const canAfford = playerGold >= price;
+              const routeHint = shopRouteAdvice.relicHints[relic.id];
               return (
                 <div key={relic.id} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-300 group" title={`${relic.description}${relic.inscription ? `\n铭文：${relic.inscription}` : ''}${relic.flavorText ? `\n遗言：${relic.flavorText}` : ''}${relic.corrupted ? ' [腐化遗物]' : ''}`}>
                   <div className="flex items-center gap-4">
@@ -225,6 +276,11 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                     <div>
                       <div className="font-bold text-emerald-400 text-lg">{relic.name}</div>
                       <div className="text-sm text-slate-400">{relic.description}</div>
+                      {routeHint && (
+                        <div className="mt-1 text-[11px] font-semibold text-emerald-200">
+                          当前路线强化：{routeHint.routeLabel}
+                        </div>
+                      )}
                       {relic.inscription && (
                         <div className="text-[11px] text-slate-500 mt-1 line-clamp-1">铭文：{relic.inscription}</div>
                       )}
@@ -315,6 +371,11 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <Hammer size={28} />
             <div className="text-left">
               <div className="font-bold text-lg">锻造强化</div>
+              {shopRouteAdvice.serviceHints.upgrade && (
+                <div className="rounded-full border border-emerald-400/30 bg-emerald-900/30 px-2 py-1 text-[11px] font-semibold text-emerald-200">
+                  当前路线强化：{shopRouteAdvice.serviceHints.upgrade.routeLabel}
+                </div>
+              )}
               <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> 50 信用筹码</div>
             </div>
           </button>
@@ -336,9 +397,9 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
 
           <button
             onClick={() => engine.enterShopEnchant()}
-            disabled={!(roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) || playerGold < engine.getAdjustedShopPrice(65)}
+            disabled={!canEnchantService}
             className={`px-6 py-5 rounded-2xl border-2 flex items-center gap-4 transition-all w-64 shadow-lg
-              ${(roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) && playerGold >= engine.getAdjustedShopPrice(65)
+              ${canEnchantService
                 ? 'bg-slate-800 border-amber-500 hover:bg-slate-700 hover:scale-105 cursor-pointer text-amber-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]'
                 : 'bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed text-slate-500'}
             `}
@@ -347,12 +408,72 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <FlaskConical size={28} />
             <div className="text-left">
               <div className="font-bold text-lg">附魔服务</div>
+              {shopRouteAdvice.serviceHints.enchant && (
+                <div className="rounded-full border border-amber-400/30 bg-amber-900/30 px-2 py-1 text-[11px] font-semibold text-amber-100">
+                  当前路线强化：{shopRouteAdvice.serviceHints.enchant.routeLabel}
+                </div>
+              )}
               <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> {engine.getAdjustedShopPrice(65)} 信用筹码</div>
             </div>
           </button>
         </div>
 
         <div className="campaign-section mt-8 w-full max-w-3xl self-center p-6">
+          <div className="campaign-kicker">Purify</div>
+          <div className="campaign-title mt-3 mb-4 flex items-center gap-2 text-xl text-purple-200"><Skull size={20} /> 驱魔服务</div>
+          {(() => {
+            const curseRelics = player.relics
+              .map((relicId: string) => relicsData.find((r: any) => r.id === relicId) as any)
+              .filter((relic: any) => relic?.corrupted);
+            
+            if (curseRelics.length === 0) {
+              return (
+                <div className="text-center py-4 text-slate-500 italic">
+                  暂无需要驱魔的腐化遗物
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex flex-col gap-4">
+                {curseRelics.map((relic: any) => {
+                  const purifyCost = engine.getAdjustedShopPrice(75);
+                  const canAfford = playerGold >= purifyCost;
+                  return (
+                    <div key={relic.id} className="flex items-center justify-between bg-purple-900/30 p-4 rounded-xl border border-purple-700/50 hover:border-purple-500/50 transition-all duration-300">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center text-purple-400 border-2 border-purple-500/30 overflow-hidden shadow-lg">
+                          <img
+                            src={relicIconSrc(relic.id)}
+                            alt={relic.name}
+                            className="w-10 h-10 object-cover rounded-lg opacity-70"
+                            onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.relic)}
+                          />
+                        </div>
+                        <div>
+                          <div className="font-bold text-purple-400 text-lg">{relic.name}</div>
+                          <div className="text-sm text-slate-400">移除此腐化遗物</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => engine.shopPurify(relic.id)}
+                        disabled={!canAfford}
+                        className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 shrink-0 transition-all duration-300 shadow-lg
+                          ${canAfford ? 'bg-purple-900/60 border-purple-500 text-purple-300 hover:bg-purple-900 hover:scale-105 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
+                        `}
+                        title="驱魔移除腐化遗物"
+                      >
+                        <Skull size={16} /> {purifyCost}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className="campaign-section mt-4 w-full max-w-3xl self-center p-6">
           <div className="campaign-kicker">Alchemy Station</div>
           <div className="campaign-title mt-3 mb-4 flex items-center gap-2 text-xl text-cyan-200"><FlaskConical size={20} /> 炼金调和</div>
           <div className="flex flex-wrap gap-4 items-end">
