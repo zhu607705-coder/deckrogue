@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 
 import { GameEngine, type GameEngineRuntimeDelegate, type GameEngineRuntimeDelegateDiagnostics } from '@/core/events/gameEngine';
 import type { RuleSnapshot } from '@/runtimeV2';
+import rawCardsData from '@/content/data/cards.json';
+import rawRelicsData from '@/content/data/relics.json';
+import { getCardRouteSignal, getRouteSupportRelicIds } from '@/content/narrative/routeSignals';
+import type { CardDef, RelicDef } from '@/core/types';
+
+const cardsData = rawCardsData as unknown as CardDef[];
+const relicsData = rawRelicsData as unknown as RelicDef[];
 
 function createBootSnapshot(seed: number, overrides: Partial<RuleSnapshot> = {}): RuleSnapshot {
   return {
@@ -298,6 +305,15 @@ class FakeRuntimeDelegate implements GameEngineRuntimeDelegate {
   dispose(): void {}
 }
 
+function getRouteCard(characterId: string, routeTag: string, role: 'route_confirm' | 'route_payoff'): CardDef {
+  const card = cardsData.find((entry) => {
+    const signal = getCardRouteSignal(entry);
+    return entry.character === characterId && signal?.routeTags.includes(routeTag) && signal.earlyGameRole === role;
+  });
+  assert.ok(card, `missing ${role} card for ${routeTag}`);
+  return card!;
+}
+
 test('GameEngine.selectCharacter can project delegated boot snapshot into legacy state', () => {
   const delegate = new FakeRuntimeDelegate();
   const engine = new GameEngine(31415, null, { runtimeDelegate: delegate });
@@ -496,14 +512,65 @@ test('GameEngine.buyShopCard syncs the runtime delegate after legacy shop purcha
   const beforeSyncs = delegate.loadedSnapshots;
   engine.state.screen = 'Shop';
   engine.state.player.gold = 999;
-  const shopCard = engine.state.player.deck[0];
-  assert.ok(shopCard);
-  engine.state.shopCards = [shopCard];
+  const routeCard = getRouteCard('informant', 'informant:evidence', 'route_payoff');
+  const shopCard = {
+    ...routeCard,
+    instanceId: 'shop-card-1',
+    baseCardId: routeCard.id,
+    runtimeBase: routeCard,
+    persistentEnchantments: [],
+    combatAfflictions: [],
+  };
+  engine.state.shopCards = [shopCard as any];
 
   engine.buyShopCard(shopCard.instanceId, 50);
 
   assert.equal(engine.state.shopCards.length, 0);
   assert.ok(delegate.loadedSnapshots > beforeSyncs);
+  assert.ok(delegate.snapshot?.player.deck.includes(routeCard.id));
+  assert.equal(delegate.snapshot?.routeState?.recentCommits.at(-1)?.source, 'shop');
+  assert.equal(delegate.snapshot?.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+  engine.dispose();
+});
+
+test('GameEngine.buyShopRelic syncs the runtime delegate after aligned relic purchases', () => {
+  const delegate = new FakeRuntimeDelegate();
+  const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });
+  engine.selectCharacter('informant');
+
+  const alignedRelicId = getRouteSupportRelicIds('informant:evidence')[0];
+  const alignedRelic = relicsData.find((entry) => entry.id === alignedRelicId);
+  assert.ok(alignedRelic, `missing aligned relic ${alignedRelicId}`);
+  const beforeSyncs = delegate.loadedSnapshots;
+  engine.state.screen = 'Shop';
+  engine.state.player.gold = 999;
+  engine.state.shopRelics = [alignedRelicId];
+
+  engine.buyShopRelic(alignedRelicId, alignedRelic!.price);
+
+  assert.equal(engine.state.shopRelics.length, 0);
+  assert.ok(delegate.loadedSnapshots > beforeSyncs);
+  assert.ok(delegate.snapshot?.player.relicIds.includes(alignedRelicId));
+  assert.equal(delegate.snapshot?.routeState?.recentCommits.at(-1)?.source, 'shop');
+  assert.equal(delegate.snapshot?.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+  engine.dispose();
+});
+
+test('GameEngine.buyShopPotion syncs the runtime delegate after potion purchases', () => {
+  const delegate = new FakeRuntimeDelegate();
+  const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });
+  engine.selectCharacter('informant');
+
+  const beforeSyncs = delegate.loadedSnapshots;
+  engine.state.screen = 'Shop';
+  engine.state.player.gold = 999;
+  engine.state.shopPotions = ['healing_potion'];
+
+  engine.buyShopPotion('healing_potion');
+
+  assert.equal(engine.state.shopPotions.length, 0);
+  assert.ok(delegate.loadedSnapshots > beforeSyncs);
+  assert.ok(delegate.snapshot?.player.potionIds.includes('healing_potion'));
   engine.dispose();
 });
 
@@ -518,6 +585,8 @@ test('GameEngine.handleCombatVictory can project delegated reward state into the
   ];
   engine.state.screen = 'Combat';
   engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'room_combat_token';
+  engine.state.roomResolutionKind = 'combat';
   engine.state.combat = {
     turn: 1,
     isPlayerTurn: true,
@@ -558,6 +627,8 @@ test('GameEngine.handleCombatVictory can project delegated reward state into the
   assert.equal(engine.state.screen, 'Reward');
   assert.equal(engine.state.combat, null);
   assert.equal(engine.state.rewardCards.length, 3);
+  assert.equal(engine.state.roomResolutionToken, 'room_combat_token');
+  assert.equal(engine.state.roomResolutionKind, 'reward');
   engine.dispose();
 });
 
@@ -567,6 +638,8 @@ test('GameEngine.takeReward can resolve delegated reward selection and return to
   engine.selectCharacter('informant');
   engine.state.screen = 'Reward';
   engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'room_reward_token';
+  engine.state.roomResolutionKind = 'reward';
   engine.state.currentNodeId = 'floor_1_node_0';
   engine.state.rewardCards = [
     { id: 'gather_intel', instanceId: 'reward_1', name: 'Gather Intel' },
@@ -578,6 +651,9 @@ test('GameEngine.takeReward can resolve delegated reward selection and return to
   assert.deepEqual(delegate.takenRewardCardIds, ['gather_intel']);
   assert.equal(engine.state.screen, 'Map');
   assert.equal(engine.state.rewardCards.length, 0);
+  assert.equal(engine.state.pendingNodeResolution, false);
+  assert.equal(engine.state.roomResolutionToken, null);
+  assert.equal(engine.state.roomResolutionKind, null);
   assert.ok(engine.state.player.deck.some((card) => card.id === 'gather_intel'));
   engine.dispose();
 });
@@ -588,6 +664,8 @@ test('GameEngine.skipReward can resolve delegated reward exit and return to map 
   engine.selectCharacter('informant');
   engine.state.screen = 'Reward';
   engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'room_reward_token';
+  engine.state.roomResolutionKind = 'reward';
   engine.state.currentNodeId = 'floor_1_node_0';
   engine.state.rewardCards = [{ id: 'gather_intel', instanceId: 'reward_1', name: 'Gather Intel' }] as any;
 
@@ -596,5 +674,8 @@ test('GameEngine.skipReward can resolve delegated reward exit and return to map 
   assert.equal(delegate.skippedRewards, 1);
   assert.equal(engine.state.screen, 'Map');
   assert.equal(engine.state.rewardCards.length, 0);
+  assert.equal(engine.state.pendingNodeResolution, false);
+  assert.equal(engine.state.roomResolutionToken, null);
+  assert.equal(engine.state.roomResolutionKind, null);
   engine.dispose();
 });
