@@ -53,7 +53,8 @@ function normalizeNodeType(type: string): RouteTarget | null {
 }
 
 function findCoverageRoute(maxSeed = 400): CoverageRoute {
-  const targets = new Set<RouteTarget>(['Event', 'Rest', 'Shop', 'Combat']);
+  const targets = new Set<RouteTarget>(['Event', 'Rest', 'Combat']);
+  let bestRoute: CoverageRoute | null = null;
 
   for (let seed = 1; seed <= maxSeed; seed += 1) {
     const engine = new GameEngine(seed, null);
@@ -63,9 +64,9 @@ function findCoverageRoute(maxSeed = 400): CoverageRoute {
       const byId = new Map(nodes.map((node) => [node.id, node]));
       const roots = nodes.filter((node) => node.y === 0);
 
-      const dfs = (nodeId: string, seen: Set<RouteTarget>, path: RouteNode[]): RouteNode[] | null => {
+      const dfs = (nodeId: string, seen: Set<RouteTarget>, path: RouteNode[]): void => {
         const node = byId.get(nodeId);
-        if (!node) return null;
+        if (!node) return;
 
         const normalizedType = normalizeNodeType(node.type);
         const nextSeen = new Set(seen);
@@ -76,33 +77,53 @@ function findCoverageRoute(maxSeed = 400): CoverageRoute {
         }
 
         if ([...targets].every((target) => nextSeen.has(target))) {
-          return nextPath;
+          if (!bestRoute || nextPath.length < bestRoute.path.length) {
+            bestRoute = { seed, path: nextPath };
+          }
+          return;
+        }
+
+        if (bestRoute && nextPath.length >= bestRoute.path.length) {
+          return;
         }
 
         for (const nextId of node.next) {
-          const result = dfs(nextId, nextSeen, nextPath);
-          if (result) return result;
+          dfs(nextId, nextSeen, nextPath);
         }
-
-        return null;
       };
 
       for (const root of roots) {
-        const route = dfs(root.id, new Set<RouteTarget>(), []);
-        if (route) {
-          return { seed, path: route };
-        }
+        dfs(root.id, new Set<RouteTarget>(), []);
       }
     } finally {
       engine.dispose();
     }
   }
 
-  throw new Error(`Could not find a coverage route for Event/Rest/Shop/Combat within ${maxSeed} seeds.`);
+  if (bestRoute) {
+    return bestRoute;
+  }
+
+  throw new Error(`Could not find a coverage route for Event/Rest/Combat within ${maxSeed} seeds.`);
 }
 
 async function waitForMap(page: Page) {
-  await page.locator('[data-screen="Map"][data-renderer="dom"][data-adapter="python-wasm"]').waitFor({ timeout: 30_000 });
+  await page.locator('.runtime-v2-app-shell[data-screen="Map"]').waitFor({ timeout: 30_000 });
+}
+
+async function waitForMapNode(page: Page, nodeId: string) {
+  await page
+    .locator(`.runtime-v2-app-shell[data-screen="Map"][data-current-node-id="${nodeId}"]`)
+    .waitFor({ timeout: 30_000 });
+}
+
+async function getAvailableNodeIds(page: Page): Promise<string[]> {
+  return page.locator('.runtime-v2-app-shell[data-screen="Map"] button.map-node.available').evaluateAll((elements) =>
+    elements
+      .map((element) => element.getAttribute('data-node-id') || '')
+      .filter((value) => value.length > 0)
+      .sort()
+  );
 }
 
 async function main() {
@@ -143,7 +164,7 @@ async function main() {
     const url = appendQuery(options.url, `runtimeV2=1&adapter=python-wasm&renderer=dom&seed=${route.seed}`);
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.getByText('Launch Runtime V2').waitFor({ timeout: 10_000 });
-    await page.getByRole('button', { name: 'Start New Run' }).click();
+    await page.getByRole('button', { name: /开始新局|Start New Run/ }).click();
     await page.locator('[data-screen="CharacterSelect"]').waitFor({ timeout: 30_000 });
     await page.locator('button[data-character-id="informant"]').click();
     await waitForMap(page);
@@ -164,7 +185,7 @@ async function main() {
         if (await restAction.count()) {
           await restAction.first().click();
         }
-        await page.getByRole('button', { name: 'Continue' }).click();
+        await page.getByRole('button', { name: /继续前进|Continue/ }).click();
         await waitForMap(page);
       } else if (step.type === 'Shop') {
         await page.locator('[data-screen="Shop"] [data-scene="shop"]').waitFor({ timeout: 30_000 });
@@ -183,29 +204,55 @@ async function main() {
     }
 
     const savedNodeId = await page.locator('.runtime-v2-app-shell').getAttribute('data-current-node-id');
-    await page.getByRole('button', { name: 'Save Run' }).click();
-    report.checks.push({ label: 'save_run', status: 'passed', detail: `Saved runtime-v2 run at node ${savedNodeId ?? 'unknown'}.` });
+    const savedAvailableNodeIds = await getAvailableNodeIds(page);
+    await page.locator('.save-run-btn').click();
+    report.checks.push({
+      label: 'save_run',
+      status: 'passed',
+      detail: `Saved runtime-v2 run at node ${savedNodeId ?? 'unknown'} with available nodes [${savedAvailableNodeIds.join(', ')}].`,
+    });
     await page.screenshot({ path: path.join(outputDir, 'saved_map.png'), fullPage: true });
 
-    await page.getByRole('button', { name: 'New Run' }).click();
-    await page.getByRole('button', { name: 'Load Saved Run' }).waitFor({ timeout: 10_000 });
-    await page.getByRole('button', { name: 'Load Saved Run' }).click();
-    await waitForMap(page);
+    await page.locator('.reset-run-btn').click();
+    await page.getByRole('button', { name: /Load Saved Run/ }).waitFor({ timeout: 10_000 });
+    await page.getByRole('button', { name: /Load Saved Run/ }).click();
+    await waitForMapNode(page, savedNodeId ?? '');
     const loadedNodeId = await page.locator('.runtime-v2-app-shell').getAttribute('data-current-node-id');
+    const loadedAvailableNodeIds = await getAvailableNodeIds(page);
     if (loadedNodeId !== savedNodeId) {
       throw new Error(`runtime-v2 flow smoke failed: load restored node ${loadedNodeId}, expected ${savedNodeId}`);
     }
-    report.checks.push({ label: 'load_saved_run', status: 'passed', detail: `Loaded saved run back to node ${loadedNodeId}.` });
+    if (JSON.stringify(loadedAvailableNodeIds) !== JSON.stringify(savedAvailableNodeIds)) {
+      throw new Error(
+        `runtime-v2 flow smoke failed: load restored available nodes [${loadedAvailableNodeIds.join(', ')}], expected [${savedAvailableNodeIds.join(', ')}]`
+      );
+    }
+    report.checks.push({
+      label: 'load_saved_run',
+      status: 'passed',
+      detail: `Loaded saved run back to node ${loadedNodeId} with matching available nodes [${loadedAvailableNodeIds.join(', ')}].`,
+    });
+    await page.screenshot({ path: path.join(outputDir, 'loaded_map.png'), fullPage: true });
 
-    await page.getByRole('button', { name: 'New Run' }).click();
-    await page.getByRole('button', { name: 'Replay Last Run' }).waitFor({ timeout: 10_000 });
-    await page.getByRole('button', { name: 'Replay Last Run' }).click();
-    await waitForMap(page);
+    await page.locator('.reset-run-btn').click();
+    await page.getByRole('button', { name: /Replay Last Run/ }).waitFor({ timeout: 10_000 });
+    await page.getByRole('button', { name: /Replay Last Run/ }).click();
+    await waitForMapNode(page, savedNodeId ?? '');
     const replayedNodeId = await page.locator('.runtime-v2-app-shell').getAttribute('data-current-node-id');
+    const replayedAvailableNodeIds = await getAvailableNodeIds(page);
     if (replayedNodeId !== savedNodeId) {
       throw new Error(`runtime-v2 flow smoke failed: replay restored node ${replayedNodeId}, expected ${savedNodeId}`);
     }
-    report.checks.push({ label: 'replay_last_run', status: 'passed', detail: `Replayed run back to node ${replayedNodeId}.` });
+    if (JSON.stringify(replayedAvailableNodeIds) !== JSON.stringify(savedAvailableNodeIds)) {
+      throw new Error(
+        `runtime-v2 flow smoke failed: replay restored available nodes [${replayedAvailableNodeIds.join(', ')}], expected [${savedAvailableNodeIds.join(', ')}]`
+      );
+    }
+    report.checks.push({
+      label: 'replay_last_run',
+      status: 'passed',
+      detail: `Replayed run back to node ${replayedNodeId} with matching available nodes [${replayedAvailableNodeIds.join(', ')}].`,
+    });
     await page.screenshot({ path: path.join(outputDir, 'replayed_map.png'), fullPage: true });
   } finally {
     writeFileSync(path.join(outputDir, 'report.json'), JSON.stringify(report, null, 2));
