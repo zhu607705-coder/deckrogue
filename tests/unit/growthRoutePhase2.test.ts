@@ -5,6 +5,7 @@ import { GameEngine } from '@/core/events/gameEngine';
 import rawCardsData from '@/content/data/cards.json';
 import rawRelicsData from '@/content/data/relics.json';
 import {
+  getCardRouteAffinityTags,
   getCardRouteSignal,
   getKnownRouteTagsForCharacter,
   getRelicRouteTags,
@@ -14,6 +15,7 @@ import {
   resolvePreferredRouteTag,
   sortRelicIdsByRouteAffinity,
 } from '@/content/narrative/routeSignals';
+import { maybeRecordRouteCommit, syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
 import type { CardDef, RelicDef, RunCardInstance } from '@/core/types';
 
 const cardsData = rawCardsData as unknown as CardDef[];
@@ -44,6 +46,14 @@ function getRouteCardId(characterId: string, routeTag: string, role: 'route_conf
     return entry.character === characterId && signal?.routeTags.includes(routeTag) && signal.earlyGameRole === role;
   });
   assert.ok(card, `missing ${role} card for ${routeTag}`);
+  return card!.id;
+}
+
+function getNeutralCardId(characterId: string) {
+  const card = cardsData.find((entry) => {
+    return entry.character === characterId && getCardRouteAffinityTags(entry).length === 0;
+  });
+  assert.ok(card, `missing neutral card for ${characterId}`);
   return card!.id;
 }
 
@@ -121,7 +131,8 @@ test('rest upgrade surfaces keep recent route sustain ahead of stale deck histor
     engine.state.player.deck.push(makeRuntimeCard(offRouteUpgradeCard, 'delay-upgrade'));
     engine.state.player.deck.push(makeRuntimeCard(recentRouteCard, 'recent-1'));
     engine.state.player.deck.push(makeRuntimeCard(alignedUpgradeCard, 'warp-upgrade'));
-    engine.state.player.relics.push('bag_of_prep', 'lantern', 'vajra');
+    engine.state.player.relics.push('bag_of_prep', 'lantern', 'vajra', 'mark_of_chaos');
+    engine.state.screen = 'Rest';
 
     const routeTags = getKnownRouteTagsForCharacter('chronomancer');
     const preferredRouteTag = resolvePreferredRouteTag(engine.state.player.deck, routeTags);
@@ -140,6 +151,101 @@ test('rest upgrade surfaces keep recent route sustain ahead of stale deck histor
     const sortedRelics = sortRelicIdsByRouteAffinity(['bag_of_prep', 'lantern', 'vajra'], preferredRouteTag);
     assert.equal(getRelicRouteTags(sortedRelics[0]).includes('chronomancer:warp'), true);
     assert.equal(sortedRelics[0], 'lantern');
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('midgame reward and shop sustain the committed route after a neutral utility pick', () => {
+  const engine = new GameEngine(31, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+
+    const staleRouteCard = getRouteCardId('informant', 'informant:intel', 'route_confirm');
+    const recentRouteCard = getRouteCardId('informant', 'informant:evidence', 'route_confirm');
+    const neutralCard = getNeutralCardId('informant');
+
+    engine.state.player.deck.push(makeRuntimeCard(staleRouteCard, 'stale-1'));
+    engine.state.player.deck.push(makeRuntimeCard(staleRouteCard, 'stale-2'));
+    engine.state.player.deck.push(makeRuntimeCard(recentRouteCard, 'recent-1'));
+    engine.state.player.deck.push(makeRuntimeCard(neutralCard, 'neutral-1'));
+    maybeRecordRouteCommit(engine.state, 'informant:evidence', 'reward', 2, 16);
+    maybeRecordRouteCommit(engine.state, 'informant:evidence', 'shop', 3, 12);
+    syncRouteStateFromLegacyState(engine.state);
+
+    setFloor(engine, 4);
+    const reward = engine.generateCardRewards(3, { source: 'combat' });
+    assert.equal(
+      reward.some((card) => getCardRouteAffinityTags(card).includes('informant:evidence')),
+      true,
+    );
+
+    const shop = engine.generateCardRewards(6, { source: 'shop' });
+    assert.equal(
+      shop.some((card) => getCardRouteAffinityTags(card).includes('informant:evidence')),
+      true,
+    );
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('real shop purchase paths write shop commits into authoritative route state', () => {
+  const engine = new GameEngine(37, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+    maybeRecordRouteCommit(engine.state, 'informant:evidence', 'reward', 2, 16);
+    syncRouteStateFromLegacyState(engine.state);
+
+    const alignedCardId = getRouteCardId('informant', 'informant:evidence', 'route_payoff');
+    const alignedRelicId = getRouteSupportRelicIds('informant:evidence')[0];
+    const alignedRelic = relicsData.find((entry) => entry.id === alignedRelicId);
+    assert.ok(alignedRelic, `missing aligned relic ${alignedRelicId}`);
+
+    engine.state.screen = 'Shop';
+    engine.state.player.gold = 999;
+    engine.state.shopCards = [makeRuntimeCard(alignedCardId, 'shop-card-1')];
+    engine.state.shopRelics = [alignedRelicId];
+
+    engine.buyShopCard('shop-card-1', 50);
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.source, 'shop');
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+    assert.equal(engine.state.routeState?.primaryTag, 'informant:evidence');
+
+    engine.buyShopRelic(alignedRelicId, alignedRelic!.price);
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.source, 'shop');
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+    assert.equal(engine.state.routeState?.primaryTag, 'informant:evidence');
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('legacy direct shop entry points also preserve authoritative shop route commits', () => {
+  const engine = new GameEngine(41, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+    maybeRecordRouteCommit(engine.state, 'informant:evidence', 'reward', 2, 16);
+    syncRouteStateFromLegacyState(engine.state);
+
+    const alignedCardId = getRouteCardId('informant', 'informant:evidence', 'route_payoff');
+    const alignedRelicId = getRouteSupportRelicIds('informant:evidence')[0];
+    assert.ok(alignedRelicId, 'missing aligned direct relic');
+
+    engine.state.screen = 'Shop';
+    engine.state.player.gold = 999;
+    engine.state.shopCards = [makeRuntimeCard(alignedCardId, 'shop-card-direct-1')];
+    engine.state.shopRelics = [alignedRelicId];
+
+    engine.buyCard('shop-card-direct-1');
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.source, 'shop');
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+    assert.equal(engine.state.routeState?.primaryTag, 'informant:evidence');
+
+    engine.buyRelic(alignedRelicId);
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.source, 'shop');
+    assert.equal(engine.state.routeState?.recentCommits.at(-1)?.tag, 'informant:evidence');
+    assert.equal(engine.state.routeState?.primaryTag, 'informant:evidence');
   } finally {
     engine.dispose();
   }

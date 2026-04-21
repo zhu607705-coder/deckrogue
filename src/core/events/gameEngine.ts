@@ -319,6 +319,72 @@ export class GameEngine {
     }
   }
 
+  private syncRuntimeDelegateAfterShopMutation(command: string): void {
+    if (!this.supportsBootAndMapDelegation()) return;
+    try {
+      this.syncRuntimeDelegateFromLegacyState(command);
+    } catch (error) {
+      this.recordDelegationFallback(error);
+    }
+  }
+
+  private restoreAuthoritativeStateSlice(snapshot: Partial<GameState>): void {
+    const hasExplicitRouteState = snapshot.routeState != null;
+    const hasExplicitSurfaceContext = snapshot.surfaceContext != null;
+    const hasExplicitRoomSession = snapshot.roomSession != null;
+    const isEventFreeCardRemovalMode =
+      this.eventManager.isEventFreeCardRemovalMode()
+      || (
+        snapshot.screen === 'RemoveCard'
+        && !!snapshot.activeEvent
+        && snapshot.activeEvent.stage === 'free_remove'
+        && Number(snapshot.activeEvent.data?.freeRemovalsRemaining || 0) > 0
+      );
+
+    if ('pendingNodeResolution' in snapshot && typeof snapshot.pendingNodeResolution === 'boolean') {
+      this.state.pendingNodeResolution = snapshot.pendingNodeResolution;
+    }
+    if ('roomResolutionToken' in snapshot) {
+      this.state.roomResolutionToken = snapshot.roomResolutionToken ?? null;
+    }
+    if ('roomResolutionKind' in snapshot) {
+      this.state.roomResolutionKind = snapshot.roomResolutionKind ?? null;
+    }
+    if ('upgradeReturnScreen' in snapshot) {
+      this.state.upgradeReturnScreen = snapshot.upgradeReturnScreen;
+    }
+    if ('relicUpgradeReturnScreen' in snapshot) {
+      this.state.relicUpgradeReturnScreen = snapshot.relicUpgradeReturnScreen;
+    }
+    if ('campfireChoiceLocked' in snapshot) {
+      this.state.campfireChoiceLocked = !!snapshot.campfireChoiceLocked;
+    }
+    if ('pendingUpgradeRefund' in snapshot) {
+      this.state.pendingUpgradeRefund = !!snapshot.pendingUpgradeRefund;
+    }
+    if ('enchantContext' in snapshot) {
+      this.state.enchantContext = cloneJsonValue(snapshot.enchantContext, null as GameState['enchantContext']);
+    }
+
+    if (hasExplicitSurfaceContext) {
+      applySurfaceContext(this.state, cloneJsonValue(snapshot.surfaceContext, null as GameState['surfaceContext']));
+    } else {
+      syncSurfaceContextFromLegacyState(this.state, { isEventFreeCardRemovalMode });
+    }
+
+    if (hasExplicitRoomSession) {
+      setRoomSession(this.state, cloneJsonValue(snapshot.roomSession, null as GameState['roomSession']));
+    } else {
+      syncRoomSessionFromLegacyState(this.state, { isEventFreeCardRemovalMode });
+    }
+
+    if (hasExplicitRouteState) {
+      this.state.routeState = cloneJsonValue(snapshot.routeState, null as GameState['routeState']);
+    } else {
+      syncRouteStateFromLegacyState(this.state);
+    }
+  }
+
   private formatVoxTimestamp(): string {
     const combat = this.state.combat;
     if (combat) {
@@ -721,44 +787,19 @@ export class GameEngine {
   }
 
   buyCard(cardInstanceId: string): void {
-    const card = this.state.shopCards.find(c => c.instanceId === cardInstanceId);
-    if (!card) return;
-
-    const price = 50;
-    if (this.state.player.gold < price) return;
-
-    this.state.player.gold -= price;
-    this.state.player.deck.push(this.createRuntimeCard(card));
-    this.state.shopCards = this.state.shopCards.filter(c => c.instanceId !== cardInstanceId);
-    syncRouteStateFromLegacyState(this.state);
-    this.notify();
+    this.runFlowManager.buyCard(cardInstanceId);
+    this.syncRuntimeDelegateAfterShopMutation('buy_card');
   }
 
   buyRelic(relicId: string): void {
-    const relic = relicsData.find(r => r.id === relicId);
-    if (!relic || this.state.player.relics.includes(relicId)) return;
-
-    if (this.state.player.gold < relic.price) return;
-
-    this.state.player.gold -= relic.price;
-    this.state.player.relics.push(relicId);
-    this.state.player.relicStates[relicId] = { level: 1, progress: 0, corrupted: !!relic.corrupted };
-    this.state.shopRelics = this.state.shopRelics.filter(id => id !== relicId);
-    this.notify();
+    this.runFlowManager.buyRelic(relicId);
+    this.syncRuntimeDelegateAfterShopMutation('buy_relic');
   }
 
   buyPotion(potionId: string): void {
-    const potion = (potionsData as any[]).find(p => p.id === potionId);
-    if (!potion) return;
     unlockCodexEntry('potions', potionId);
-
-    if (this.state.player.gold < potion.price) return;
-    if (this.state.player.potions.length >= getPotionRuntimeConfig().slotLimit) return;
-
-    this.state.player.gold -= potion.price;
-    this.state.player.potions.push(potionId);
-    this.state.shopPotions = this.state.shopPotions.filter(id => id !== potionId);
-    this.notify();
+    this.runFlowManager.buyPotion(potionId);
+    this.syncRuntimeDelegateAfterShopMutation('buy_potion');
   }
 
   removeCard(cardInstanceId: string): void {
@@ -799,9 +840,7 @@ export class GameEngine {
   }
 
   restUpgrade(): void {
-    this.state.screen = 'Upgrade';
-    syncRoomSessionFromLegacyState(this.state);
-    this.notify();
+    this.runFlowManager.restUpgrade();
   }
 
   restDisperse(): void {
@@ -809,21 +848,17 @@ export class GameEngine {
   }
 
   restUpgradeRelic(): void {
-    this.state.screen = 'RelicUpgrade';
-    this.state.relicUpgradeReturnScreen = 'Rest';
-    syncRoomSessionFromLegacyState(this.state);
-    this.notify();
+    this.runFlowManager.restUpgradeRelic();
   }
 
   cancelRelicUpgrade(): void {
-    if (this.state.relicUpgradeReturnScreen === 'Rest' && this.state.campfireChoiceLocked) {
-      this.state.relicUpgradeReturnScreen = undefined;
-      this.leaveCurrentRoomToMap();
-      return;
+    if (this.state.relicUpgradeReturnScreen === 'Rest') {
+      this.state.campfireChoiceLocked = false;
     }
     this.state.screen = this.state.relicUpgradeReturnScreen || 'Rest';
     this.state.relicUpgradeReturnScreen = undefined;
     syncRoomSessionFromLegacyState(this.state);
+    syncSurfaceContextFromLegacyState(this.state);
     this.notify();
   }
 
@@ -1021,9 +1056,10 @@ export class GameEngine {
   }
 
   getSaveData(): object {
+    const isEventFreeCardRemovalMode = this.eventManager.isEventFreeCardRemovalMode();
     syncRouteStateFromLegacyState(this.state);
-    syncSurfaceContextFromLegacyState(this.state, {
-      isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
+    syncRoomSessionFromLegacyState(this.state, {
+      isEventFreeCardRemovalMode,
     });
     return {
       state: this.state,
@@ -1035,7 +1071,6 @@ export class GameEngine {
   loadSaveData(data: any): void {
     if (data.state) {
       this.state = data.state;
-      applySurfaceContext(this.state, this.state.surfaceContext ?? null);
       this.state.roomSession ??= null;
       this.state.routeState ??= null;
       this.state.surfaceContext ??= null;
@@ -1050,13 +1085,7 @@ export class GameEngine {
       this.state.shopCards = (this.state.shopCards || []).map((card) => normalizeRunCardInstance(card, () => this.generateId()));
       this.normalizeCombatCards();
       this.actionManager.updateState(this.state);
-      syncRoomSessionFromLegacyState(this.state, {
-        isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
-      });
-      syncRouteStateFromLegacyState(this.state);
-      syncSurfaceContextFromLegacyState(this.state, {
-        isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
-      });
+      this.restoreAuthoritativeStateSlice(this.state);
     }
     this.syncRuntimeDelegateFromLegacyState('load_snapshot');
     this.notify();
@@ -1102,20 +1131,22 @@ export class GameEngine {
       this.state.player.gold += 50;
       this.state.pendingUpgradeRefund = false;
     }
-    if (this.state.upgradeReturnScreen === 'Rest' && this.state.campfireChoiceLocked) {
-      this.state.upgradeReturnScreen = undefined;
-      this.leaveCurrentRoomToMap();
-      return;
+    if (this.state.upgradeReturnScreen === 'Rest') {
+      this.state.campfireChoiceLocked = false;
     }
     this.state.screen = this.state.upgradeReturnScreen || 'Map';
     this.state.upgradeReturnScreen = undefined;
     syncRoomSessionFromLegacyState(this.state);
+    syncSurfaceContextFromLegacyState(this.state);
     this.notify();
   }
 
   enterCardRemoval(): void {
     this.state.screen = 'RemoveCard';
     syncRoomSessionFromLegacyState(this.state, {
+      isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
+    });
+    syncSurfaceContextFromLegacyState(this.state, {
       isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
     });
     this.notify();
@@ -1125,11 +1156,13 @@ export class GameEngine {
     if (this.eventManager.isEventFreeCardRemovalMode()) {
       this.state.screen = 'Event';
       syncRoomSessionFromLegacyState(this.state, { isEventFreeCardRemovalMode: true });
+      syncSurfaceContextFromLegacyState(this.state, { isEventFreeCardRemovalMode: true });
       this.notify();
       return;
     }
     this.state.screen = this.state.campfireChoiceLocked ? 'Rest' : 'Shop';
     syncRoomSessionFromLegacyState(this.state);
+    syncSurfaceContextFromLegacyState(this.state);
     this.notify();
   }
 
@@ -1195,50 +1228,27 @@ export class GameEngine {
       this.buyCard(cardInstanceId);
       return;
     }
-    if (this.supportsBootAndMapDelegation()) {
-      try {
-        this.syncRuntimeDelegateFromLegacyState('buy_shop_card');
-      } catch (error) {
-        this.recordDelegationFallback(error);
-      }
-    }
-    const card = this.state.shopCards.find(c => c.instanceId === cardInstanceId);
-    if (!card) return;
     const price = this.getAdjustedShopPrice(basePrice);
-    if (this.state.player.gold < price) return;
-    this.state.player.gold -= price;
-    this.state.player.deck.push(this.createRuntimeCard(card));
-    this.state.shopCards = this.state.shopCards.filter(c => c.instanceId !== cardInstanceId);
-    this.notify();
+    this.runFlowManager.buyCard(cardInstanceId, price);
+    this.syncRuntimeDelegateAfterShopMutation('buy_shop_card');
   }
 
   buyShopRelic(relicId: string, basePrice?: number): void {
     const relic = (relicsData as any[]).find(r => r.id === relicId);
     if (!relic || this.state.player.relics.includes(relicId)) return;
     const price = this.getAdjustedShopPrice(basePrice ?? relic.price);
-    if (this.state.player.gold < price) return;
-    this.state.player.gold -= price;
-    this.state.player.relics.push(relicId);
-    this.state.player.relicStates[relicId] = { level: 1, progress: 0, corrupted: !!relic.corrupted };
-    this.state.shopRelics = this.state.shopRelics.filter(id => id !== relicId);
-    this.notify();
+    this.runFlowManager.buyRelic(relicId, price);
+    this.syncRuntimeDelegateAfterShopMutation('buy_shop_relic');
   }
 
-  buyShopPotion(potionId: string, basePrice?: number, index?: number): void {
+  buyShopPotion(potionId: string, basePrice?: number, _index?: number): void {
     if (this.state.player.potions.length >= getPotionRuntimeConfig().slotLimit) return;
     const potion = (potionsData as any[]).find(p => p.id === potionId);
     if (!potion) return;
     unlockCodexEntry('potions', potionId);
     const price = this.getAdjustedShopPrice(basePrice ?? potion.price);
-    if (this.state.player.gold < price) return;
-    this.state.player.gold -= price;
-    this.state.player.potions.push(potionId);
-    if (typeof index === 'number' && this.state.shopPotions[index] === potionId) {
-      this.state.shopPotions.splice(index, 1);
-    } else {
-      this.state.shopPotions = this.state.shopPotions.filter(id => id !== potionId);
-    }
-    this.notify();
+    this.runFlowManager.buyPotion(potionId, price);
+    this.syncRuntimeDelegateAfterShopMutation('buy_shop_potion');
   }
 
   mixPotions(indexA: number, indexB: number): boolean {
@@ -1392,11 +1402,7 @@ export class GameEngine {
     this.rng = createRNG(this.state.seed, this.state.rngState);
     bindStateRng(this.state, this.rng);
     economySystem.setRandomGenerator(this.rng);
-    if (!snapshot.roomSession) {
-      syncRoomSessionFromLegacyState(this.state, {
-        isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
-      });
-    }
+    this.restoreAuthoritativeStateSlice(snapshot);
     this.combatManager.startCombat(checkpoint.nodeType);
     return this.state.screen === 'Combat' && !!this.state.combat;
   }

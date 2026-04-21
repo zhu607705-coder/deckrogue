@@ -11,6 +11,7 @@ import {
   syncRoomSessionFromLegacyState,
   syncRoomSessionFromTransition,
 } from '@/core/events/roomSession';
+import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
 import {
   analyzeRouteSignals,
   cardsData,
@@ -293,12 +294,12 @@ export class RunFlowManager {
     state.screen = 'Shop';
   }
 
-  buyCard(cardInstanceId: string): void {
+  buyCard(cardInstanceId: string, priceOverride?: number): void {
     const state = this.deps.getState();
     const card = state.shopCards.find(c => c.instanceId === cardInstanceId);
     if (!card) return;
 
-    const price = (balanceSystem as any).getCardPrice?.(card.rarity) ?? (card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50);
+    const price = priceOverride ?? ((balanceSystem as any).getCardPrice?.(card.rarity) ?? (card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50));
     if (state.player.gold < price) return;
 
     state.player.gold -= price;
@@ -310,14 +311,15 @@ export class RunFlowManager {
     this.deps.notify();
   }
 
-  buyRelic(relicId: string): void {
+  buyRelic(relicId: string, priceOverride?: number): void {
     const state = this.deps.getState();
     const relic = relicsData.find(r => r.id === relicId);
     if (!relic || state.player.relics.includes(relicId)) return;
 
-    if (state.player.gold < relic.price) return;
+    const price = priceOverride ?? relic.price;
+    if (state.player.gold < price) return;
 
-    state.player.gold -= relic.price;
+    state.player.gold -= price;
     state.player.relics.push(relicId);
     state.player.relicStates[relicId] = { level: 1, progress: 0, corrupted: !!relic.corrupted };
     state.shopRelics = state.shopRelics.filter(id => id !== relicId);
@@ -331,15 +333,16 @@ export class RunFlowManager {
     this.deps.notify();
   }
 
-  buyPotion(potionId: string): void {
+  buyPotion(potionId: string, priceOverride?: number): void {
     const state = this.deps.getState();
     const potion = (potionsData as PotionDef[]).find(p => p.id === potionId);
     if (!potion) return;
 
-    if (state.player.gold < potion.price) return;
+    const price = priceOverride ?? potion.price;
+    if (state.player.gold < price) return;
     if (state.player.potions.length >= getPotionRuntimeConfig().slotLimit) return;
 
-    state.player.gold -= potion.price;
+    state.player.gold -= price;
     state.player.potions.push(potionId);
     state.shopPotions = state.shopPotions.filter(id => id !== potionId);
     this.deps.notify();
@@ -394,6 +397,7 @@ export class RunFlowManager {
     state.upgradeReturnScreen = 'Rest';
     state.screen = 'Upgrade';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -403,6 +407,7 @@ export class RunFlowManager {
     state.campfireChoiceLocked = true;
     state.screen = 'RemoveCard';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -418,6 +423,7 @@ export class RunFlowManager {
     state.relicUpgradeReturnScreen = 'Rest';
     state.screen = 'RelicUpgrade';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -487,6 +493,7 @@ export class RunFlowManager {
       return;
     }
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -510,6 +517,7 @@ export class RunFlowManager {
 
     state.screen = 'Upgrade';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -519,14 +527,13 @@ export class RunFlowManager {
       state.player.gold += 50;
       state.pendingUpgradeRefund = false;
     }
-    if (state.upgradeReturnScreen === 'Rest' && state.campfireChoiceLocked) {
-      state.upgradeReturnScreen = undefined;
-      this.leaveCurrentRoomToMap();
-      return;
+    if (state.upgradeReturnScreen === 'Rest') {
+      state.campfireChoiceLocked = false;
     }
     state.screen = state.upgradeReturnScreen || 'Map';
     state.upgradeReturnScreen = undefined;
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -534,6 +541,9 @@ export class RunFlowManager {
     const state = this.deps.getState();
     state.screen = 'RemoveCard';
     syncRoomSessionFromLegacyState(state, {
+      isEventFreeCardRemovalMode: this.deps.isEventFreeCardRemovalMode(),
+    });
+    syncSurfaceContextFromLegacyState(state, {
       isEventFreeCardRemovalMode: this.deps.isEventFreeCardRemovalMode(),
     });
     this.deps.notify();
@@ -546,11 +556,15 @@ export class RunFlowManager {
       syncRoomSessionFromLegacyState(state, {
         isEventFreeCardRemovalMode: true,
       });
+      syncSurfaceContextFromLegacyState(state, {
+        isEventFreeCardRemovalMode: true,
+      });
       this.deps.notify();
       return;
     }
     state.screen = state.campfireChoiceLocked ? 'Rest' : 'Shop';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -571,6 +585,7 @@ export class RunFlowManager {
     };
     state.screen = 'Enchant';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -587,6 +602,7 @@ export class RunFlowManager {
     };
     state.screen = 'Enchant';
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
@@ -616,6 +632,7 @@ export class RunFlowManager {
     }
     state.screen = returnScreen;
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
     return true;
   }
@@ -631,6 +648,7 @@ export class RunFlowManager {
     }
     state.screen = returnScreen;
     syncRoomSessionFromLegacyState(state);
+    syncSurfaceContextFromLegacyState(state);
     this.deps.notify();
   }
 
