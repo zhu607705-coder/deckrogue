@@ -205,7 +205,7 @@ export function MapView({
   }, [currentNodeId, map.length]);
 
   return (
-    <div className="grimdark-terminal-screen campaign-shell flex flex-col h-full text-[#d4d4d8]">
+    <div className="grimdark-terminal-screen campaign-shell flex flex-col h-full text-[#d4d4d8]" data-screen="Map">
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute inset-0 bg-cover bg-center"
