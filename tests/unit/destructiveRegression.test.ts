@@ -85,8 +85,10 @@ function makeState(): GameState {
           hp: 5000,
           maxHp: 5000,
           block: 0,
-          statuses: {},
+          statuses: {} as Record<string, number>,
           nextIntent: 'Attack',
+          lastUsedIntent: '',
+          intentCooldowns: {} as Record<string, number>,
           devotion: 0,
           corruptionAxis: 0,
           axisDisposition: 'balanced'

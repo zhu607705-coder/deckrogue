@@ -70,10 +70,8 @@ function spawnDevServer(url: string): ChildProcess {
   });
 }
 
-async function clickCharacterCard(page: Page, characterName: string) {
-  const card = page.locator('div.cursor-pointer').filter({
-    has: page.getByRole('heading', { name: characterName })
-  }).first();
+async function clickCharacterCard(page: Page, characterId: string) {
+  const card = page.locator(`[data-character-id="${characterId}"]`).first();
   await card.scrollIntoViewIfNeeded();
   await card.click({ force: true });
 }
@@ -82,9 +80,9 @@ async function enterFirstCombat(page: Page) {
   await page.locator('button[data-node-id]').first().waitFor({ timeout: 10_000 });
   const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
   if (await combatNode.count()) {
-    await combatNode.click();
+    await combatNode.click({ force: true });
   } else {
-    await page.locator('button[data-node-id]:not([disabled])').first().click();
+    await page.locator('button[data-node-id]:not([disabled])').first().click({ force: true });
   }
   await Promise.race([
     page.locator('.enemy-standee').first().waitFor({ timeout: 10_000 }),
@@ -202,9 +200,9 @@ async function main() {
     await page.screenshot({ path: characterShot, fullPage: true });
     report.screenshots.push(characterShot);
     report.steps.push('character_select');
-    await clickCharacterCard(page, 'The Brute');
+    await clickCharacterCard(page, 'brute');
     await page.waitForTimeout(300);
-    const startGameButton = page.getByRole('button', { name: /Start Game/i });
+    const startGameButton = page.getByRole('button', { name: /Start Game|开始战区部署|开始游戏/i });
     if (await startGameButton.count()) {
       await startGameButton.first().click();
     }

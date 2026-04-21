@@ -119,6 +119,10 @@ function registerAppProtocol() {
   });
 }
 
+// Disable GPU sandbox on macOS to avoid initialization failures
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('no-sandbox');
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();

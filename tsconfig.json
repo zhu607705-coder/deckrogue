@@ -24,5 +24,12 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "output/packages/**",
+    "create_test.js",
+    "make_test.js",
+    "test_doc_simple.js",
+    "test_simple.js"
+  ]
 }
