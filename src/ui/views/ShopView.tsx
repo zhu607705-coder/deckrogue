@@ -74,6 +74,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
   const shopRouteAdvice = buildShopRouteAdvice({
     characterId: engine.state.character?.id,
     deck: player.deck,
+    routeState: engine.state.routeState ?? null,
     gold: playerGold,
     cardOffers: cardOffers.map(({ card, price }) => ({ card, price })),
     relicOffers: relicOffers.map(({ relic, price }) => ({ relicId: relic.id, price })),

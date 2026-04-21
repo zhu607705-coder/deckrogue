@@ -1,0 +1,824 @@
+import type { GameState, RunCardInstance, CardDef, ActiveEventState, RelicDef, PotionDef } from '@/core/types';
+import { globalEventBus } from '@/core/events/eventBus';
+import { metricsTracker } from '@/core/events/metricsTracker';
+import { economySystem } from '@/features/progression/economySystem';
+import { balanceSystem } from '@/core/balance/balanceSystem';
+import { safeArrayAccess } from '@/core/utils/safeArray';
+import {
+  analyzeRouteSignals,
+  STORY_EVENTS,
+  getStoryEventDef,
+  getStoryEventSelectionWeight,
+  calculateStoryEventNumbers,
+  cardsData,
+  getCardRouteAffinityTags,
+  getCardRouteSignal,
+  getEventRouteSignal,
+  getGenericPowerIdsForCharacter,
+  getKnownRouteTagsForCharacter,
+  getPreferredRouteTagFromState,
+  getRelicRouteTags,
+  maybeRecordRouteCommit,
+  resolvePreferredRouteTag,
+  relicsData,
+  potionsData,
+  getPotionRuntimeConfig,
+  getCardEnchantmentDefById,
+  syncRouteStateFromLegacyState,
+} from '@/content/narrative/numericSystem';
+import { unlockCodexEntry, unlockManyCodexEntries } from '@/core/persistence/codexStore';
+import { getMetaUnlockedWeightBonus } from '@/core/balance/metaBalance';
+import { syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
+
+interface CardWithCharacter extends CardDef {
+  character?: string;
+}
+
+export interface EventManagerDeps {
+  getState: () => GameState;
+  setState: (updater: (state: GameState) => void) => void;
+  rng: () => number;
+  generateId: () => string;
+  createRuntimeCard: (card: CardDef, instanceId?: string) => RunCardInstance;
+  ensureRunEffects: () => NonNullable<GameState['player']['runEffects']>;
+  getCurrentFloorNumber: () => number;
+  leaveCurrentRoomToMap: () => void;
+  getAdjustedShopPrice: (basePrice: number) => number;
+  notify: () => void;
+  appendVoxLog: (message: string) => void;
+}
+
+interface RewardGenerationOptions {
+  source?: 'combat' | 'shop';
+}
+
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function stablePickBySeed<T>(items: T[], key: string): T | undefined {
+  if (!items.length) return undefined;
+  return items[stableHash(key) % items.length];
+}
+
+export class EventManager {
+  constructor(private deps: EventManagerDeps) {}
+
+  startEvent(): void {
+    const state = this.deps.getState();
+    const floor = this.deps.getCurrentFloorNumber();
+    syncRouteStateFromLegacyState(state);
+    const eligibleStoryEvents = STORY_EVENTS.filter(e => floor >= e.floorMin && floor <= e.floorMax);
+    if (eligibleStoryEvents.length > 0) {
+      const routeTagsForCharacter = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
+      const dominantTag = getPreferredRouteTagFromState(
+        state.player.deck,
+        routeTagsForCharacter,
+        state.routeState ?? null,
+      );
+      if (dominantTag) {
+        const matchedEvents = eligibleStoryEvents.filter((eventDef) => getEventRouteSignal(eventDef.id)?.routeTags.includes(dominantTag));
+        const directMatch =
+          floor <= 3
+            ? stablePickBySeed(matchedEvents, `${state.seed}:${dominantTag}:event:${floor}`)
+            : null;
+        if (directMatch && floor <= 3) {
+          state.activeEvent = { id: directMatch.id, data: {} };
+          unlockCodexEntry('events', directMatch.id);
+          state.screen = 'Event';
+          return;
+        }
+      }
+      const weightedEligible = eligibleStoryEvents.map((eventDef) => {
+        const signal = dominantTag ? getEventRouteSignal(eventDef.id) : null;
+        const matchesRoute = !!(signal && dominantTag && signal.routeTags.includes(dominantTag));
+        const confidence = state.routeState?.confidence ?? 0;
+        const reinforcementMultiplier =
+          signal?.reinforcement === 'confirm'
+            ? confidence < 55 ? 2.35 : 1.25
+            : signal?.reinforcement === 'payoff'
+              ? confidence >= 55 ? 2.2 : 1.15
+              : 1.55;
+        const supportMultiplier = matchesRoute
+          ? floor <= 3
+            ? 2.5
+            : floor <= 6
+              ? reinforcementMultiplier
+              : 1.35
+          : 1;
+        return {
+          eventDef,
+          weight: getStoryEventSelectionWeight(eventDef.id) * supportMultiplier,
+        };
+      });
+      const totalWeight = weightedEligible.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = this.deps.rng() * totalWeight;
+      let picked = weightedEligible[0]?.eventDef ?? eligibleStoryEvents[0];
+      for (const entry of weightedEligible) {
+        roll -= entry.weight;
+        if (roll <= 0) {
+          picked = entry.eventDef;
+          break;
+        }
+      }
+      state.activeEvent = { id: picked.id, data: {} };
+      unlockCodexEntry('events', picked.id);
+      state.screen = 'Event';
+      return;
+    }
+
+    const events: ActiveEventState['id'][] = ['mysterious_shrine', 'heretic_altar'];
+    const eventId = safeArrayAccess(events, Math.floor(this.deps.rng() * events.length)) ?? 'mysterious_shrine';
+
+    state.activeEvent = { id: eventId };
+    unlockCodexEntry('events', eventId);
+
+    if (eventId === 'mysterious_shrine') {
+      const relics = relicsData.filter(r => !r.corrupted);
+      const relic = safeArrayAccess(relics, Math.floor(this.deps.rng() * relics.length));
+      state.activeEvent.offeredRelicId = relic?.id;
+      if (state.activeEvent.offeredRelicId) unlockCodexEntry('relics', state.activeEvent.offeredRelicId);
+    }
+
+    state.screen = 'Event';
+  }
+
+  makeEventChoice(choice: 'accept' | 'decline'): void {
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return;
+    if (getStoryEventDef(event.id)) {
+      this.resolveStoryEventChoice(choice);
+      return;
+    }
+
+    if (event.id === 'mysterious_shrine' && choice === 'accept') {
+      if (event.offeredRelicId) {
+        this.addRelicToPlayerInventory(event.offeredRelicId);
+      }
+    } else if (event.id === 'heretic_altar') {
+      if (choice === 'accept') {
+        state.player.corruption += 20;
+        state.player.gold += 100;
+      }
+    }
+
+    state.activeEvent = null;
+    this.deps.leaveCurrentRoomToMap();
+  }
+
+  resolveEventChoice(choice: string): void {
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return;
+    event.data = { ...(event.data || {}), lastChoiceId: choice };
+    if (getStoryEventDef(event.id)) {
+      this.resolveStoryEventChoice(choice);
+      return;
+    }
+
+    if (event.id === 'mysterious_shrine') {
+      if (choice === 'pray') {
+        state.player.maxHp += 10;
+        state.player.hp += 10;
+      }
+      state.activeEvent = null;
+      this.deps.leaveCurrentRoomToMap();
+      return;
+    }
+
+    if (event.id === 'heretic_altar') {
+      if (choice === 'accept_corruption') {
+        if (event.offeredRelicId) {
+          this.addRelicToPlayerInventory(event.offeredRelicId, { corruptedOverride: true });
+        }
+        state.player.corruption += 10;
+      }
+      state.activeEvent = null;
+      this.deps.leaveCurrentRoomToMap();
+      return;
+    }
+
+    this.makeEventChoice('decline');
+  }
+
+  private resolveStoryEventChoice(choice: string): void {
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return;
+    event.data = { ...(event.data || {}), lastChoiceId: choice };
+    const routeSignal = getEventRouteSignal(event.id);
+    if (routeSignal?.preferredChoiceIds?.includes(choice)) {
+      const committedTag =
+        routeSignal.routeTags.find((tag) => tag === state.routeState?.primaryTag)
+        ?? routeSignal.routeTags.find((tag) => tag === state.routeState?.secondaryTag)
+        ?? routeSignal.routeTags[0]
+        ?? null;
+      maybeRecordRouteCommit(
+        state,
+        committedTag,
+        'event',
+        this.deps.getCurrentFloorNumber(),
+        routeSignal.reinforcement === 'payoff' ? 40 : 32,
+      );
+    }
+    const runEffects = this.deps.ensureRunEffects();
+
+    switch (event.id) {
+      case 'rusting_medicae': {
+        const n = calculateStoryEventNumbers('rusting_medicae', state) as Record<string, unknown>;
+        if (event.stage === 'salvage_aftermath') {
+          if (choice === 'medicae_salvage_fight') {
+            state.activeEvent = null;
+            this.deps.notify();
+            return;
+          }
+          if (choice === 'medicae_salvage_flee') {
+            state.player.hp = Math.max(0, state.player.hp - Number(n.salvageFleeTrueDamage ?? 15));
+            state.activeEvent = null;
+            this.deps.leaveCurrentRoomToMap();
+            return;
+          }
+        }
+
+        if (choice === 'medicae_implant') {
+          const hpLoss = Math.max(1, Number(n.implantCurrentHpLoss ?? 1));
+          state.player.hp = Math.max(1, state.player.hp - hpLoss);
+          state.player.maxHp += Math.max(0, Number(n.implantMaxHpGain ?? 10));
+          state.player.hp = Math.min(state.player.maxHp, state.player.hp);
+          this.grantRelicDirect('rust_implants');
+          this.addCardByIdToDeck('rejection_response');
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+
+        if (choice === 'medicae_extract') {
+          state.player.maxHp = Math.max(1, state.player.maxHp - Math.max(0, Number(n.extractMaxHpLoss ?? 5)));
+          const heal = Math.max(1, Math.floor(state.player.maxHp * Math.max(0, Number(n.extractHealMaxHpRatio ?? 0.3))));
+          state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
+          state.player.corruption = Math.min(100, (state.player.corruption || 0) + Math.max(0, Number(n.extractCorruptionGain ?? 20)));
+          this.grantRandomPotions(Math.max(0, Number(n.extractPotionCount ?? 2)), !!n.extractStrongPotionsOnly);
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+
+        if (choice === 'medicae_salvage') {
+          state.player.gold += Math.max(0, Number(n.salvageGoldGain ?? 100));
+          this.grantRandomRelic({ normalOnly: n.salvageNormalRelicOnly !== false });
+          event.stage = 'salvage_aftermath';
+          event.data = { ...(event.data || {}), salvageRewardsClaimed: true };
+          this.deps.notify();
+          return;
+        }
+        break;
+      }
+      case 'nameless_martyr_shrine': {
+        const n = calculateStoryEventNumbers('nameless_martyr_shrine', state) as Record<string, unknown>;
+        if (event.stage === 'free_remove') {
+          if (choice === 'martyr_continue_remove') {
+            state.screen = 'RemoveCard';
+            this.deps.notify();
+          }
+          return;
+        }
+        if (choice === 'martyr_offer_blood') {
+          const maxHpLoss = Math.max(1, Number(n.offerBloodMaxHpLoss ?? 1));
+          state.player.maxHp = Math.max(1, state.player.maxHp - maxHpLoss);
+          state.player.hp = Math.min(state.player.hp, state.player.maxHp);
+          this.grantRelicDirect('martyrs_mark');
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'martyr_offer_wealth') {
+          const goldBefore = state.player.gold;
+          state.player.gold = 0;
+          if (goldBefore < Math.max(0, Number(n.offerWealthCurseGoldThreshold ?? 50))) {
+            this.addCardByIdToDeck('greed_sin');
+            state.activeEvent = null;
+            this.deps.leaveCurrentRoomToMap();
+            return;
+          }
+          event.stage = 'free_remove';
+          event.data = { ...(event.data || {}), freeRemovalsRemaining: Math.max(1, Number(n.offerWealthFreeRemovals ?? 2)) };
+          state.screen = 'RemoveCard';
+          syncRoomSessionFromLegacyState(state, { isEventFreeCardRemovalMode: true });
+          this.deps.notify();
+          return;
+        }
+        if (choice === 'martyr_desecrate') {
+          this.addCardByIdToDeck('execution_slash');
+          state.player.devotion = Math.max(0, Number(n.desecrateDevotionSetTo ?? 0));
+          runEffects.pendingWarpTideBonus = Math.max(runEffects.pendingWarpTideBonus || 0, Math.max(0, Number(n.desecrateWarpTideBonus ?? 30)));
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'martyr_inscribe_oath') {
+          const hpLoss = Math.max(1, Number(n.inscribeHpLoss ?? 6));
+          state.player.hp = Math.max(1, state.player.hp - hpLoss);
+          state.enchantContext = {
+            source: 'Event',
+            enchantmentId: 'blood_rune',
+            title: '殉道誓刻',
+            description: '以鲜血为代价，将血纹铭入一张可用的牌。',
+            returnScreen: 'Event',
+          };
+          state.screen = 'Enchant';
+          syncRoomSessionFromLegacyState(state);
+          this.deps.notify();
+          return;
+        }
+        break;
+      }
+      case 'warp_tear_whispers': {
+        const n = calculateStoryEventNumbers('warp_tear_whispers', state) as Record<string, unknown>;
+        if (choice === 'tear_embrace') {
+          this.transformBaseCardsIntoWarped();
+          state.player.corruption = Math.max(0, Math.min(100, Number(n.embraceCorruptionSetTo ?? 100)));
+          runEffects.warpDebuffCombatsRemaining = Math.max(0, Number(n.embraceWarpDebuffCombats ?? 3));
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'tear_bargain') {
+          this.grantRandomRelic({ corruptedOnly: true, warpBiased: true });
+          this.destroyRandomNonBasicCard();
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'tear_seal') {
+          state.player.devotion = (state.player.devotion || 0) + Math.max(0, Number(n.sealDevotionGain ?? 50));
+          if (n.sealClearPendingWarpTideBonus !== false) {
+            runEffects.pendingWarpTideBonus = 0;
+          }
+          this.addCardByIdToDeck('psychic_backlash');
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        break;
+      }
+      case 'inquisitor_legacy': {
+        const n = calculateStoryEventNumbers('inquisitor_legacy', state) as Record<string, unknown>;
+        if (choice === 'legacy_inscribe_sigil') {
+          state.enchantContext = {
+            source: 'Event',
+            enchantmentId: 'swift_sigil',
+            title: '旧印再铭',
+            description: '将旧日的迅捷印记重新刻入一张攻击或技能牌。',
+            returnScreen: 'Event',
+          };
+          state.screen = 'Enchant';
+          syncRoomSessionFromLegacyState(state);
+          this.deps.notify();
+          return;
+        }
+        if (choice === 'legacy_open_casket') {
+          state.player.hp = Math.max(1, state.player.hp - Math.max(1, Number(n.openCasketCurrentHpLoss ?? 1)));
+          runEffects.enemyHuntBonusPct = Math.max(runEffects.enemyHuntBonusPct || 0, Math.max(0, Number(n.openCasketEnemyHuntBonusPct ?? 0.1)));
+          this.grantRelicDirect('chaos_sanctum_relic');
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'legacy_read_codex') {
+          state.player.intel += Math.max(0, Number(n.readCodexIntelGain ?? 30));
+          if (n.readCodexRevealAllMapNodes !== false) {
+            state.map.forEach(node => { node.revealed = true; });
+          }
+          state.player.maxHp = Math.max(1, state.player.maxHp - Math.max(0, Number(n.readCodexMaxHpLoss ?? 10)));
+          state.player.hp = Math.min(state.player.hp, state.player.maxHp);
+          this.addCardByIdToDeck('paranoia');
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'legacy_take_rosary') {
+          this.grantRelicDirect('inquisitor_rosary');
+          state.player.hp = Math.max(1, state.player.hp - Math.max(0, Number(n.takeRosarySelfDamage ?? 10)));
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        break;
+      }
+      case 'secret_passage': {
+        if (choice === 'secret_passage_explore') {
+          if (this.deps.rng() < 0.5) {
+            this.grantRandomRelic({ normalOnly: true });
+          } else {
+            state.player.gold += 120;
+          }
+          runEffects.skipNextNode = true;
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'secret_passage_guard') {
+          runEffects.eliteTrapWeakStacks = Math.max(runEffects.eliteTrapWeakStacks || 0, 2);
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        if (choice === 'secret_passage_ignore') {
+          state.activeEvent = null;
+          this.deps.leaveCurrentRoomToMap();
+          return;
+        }
+        break;
+      }
+    }
+  }
+
+  private addCardByIdToDeck(cardId: string): void {
+    const state = this.deps.getState();
+    const card = (cardsData as CardDef[]).find(c => c.id === cardId);
+    if (!card) return;
+    unlockCodexEntry('cards', card.id);
+    state.player.deck.push(this.deps.createRuntimeCard(card));
+    const committedTag = getPreferredRouteTagFromState([card], getKnownRouteTagsForCharacter(state.character?.id ?? ''), null, 1);
+    maybeRecordRouteCommit(state, committedTag, 'event', this.deps.getCurrentFloorNumber(), 10);
+    syncRouteStateFromLegacyState(state);
+  }
+
+  private addRelicToPlayerInventory(relicId: string, options: { corruptedOverride?: boolean } = {}): boolean {
+    const state = this.deps.getState();
+    if (!relicId || state.player.relics.includes(relicId)) return false;
+    const relic = (relicsData as RelicDef[]).find(r => r.id === relicId);
+    if (!relic) return false;
+    unlockCodexEntry('relics', relicId);
+
+    const isCorrupted = typeof options.corruptedOverride === 'boolean' ? options.corruptedOverride : !!relic.corrupted;
+    state.player.relics.push(relicId);
+    state.player.relicStates[relicId] = { level: 1, progress: 0, corrupted: isCorrupted };
+
+    if (state.combat) {
+      state.combat.player.corruptionAxis = Math.min(100, Math.max(0, state.player.corruption || 0));
+      state.combat.player.devotion = state.player.devotion || 0;
+      state.combat.warpPulse = {
+        text: `获得遗物：${relic.name}`,
+        tone: isCorrupted ? 'warp' : 'faith'
+      };
+    }
+
+    globalEventBus.publish({ type: 'RelicAcquired', relicId, data: { relicId } });
+    const relicRouteTag =
+      getRelicRouteTags(relicId).find((tag) => tag === state.routeState?.primaryTag)
+      ?? getRelicRouteTags(relicId).find((tag) => tag === state.routeState?.secondaryTag)
+      ?? getRelicRouteTags(relicId)[0]
+      ?? null;
+    maybeRecordRouteCommit(state, relicRouteTag, 'event', this.deps.getCurrentFloorNumber(), 10);
+    return true;
+  }
+
+  private grantRelicDirect(relicId: string): void {
+    this.addRelicToPlayerInventory(relicId);
+  }
+
+  private grantRandomPotions(count: number, strongOnly = false): void {
+    const state = this.deps.getState();
+    const potionSlotLimit = getPotionRuntimeConfig().slotLimit;
+    const pool = (potionsData as PotionDef[]).filter(p => !strongOnly || (p.price ?? 0) >= 130);
+    const unlockedIds = new Set(state.metaRuntime?.unlockedPoolIds || []);
+    const weightBonus = getMetaUnlockedWeightBonus();
+    for (let i = 0; i < count; i++) {
+      if (state.player.potions.length >= potionSlotLimit) return;
+      const pickPool = pool.length > 0 ? pool : (potionsData as PotionDef[]);
+      const weighted: PotionDef[] = [];
+      for (const p of pickPool) {
+        weighted.push(p);
+        if (unlockedIds.has(p.id)) {
+          for (let j = 0; j < weightBonus; j++) weighted.push(p);
+        }
+      }
+      const potion = (weighted.length > 0 ? weighted : pickPool)[Math.floor(this.deps.rng() * (weighted.length > 0 ? weighted.length : pickPool.length))];
+      if (potion) {
+        unlockCodexEntry('potions', potion.id);
+        state.player.potions.push(potion.id);
+      }
+    }
+  }
+
+  private grantRandomRelic(options: { normalOnly?: boolean; corruptedOnly?: boolean; warpBiased?: boolean } = {}): void {
+    const state = this.deps.getState();
+    let pool = (relicsData as RelicDef[]).filter(r => !state.player.relics.includes(r.id));
+    if (options.normalOnly) {
+      pool = pool.filter(r => !r.corrupted && (r.price ?? 0) <= 220);
+    }
+    if (options.corruptedOnly) {
+      pool = pool.filter(r => !!r.corrupted || String(r.id).includes('warp') || String(r.id).includes('chaos'));
+    }
+    if (options.warpBiased) {
+      const warpPool = pool.filter(r => String(r.id).includes('warp') || !!r.corrupted || String(r.name || '').toLowerCase().includes('chaos'));
+      if (warpPool.length > 0) pool = warpPool;
+    }
+    const sourcePool = pool;
+    const relic = safeArrayAccess(sourcePool, Math.floor(this.deps.rng() * Math.max(1, sourcePool.length)));
+    if (relic?.id) this.grantRelicDirect(relic.id);
+  }
+
+  private destroyRandomNonBasicCard(): void {
+    const state = this.deps.getState();
+    const candidates = state.player.deck.filter(c => !['strike', 'defend'].includes(c.id));
+    if (candidates.length === 0) return;
+    const doomed = safeArrayAccess(candidates, Math.floor(this.deps.rng() * candidates.length));
+    if (!doomed?.instanceId) return;
+    state.player.deck = state.player.deck.filter(c => c.instanceId !== doomed.instanceId);
+  }
+
+  private transformBaseCardsIntoWarped(): void {
+    const state = this.deps.getState();
+    const characterId = state.character?.id;
+    const pool = (cardsData as CardWithCharacter[]).filter(c =>
+      (c.rarity === 'Uncommon' || c.rarity === 'Rare') &&
+      c.id !== 'strike' && c.id !== 'defend' &&
+      ((c.character ?? 'All') === 'All' || c.character === characterId)
+    );
+    if (pool.length === 0) return;
+    state.player.deck = state.player.deck.map(card => {
+      if (!['strike', 'defend'].includes(card.id)) return card;
+      const replacement = safeArrayAccess(pool, Math.floor(this.deps.rng() * pool.length));
+      if (!replacement) return card;
+      return this.deps.createRuntimeCard(replacement, card.instanceId || this.deps.generateId());
+    });
+  }
+
+  generateCardRewards(count: number, options: RewardGenerationOptions = {}): RunCardInstance[] {
+    const state = this.deps.getState();
+    const source = options.source ?? 'combat';
+    const rewards: RunCardInstance[] = [];
+    syncRouteStateFromLegacyState(state);
+    const characterId = state.character?.id;
+    const unlockedIds = new Set(state.metaRuntime?.unlockedPoolIds || []);
+    const unlockedWeightBonus = 0;
+    const floor = this.deps.getCurrentFloorNumber();
+    const routeProfile = analyzeRouteSignals(state.player.deck);
+    const routeTagsForCharacter = characterId ? getKnownRouteTagsForCharacter(characterId) : [];
+    const dominantTag = getPreferredRouteTagFromState(
+      state.player.deck,
+      routeTagsForCharacter,
+      state.routeState ?? null,
+    );
+
+    const cardPool = (cardsData as CardWithCharacter[]).filter((card) =>
+      ((card.character ?? 'All') === 'All' || card.character === characterId)
+    );
+    const chosenIds = new Set<string>();
+    const seedKey = `${state.seed}:${characterId ?? 'all'}:${source}:${floor}:${dominantTag ?? 'none'}`;
+
+    const chooseUniqueSeeded = (pool: CardWithCharacter[], label: string): CardWithCharacter | null => {
+      const filtered = pool.filter((card) => !chosenIds.has(card.id));
+      if (filtered.length === 0) return null;
+      const index = stableHash(`${seedKey}:${label}:${filtered.map((card) => card.id).join('|')}`) % filtered.length;
+      const pick = filtered[index] ?? null;
+      if (pick) chosenIds.add(pick.id);
+      return pick;
+    };
+
+    const genericPowerIds = new Set(characterId ? getGenericPowerIdsForCharacter(characterId) : []);
+
+    const pickEarlyRewardCards = (): CardWithCharacter[] => {
+      const result: CardWithCharacter[] = [];
+      const availableRouteTags = routeTagsForCharacter.length > 0 ? routeTagsForCharacter : routeProfile.activeTags;
+      const primaryTag = dominantTag ?? safeArrayAccess(
+        availableRouteTags,
+        availableRouteTags.length > 0 ? stableHash(`${seedKey}:primary-route`) % availableRouteTags.length : 0
+      ) ?? null;
+
+      const byRole = (roles: string[], routeTag?: string | null, preferDifferentRoute = false) =>
+        cardPool.filter((card) => {
+          const signal = getCardRouteSignal(card);
+          if (!signal || !roles.includes(signal.earlyGameRole)) return false;
+          if (routeTag && !signal.routeTags.includes(routeTag)) return false;
+          if (preferDifferentRoute && routeTag && signal.routeTags.includes(routeTag)) return false;
+          return true;
+        });
+
+      const neutralCounterweightPool = cardPool.filter((card) => getCardRouteAffinityTags(card).length === 0);
+      const genericPowerPool = cardPool.filter((card) => genericPowerIds.has(card.id) && getCardRouteAffinityTags(card).length === 0);
+      const genericFallbackPool = cardPool.filter((card) => {
+        const signal = getCardRouteSignal(card);
+        return (
+          getCardRouteAffinityTags(card).length === 0 &&
+          (!signal || signal.earlyGameRole === 'generic_fallback' || signal.earlyGameRole === 'generic_power')
+        );
+      });
+
+      const first = primaryTag
+        ? chooseUniqueSeeded(byRole(['route_confirm'], primaryTag), 'reward-first')
+        : chooseUniqueSeeded(cardPool.filter((card) => {
+            const signal = getCardRouteSignal(card);
+            return signal?.earlyGameRole === 'route_confirm';
+          }), 'reward-first-fallback');
+      if (first) result.push(first);
+
+      const second =
+        chooseUniqueSeeded(neutralCounterweightPool, 'reward-second-neutral') ??
+        chooseUniqueSeeded(genericPowerPool, 'reward-second-generic') ??
+        chooseUniqueSeeded(genericFallbackPool, 'reward-second-fallback');
+      if (second) result.push(second);
+
+      const altRouteTag = availableRouteTags.find((tag) => tag !== primaryTag) ?? null;
+      const third =
+        (dominantTag
+          ? (primaryTag ? chooseUniqueSeeded(byRole(['route_payoff'], primaryTag), 'reward-third-primary-payoff') : null)
+          : (altRouteTag ? chooseUniqueSeeded(byRole(['route_confirm', 'route_payoff'], altRouteTag), 'reward-third-alt-route') : null)) ??
+        (primaryTag ? chooseUniqueSeeded(byRole(['route_payoff'], primaryTag), 'reward-third-primary') : null) ??
+        (primaryTag ? chooseUniqueSeeded(byRole(['route_confirm', 'route_payoff'], primaryTag, true), 'reward-third-different') : null) ??
+        chooseUniqueSeeded(genericFallbackPool, 'reward-third-generic');
+      if (third) result.push(third);
+
+      return result.slice(0, count);
+    };
+
+    const pickEarlyShopCards = (): CardWithCharacter[] => {
+      const result: CardWithCharacter[] = [];
+      const earlyShopTag = dominantTag ?? routeTagsForCharacter[0] ?? null;
+      const alignedPool = cardPool.filter((card) => {
+        const signal = getCardRouteSignal(card);
+        return !!(signal && earlyShopTag && signal.routeTags.includes(earlyShopTag));
+      });
+      const genericPool = cardPool.filter((card) => genericPowerIds.has(card.id));
+
+      const first = chooseUniqueSeeded(alignedPool, 'shop-first-aligned') ?? chooseUniqueSeeded(genericPool, 'shop-first-generic');
+      const second = chooseUniqueSeeded(genericPool, 'shop-second-generic') ?? chooseUniqueSeeded(alignedPool, 'shop-second-aligned');
+      if (first) result.push(first);
+      if (second) result.push(second);
+
+      while (result.length < count) {
+        const fallback = chooseUniqueSeeded(cardPool, `shop-fallback-${result.length}`);
+        if (!fallback) break;
+        result.push(fallback);
+      }
+      return result;
+    };
+
+    const pickMidgameRewardCards = (): CardWithCharacter[] => {
+      const result: CardWithCharacter[] = [];
+      if (!dominantTag) return result;
+
+      const alignedAffinityPool = cardPool.filter((card) => getCardRouteAffinityTags(card).includes(dominantTag));
+      const alignedPayoffPool = alignedAffinityPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_payoff');
+      const alignedConfirmPool = alignedAffinityPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_confirm');
+      const neutralCounterweightPool = cardPool.filter((card) => getCardRouteAffinityTags(card).length === 0);
+      const pivotTemptationPool = cardPool.filter((card) => {
+        const tags = getCardRouteAffinityTags(card);
+        return tags.length > 0 && !tags.includes(dominantTag);
+      });
+
+      const first =
+        chooseUniqueSeeded(alignedPayoffPool, 'mid-reward-first-payoff') ??
+        chooseUniqueSeeded(alignedConfirmPool, 'mid-reward-first-confirm') ??
+        chooseUniqueSeeded(alignedAffinityPool, 'mid-reward-first-aligned');
+      if (first) result.push(first);
+
+      const second =
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-reward-second-neutral') ??
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-reward-second-pivot');
+      if (second) result.push(second);
+
+      const third =
+        chooseUniqueSeeded(alignedPayoffPool, 'mid-reward-third-payoff') ??
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-reward-third-pivot') ??
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-reward-third-neutral') ??
+        chooseUniqueSeeded(cardPool, 'mid-reward-third-fallback');
+      if (third) result.push(third);
+
+      return result.slice(0, count);
+    };
+
+    const pickMidgameShopCards = (): CardWithCharacter[] => {
+      const result: CardWithCharacter[] = [];
+      if (!dominantTag) return result;
+
+      const alignedAffinityPool = cardPool.filter((card) => getCardRouteAffinityTags(card).includes(dominantTag));
+      const pivotTemptationPool = cardPool.filter((card) => {
+        const tags = getCardRouteAffinityTags(card);
+        return tags.length > 0 && !tags.includes(dominantTag);
+      });
+      const neutralCounterweightPool = cardPool.filter((card) => getCardRouteAffinityTags(card).length === 0);
+
+      const first =
+        chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-first-aligned') ??
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-first-pivot');
+      const second =
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-second-neutral') ??
+        chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-second-aligned');
+      const third =
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-third-pivot') ??
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-third-neutral') ??
+        chooseUniqueSeeded(cardPool, 'mid-shop-third-fallback');
+
+      if (first) result.push(first);
+      if (second) result.push(second);
+      if (third) result.push(third);
+
+      while (result.length < count) {
+        const fallback = chooseUniqueSeeded(cardPool, `mid-shop-fallback-${result.length}`);
+        if (!fallback) break;
+        result.push(fallback);
+      }
+      return result.slice(0, count);
+    };
+
+    const shouldUseEarlyRewardPlan = source === 'combat' && floor <= 2;
+    const shouldUseEarlyShopPlan = source === 'shop' && floor <= 3;
+    const shouldUseMidgameRewardPlan = source === 'combat' && floor > 2 && floor <= 6 && !!dominantTag;
+    const shouldUseMidgameShopPlan = source === 'shop' && floor > 3 && floor <= 6 && !!dominantTag;
+    const plannedCards = shouldUseEarlyRewardPlan
+      ? pickEarlyRewardCards()
+      : shouldUseEarlyShopPlan
+        ? pickEarlyShopCards()
+        : shouldUseMidgameRewardPlan
+          ? pickMidgameRewardCards()
+          : shouldUseMidgameShopPlan
+            ? pickMidgameShopCards()
+            : [];
+
+    for (const card of plannedCards) {
+      rewards.push(this.deps.createRuntimeCard(card as CardDef));
+    }
+
+    for (let i = rewards.length; i < count; i++) {
+      const rarityRoll = this.deps.rng();
+      let rarity: 'Common' | 'Uncommon' | 'Rare' = 'Common';
+      if (rarityRoll > 0.85) rarity = 'Rare';
+      else if (rarityRoll > 0.55) rarity = 'Uncommon';
+
+      let validCards = (cardsData as CardWithCharacter[]).filter(c =>
+        c.rarity === rarity &&
+        ((c.character ?? 'All') === 'All' || c.character === characterId)
+      );
+
+      const pool = validCards.length > 0 ? validCards : (cardsData as CardWithCharacter[]).filter(c => c.rarity === rarity && ((c.character ?? 'All') === 'All'));
+
+      let card: any = null;
+      if (pool.length > 0) {
+        const weightedPool: any[] = [];
+        for (const candidate of pool) {
+          if (chosenIds.has(candidate.id)) continue;
+          weightedPool.push(candidate);
+          const signal = dominantTag ? getCardRouteSignal(candidate) : null;
+          const alignsToRoute = !!(signal && dominantTag && signal.routeTags.includes(dominantTag));
+          if (alignsToRoute) {
+            const sustainWeight =
+              source === 'shop'
+                ? floor <= 6 ? 4 : 2
+                : floor <= 4 ? 2 : 1;
+            for (let j = 0; j < sustainWeight; j += 1) {
+              weightedPool.push(candidate);
+            }
+          }
+          if (unlockedIds.has((candidate as any).id)) {
+            for (let j = 0; j < unlockedWeightBonus; j++) weightedPool.push(candidate);
+          }
+        }
+        const pickPool = weightedPool.length > 0 ? weightedPool : pool;
+        card = safeArrayAccess(pickPool, Math.floor(this.deps.rng() * pickPool.length));
+      }
+      if (card) {
+        chosenIds.add(card.id);
+        rewards.push(this.deps.createRuntimeCard(card as CardDef));
+      }
+    }
+    unlockManyCodexEntries('cards', rewards.map(c => c.id));
+    return rewards;
+  }
+
+  getEnchantableCards(): CardDef[] {
+    const state = this.deps.getState();
+    return state.player.deck.filter((card) => {
+      const runCard = this.deps.createRuntimeCard(card, this.deps.generateId());
+      return (runCard.type === 'Attack' || runCard.type === 'Skill') && runCard.persistentEnchantments.length === 0;
+    });
+  }
+
+  getCardRemovalCostForCard(card: CardDef | { tags?: string[] }): number {
+    const state = this.deps.getState();
+    const doubleCost = Array.isArray(card.tags) && card.tags.includes('DoubleRemoveCost');
+    return state.cardRemovalCost * (doubleCost ? 2 : 1);
+  }
+
+  isEventFreeCardRemovalMode(): boolean {
+    const state = this.deps.getState();
+    return state.screen === 'RemoveCard' &&
+      !!state.activeEvent &&
+      state.activeEvent.stage === 'free_remove' &&
+      Number(state.activeEvent.data?.freeRemovalsRemaining || 0) > 0;
+  }
+
+  getEventFreeRemovalsRemaining(): number {
+    const state = this.deps.getState();
+    if (!this.isEventFreeCardRemovalMode()) return 0;
+    return Math.max(0, Number(state.activeEvent?.data?.freeRemovalsRemaining || 0));
+  }
+}

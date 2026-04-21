@@ -1,14 +1,18 @@
-import type { RunCardInstance } from '@/core/types';
-import { relicsData } from '@/content/narrative/numericSystem';
+import type { RouteState, RunCardInstance } from '@/core/types';
+import rawRelicsData from '@/content/data/relics.json';
 import {
   getCardRouteSignal,
   getKnownRouteTagsForCharacter,
+  getPreferredRouteTagFromState,
   getRelicRouteTags,
   getRouteTaxonomy,
-  resolvePreferredRouteTag,
   sortCardsByRouteAffinity,
   sortRelicIdsByRouteAffinity,
-} from '@/content/narrative/routeSignals';
+} from '@/content/narrative/numericSystem';
+import type { RelicDef } from '@/core/types';
+
+const relicsData = rawRelicsData as unknown as RelicDef[];
+const relicNameById = new Map(relicsData.map((relic) => [relic.id, relic.name]));
 
 export type ShopRouteTargetType = 'card' | 'relic' | 'service';
 export type ShopRouteServiceId = 'upgrade' | 'enchant';
@@ -44,6 +48,7 @@ export interface ShopRouteAdvice {
 export interface ShopRouteAdvisorInput {
   characterId?: string | null;
   deck: RunCardInstance[];
+  routeState?: RouteState | null;
   gold: number;
   cardOffers: ShopCardOffer[];
   relicOffers: ShopRelicOffer[];
@@ -91,7 +96,11 @@ function getBaseCardReason(card: RunCardInstance, preferredRouteTag: string): st
 
 export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdvice {
   const routeTagsForCharacter = input.characterId ? getKnownRouteTagsForCharacter(input.characterId) : [];
-  const preferredRouteTag = resolvePreferredRouteTag(input.deck, routeTagsForCharacter);
+  const preferredRouteTag = getPreferredRouteTagFromState(
+    input.deck,
+    routeTagsForCharacter,
+    input.routeState ?? null,
+  );
   const preferredRouteLabel = preferredRouteTag ? getRouteTaxonomy(preferredRouteTag)?.label ?? preferredRouteTag : null;
 
   if (!preferredRouteTag) {
@@ -135,7 +144,7 @@ export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdv
   ).filter((relicId) => getRelicRouteTags(relicId).includes(preferredRouteTag));
 
   affordableAlignedRelics.forEach((relicId, index) => {
-    const relicName = relicsData.find((relic) => relic.id === relicId)?.name;
+    const relicName = relicNameById.get(relicId);
     const hint = makeRouteHint(
       'relic',
       relicId,
