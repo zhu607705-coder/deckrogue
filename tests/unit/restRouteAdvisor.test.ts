@@ -62,9 +62,12 @@ test('rest route advice keeps recent sustain actions ahead of stale deck history
   assert.equal(advice.primaryAction, 'upgrade');
   assert.deepEqual(advice.orderedActions, ['upgrade', 'enchant', 'relic_upgrade']);
   assert.equal(advice.actionHints.upgrade?.routeTag, 'chronomancer:warp');
+  assert.match(advice.actionHints.upgrade?.reason || '', /当前路线/);
   assert.equal(advice.actionHints.enchant?.routeTag, 'chronomancer:warp');
+  assert.match(advice.actionHints.enchant?.reason || '', /当前路线/);
   assert.equal(advice.actionHints.relic_upgrade?.routeTag, 'chronomancer:warp');
   assert.equal(advice.actionHints.relic_upgrade?.routeLabel, '跃迁链');
+  assert.match(advice.actionHints.relic_upgrade?.reason || '', /当前路线/);
   assert.equal(advice.actionHints.heal, undefined);
 });
 
