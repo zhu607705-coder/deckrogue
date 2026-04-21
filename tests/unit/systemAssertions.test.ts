@@ -123,8 +123,10 @@ function makeState(): GameState {
           hp: 10,
           maxHp: 10,
           block: 0,
-          statuses: {},
+          statuses: {} as Record<string, number>,
           nextIntent: 'Attack',
+          lastUsedIntent: '',
+          intentCooldowns: {} as Record<string, number>,
           devotion: 0,
           corruptionAxis: 0,
           axisDisposition: 'balanced'
@@ -241,8 +243,10 @@ test('system assertion: lethal enemy poison should resolve combat victory and cl
       hp: 1,
       maxHp: 10,
       block: 0,
-      statuses: { Poison: 1 },
+      statuses: { Poison: 1 } as Record<string, number>,
       nextIntent: 'Attack',
+      lastUsedIntent: '',
+      intentCooldowns: {} as Record<string, number>,
       devotion: 0,
       corruptionAxis: 0,
       axisDisposition: 'balanced'

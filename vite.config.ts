@@ -5,6 +5,7 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const disableHmr = process.env.DISABLE_HMR === 'true';
   return {
     base: './',
     plugins: [react(), tailwindcss()],
@@ -20,14 +21,30 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id.includes('node_modules/pixi.js') || id.includes('node_modules/@pixi/')) {
+              return 'pixi-vendor';
+            }
+            if (id.includes('node_modules/motion')) {
+              return 'motion-vendor';
+            }
             if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
               return 'react-vendor';
             }
             if (id.includes('node_modules/lucide-react')) {
               return 'icon-vendor';
             }
-            if (id.includes('node_modules/motion')) {
-              return 'motion-vendor';
+            if (id.includes('/src/runtimeV2/scenes/')) {
+              if (id.includes('MapScene')) return 'scene-map';
+              if (id.includes('CombatScene')) return 'scene-combat';
+              if (id.includes('ShopScene')) return 'scene-shop';
+              if (id.includes('EventScene')) return 'scene-event';
+              if (id.includes('RestScene')) return 'scene-rest';
+              if (id.includes('RewardScene')) return 'scene-reward';
+              return 'scene-shared';
+            }
+            if (id.includes('/src/runtimeV2/pixi/')) {
+              if (id.includes('Pixi')) return 'pixi-scenes';
+              return 'pixi-shared';
             }
             if (id.includes('/src/content/data/')) {
               return 'content-data';
@@ -46,9 +63,20 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+      // Smoke/agent sessions should not live-reload when generated artifacts or local edits change.
+      hmr: !disableHmr,
+      watch: disableHmr
+        ? {
+            ignored: ['**/*'],
+          }
+        : {
+            ignored: [
+              '**/reports/**',
+              '**/output/**',
+              '**/.omx/**',
+              '**/docs/development-reports/**',
+            ],
+          },
     },
   };
 });

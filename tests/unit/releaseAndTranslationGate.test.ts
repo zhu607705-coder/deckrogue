@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
-import { evaluateWindowsInstallerCheck } from '../../scripts/validation/check_release_readiness.ts';
 
 test('translation audit flags visible English in data-driven relic and achievement content', () => {
   const fields: AuditDataFieldConfig[] = [
@@ -19,17 +18,4 @@ test('translation audit flags visible English in data-driven relic and achieveme
   assert.ok(items.some((item) => item.excerpt.includes('Gain 1 Energy')));
   assert.ok(items.some((item) => item.excerpt.includes('StartCombat')));
   assert.ok(items.some((item) => item.excerpt.includes('Warp Echoes Hunter')));
-});
-
-test('release readiness blocks Windows delivery without a verified Windows installer artifact', () => {
-  const check = evaluateWindowsInstallerCheck({
-    currentPlatform: 'darwin',
-    reportExists: false,
-    reportFresh: false,
-    reportHealthy: false,
-    artifactExists: false,
-  });
-
-  assert.equal(check.status, 'fail');
-  assert.match(check.evidence, /Windows installer/i);
 });

@@ -5,6 +5,7 @@ import { GameEngine, type GameEngineRuntimeDelegate, type GameEngineRuntimeDeleg
 import type { RuleSnapshot } from '@/runtimeV2';
 import rawCardsData from '@/content/data/cards.json';
 import rawRelicsData from '@/content/data/relics.json';
+import { potionsData } from '@/content/narrative/numericSystem';
 import { getCardRouteSignal, getRouteSupportRelicIds } from '@/content/narrative/routeSignals';
 import type { CardDef, RelicDef } from '@/core/types';
 
@@ -533,6 +534,36 @@ test('GameEngine.buyShopCard syncs the runtime delegate after legacy shop purcha
   engine.dispose();
 });
 
+test('GameEngine.buyShopCard keeps adjusted shop pricing when basePrice is omitted', () => {
+  const delegate = new FakeRuntimeDelegate();
+  const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });
+  engine.selectCharacter('informant');
+
+  const beforeSyncs = delegate.loadedSnapshots;
+  engine.state.screen = 'Shop';
+  engine.state.player.gold = 100;
+  engine.state.player.relics.push('lantern');
+  const routeCard = getRouteCard('informant', 'informant:evidence', 'route_payoff');
+  const shopCard = {
+    ...routeCard,
+    rarity: 'Common',
+    instanceId: 'shop-card-adjusted-price',
+    baseCardId: routeCard.id,
+    runtimeBase: routeCard,
+    persistentEnchantments: [],
+    combatAfflictions: [],
+  };
+  engine.state.shopCards = [shopCard as any];
+
+  engine.buyShopCard(shopCard.instanceId);
+
+  assert.equal(engine.state.player.gold, 52);
+  assert.equal(engine.state.shopCards.length, 0);
+  assert.ok(delegate.loadedSnapshots > beforeSyncs);
+  assert.ok(delegate.snapshot?.player.deck.includes(routeCard.id));
+  engine.dispose();
+});
+
 test('GameEngine.buyShopRelic syncs the runtime delegate after aligned relic purchases', () => {
   const delegate = new FakeRuntimeDelegate();
   const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });
@@ -572,6 +603,32 @@ test('GameEngine.buyShopPotion syncs the runtime delegate after potion purchases
   assert.ok(delegate.loadedSnapshots > beforeSyncs);
   assert.ok(delegate.snapshot?.player.potionIds.includes('healing_potion'));
   engine.dispose();
+});
+
+test('GameEngine.buyShopPotion falls back to a finite default price for malformed potion data', () => {
+  const potion = potionsData.find((entry) => entry.id === 'healing_potion');
+  assert.ok(potion, 'missing healing_potion fixture');
+  const originalPrice = potion.price;
+  (potion as any).price = undefined;
+
+  const delegate = new FakeRuntimeDelegate();
+  const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });
+  try {
+    engine.selectCharacter('informant');
+    engine.state.screen = 'Shop';
+    engine.state.player.gold = 100;
+    engine.state.shopPotions = ['healing_potion'];
+
+    engine.buyShopPotion('healing_potion');
+
+    assert.equal(engine.state.player.gold, 35);
+    assert.equal(engine.state.shopPotions.length, 0);
+    assert.ok(Number.isFinite(engine.state.player.gold));
+    assert.ok(delegate.snapshot?.player.potionIds.includes('healing_potion'));
+  } finally {
+    potion.price = originalPrice;
+    engine.dispose();
+  }
 });
 
 test('GameEngine.handleCombatVictory can project delegated reward state into the original UI state', () => {

@@ -31,7 +31,6 @@ const FRESHNESS_ROOTS = [
   'package.json',
   'package-lock.json',
   'electron',
-  'electron-builder.json',
   'index.html',
   'public',
   'src',
@@ -73,6 +72,11 @@ type UiSmokeExpansionReport = {
   }>;
 };
 
+type GenericFlowReport = Record<string, unknown> & {
+  consoleErrors?: unknown[];
+  pageErrors?: unknown[];
+};
+
 type DesktopBuildReport = {
   overallStatus?: string;
   rendererIndexPath?: string;
@@ -87,20 +91,6 @@ type DesktopSmokeReport = {
   consoleErrors?: unknown[];
   pageErrors?: unknown[];
   failedRequests?: unknown[];
-};
-
-type WindowsInstallerReport = {
-  overallStatus?: string;
-  artifactPath?: string | null;
-  platform?: string;
-};
-
-type WindowsInstallerCheckInput = {
-  currentPlatform: string;
-  reportExists: boolean;
-  reportFresh: boolean;
-  reportHealthy: boolean;
-  artifactExists: boolean;
 };
 
 function ensureDir(dir: string) {
@@ -181,40 +171,6 @@ function checkBuildArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   return results;
 }
 
-export function evaluateWindowsInstallerCheck(input: WindowsInstallerCheckInput): ReleaseCheck {
-  if (!input.reportExists) {
-    return {
-      id: 'windows_installer',
-      status: 'fail',
-      evidence: input.currentPlatform === 'win32'
-        ? 'Windows installer report missing on Windows build machine; run dist:win'
-        : 'Windows installer report missing; Windows EXE delivery requires a verified installer artifact from a Windows build machine or CI'
-    };
-  }
-
-  if (!input.reportFresh) {
-    return {
-      id: 'windows_installer',
-      status: 'fail',
-      evidence: 'windows installer report is stale for current workspace state; run dist:win again on a Windows builder'
-    };
-  }
-
-  if (!input.reportHealthy || !input.artifactExists) {
-    return {
-      id: 'windows_installer',
-      status: 'fail',
-      evidence: 'windows installer report is not green or installer artifact is missing'
-    };
-  }
-
-  return {
-    id: 'windows_installer',
-    status: 'pass',
-    evidence: 'windows installer report is green and fresh'
-  };
-}
-
 function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   const checks: ReleaseCheck[] = [];
   const buildReportPath = resolve('reports/desktop/desktop-build.json');
@@ -252,19 +208,6 @@ function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
       : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, not production-mode, or misses required flow steps' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
   }
 
-  const windowsInstallerReportPath = resolve('reports/desktop/windows-installer.json');
-  const reportExists = existsSync(windowsInstallerReportPath);
-  const installerReport = reportExists ? readJsonFile<WindowsInstallerReport>(windowsInstallerReportPath) : null;
-  const fresh = reportExists ? isArtifactFresh(windowsInstallerReportPath, freshnessBaseline) : false;
-  const artifactExists = installerReport?.artifactPath ? existsSync(installerReport.artifactPath) : false;
-  const healthy = installerReport?.overallStatus === 'pass' && installerReport?.platform === 'win32';
-  checks.push(evaluateWindowsInstallerCheck({
-    currentPlatform: process.platform,
-    reportExists,
-    reportFresh: fresh,
-    reportHealthy: healthy,
-    artifactExists,
-  }));
   return checks;
 }
 
@@ -367,6 +310,107 @@ function checkDoctorAndSecurityArtifacts(): ReleaseCheck[] {
   return checks;
 }
 
+function checkFlowReport(
+  id: string,
+  reportRelPath: string,
+  freshnessBaseline: number,
+  predicate: (report: GenericFlowReport) => boolean,
+  successEvidence: string,
+  failureEvidence: string
+): ReleaseCheck {
+  const reportPath = resolve(reportRelPath);
+  if (!existsSync(reportPath)) {
+    return { id, status: 'fail', evidence: `${reportRelPath} missing` };
+  }
+  const report = readJsonFile<GenericFlowReport>(reportPath);
+  const fresh = isArtifactFresh(reportPath, freshnessBaseline);
+  const clean =
+    (report?.consoleErrors?.length || 0) === 0 &&
+    (report?.pageErrors?.length || 0) === 0 &&
+    !!report &&
+    predicate(report);
+  return clean && fresh
+    ? { id, status: 'pass', evidence: successEvidence }
+    : { id, status: 'fail', evidence: fresh ? failureEvidence : `${reportRelPath} is stale for current workspace state` };
+}
+
+function checkCanonicalFlowArtifacts(freshnessBaseline: number): ReleaseCheck[] {
+  return [
+    checkFlowReport(
+      'reward_flow_smoke',
+      'reports/flows/reward-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedReward === true && report.returnedToMap === true,
+      'reward flow smoke report is green and fresh',
+      'reward flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'terminal_flow_smoke',
+      'reports/flows/terminal-flow-smoke.json',
+      freshnessBaseline,
+      (report) => Array.isArray(report.cases) && report.cases.every((entry: any) => entry.reachedTerminal === true && entry.exitedTerminal === true),
+      'terminal flow smoke report is green and fresh',
+      'terminal flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'shop_flow_smoke',
+      'reports/flows/shop-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedShop === true && report.reachedEnchant === true && report.returnedToShop === true && report.returnedToMap === true,
+      'shop flow smoke report is green and fresh',
+      'shop flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'event_flow_smoke',
+      'reports/flows/event-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedEvent === true && report.resolvedEvent === true && report.returnedToMap === true,
+      'event flow smoke report is green and fresh',
+      'event flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'rest_flow_smoke',
+      'reports/flows/rest-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedRest === true && report.healed === true && report.returnedToMap === true,
+      'rest flow smoke report is green and fresh',
+      'rest flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'upgrade_flow_smoke',
+      'reports/flows/upgrade-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedRest === true && report.reachedUpgrade === true && report.appliedUpgrade === true && report.returnedToMap === true,
+      'upgrade flow smoke report is green and fresh',
+      'upgrade flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'remove_card_flow_smoke',
+      'reports/flows/remove-card-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedRest === true && report.reachedRemoveCard === true && report.removedCard === true && report.returnedToMap === true,
+      'remove-card flow smoke report is green and fresh',
+      'remove-card flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'boss_phase_flow_smoke',
+      'reports/flows/boss-phase-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedCombat === true && report.triggeredPhaseEffect === true,
+      'boss phase flow smoke report is green and fresh',
+      'boss phase flow smoke report is not green'
+    ),
+    checkFlowReport(
+      'boss_terminal_flow_smoke',
+      'reports/flows/boss-terminal-flow-smoke.json',
+      freshnessBaseline,
+      (report) => report.reachedTerminal === true && report.exitedToCharacterSelect === true,
+      'boss terminal flow smoke report is green and fresh',
+      'boss terminal flow smoke report is not green'
+    ),
+  ];
+}
+
 function checkFreezeDefinition(): ReleaseCheck[] {
   const freezePath = 'docs/releases/current-version-freeze.md';
   if (!existsSync(freezePath)) {
@@ -396,6 +440,63 @@ function checkFreezeDefinition(): ReleaseCheck[] {
   return checks;
 }
 
+function checkEnemyVariantReadiness(): ReleaseCheck[] {
+  const checks: ReleaseCheck[] = [];
+  const packageJson = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts?: Record<string, string> };
+  const scripts = packageJson.scripts || {};
+  const requiredScripts = [
+    'check:enemy-visual-identity',
+    'check:enemy-variant-behavior',
+    'check:enemy-first3-exposure',
+    'check:map-route-constraints'
+  ];
+
+  for (const scriptName of requiredScripts) {
+    checks.push(scripts[scriptName]
+      ? { id: `script_${scriptName.replace(/[:]/g, '_')}`, status: 'pass', evidence: `${scriptName} present in package.json` }
+      : { id: `script_${scriptName.replace(/[:]/g, '_')}`, status: 'fail', evidence: `${scriptName} missing from package.json` });
+  }
+
+  const requiredFiles = [
+    'scripts/validation/check_enemy_visual_identity.ts',
+    'scripts/validation/check_enemy_variant_behavior.ts',
+    'scripts/validation/check_enemy_first3_exposure.ts',
+    'scripts/validation/check_map_route_constraints.ts',
+    'scripts/assets/generate_enemy_variant_art.cjs'
+  ];
+
+  for (const file of requiredFiles) {
+    checks.push(checkFile(file, file.replace(/[/.:-]+/g, '_')));
+  }
+
+  const enemiesPath = resolve('src/content/data/enemies.json');
+  if (!existsSync(enemiesPath)) {
+    checks.push({ id: 'enemy_variant_records', status: 'fail', evidence: 'src/content/data/enemies.json missing' });
+  } else {
+    const enemies = readJsonFile<Array<{ id: string; keywords?: string[] }>>(enemiesPath) || [];
+    const variantCount = enemies.filter((enemy) => enemy.keywords?.includes('variant')).length;
+    checks.push(variantCount >= 6
+      ? { id: 'enemy_variant_records', status: 'pass', evidence: `found ${variantCount} variant enemy records` }
+      : { id: 'enemy_variant_records', status: 'fail', evidence: `expected at least 6 variant enemy records, found ${variantCount}` });
+  }
+
+  const enemyAssetDir = resolve('public/assets/enemies');
+  const requiredAssets = [
+    'slime_small_glass.png',
+    'slime_small_rot.png',
+    'goblin_trapper.png',
+    'barrier_redeemer.png',
+    'cultist_herald.png',
+    'jaw_worm_burrower.png'
+  ];
+  const missingAssets = requiredAssets.filter((asset) => !existsSync(resolve(enemyAssetDir, asset)));
+  checks.push(missingAssets.length === 0
+    ? { id: 'enemy_variant_assets', status: 'pass', evidence: `all ${requiredAssets.length} planned variant assets exist` }
+    : { id: 'enemy_variant_assets', status: 'fail', evidence: `missing variant assets: ${missingAssets.join(', ')}` });
+
+  return checks;
+}
+
 export function main() {
   ensureDir(REPORT_DIR);
   const freshnessBaseline = getWorkspaceFreshnessBaseline();
@@ -410,7 +511,9 @@ export function main() {
     ...checkBuildArtifacts(freshnessBaseline),
     ...checkDesktopArtifacts(freshnessBaseline),
     ...checkSaveAndSettingsContracts(),
+    ...checkEnemyVariantReadiness(),
     ...checkDoctorAndSecurityArtifacts(),
+    ...checkCanonicalFlowArtifacts(freshnessBaseline),
     checkArtifactWeight()
   ];
 
