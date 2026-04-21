@@ -90,8 +90,8 @@ test('conditional kill action should be registered in the action factory', () =>
 
 test('conditional kill action should execute trueActions when target is dead', () => {
   const state = makeState();
-  const queue = new ActionQueue(state);
-  queue._currentContext = { source: 'player', targetId: 'e1' };
+  const queue = new ActionQueue();
+  (queue as any)._currentContext = { source: 'player', targetId: 'e1' };
 
   const action = ActionFactoryV2.createAction({
     type: 'ConditionalKill',
@@ -99,7 +99,7 @@ test('conditional kill action should execute trueActions when target is dead', (
   } as ActionSpec);
 
   action.execute(state, queue);
-  queue.processQueueSync();
+  queue.processQueueSync(state);
 
   assert.equal(state.combat?.player.energy, 4);
 });

@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { Flame, Heart, Hammer, FlaskConical, Sparkles } from 'lucide-react';
 import { potionsData } from '@/content/narrative/numericSystem';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import worldLoreData from '@/content/data/worldLore.json';
 
-export function RestView({ engine }: { engine: GameEngine }) {
+export function RestView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const WORLD_LORE = worldLoreData as any;
   const player = engine.state.player;
-  const healAmount = Math.floor(player.maxHp * 0.3);
-  const canHeal = player.hp < player.maxHp;
-  const canUpgrade = player.deck.some(c => !c.isUpgraded && c.upgrade);
+  const roomSummary = renderModel?.room?.kind === 'rest' ? renderModel.room : null;
+  const healAmount = roomSummary?.healAmount ?? Math.floor(player.maxHp * 0.3);
+  const canHeal = roomSummary?.canHeal ?? (player.hp < player.maxHp);
+  const canUpgrade = roomSummary?.canUpgrade ?? player.deck.some(c => !c.isUpgraded && c.upgrade);
+  const canEnchant = roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!(c as any).persistentEnchantments || (c as any).persistentEnchantments.length === 0));
   const [mixA, setMixA] = useState<number>(0);
   const [mixB, setMixB] = useState<number>(1);
   const potionChoices = player.potions.map((id, idx) => ({
@@ -19,7 +22,7 @@ export function RestView({ engine }: { engine: GameEngine }) {
     id,
     def: (potionsData as any[]).find(p => p.id === id)
   }));
-  const canMix = player.potions.length >= 2 && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
+  const canMix = (roomSummary?.canMix ?? (player.potions.length >= 2)) && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
   
   const [backgroundIndex] = useState(() => systemRandomInt(VIEW_BACKGROUNDS.rest.length));
   const backgroundSrc = VIEW_BACKGROUNDS.rest[backgroundIndex].desktop;
@@ -47,6 +50,8 @@ export function RestView({ engine }: { engine: GameEngine }) {
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
             ${canHeal ? 'bg-slate-900/80 border-orange-500 hover:bg-slate-800/80 hover:scale-105 cursor-pointer' : 'bg-slate-900/80 border-slate-700 opacity-50 cursor-not-allowed'}
           `}
+          data-keyboard-option="1"
+          data-keyboard-focus="true"
         >
           <Heart size={48} className={canHeal ? "text-red-400" : "text-slate-500"} />
           <div className="text-xl font-bold">休整</div>
@@ -59,10 +64,28 @@ export function RestView({ engine }: { engine: GameEngine }) {
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
             ${canUpgrade ? 'bg-slate-900/80 border-emerald-500 hover:bg-slate-800/80 hover:scale-105 cursor-pointer' : 'bg-slate-900/80 border-slate-700 opacity-50 cursor-not-allowed'}
           `}
+          data-keyboard-option="2"
+          data-keyboard-focus="true"
         >
           <Hammer size={48} className={canUpgrade ? "text-emerald-400" : "text-slate-500"} />
           <div className="text-xl font-bold">锻造</div>
           <div className="text-sm text-slate-400">强化一张记忆印痕</div>
+        </button>
+
+        <button 
+          onClick={() => engine.restEnchant()}
+          disabled={!canEnchant}
+          className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
+            ${canEnchant
+              ? 'bg-slate-900/80 border-amber-500 hover:bg-slate-800/80 hover:scale-105 cursor-pointer'
+              : 'bg-slate-900/80 border-slate-700 opacity-50 cursor-not-allowed'}
+          `}
+          data-keyboard-option="3"
+          data-keyboard-focus="true"
+        >
+          <Sparkles size={48} className={canEnchant ? "text-amber-300" : "text-slate-500"} />
+          <div className="text-xl font-bold">刻写附魔</div>
+          <div className="text-sm text-slate-400">为一张牌追加局内强化</div>
         </button>
       </div>
 
@@ -117,6 +140,8 @@ export function RestView({ engine }: { engine: GameEngine }) {
                 ? 'bg-emerald-900/40 border-emerald-500 text-emerald-300 hover:bg-emerald-900/60'
                 : 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
             }`}
+            data-keyboard-option="4"
+            data-keyboard-focus="true"
           >
             <Sparkles size={16} /> 蒸馏配方
           </button>

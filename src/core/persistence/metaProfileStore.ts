@@ -31,11 +31,18 @@ export function createDefaultMetaProfile(): MetaProfile {
     preferences: {
       selectedStartingRelicId: null,
       selectedBackgroundId: null,
-      selectedAscension: 0
+      selectedAscension: 0,
+      selectedDoctrineId: null,
+      animationSpeed: 'normal',
+      animationQuality: 'balanced'
     },
     progression: {
-      ascensionUnlockedLevel: 0
-    }
+      ascensionUnlockedLevel: 0,
+      ascensionUnlockedLevelByCharacter: {}
+    },
+    unlockedDoctrines: [],
+    branchCodexProgress: {},
+    branchAchievementCounts: {}
   };
 }
 
@@ -67,11 +74,18 @@ function normalizeProfile(raw: any): MetaProfile {
     preferences: {
       selectedStartingRelicId: typeof raw?.preferences?.selectedStartingRelicId === 'string' ? raw.preferences.selectedStartingRelicId : null,
       selectedBackgroundId: typeof raw?.preferences?.selectedBackgroundId === 'string' ? raw.preferences.selectedBackgroundId : null,
-      selectedAscension: Math.max(0, Math.min(20, Math.floor(Number(raw?.preferences?.selectedAscension || 0))))
+      selectedAscension: Math.max(0, Math.min(20, Math.floor(Number(raw?.preferences?.selectedAscension || 0)))),
+      selectedDoctrineId: typeof raw?.preferences?.selectedDoctrineId === 'string' ? raw.preferences.selectedDoctrineId : null,
+      animationSpeed: ['fast', 'normal', 'reduced'].includes(raw?.preferences?.animationSpeed) ? raw.preferences.animationSpeed : 'normal',
+      animationQuality: ['high', 'balanced', 'reduced'].includes(raw?.preferences?.animationQuality) ? raw.preferences.animationQuality : 'balanced'
     },
     progression: {
-      ascensionUnlockedLevel: Math.max(0, Math.min(20, Math.floor(Number(raw?.progression?.ascensionUnlockedLevel || 0))))
-    }
+      ascensionUnlockedLevel: Math.max(0, Math.min(20, Math.floor(Number(raw?.progression?.ascensionUnlockedLevel || 0)))),
+      ascensionUnlockedLevelByCharacter: typeof raw?.progression?.ascensionUnlockedLevelByCharacter === 'object' && raw.progression.ascensionUnlockedLevelByCharacter !== null ? raw.progression.ascensionUnlockedLevelByCharacter : {}
+    },
+    unlockedDoctrines: Array.isArray(raw?.unlockedDoctrines) ? raw.unlockedDoctrines.filter((x: any) => typeof x === 'string') : [],
+    branchCodexProgress: typeof raw?.branchCodexProgress === 'object' && raw.branchCodexProgress !== null ? Object.fromEntries(Object.entries(raw.branchCodexProgress).filter(([k, v]) => typeof k === 'string' && typeof v === 'number').map(([k, v]) => [k, Math.floor(Number(v))])) : {},
+    branchAchievementCounts: typeof raw?.branchAchievementCounts === 'object' && raw.branchAchievementCounts !== null ? Object.fromEntries(Object.entries(raw.branchAchievementCounts).filter(([k, v]) => typeof k === 'string' && typeof v === 'number').map(([k, v]) => [k, Math.floor(Number(v))])) : {}
   };
 }
 
@@ -160,11 +174,18 @@ export function applyRunSummaryToMetaProfile(profile: MetaProfile, state: GameSt
     preferences: {
       selectedStartingRelicId: profile.preferences?.selectedStartingRelicId ?? null,
       selectedBackgroundId: profile.preferences?.selectedBackgroundId ?? null,
-      selectedAscension: Math.max(0, Math.floor(profile.preferences?.selectedAscension || 0))
+      selectedAscension: Math.max(0, Math.floor(profile.preferences?.selectedAscension || 0)),
+      selectedDoctrineId: profile.preferences?.selectedDoctrineId ?? null,
+      animationSpeed: ['fast', 'normal', 'reduced'].includes(profile.preferences?.animationSpeed) ? profile.preferences.animationSpeed : 'normal',
+      animationQuality: ['high', 'balanced', 'reduced'].includes(profile.preferences?.animationQuality) ? profile.preferences.animationQuality : 'balanced'
     },
     progression: {
-      ascensionUnlockedLevel: Math.max(0, Math.floor(profile.progression?.ascensionUnlockedLevel || 0))
-    }
+      ascensionUnlockedLevel: Math.max(0, Math.floor(profile.progression?.ascensionUnlockedLevel || 0)),
+      ascensionUnlockedLevelByCharacter: profile.progression?.ascensionUnlockedLevelByCharacter ?? {}
+    },
+    unlockedDoctrines: [...(profile.unlockedDoctrines || [])],
+    branchCodexProgress: profile.branchCodexProgress ?? {},
+    branchAchievementCounts: profile.branchAchievementCounts ?? {}
   };
 
   const martyr = buildMartyrLegacyFromRun(state, summary);
@@ -196,11 +217,21 @@ export function applyRunSummaryToMetaProfile(profile: MetaProfile, state: GameSt
   if (summary.isVictory) {
     const maxAsc = getAscensionMaxLevel();
     const selectedAsc = Math.max(0, Math.floor(profile.preferences?.selectedAscension || 0));
-    const unlockedAsc = Math.max(0, Math.floor(next.progression?.ascensionUnlockedLevel || 0));
-    if (selectedAsc >= unlockedAsc && unlockedAsc < maxAsc) {
-      next.progression.ascensionUnlockedLevel = Math.min(maxAsc, unlockedAsc + 1);
-      if (next.preferences.selectedAscension > next.progression.ascensionUnlockedLevel) {
-        next.preferences.selectedAscension = next.progression.ascensionUnlockedLevel;
+    const charId = state.character?.id || '';
+    const unlockedByChar = next.progression.ascensionUnlockedLevelByCharacter || {};
+    const currentCharUnlocked = Math.max(0, unlockedByChar[charId] || 0);
+    if (selectedAsc >= currentCharUnlocked && currentCharUnlocked < maxAsc) {
+      const newCharUnlocked = Math.min(maxAsc, currentCharUnlocked + 1);
+      next.progression = {
+        ...next.progression,
+        ascensionUnlockedLevel: Math.max(0, Math.floor(next.progression?.ascensionUnlockedLevel || 0)),
+        ascensionUnlockedLevelByCharacter: {
+          ...unlockedByChar,
+          [charId]: newCharUnlocked
+        }
+      };
+      if (next.preferences.selectedAscension > newCharUnlocked) {
+        next.preferences.selectedAscension = newCharUnlocked;
       }
     }
   }

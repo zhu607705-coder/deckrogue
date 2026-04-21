@@ -5,6 +5,884 @@
   color-scheme: dark;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UNIFIED MOTION SYSTEM - DeckRogue Animation Token Layer
+   Serves UnifiedAppShell main path only
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Motion Token Definitions */
+:root {
+  /* Duration Tokens */
+  --motion-instant: 50ms;
+  --motion-fast: 150ms;
+  --motion-normal: 280ms;
+  --motion-slow: 420ms;
+  --motion-enter-distance: 12px;
+
+  /* Easing Tokens */
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* Hover/Press Scale Tokens */
+  --motion-hover-scale: 1.02;
+  --motion-hover-translate: -2px;
+  --motion-press-scale: 0.97;
+
+  /* Attention Animation Tokens */
+  --motion-pulse-opacity: 0.6;
+  --motion-pulse-scale: 1.03;
+
+  /* Focus Ring Tokens */
+  --motion-focus-ring-color: rgba(201, 169, 74, 0.5);
+  --motion-focus-ring-width: 2px;
+  --motion-focus-ring-offset: 2px;
+
+  /* Success/Danger Glow Tokens */
+  --motion-success-glow: 0 0 12px 4px rgba(34, 197, 94, 0.4);
+  --motion-danger-pulse: 0 0 16px 6px rgba(239, 68, 68, 0.5);
+  --motion-warning-glow: 0 0 12px 4px rgba(245, 158, 11, 0.4);
+
+  /* Screen Shake Tokens */
+  --motion-shake-light: 0.3s;
+  --motion-shake-medium: 0.5s;
+  --motion-shake-heavy: 0.7s;
+
+  /* Scene Transition Tokens */
+  --motion-scene-enter: 350ms;
+  --motion-scene-exit: 250ms;
+  --motion-scene-crossfade: 400ms;
+
+  /* Toast/Notification Tokens */
+  --motion-toast-enter: 300ms;
+  --motion-toast-exit: 200ms;
+  --motion-toast-stack-delay: 80ms;
+
+  /* Combat Beat Tokens */
+  --motion-beat-hit: 180ms;
+  --motion-beat-block: 220ms;
+  --motion-beat-status: 260ms;
+  --motion-beat-resource: 200ms;
+  --motion-beat-kill: 400ms;
+  --motion-beat-turn-end: 350ms;
+}
+
+/* Quality Configuration - balanced (default) */
+:root {
+  --quality-particle-density: 0.6;
+  --quality-blur-amount: 2px;
+  --quality-shadow-depth: 0.7;
+  --quality-ambient-opacity: 0.8;
+  --quality-animation-parallel: 3;
+  --quality-env-particles: 15;
+}
+
+/* Quality: High */
+:root[data-quality="high"] {
+  --quality-particle-density: 1;
+  --quality-blur-amount: 1px;
+  --quality-shadow-depth: 1;
+  --quality-ambient-opacity: 1;
+  --quality-animation-parallel: 5;
+  --quality-env-particles: 25;
+}
+
+/* Quality: Reduced */
+:root[data-quality="reduced"] {
+  --quality-particle-density: 0.3;
+  --quality-blur-amount: 3px;
+  --quality-shadow-depth: 0.4;
+  --quality-ambient-opacity: 0.4;
+  --quality-animation-parallel: 1;
+  --quality-env-particles: 5;
+}
+
+/* Animation Speed Override - fast */
+:root[data-animation-speed="fast"] {
+  --motion-fast: 80ms;
+  --motion-normal: 150ms;
+  --motion-slow: 250ms;
+  --motion-scene-enter: 200ms;
+  --motion-scene-exit: 150ms;
+  --motion-scene-crossfade: 250ms;
+  --motion-beat-hit: 100ms;
+  --motion-beat-block: 120ms;
+  --motion-beat-status: 150ms;
+  --motion-beat-resource: 100ms;
+  --motion-beat-kill: 250ms;
+  --motion-beat-turn-end: 200ms;
+}
+
+/* Animation Speed Override - reduced */
+:root[data-animation-speed="reduced"] {
+  --motion-fast: 80ms;
+  --motion-normal: 200ms;
+  --motion-slow: 350ms;
+  --motion-scene-enter: 500ms;
+  --motion-scene-exit: 400ms;
+  --motion-scene-crossfade: 600ms;
+  --motion-beat-hit: 280ms;
+  --motion-beat-block: 320ms;
+  --motion-beat-status: 380ms;
+  --motion-beat-resource: 300ms;
+  --motion-beat-kill: 600ms;
+  --motion-beat-turn-end: 500ms;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Unified Interaction State System
+   Hover / Press / Selected / Disabled / Confirm states
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Base Interactive Element */
+.motion-interactive {
+  transition:
+    transform var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out),
+    background-color var(--motion-fast) var(--motion-ease-out),
+    opacity var(--motion-fast) var(--motion-ease-out);
+  cursor: pointer;
+  will-change: transform;
+}
+
+/* Hover State */
+.motion-interactive:hover {
+  transform: translateY(var(--motion-hover-translate)) scale(var(--motion-hover-scale));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.motion-interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--motion-focus-ring-width) var(--motion-focus-ring-color);
+}
+
+/* Press State */
+.motion-interactive:active {
+  transform: scale(var(--motion-press-scale)) translateY(0);
+  transition-duration: var(--motion-instant);
+}
+
+/* Selected State */
+.motion-interactive.is-selected {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow:
+    0 0 0 1px rgba(201, 169, 74, 0.3),
+    0 12px 24px rgba(0, 0, 0, 0.5),
+    0 0 16px 4px rgba(201, 169, 74, 0.2);
+  animation: selected-glow 2s ease-in-out infinite;
+}
+
+@keyframes selected-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(201, 169, 74, 0.3),
+      0 12px 24px rgba(0, 0, 0, 0.5),
+      0 0 16px 4px rgba(201, 169, 74, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(201, 169, 74, 0.5),
+      0 12px 24px rgba(0, 0, 0, 0.5),
+      0 0 24px 6px rgba(201, 169, 74, 0.3);
+  }
+}
+
+/* Disabled State */
+.motion-interactive.is-disabled,
+.motion-interactive:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: saturate(0.5);
+  pointer-events: none;
+}
+
+/* Confirm/Success State */
+.motion-interactive.is-confirmed {
+  animation: confirm-success 0.4s var(--motion-ease-out);
+}
+
+@keyframes confirm-success {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); box-shadow: var(--motion-success-glow); }
+  100% { transform: scale(1); }
+}
+
+/* Danger State */
+.motion-interactive.is-danger {
+  animation: danger-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes danger-pulse {
+  0%, 100% { box-shadow: var(--motion-danger-pulse); }
+  50% { box-shadow: 0 0 20px 8px rgba(239, 68, 68, 0.6); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Scene Transition Animations
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Scene Enter */
+@keyframes scene-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-enter-distance));
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Scene Exit */
+@keyframes scene-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-enter-distance) * -1));
+    filter: blur(2px);
+  }
+}
+
+/* Scene Crossfade */
+@keyframes scene-crossfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.scene-enter {
+  animation: scene-enter var(--motion-scene-enter) var(--motion-ease-out) forwards;
+}
+
+.scene-exit {
+  animation: scene-exit var(--motion-scene-exit) var(--motion-ease-in-out) forwards;
+}
+
+.scene-crossfade {
+  animation: scene-crossfade var(--motion-scene-crossfade) var(--motion-ease-out) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Toast / Notification System
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+/* Toast Item */
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid;
+  background: rgba(10, 12, 18, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 280px;
+  max-width: 400px;
+  animation: toast-enter var(--motion-toast-enter) var(--motion-ease-spring) forwards;
+}
+
+.toast-item--exit {
+  animation: toast-exit var(--motion-toast-exit) var(--motion-ease-in-out) forwards;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+}
+
+/* Toast Variants */
+.toast-item--victory {
+  border-color: rgba(201, 169, 74, 0.5);
+  background: linear-gradient(135deg, rgba(201, 169, 74, 0.15), rgba(10, 12, 18, 0.95));
+}
+
+.toast-item--defeat {
+  border-color: rgba(139, 26, 26, 0.5);
+  background: linear-gradient(135deg, rgba(139, 26, 26, 0.15), rgba(10, 12, 18, 0.95));
+}
+
+.toast-item--upgrade {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(10, 12, 18, 0.95));
+}
+
+.toast-item--achievement {
+  border-color: rgba(168, 85, 247, 0.5);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(10, 12, 18, 0.95));
+}
+
+.toast-item--loot {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(10, 12, 18, 0.95));
+}
+
+.toast-item--warning {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(10, 12, 18, 0.95));
+}
+
+/* Toast Icon */
+.toast-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  font-size: 1.1rem;
+}
+
+.toast-item--victory .toast-icon { background: rgba(201, 169, 74, 0.2); color: #C9A94A; }
+.toast-item--defeat .toast-icon { background: rgba(139, 26, 26, 0.2); color: #ef4444; }
+.toast-item--upgrade .toast-icon { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.toast-item--achievement .toast-icon { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.toast-item--loot .toast-icon { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.toast-item--warning .toast-icon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+/* Toast Content */
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #f1f5f9;
+  margin-bottom: 0.15rem;
+}
+
+.toast-message {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+/* Toast Close */
+.toast-close {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+
+.toast-close:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Toast Stack Animation */
+.toast-container--stacking .toast-item:nth-child(n+2) {
+  margin-top: calc(0.5rem * -1);
+  animation-delay: calc(var(--motion-toast-stack-delay) * var(--stack-index, 0));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   6-Beat Combat Feedback Animation Sequence
+   1. Card Play Confirmation
+   2. Hit/Block/Pierce
+   3. Status Application
+   4. Resource Change
+   5. Kill Confirmation
+   6. Turn End Convergence
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Beat 1: Card Play Confirmation */
+@keyframes card-play-confirm {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-20px) scale(1.08);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-45px) scale(1.02);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-70px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.combat-beat--play-confirm {
+  animation: card-play-confirm var(--motion-beat-hit) var(--motion-ease-out) forwards;
+}
+
+/* Target Lock Highlight */
+@keyframes target-lock-highlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+  }
+  20% {
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0);
+  }
+}
+
+.combat-target--locked {
+  animation: target-lock-highlight var(--motion-beat-hit) var(--motion-ease-out);
+}
+
+/* Beat 2: Hit/Block/Pierce */
+@keyframes hit-confirm {
+  0% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  15% {
+    filter: brightness(2.5) saturate(0) hue-rotate(20deg);
+    transform: scale(1.02);
+  }
+  30% {
+    filter: brightness(1.2) saturate(0.5);
+    transform: scale(0.98);
+  }
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+.combat-beat--hit {
+  animation: hit-confirm var(--motion-beat-hit) var(--motion-ease-out);
+}
+
+@keyframes block-confirm {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  30% {
+    box-shadow: 0 0 20px 6px rgba(59, 130, 246, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 4px 1px rgba(59, 130, 246, 0);
+  }
+}
+
+.combat-beat--block {
+  animation: block-confirm var(--motion-beat-block) var(--motion-ease-out);
+}
+
+@keyframes pierce-confirm {
+  0% {
+    filter: brightness(1);
+  }
+  20% {
+    filter: brightness(1.8) hue-rotate(-15deg);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.combat-beat--pierce {
+  animation: pierce-confirm var(--motion-beat-hit) var(--motion-ease-out);
+}
+
+/* Beat 3: Status Application */
+@keyframes status-apply {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-15deg);
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) rotate(5deg);
+    filter: blur(0);
+  }
+  75% {
+    transform: scale(0.95) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.combat-beat--status-apply {
+  animation: status-apply var(--motion-beat-status) var(--motion-ease-spring);
+}
+
+/* Status Stack Change */
+@keyframes status-stack-change {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.combat-status--stack-change {
+  animation: status-stack-change var(--motion-fast) var(--motion-ease-spring);
+}
+
+/* Beat 4: Resource Change */
+@keyframes resource-change {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  30% {
+    transform: scale(1.15);
+  }
+  60% {
+    box-shadow: 0 0 16px 4px var(--resource-glow-color, rgba(201, 169, 74, 0.4));
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.combat-beat--resource-change {
+  animation: resource-change var(--motion-beat-resource) var(--motion-ease-out);
+}
+
+.resource-glow--energy { --resource-glow-color: rgba(245, 158, 11, 0.5); }
+.resource-glow--hp { --resource-glow-color: rgba(239, 68, 68, 0.5); }
+.resource-glow--block { --resource-glow-color: rgba(59, 130, 246, 0.5); }
+
+/* Beat 5: Kill Confirmation */
+@keyframes kill-confirm {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+  30% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    filter: brightness(1.5) saturate(0.3);
+  }
+  60% {
+    opacity: 0.4;
+    filter: brightness(0.8) saturate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: brightness(0.5) saturate(0);
+  }
+}
+
+.combat-beat--kill {
+  animation: kill-confirm var(--motion-beat-kill) var(--motion-ease-in-out) forwards;
+}
+
+/* Kill Shatter Effect */
+@keyframes kill-shatter {
+  0% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  50% {
+    clip-path: polygon(10% 0, 30% 20%, 50% 10%, 70% 30%, 90% 20%, 100% 50%, 80% 70%, 100% 90%, 70% 80%, 50% 100%, 30% 90%, 20% 70%, 0 100%, 10% 70%, 0 50%);
+    opacity: 0.7;
+  }
+  100% {
+    clip-path: polygon(0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0);
+    opacity: 0;
+  }
+}
+
+.combat-kill--shatter {
+  animation: kill-shatter var(--motion-beat-kill) var(--motion-ease-in-out) forwards;
+}
+
+/* Beat 6: Turn End Convergence */
+@keyframes turn-end-converge {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.combat-beat--turn-end {
+  animation: turn-end-converge var(--motion-beat-turn-end) var(--motion-ease-in-out);
+}
+
+/* Hand Card Convergence */
+@keyframes hand-converge {
+  0% {
+    opacity: 0.8;
+    transform: translateY(0) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.combat-hand--converge {
+  animation: hand-converge var(--motion-beat-turn-end) var(--motion-ease-out);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Ambient Profile System
+   Screen-level ambience without persistent world simulation
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Ambient Profiles */
+:root {
+  --ambient-profile: "clear";
+}
+
+.ambient-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: var(--quality-ambient-opacity, 0.8);
+  transition: opacity 0.5s ease;
+}
+
+/* Clear - No ambient effects */
+.ambient-profile--clear {
+  background: transparent;
+}
+
+/* Ash - Dust/Particle ambient */
+.ambient-profile--ash {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 80%, rgba(120, 100, 80, 0.08), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(100, 90, 80, 0.06), transparent 50%);
+}
+
+.ambient-profile--ash::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  animation: ash-drift 20s linear infinite;
+}
+
+@keyframes ash-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-10%); }
+}
+
+/* Storm - Lightning/Energy ambient */
+.ambient-profile--storm {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -20%, rgba(59, 130, 246, 0.1), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 30% 100%, rgba(139, 92, 246, 0.08), transparent 50%);
+  animation: storm-pulse 3s ease-in-out infinite;
+}
+
+@keyframes storm-pulse {
+  0%, 100% { opacity: calc(var(--quality-ambient-opacity, 0.8) * 1); }
+  50% { opacity: calc(var(--quality-ambient-opacity, 0.8) * 1.2); }
+}
+
+.ambient-profile--storm::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 10%, rgba(200, 200, 255, 0.05), transparent 40%);
+  animation: lightning-flash 8s ease-in-out infinite;
+}
+
+@keyframes lightning-flash {
+  0%, 90%, 100% { opacity: 0; }
+  92% { opacity: 1; }
+  94% { opacity: 0.3; }
+  96% { opacity: 0.8; }
+  98% { opacity: 0; }
+}
+
+/* Twilight - Purple/Dark ambient */
+.ambient-profile--twilight {
+  background:
+    radial-gradient(ellipse 70% 50% at 30% 30%, rgba(139, 92, 246, 0.08), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 70%, rgba(59, 130, 246, 0.06), transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(10, 10, 20, 0.3), transparent 70%);
+  animation: twilight-shift 10s ease-in-out infinite;
+}
+
+@keyframes twilight-shift {
+  0%, 100% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  50% {
+    filter: hue-rotate(10deg) brightness(0.95);
+  }
+}
+
+/* Scene-specific ambient layers */
+.ambient-launcher {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 0%, rgba(100, 80, 60, 0.15), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(60, 40, 30, 0.1), transparent 50%);
+}
+
+.ambient-launcher::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+  animation: scanline-drift 8s linear infinite;
+}
+
+@keyframes scanline-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(4px); }
+}
+
+.ambient-character-select {
+  background:
+    radial-gradient(ellipse 40% 60% at 15% 50%, rgba(201, 169, 74, 0.08), transparent 50%),
+    radial-gradient(ellipse 40% 60% at 85% 50%, rgba(168, 85, 247, 0.06), transparent 50%);
+}
+
+.ambient-map {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(50, 80, 60, 0.1), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 30% 70%, rgba(30, 60, 40, 0.08), transparent 40%);
+}
+
+.ambient-combat {
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 100%, rgba(139, 26, 26, 0.1), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(59, 130, 246, 0.05), transparent 40%);
+}
+
+.ambient-combat::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.03), transparent 30%),
+    radial-gradient(circle at 20% 80%, rgba(244, 63, 94, 0.03), transparent 30%);
+  animation: combat-ambient-flicker 4s ease-in-out infinite;
+}
+
+@keyframes combat-ambient-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.ambient-shop,
+.ambient-event {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(245, 158, 11, 0.08), transparent 50%),
+    radial-gradient(ellipse 40% 30% at 30% 70%, rgba(201, 169, 74, 0.05), transparent 40%);
+}
+
+.ambient-victory {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(201, 169, 74, 0.15), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(245, 158, 11, 0.08), transparent 40%);
+  animation: victory-ambient 2s ease-in-out infinite;
+}
+
+@keyframes victory-ambient {
+  0%, 100% { opacity: var(--quality-ambient-opacity, 0.8); }
+  50% { opacity: calc(var(--quality-ambient-opacity, 0.8) * 1.1); }
+}
+
+.ambient-defeat {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 50%, rgba(139, 26, 26, 0.15), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 30% 30%, rgba(60, 20, 20, 0.1), transparent 40%);
+  animation: defeat-ambient 3s ease-in-out infinite;
+}
+
+@keyframes defeat-ambient {
+  0%, 100% { opacity: var(--quality-ambient-opacity, 0.8); filter: brightness(1); }
+  50% { opacity: calc(var(--quality-ambient-opacity, 0.8) * 0.9); filter: brightness(0.9); }
+}
+
+/* Quality-based ambient reduction */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-layer,
+  .ambient-layer::before {
+    animation: none !important;
+  }
+  .ambient-layer {
+    opacity: calc(var(--quality-ambient-opacity, 0.8) * 0.5);
+  }
+}
+
+[data-quality="reduced"] .ambient-layer {
+  opacity: calc(var(--quality-ambient-opacity, 0.8) * 0.4);
+}
+
+[data-quality="reduced"] .ambient-layer::before {
+  animation: none !important;
+}
+
 @keyframes combat-bg-fade-in {
   from {
     opacity: 0;
@@ -26,6 +904,11 @@
   transition: transform 180ms ease, filter 180ms ease;
 }
 
+.immersive-card--compact {
+  width: 4.5rem;
+  height: 6.8rem;
+}
+
 .immersive-card.is-clickable {
   cursor: pointer;
 }
@@ -34,9 +917,19 @@
   transform: translateY(-10px) scale(1.02);
 }
 
+.immersive-card--compact.is-clickable:hover {
+  transform: translateY(-6px) scale(1.05);
+  filter: saturate(1.08) brightness(1.03);
+}
+
 .immersive-card.is-selected {
   transform: translateY(-8px) scale(1.02);
   filter: saturate(1.08);
+}
+
+.immersive-card--compact.is-selected {
+  transform: translateY(-5px) scale(1.06);
+  filter: saturate(1.12) brightness(1.04);
 }
 
 .immersive-card.is-selected .immersive-card__glow {
@@ -76,6 +969,11 @@
 .immersive-card.is-clickable:hover .immersive-card__glow {
   opacity: 0.9;
   filter: blur(8px);
+}
+
+.immersive-card--compact.is-clickable:hover .immersive-card__glow {
+  opacity: 0.98;
+  filter: blur(9px);
 }
 
 .immersive-card__frame {
@@ -134,7 +1032,7 @@
 
 .immersive-card__header {
   position: relative;
-  padding: 0.45rem 0.5rem 0.35rem 1.4rem;
+  padding: 0.35rem 0.45rem 0.25rem 1.35rem;
   border-bottom: 1px solid var(--card-divider);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.025), transparent 70%),
@@ -143,8 +1041,108 @@
 
 .immersive-card__titleRow {
   display: flex;
-  align-items: flex-start;
-  gap: 0.2rem;
+  flex-direction: column;
+  gap: 0;
+}
+
+.immersive-card__titleZh {
+  display: block;
+  width: 100%;
+  color: var(--card-title);
+  font: 700 0.6rem/1.1 Georgia, "Times New Roman", serif;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.immersive-card__titleEn {
+  display: block;
+  width: 100%;
+  color: #94a3b8;
+  font: italic 500 0.5rem/1.1 Georgia, "Times New Roman", serif;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.immersive-card__titleRowEn {
+  margin-top: 0;
+}
+
+.immersive-card__typeBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.immersive-card__typeBadge {
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.2rem;
+  font: 700 0.42rem/1 'Share Tech Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.immersive-card__typeBadge--attack {
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.25), rgba(127, 29, 29, 0.35));
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  text-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+.immersive-card__typeBadge--skill {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.25), rgba(6, 95, 124, 0.35));
+  border-color: rgba(34, 211, 238, 0.5);
+  color: #a5f3fc;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.4);
+}
+
+.immersive-card__typeBadge--power {
+  background: linear-gradient(135deg, rgba(126, 34, 206, 0.25), rgba(88, 28, 135, 0.35));
+  border-color: rgba(192, 132, 252, 0.5);
+  color: #e9d5ff;
+  text-shadow: 0 0 6px rgba(192, 132, 252, 0.4);
+}
+
+.immersive-card__rarityBadge {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.15rem;
+  font: 600 0.38rem/1 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.immersive-card__rarityBadge--starter {
+  background: linear-gradient(135deg, rgba(120, 113, 108, 0.2), rgba(87, 83, 78, 0.3));
+  border-color: rgba(168, 162, 158, 0.4);
+  color: #d6d3d1;
+}
+
+.immersive-card__rarityBadge--common {
+  background: linear-gradient(135deg, rgba(71, 85, 105, 0.2), rgba(51, 65, 85, 0.3));
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #cbd5e1;
+}
+
+.immersive-card__rarityBadge--uncommon {
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.2), rgba(21, 128, 61, 0.3));
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #bbf7d0;
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.15);
+}
+
+.immersive-card__rarityBadge--rare {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.25), rgba(180, 83, 9, 0.35));
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fde68a;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.25);
 }
 
 .immersive-card__title {
@@ -181,6 +1179,7 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  height: 5rem;
   border-top: 1px solid rgba(255,255,255,0.02);
   border-bottom: 1px solid var(--card-divider);
   background:
@@ -232,8 +1231,8 @@
 
 .immersive-card__body {
   position: relative;
-  height: 4.25rem;
-  padding: 0.34rem 0.4rem 0.42rem;
+  height: 3.85rem;
+  padding: 0.25rem 0.3rem 0.3rem;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.02), transparent 25%),
     linear-gradient(180deg, var(--card-body-top), var(--card-body-bottom));
@@ -257,15 +1256,16 @@
 
 .immersive-card__text {
   color: var(--card-text);
-  font: 500 0.52rem/1.22 Georgia, "Times New Roman", serif;
+  font: 600 0.52rem/1.28 Georgia, "Times New Roman", serif;
   text-align: center;
   flex: 1;
   display: -webkit-box;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-wrap: pretty;
   white-space: pre-line;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.5);
 }
 
 .immersive-card__number {
@@ -277,6 +1277,160 @@
 .immersive-card__keyword {
   color: var(--card-keyword);
   font-weight: 700;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.42);
+}
+
+.immersive-card--compact .immersive-card__cost {
+  top: -7px;
+  left: -6px;
+  width: 24px;
+  height: 24px;
+}
+
+.immersive-card--compact .immersive-card__cost span {
+  font-size: 0.66rem;
+}
+
+.immersive-card--compact .immersive-card__header {
+  padding: 0.25rem 0.3rem 0.2rem 1.05rem;
+}
+
+.immersive-card--compact .immersive-card__titleZh {
+  font-size: 0.46rem;
+}
+
+.immersive-card--compact .immersive-card__titleEn {
+  font-size: 0.38rem;
+}
+
+.immersive-card--compact .immersive-card__typeBadges {
+  gap: 0.18rem;
+  margin-top: 0.12rem;
+}
+
+.immersive-card--compact .immersive-card__typeBadge {
+  padding: 0.08rem 0.22rem;
+  font-size: 0.3rem;
+}
+
+.immersive-card--compact .immersive-card__rarityBadge {
+  padding: 0.08rem 0.16rem;
+  font-size: 0.29rem;
+}
+
+.immersive-card--compact .immersive-card__art {
+  height: 2.85rem;
+}
+
+.immersive-card--compact .immersive-card__body {
+  height: 2.45rem;
+  padding: 0.18rem 0.22rem 0.24rem;
+}
+
+.immersive-card--compact .immersive-card__tagline {
+  font-size: 0.3rem;
+  margin-bottom: 0.12rem;
+  padding-bottom: 0.12rem;
+}
+
+.immersive-card--compact .immersive-card__text {
+  font-size: 0.34rem;
+  line-height: 1.18;
+  -webkit-line-clamp: 6;
+}
+
+.reward-view__choice:hover,
+.reward-view__choice:focus-within {
+  border-color: rgba(250, 204, 21, 0.24);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.34), 0 0 0 1px rgba(250, 204, 21, 0.08);
+  transform: translateY(-2px);
+}
+
+.reward-view__choice .immersive-card--compact .immersive-card__frame {
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.reward-view__choice:hover .immersive-card--compact .immersive-card__frame,
+.reward-view__choice:focus-within .immersive-card--compact .immersive-card__frame {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 0 0 2px rgba(var(--card-accent-rgb), 0.78),
+    inset 0 0 18px rgba(0,0,0,0.86),
+    0 16px 30px rgba(0,0,0,0.58),
+    0 0 18px rgba(var(--card-accent-rgb), 0.24);
+}
+
+.glossary-term {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline dotted rgba(240, 211, 120, 0.55);
+  text-underline-offset: 0.12rem;
+}
+
+.glossary-term--interactive {
+  cursor: help;
+}
+
+.glossary-term__trigger {
+  position: relative;
+  z-index: 1;
+}
+
+.glossary-term__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  z-index: 30;
+  width: min(18rem, 72vw);
+  transform: translateX(-50%) translateY(0.3rem);
+  border: 1px solid rgba(245, 208, 108, 0.28);
+  background:
+    linear-gradient(180deg, rgba(17, 14, 18, 0.98), rgba(8, 8, 11, 0.98));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.75rem;
+  color: #e9e2d7;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.glossary-term__bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0.7rem;
+  height: 0.7rem;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-right: 1px solid rgba(245, 208, 108, 0.2);
+  border-bottom: 1px solid rgba(245, 208, 108, 0.2);
+  background: rgba(10, 10, 12, 0.98);
+}
+
+.glossary-term:hover .glossary-term__bubble,
+.glossary-term:focus-visible .glossary-term__bubble,
+.glossary-term[data-glossary-open='true'] .glossary-term__bubble {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.glossary-term__bubbleLabel {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f0d378;
+  margin-bottom: 0.25rem;
+}
+
+.glossary-term__bubbleBody {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(233, 226, 215, 0.92);
 }
 
 .immersive-card.is-rare .immersive-card__subtitle {
@@ -400,14 +1554,18 @@
   --card-divider: rgba(122, 96, 72, 0.35);
   --card-header-top: rgba(40, 29, 21, 0.94);
   --card-header-bottom: rgba(18, 13, 10, 0.99);
-  --card-body-top: rgba(187, 172, 153, 0.97);
-  --card-body-bottom: rgba(154, 136, 118, 0.99);
+  --card-body-top: rgba(204, 190, 171, 0.985);
+  --card-body-bottom: rgba(171, 152, 131, 0.995);
   --card-title: #d4c6b3;
   --card-subtitle: #b69d83;
-  --card-tagline: #5c4a3a;
-  --card-text: #2f241b;
+  --card-tagline: #533f2e;
+  --card-text: #3f2d1f;
   --card-number: #7f3f24;
-  --card-keyword: #5e2f1a;
+  --card-keyword: #8a4522;
+}
+
+.immersive-card--wood .immersive-card__text {
+  text-shadow: 0 1px 1px rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.34);
 }
 
 .immersive-card--tactic {
@@ -422,9 +1580,9 @@
   --card-title: #432b18;
   --card-subtitle: #8b5a2b;
   --card-tagline: #6f4a2a;
-  --card-text: #2c1e14;
+  --card-text: #4e2f1a;
   --card-number: #7b220e;
-  --card-keyword: #8b5a2b;
+  --card-keyword: #9a5821;
 }
 
 .immersive-card--tactic .immersive-card__frame {
@@ -546,9 +1704,9 @@
   --card-title: #f8fafc;
   --card-subtitle: #1e293b;
   --card-tagline: #334155;
-  --card-text: #0f172a;
+  --card-text: #223047;
   --card-number: #1d4ed8;
-  --card-keyword: #475569;
+  --card-keyword: #3f536e;
 }
 .immersive-card--mirror .immersive-card__frame {
   overflow: hidden;
@@ -610,14 +1768,156 @@
   --card-divider: rgba(92, 66, 40, 0.5);
   --card-header-top: rgba(30, 20, 10, 0.96);
   --card-header-bottom: rgba(13, 8, 4, 0.99);
-  --card-body-top: rgba(139, 118, 92, 0.99);
-  --card-body-bottom: rgba(112, 93, 72, 1);
+  --card-body-top: rgba(153, 132, 106, 0.995);
+  --card-body-bottom: rgba(124, 104, 82, 1);
   --card-title: #d8ccb8;
   --card-subtitle: #3a2411;
   --card-tagline: #3f2a16;
-  --card-text: #170f08;
-  --card-number: #257f12;
-  --card-keyword: #0f5f0d;
+  --card-text: #3a2a1c;
+  --card-number: #1f6f0d;
+  --card-keyword: #256d20;
+}
+
+.reward-view__frame {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: min(100%, 52rem);
+}
+
+.reward-view__draftStage {
+  padding: 1.1rem 1rem 1.35rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1.8rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 211, 120, 0.08), transparent 48%),
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.14));
+  box-shadow: 0 24px 70px rgba(0,0,0,0.28);
+}
+
+.reward-view__choice {
+  min-height: 100%;
+}
+
+.combat-guide-panel {
+  position: absolute;
+  top: 5.85rem;
+  right: 1.35rem;
+  z-index: 35;
+  width: min(30rem, calc(100vw - 2rem));
+  border: 1px solid rgba(247, 198, 110, 0.18);
+  border-radius: 1.2rem;
+  padding: 1rem 1.1rem;
+  background:
+    radial-gradient(circle at top, rgba(251, 191, 36, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(16, 12, 10, 0.96), rgba(8, 8, 10, 0.96));
+  box-shadow: 0 24px 60px rgba(0,0,0,0.42);
+  pointer-events: none;
+}
+
+.combat-guide-panel--compact {
+  width: min(25rem, calc(100vw - 2rem));
+  padding: 0.8rem 0.92rem;
+  opacity: 0.9;
+  box-shadow: 0 18px 42px rgba(0,0,0,0.34);
+}
+
+.combat-guide-panel__kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(252, 211, 77, 0.72);
+}
+
+.combat-guide-panel__title {
+  margin-top: 0.3rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8f3eb;
+}
+
+.combat-guide-panel__copy {
+  margin-top: 0.55rem;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: rgba(232, 224, 214, 0.9);
+}
+
+.combat-guide-panel--compact .combat-guide-panel__copy {
+  margin-top: 0.38rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.combat-guide-panel__actions {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  pointer-events: auto;
+}
+
+.combat-guide-panel__button {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 0.62rem 1rem;
+  background: rgba(255,255,255,0.04);
+  color: #f7f4ee;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+  pointer-events: auto;
+}
+
+.combat-guide-panel__button:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.08);
+}
+
+.combat-guide-panel__button--primary {
+  border-color: rgba(245, 208, 108, 0.4);
+  background: rgba(245, 208, 108, 0.12);
+  color: #fde68a;
+}
+
+.combat-guide-panel--compact .combat-guide-panel__actions {
+  margin-top: 0.6rem;
+  gap: 0.5rem;
+}
+
+.combat-guide-panel--compact .combat-guide-panel__button {
+  padding: 0.52rem 0.84rem;
+  font-size: 0.76rem;
+}
+
+.combat-hud__resourceBand--guided,
+.grimdark-intent--guided,
+.grimdark-hand--guided {
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(245, 208, 108, 0.18), 0 0 24px rgba(245, 208, 108, 0.12);
+}
+
+.combat-hud__resourceBand--guided::after,
+.grimdark-intent--guided::after,
+.grimdark-hand--guided::after {
+  content: '';
+  position: absolute;
+  inset: -0.25rem;
+  border: 1px solid rgba(245, 208, 108, 0.32);
+  border-radius: 1rem;
+  pointer-events: none;
+  animation: combat-guide-pulse 1.9s ease-in-out infinite;
+}
+
+@keyframes combat-guide-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.01);
+  }
 }
 .immersive-card--acid .immersive-card__body {
   position: relative;
@@ -844,6 +2144,15 @@
   gap: 0.25rem;
 }
 
+.player-standee__intentMeta {
+  margin-top: 0.12rem;
+  color: rgba(196, 210, 228, 0.88);
+  font: 600 0.48rem/1.15 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
 .player-standee__resource {
   display: flex;
   align-items: center;
@@ -893,6 +2202,30 @@
   flex-wrap: wrap;
 }
 
+.combat-hud__resourceBands {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.combat-hud__resourceBand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.combat-hud__resourceBand--secondary {
+  opacity: 0.96;
+}
+
+.combat-hud__bandLabel {
+  color: #8fa3bf;
+  font: 700 0.46rem/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
 .combat-hud__deckBtn {
   display: inline-flex;
   align-items: center;
@@ -933,6 +2266,11 @@
   color: #e2e8f0;
   box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
   font: 700 0.74rem/1 ui-sans-serif, system-ui, sans-serif;
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.combat-hud__pill:hover {
+  transform: translateY(-1px);
 }
 
 .combat-hud__pill.is-hp {
@@ -958,6 +2296,21 @@
 .combat-hud__pill.is-relics {
   color: #d6bcfa;
   border-color: rgba(168, 85, 247, 0.2);
+}
+
+.combat-hud__pill.is-resource {
+  color: #c4b5fd;
+  border-color: rgba(129, 140, 248, 0.28);
+}
+
+.combat-hud__pill.is-potions {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.combat-hud__pill.is-rift {
+  color: #f0abfc;
+  border-color: rgba(217, 70, 239, 0.32);
 }
 
 .combat-hud__pill.is-corruption {
@@ -1170,6 +2523,22 @@
   flex-direction: column;
   align-items: center;
   filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+  position: relative;
+  z-index: 10;
+}
+
+.enemy-standee__intentHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.enemy-standee__intentTextBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.06rem;
 }
 
 .enemy-standee__intentIcon {
@@ -1188,6 +2557,15 @@
   text-overflow: ellipsis;
 }
 
+.enemy-standee__intentMeta {
+  color: #cbd5e1;
+  font: 700 0.44rem/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0.92;
+}
+
 .enemy-standee__intent.is-attack .enemy-standee__intentValue { color: #fca5a5; }
 .enemy-standee__intent.is-block .enemy-standee__intentValue { color: #93c5fd; }
 .enemy-standee__intent.is-status .enemy-standee__intentValue { color: #d8b4fe; }
@@ -1200,6 +2578,8 @@
   flex-direction: column;
   gap: 0.14rem;
   width: min(10.5rem, 100%);
+  position: relative;
+  z-index: 15;
 }
 
 .enemy-standee__intentChip {
@@ -1267,6 +2647,45 @@
 }
 .enemy-standee__intentChip.is-extra > span { color: #fde68a; }
 .enemy-standee__intentChip.is-extra > strong { color: #fef3c7; }
+
+.enemy-standee__intentWarning {
+  margin-top: 0.22rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font: 700 0.52rem/1 ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+  animation: intent-warning-pulse 1.2s ease-in-out infinite;
+}
+
+.enemy-standee__intentWarning--warning {
+  background: rgba(234, 179, 8, 0.2);
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  color: #fde047;
+}
+
+.enemy-standee__intentWarning--critical {
+  background: rgba(249, 115, 22, 0.25);
+  border: 1px solid rgba(249, 115, 22, 0.6);
+  color: #fb923c;
+  animation: intent-warning-pulse 0.8s ease-in-out infinite;
+}
+
+.enemy-standee__intentWarning--lethal {
+  background: rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.8);
+  color: #fca5a5;
+  animation: intent-warning-lethal 0.5s ease-in-out infinite;
+}
+
+@keyframes intent-warning-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+@keyframes intent-warning-lethal {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+  50% { opacity: 0.85; transform: scale(1.05); box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); }
+}
 
 .enemy-standee__frame {
   position: relative;
@@ -1405,19 +2824,99 @@
   max-width: calc(var(--enemy-frame-w) + 1rem);
 }
 
+.enemy-standee__statusContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.25rem;
+  max-width: calc(var(--enemy-frame-w) + 1rem);
+}
+
+.enemy-standee__statusGroup {
+  display: flex;
+  gap: 0.15rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.enemy-standee__statusGroupLabel {
+  width: 100%;
+  text-align: center;
+  font: 700 0.4rem/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.05rem;
+}
+
+.enemy-standee__statusGroupLabel--buff {
+  color: #86efac;
+}
+
+.enemy-standee__statusGroupLabel--debuff {
+  color: #fca5a5;
+}
+
+.enemy-standee__statusGroupLabel--neutral {
+  color: #cbd5e1;
+}
+
+.enemy-standee__statusGroup--buff {
+  padding: 0.1rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 0.2rem;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.enemy-standee__statusGroup--debuff {
+  padding: 0.1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 0.2rem;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.enemy-standee__statusGroup--neutral {
+  padding: 0.1rem;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 0.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.enemy-standee__statusIcon--buff {
+  border-color: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.3);
+}
+
+.enemy-standee__statusIcon--debuff {
+  border-color: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.3);
+}
+
+.enemy-standee__statusIcon--neutral {
+  border-color: #94a3b8;
+}
+
 .enemy-standee__statusIcon {
-  width: 1.2rem;
-  height: 1.2rem;
+  min-width: 1.2rem;
+  min-height: 1.2rem;
   border: 1px solid #64748b;
   background: rgba(10, 12, 18, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.12rem;
+  padding: 0 0.18rem;
   font-size: 0.72rem;
   line-height: 1;
   position: relative;
   box-shadow: 0 2px 6px rgba(0,0,0,0.75);
   border-radius: 0.2rem;
+}
+
+.enemy-standee__statusLabel {
+  color: #dbe4f0;
+  font: 700 0.38rem/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .enemy-standee__statusStack {
@@ -2554,4 +4053,2325 @@
 .combat-root .player-standee__nameplate {
   background: rgba(2, 6, 23, 0.88);
   color: rgba(248, 250, 252, 0.98);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格战斗反馈动画
+   符合 Grimdark UI Adapter 规范
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 1. 伤害数值飞出动画 - 数值跳出 + 颜色区分 */
+@keyframes damage-fly-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.9);
+  }
+}
+
+@keyframes damage-fly-up-heavy {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.25);
+  }
+  30% {
+    transform: translateY(-12px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.85);
+  }
+}
+
+.damage-number {
+  position: absolute;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: #fca5a5;
+  text-shadow:
+    0 0 8px rgba(239, 68, 68, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  z-index: 100;
+  animation: damage-fly-up 0.8s ease-out forwards;
+}
+
+.damage-number--heavy {
+  font-size: 1.75rem;
+  color: #fca5a5;
+  text-shadow:
+    0 0 12px rgba(239, 68, 68, 1),
+    0 0 24px rgba(239, 68, 68, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+  animation: damage-fly-up-heavy 1s ease-out forwards;
+}
+
+.damage-number--player {
+  color: #f87171;
+  text-shadow:
+    0 0 8px rgba(220, 38, 38, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.damage-number--enemy {
+  color: #fafafa;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.damage-number--block {
+  color: #93c5fd;
+  text-shadow:
+    0 0 8px rgba(59, 130, 246, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.damage-number--heal {
+  color: #86efac;
+  text-shadow:
+    0 0 8px rgba(34, 197, 94, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* 伤害目标震动 */
+@keyframes damage-target-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-3px) rotate(-0.5deg); }
+  20% { transform: translateX(3px) rotate(0.5deg); }
+  30% { transform: translateX(-2px) rotate(-0.3deg); }
+  40% { transform: translateX(2px) rotate(0.3deg); }
+  50% { transform: translateX(-1px); }
+  60% { transform: translateX(1px); }
+}
+
+.damage-target-shake {
+  animation: damage-target-shake 0.4s ease-out;
+}
+
+/* 2. 连锁反应动画 - 节奏递进 0.15s between */
+@keyframes chain-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+.chain-effect {
+  position: relative;
+}
+
+.chain-effect::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--blood-red-500, #8b1a1a);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chain-effect--active {
+  animation: chain-pulse 0.3s ease-out;
+}
+
+.chain-effect--active::after {
+  animation: chain-pulse 0.3s ease-out;
+}
+
+.chain-effect--delay-1 { animation-delay: 0.15s; }
+.chain-effect--delay-2 { animation-delay: 0.3s; }
+.chain-effect--delay-3 { animation-delay: 0.45s; }
+.chain-effect--delay-4 { animation-delay: 0.6s; }
+.chain-effect--delay-5 { animation-delay: 0.75s; }
+
+@keyframes chain-link {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.chain-link-effect {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: radial-gradient(circle, rgba(139, 26, 26, 0.8), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: chain-link 0.5s ease-out forwards;
+}
+
+/* 3. 敌人意图图标动画 - bounce on reveal + shimmer */
+@keyframes intent-icon-bounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.1) translateY(-2px);
+  }
+  80% {
+    transform: scale(0.95) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes intent-icon-shimmer {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes intent-icon-pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+  }
+}
+
+@keyframes intent-icon-pulse-lethal {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 0 24px rgba(239, 68, 68, 1);
+  }
+}
+
+.intent-icon {
+  animation: intent-icon-bounce 0.4s ease-out;
+}
+
+.intent-icon--warning {
+  animation: intent-icon-pulse-warning 1.2s ease-in-out infinite;
+}
+
+.intent-icon--lethal {
+  animation: intent-icon-pulse-lethal 0.8s ease-in-out infinite;
+}
+
+.intent-icon--attack {
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+.intent-icon--defend {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+}
+
+.intent-icon--buff {
+  filter: drop-shadow(0 0 4px rgba(134, 239, 172, 0.6));
+}
+
+.intent-icon--debuff {
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.6));
+}
+
+/* 意图数值变化动画 */
+@keyframes intent-value-change {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.intent-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 600;
+  animation: intent-value-change 0.3s ease-out;
+}
+
+.intent-value--increase {
+  color: #86efac;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.intent-value--decrease {
+  color: #fca5a5;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+/* 敌人生命条变化动画 */
+@keyframes hp-bar-change {
+  0% {
+    filter: brightness(1);
+  }
+  30% {
+    filter: brightness(1.5);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.hp-bar--damaged {
+  animation: hp-bar-change 0.3s ease-out;
+  transition: width 0.4s ease-out;
+}
+
+.hp-bar--healed {
+  animation: hp-bar-change 0.3s ease-out;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+/* 能量消耗动画 */
+@keyframes energy-spend {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+.energy-orb--spent {
+  animation: energy-spend 0.3s ease-out forwards;
+}
+
+/* 卡牌打出动画 */
+@keyframes card-play {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(-20px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-60px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.card-play-animation {
+  animation: card-play 0.4s ease-out forwards;
+}
+
+/* 状态效果图标动画 */
+@keyframes status-icon-apply {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-10deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.status-icon--new {
+  animation: status-icon-apply 0.35s ease-out;
+}
+
+.status-icon--stack {
+  animation: status-icon-apply 0.25s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格状态效果动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 1. 状态效果动画 - Buff/Debuff */
+
+/* Buff 增益应用 - 金色光芒扩散 */
+@keyframes buff-apply {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px 4px rgba(201, 169, 74, 0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px 2px rgba(201, 169, 74, 0.3);
+  }
+}
+
+@keyframes buff-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(201, 169, 74, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(201, 169, 74, 0.5);
+  }
+}
+
+/* Debuff 减益应用 - 紫色烟雾 */
+@keyframes debuff-apply {
+  0% {
+    opacity: 0;
+    transform: scale(1.2) rotate(5deg);
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.95) rotate(-2deg);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    filter: blur(0);
+  }
+}
+
+@keyframes debuff-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.7;
+    filter: brightness(0.8) hue-rotate(20deg);
+  }
+}
+
+/* 层数堆叠 - 数字跳动 */
+@keyframes status-stack {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+.status-buff {
+  animation: buff-apply 0.4s ease-out;
+}
+
+.status-buff--active {
+  animation: buff-pulse 2s ease-in-out infinite;
+}
+
+.status-debuff {
+  animation: debuff-apply 0.4s ease-out;
+}
+
+.status-debuff--active {
+  animation: debuff-pulse 1.5s ease-in-out infinite;
+}
+
+.status-stack--animate {
+  animation: status-stack 0.3s ease-out;
+}
+
+/* 状态消失动画 */
+@keyframes status-fade {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+    filter: blur(4px);
+  }
+}
+
+.status-effect--removing {
+  animation: status-fade 0.4s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格卡牌状态动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 卡牌消耗动画 - 破碎裂纹 */
+@keyframes card-exhaust {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: saturate(1);
+  }
+  30% {
+    opacity: 0.8;
+    transform: scale(0.98);
+    filter: saturate(0.5);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+    filter: saturate(0.2) contrast(1.2);
+  }
+}
+
+@keyframes card-exhaust-crack {
+  0% {
+    clip-path: inset(0 0 100% 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.card-exhaust {
+  animation: card-exhaust 0.5s ease-out forwards;
+  position: relative;
+}
+
+.card-exhaust::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(139, 26, 26, 0.3) 45%,
+    rgba(139, 26, 26, 0.5) 50%,
+    rgba(139, 26, 26, 0.3) 55%,
+    transparent 60%
+  );
+  animation: card-exhaust-crack 0.5s ease-out forwards;
+}
+
+/* 卡牌升级动画 - 金色辉光 */
+@keyframes card-upgrade {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px 8px rgba(201, 169, 74, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px 4px rgba(201, 169, 74, 0.3);
+  }
+}
+
+@keyframes card-upgrade-particles {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.5);
+  }
+}
+
+.card-upgrade {
+  animation: card-upgrade 0.6s ease-out;
+}
+
+.card-upgrade-particles {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #C9A94A;
+  border-radius: 50%;
+  animation: card-upgrade-particles 0.8s ease-out forwards;
+}
+
+/* 临时生成卡牌 - 虚线边框闪烁 */
+@keyframes card-temp-spawn {
+  0%, 100% {
+    border-style: dashed;
+    border-color: rgba(201, 169, 74, 0.4);
+  }
+  50% {
+    border-color: rgba(201, 169, 74, 0.8);
+  }
+}
+
+.card-temp-spawn {
+  animation: card-temp-spawn 1s ease-in-out infinite;
+  background: rgba(201, 169, 74, 0.05) !important;
+}
+
+/* 目标锁定 - 红色准星 */
+@keyframes target-lock {
+  0% {
+    opacity: 0;
+    transform: scale(1.5) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(0.95) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes target-lock-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+.target-lock {
+  position: relative;
+}
+
+.target-lock::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid rgba(239, 68, 68, 0.8);
+  animation: target-lock 0.3s ease-out, target-lock-pulse 1s ease-in-out infinite;
+}
+
+/* 卡牌选中高亮 */
+@keyframes card-selected-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 8px 2px rgba(201, 169, 74, 0.4),
+      inset 0 0 8px 2px rgba(201, 169, 74, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 16px 4px rgba(201, 169, 74, 0.6),
+      inset 0 0 16px 4px rgba(201, 169, 74, 0.3);
+  }
+}
+
+.card-selected {
+  animation: card-selected-glow 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格商店界面动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 商品槽进入 */
+@keyframes shop-slot-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 商品槽退出 */
+@keyframes shop-slot-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+/* 价格牌翻转 */
+@keyframes price-tag-flip {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(90deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* 不可购买锁定效果 */
+@keyframes shop-locked {
+  0%, 100% {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+  }
+  50% {
+    opacity: 0.4;
+    filter: grayscale(0.8);
+  }
+}
+
+.shop-slot {
+  animation: shop-slot-enter 0.4s ease-out;
+}
+
+.shop-slot--exit {
+  animation: shop-slot-exit 0.3s ease-out forwards;
+}
+
+.shop-slot--locked {
+  animation: shop-locked 2s ease-in-out infinite;
+}
+
+.price-tag {
+  transform-style: preserve-3d;
+}
+
+.price-tag--flip {
+  animation: price-tag-flip 0.5s ease-out;
+}
+
+/* 购买成功 */
+@keyframes purchase-success {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.3);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.shop-slot--purchased {
+  animation: purchase-success 0.4s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格弹窗/模态框动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 弹窗进入 */
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* 弹窗退出 */
+@keyframes modal-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+    filter: blur(4px);
+  }
+}
+
+/* 背景遮罩 */
+@keyframes backdrop-fade {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+.modal-backdrop {
+  animation: backdrop-fade 0.3s ease-out;
+}
+
+.modal-content {
+  animation: modal-enter 0.35s ease-out;
+}
+
+.modal-content--exit {
+  animation: modal-exit 0.25s ease-out forwards;
+}
+
+/* 提示框出现 */
+@keyframes tooltip-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tooltip {
+  animation: tooltip-appear 0.2s ease-out;
+}
+
+/* 工具栏/抽屉滑入 */
+@keyframes drawer-slide-in {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawer-slide-out {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.drawer-content {
+  animation: drawer-slide-in 0.3s ease-out;
+}
+
+.drawer-content--exit {
+  animation: drawer-slide-out 0.25s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格加载/进度动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 工业齿轮加载 */
+@keyframes gear-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gear-rotate-reverse {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.loading-gear {
+  animation: gear-rotate 2s linear infinite;
+}
+
+.loading-gear--reverse {
+  animation: gear-rotate-reverse 1.5s linear infinite;
+}
+
+/* 进度条填充 */
+@keyframes progress-fill {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
+
+/* 扫描线进度 */
+@keyframes scan-progress {
+  0% {
+    left: 0%;
+    opacity: 0.8;
+  }
+  100% {
+    left: 100%;
+    opacity: 0.3;
+  }
+}
+
+.progress-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  animation: scan-progress 1.5s ease-in-out infinite;
+}
+
+/* 点点加载 */
+@keyframes dot-pulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.loading-dot {
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(1) { animation-delay: 0s; }
+.loading-dot:nth-child(2) { animation-delay: 0.15s; }
+.loading-dot:nth-child(3) { animation-delay: 0.3s; }
+.loading-dot:nth-child(4) { animation-delay: 0.45s; }
+
+/* 机械活塞加载 */
+@keyframes piston-motion {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.loading-piston {
+  animation: piston-motion 0.8s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格警报/警告动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 警报闪烁 */
+@keyframes alert-flash {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.alert-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: inset 0 0 100px 20px rgba(239, 68, 68, 0);
+  animation: alert-flash 0.5s ease-in-out infinite;
+}
+
+.alert-overlay--active {
+  box-shadow: inset 0 0 100px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* 危急警告 - 屏幕边缘红色脉冲 */
+@keyframes critical-warning {
+  0%, 100% {
+    box-shadow: inset 0 0 60px 10px rgba(139, 26, 26, 0.2);
+  }
+  50% {
+    box-shadow: inset 0 0 100px 30px rgba(139, 26, 26, 0.5);
+  }
+}
+
+.critical-warning {
+  animation: critical-warning 0.8s ease-in-out infinite;
+}
+
+/* 亚空间涌动 - 紫色波纹 */
+@keyframes warp-surge {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+    filter: blur(12px);
+  }
+}
+
+.warp-surge-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(138, 43, 226, 0.4),
+    rgba(74, 44, 122, 0.2),
+    transparent
+  );
+  animation: warp-surge 1.5s ease-out forwards;
+}
+
+/* 警告图标抖动 */
+@keyframes warning-shake {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: rotate(-3deg);
+  }
+  20%, 40%, 60%, 80% {
+    transform: rotate(3deg);
+  }
+}
+
+.warning-icon--active {
+  animation: warning-shake 0.5s ease-in-out;
+}
+
+/* 危险区域脉冲 */
+@keyframes danger-zone-pulse {
+  0%, 100% {
+    border-color: rgba(139, 26, 26, 0.3);
+    background-color: rgba(139, 26, 26, 0.05);
+  }
+  50% {
+    border-color: rgba(139, 26, 26, 0.6);
+    background-color: rgba(139, 26, 26, 0.1);
+  }
+}
+
+.danger-zone {
+  animation: danger-zone-pulse 1.2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格地图节点动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 已访问节点 - 消耗痕迹 */
+@keyframes node-visited {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  100% {
+    filter: brightness(0.5) saturate(0.3);
+  }
+}
+
+.map-node--visited {
+  animation: node-visited 0.5s ease-out forwards;
+  opacity: 0.5;
+}
+
+/* 可选节点 - 脉冲高亮 */
+@keyframes node-available {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(201, 169, 74, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(201, 169, 74, 0.5);
+    transform: scale(1.02);
+  }
+}
+
+.map-node--available {
+  animation: node-available 2s ease-in-out infinite;
+}
+
+/* 当前选中节点 */
+@keyframes node-selected {
+  0%, 100% {
+    box-shadow: 0 0 12px 4px rgba(201, 169, 74, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 24px 8px rgba(201, 169, 74, 0.7);
+  }
+}
+
+.map-node--selected {
+  animation: node-selected 1.5s ease-in-out infinite;
+}
+
+/* 路径连接 - 铆钉效果 */
+@keyframes path-connect {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.map-path {
+  animation: path-connect 0.4s ease-out forwards;
+  transform-origin: left center;
+}
+
+/* 节点进入 */
+@keyframes node-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.map-node--enter {
+  animation: node-enter 0.4s ease-out;
+}
+
+/* 节点离开 */
+@keyframes node-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.map-node--exit {
+  animation: node-exit 0.3s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格升级/奖励动画
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 经验获得 - 数字飞出 */
+@keyframes xp-gain {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.8);
+  }
+}
+
+.xp-gain-number {
+  position: absolute;
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 600;
+  color: #b8860b;
+  text-shadow: 0 0 8px rgba(184, 134, 11, 0.6);
+  animation: xp-gain 1s ease-out forwards;
+  pointer-events: none;
+}
+
+/* 升级 - 金色光环扩散 */
+@keyframes level-up {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.2);
+    box-shadow: 0 0 40px 10px rgba(201, 169, 74, 0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.5);
+    box-shadow: 0 0 80px 20px rgba(201, 169, 74, 0);
+  }
+}
+
+@keyframes level-up-icon {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: brightness(1.3);
+  }
+}
+
+.level-up-effect {
+  position: relative;
+}
+
+.level-up-effect::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(201, 169, 74, 0.4),
+    transparent 70%
+  );
+  animation: level-up 1s ease-out forwards;
+}
+
+.level-up-icon {
+  animation: level-up-icon 0.5s ease-in-out 3;
+}
+
+/* 奖励揭示 - 翻转揭露 */
+@keyframes reward-reveal {
+  0% {
+    transform: rotateY(90deg);
+    opacity: 0;
+  }
+  50% {
+    transform: rotateY(-10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+.reward-card--reveal {
+  animation: reward-reveal 0.6s ease-out;
+  transform-style: preserve-3d;
+}
+
+/* 奖励获得成功 */
+@keyframes reward-success {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: brightness(1.4);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.reward-card--success {
+  animation: reward-success 0.4s ease-out;
+}
+
+/* 奖励池抖动 */
+@keyframes reward-pool-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.reward-pool--shaking {
+  animation: reward-pool-shake 0.3s ease-in-out 2;
+}
+
+/* 稀有度发光效果 */
+@keyframes rarity-glow-common {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(169, 169, 169, 0.3); }
+  50% { box-shadow: 0 0 16px 4px rgba(169, 169, 169, 0.5); }
+}
+
+@keyframes rarity-glow-uncommon {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 16px 4px rgba(34, 197, 94, 0.6); }
+}
+
+@keyframes rarity-glow-rare {
+  0%, 100% { box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 24px 8px rgba(59, 130, 246, 0.7); }
+}
+
+@keyframes rarity-glow-epic {
+  0%, 100% { box-shadow: 0 0 12px 4px rgba(139, 92, 246, 0.5); }
+  50% { box-shadow: 0 0 24px 8px rgba(139, 92, 246, 0.7); }
+}
+
+@keyframes rarity-glow-legendary {
+  0%, 100% { box-shadow: 0 0 16px 6px rgba(201, 169, 74, 0.6); }
+  50% { box-shadow: 0 0 32px 12px rgba(201, 169, 74, 0.8); }
+}
+
+.rarity-glow--common { animation: rarity-glow-common 2s ease-in-out infinite; }
+.rarity-glow--uncommon { animation: rarity-glow-uncommon 2s ease-in-out infinite; }
+.rarity-glow--rare { animation: rarity-glow-rare 1.8s ease-in-out infinite; }
+.rarity-glow--epic { animation: rarity-glow-epic 1.5s ease-in-out infinite; }
+.rarity-glow--legendary { animation: rarity-glow-legendary 1.2s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格能量系统动画
+   符合 Grimdark UI Adapter 规范 - 资源管理是战斗核心
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 能量获取动画 */
+@keyframes energy-gain {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(10px);
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2) translateY(-5px);
+    box-shadow: 0 0 20px 6px rgba(201, 169, 74, 0.5);
+  }
+  70% {
+    transform: scale(0.95) translateY(0);
+    box-shadow: 0 0 12px 3px rgba(201, 169, 74, 0.3);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    box-shadow: 0 0 8px 2px rgba(201, 169, 74, 0.2);
+  }
+}
+
+@keyframes energy-particle-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-30px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.5);
+  }
+}
+
+.energy-orb {
+  position: relative;
+}
+
+.energy-orb--gain {
+  animation: energy-gain 0.5s ease-out;
+}
+
+.energy-orb--gain .energy-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #C9A94A;
+  border-radius: 50%;
+  animation: energy-particle-rise 0.6s ease-out forwards;
+}
+
+.energy-orb--gain .energy-particle:nth-child(1) { left: 20%; animation-delay: 0s; }
+.energy-orb--gain .energy-particle:nth-child(2) { left: 40%; animation-delay: 0.05s; }
+.energy-orb--gain .energy-particle:nth-child(3) { left: 60%; animation-delay: 0.1s; }
+.energy-orb--gain .energy-particle:nth-child(4) { left: 80%; animation-delay: 0.15s; }
+
+/* 能量消耗动画 - 能量球收缩黯淡 */
+@keyframes energy-spend {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    opacity: 0.6;
+    transform: scale(0.85);
+    filter: brightness(0.7);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.75);
+    filter: brightness(0.5);
+  }
+}
+
+.energy-orb--spent {
+  animation: energy-spend 0.35s ease-out forwards;
+}
+
+/* 能量恢复动画 - 闪烁 */
+@keyframes energy-restore {
+  0%, 100% {
+    opacity: 0.4;
+    filter: brightness(0.6);
+  }
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.1);
+  }
+}
+
+.energy-orb--restore {
+  animation: energy-restore 0.4s ease-in-out;
+}
+
+/* 能量溢出警告 */
+@keyframes energy-overflow-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(201, 169, 74, 0.4);
+    filter: brightness(1.2);
+  }
+}
+
+.energy-orb--overflow {
+  animation: energy-overflow-warning 1s ease-in-out infinite;
+}
+
+/* 能量数值变化 */
+@keyframes energy-value-change {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.energy-value--change {
+  animation: energy-value-change 0.3s ease-out;
+}
+
+.energy-value--increase {
+  color: #86efac;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.energy-value--decrease {
+  color: #fca5a5;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格抽牌/洗牌动画
+   符合 Grimdark UI Adapter 规范 - 卡牌游戏核心体验
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 抽牌动画 - 卡牌从牌堆滑出 */
+@keyframes card-draw {
+  0% {
+    opacity: 0;
+    transform: translateX(50px) rotate(5deg) scale(0.9);
+  }
+  40% {
+    opacity: 1;
+    transform: translateX(-10px) rotate(-2deg) scale(1.02);
+  }
+  70% {
+    transform: translateX(5px) rotate(1deg) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+.card-draw-animation {
+  animation: card-draw 0.4s ease-out;
+}
+
+/* 抽牌堆叠效果 */
+@keyframes card-draw-stagger {
+  0% {
+    opacity: 0;
+    transform: translateX(80px) rotate(8deg) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-15px) rotate(-3deg) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+.card-draw-stagger--1 { animation: card-draw-stagger 0.35s ease-out; }
+.card-draw-stagger--2 { animation: card-draw-stagger 0.35s ease-out 0.08s both; }
+.card-draw-stagger--3 { animation: card-draw-stagger 0.35s ease-out 0.16s both; }
+.card-draw-stagger--4 { animation: card-draw-stagger 0.35s ease-out 0.24s both; }
+.card-draw-stagger--5 { animation: card-draw-stagger 0.35s ease-out 0.32s both; }
+
+/* 弃牌动画 - 卡牌飞向弃牌堆 */
+@keyframes card-discard {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  30% {
+    transform: translateY(-20px) rotate(-3deg) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100px) rotate(15deg) scale(0.7);
+  }
+}
+
+.card-discard-animation {
+  animation: card-discard 0.5s ease-in forwards;
+}
+
+/* 洗牌动画 - 牌堆震动 */
+@keyframes deck-shuffle {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  10% { transform: translateX(-3px) rotate(-1deg); }
+  20% { transform: translateX(3px) rotate(1deg); }
+  30% { transform: translateX(-2px) rotate(-0.5deg); }
+  40% { transform: translateX(2px) rotate(0.5deg); }
+  50% { transform: translateX(-1px) rotate(0deg); }
+  60% { transform: translateX(1px) rotate(0deg); }
+}
+
+.deck-shuffle-animation {
+  animation: deck-shuffle 0.6s ease-out;
+}
+
+/* 牌堆剩余数量变化 */
+@keyframes deck-count-change {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.deck-count--change {
+  animation: deck-count-change 0.25s ease-out;
+}
+
+/* 手牌展开/收起动画 */
+@keyframes hand-expand {
+  0% {
+    transform: scaleX(0.5) translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.hand-cards {
+  animation: hand-expand 0.4s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格受击/护甲动画
+   符合 Grimdark UI Adapter 规范 - 战斗反馈核心
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 护甲获得动画 */
+@keyframes armor-gain {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    filter: brightness(2);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+    filter: brightness(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.armor-icon--gain {
+  animation: armor-gain 0.4s ease-out;
+}
+
+/* 护甲碎裂动画 */
+@keyframes armor-break {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    clip-path: inset(0 0 0 0);
+  }
+  30% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6) rotate(15deg);
+    clip-path: polygon(0 0, 30% 0, 50% 30%, 80% 20%, 100% 50%, 70% 80%, 100% 100%, 0 100%);
+  }
+}
+
+.armor-icon--break {
+  animation: armor-break 0.5s ease-out forwards;
+}
+
+/* 护甲吸收伤害 */
+@keyframes armor-absorb {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  30% {
+    box-shadow: 0 0 20px 6px rgba(59, 130, 246, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.armor-icon--absorb {
+  animation: armor-absorb 0.4s ease-out;
+}
+
+/* 角色受击闪烁 */
+@keyframes character-hit-flash {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.3;
+    filter: brightness(3) saturate(0);
+  }
+  50% {
+    opacity: 0.7;
+    filter: brightness(1.5) saturate(0.5);
+  }
+  75% {
+    opacity: 0.5;
+    filter: brightness(2) saturate(0.3);
+  }
+}
+
+.character--hit {
+  animation: character-hit-flash 0.4s ease-out;
+}
+
+/* 弱点攻击 */
+@keyframes weakpoint-strike {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  20% {
+    transform: scale(1.1);
+    filter: brightness(2) hue-rotate(-20deg);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.weakpoint--strike {
+  animation: weakpoint-strike 0.3s ease-out;
+}
+
+/* 致命一击 */
+@keyframes fatal-blow {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    filter: brightness(2) contrast(1.2);
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.fatal-blow {
+  animation: fatal-blow 0.6s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格屏幕震动/帧冻结
+   符合 Grimdark UI Adapter 规范 - 战斗关键时刻视觉冲击
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 屏幕震动 - 轻 */
+@keyframes screen-shake-light {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-2px, 1px); }
+  30% { transform: translate(2px, -1px); }
+  45% { transform: translate(-1px, 2px); }
+  60% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, -1px); }
+}
+
+.screen-shake--light {
+  animation: screen-shake-light 0.3s ease-out;
+}
+
+/* 屏幕震动 - 中 */
+@keyframes screen-shake-medium {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 2px); }
+  20% { transform: translate(4px, -2px); }
+  30% { transform: translate(-3px, 4px); }
+  40% { transform: translate(3px, -3px); }
+  50% { transform: translate(-2px, 2px); }
+  60% { transform: translate(2px, -2px); }
+  70% { transform: translate(-2px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+.screen-shake--medium {
+  animation: screen-shake-medium 0.5s ease-out;
+}
+
+/* 屏幕震动 - 重 */
+@keyframes screen-shake-heavy {
+  0%, 100% { transform: translate(0, 0); }
+  5% { transform: translate(-8px, 4px); }
+  10% { transform: translate(8px, -4px); }
+  15% { transform: translate(-6px, 6px); }
+  20% { transform: translate(6px, -5px); }
+  25% { transform: translate(-5px, 4px); }
+  30% { transform: translate(5px, -4px); }
+  35% { transform: translate(-4px, 5px); }
+  40% { transform: translate(4px, -3px); }
+  45% { transform: translate(-3px, 3px); }
+  50% { transform: translate(3px, -2px); }
+  55% { transform: translate(-2px, 2px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, 1px); }
+  80% { transform: translate(1px, 0); }
+}
+
+.screen-shake--heavy {
+  animation: screen-shake-heavy 0.7s ease-out;
+}
+
+/* 帧冻结效果 */
+@keyframes frame-freeze {
+  0% {
+    filter: brightness(1.3) contrast(1.1);
+  }
+  100% {
+    filter: brightness(1) contrast(1);
+  }
+}
+
+.screen-freeze--active {
+  animation: frame-freeze 0.15s ease-out;
+  animation-delay: 0.3s;
+}
+
+/* 屏幕闪烁 - 红色 */
+@keyframes screen-flash-red {
+  0%, 100% {
+    box-shadow: inset 0 0 0 0 rgba(139, 26, 26, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 100px 20px rgba(139, 26, 26, 0.4);
+  }
+}
+
+.screen-flash--red {
+  animation: screen-flash-red 0.3s ease-out;
+}
+
+/* 屏幕闪烁 - 白色（致命一击） */
+@keyframes screen-flash-white {
+  0%, 100% {
+    box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  30% {
+    box-shadow: inset 0 0 150px 30px rgba(255, 255, 255, 0.3);
+  }
+}
+
+.screen-flash--white {
+  animation: screen-flash-white 0.25s ease-out;
+}
+
+/* 慢动作效果 */
+@keyframes slow-motion-start {
+  0% {
+    filter: blur(0) brightness(1);
+  }
+  100% {
+    filter: blur(1px) brightness(0.9);
+  }
+}
+
+@keyframes slow-motion-end {
+  0% {
+    filter: blur(1px) brightness(0.9);
+  }
+  100% {
+    filter: blur(0) brightness(1);
+  }
+}
+
+.slow-motion--enter {
+  animation: slow-motion-start 0.2s ease-out forwards;
+}
+
+.slow-motion--exit {
+  animation: slow-motion-end 0.3s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格Buff状态图标动画
+   符合 Grimdark UI Adapter 规范 - 状态需要高可识别性
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 永久Buff - 金色稳定光晕 */
+@keyframes buff-permanent {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(201, 169, 74, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(201, 169, 74, 0.5);
+  }
+}
+
+/* 临时Buff - 蓝色闪烁 */
+@keyframes buff-temporary {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow: 0 0 6px 1px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* 永久Debuff - 深红持续 */
+@keyframes debuff-permanent {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(139, 26, 26, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(139, 26, 26, 0.6);
+  }
+}
+
+/* 临时Debuff - 紫色脉冲 */
+@keyframes debuff-temporary {
+  0%, 100% {
+    opacity: 0.6;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    filter: hue-rotate(15deg);
+  }
+}
+
+/* 堆叠层数动画 */
+@keyframes buff-stack-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.buff-stack-count {
+  animation: buff-stack-pulse 0.3s ease-out;
+}
+
+/* Buff图标新获得时的光环 */
+@keyframes buff-aura {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    box-shadow: 0 0 0 0 rgba(201, 169, 74, 0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.5);
+    box-shadow: 0 0 30px 10px rgba(201, 169, 74, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+    box-shadow: 0 0 50px 20px rgba(201, 169, 74, 0);
+  }
+}
+
+.buff-icon--new::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 169, 74, 0.6), transparent 70%);
+  animation: buff-aura 0.6s ease-out forwards;
+}
+
+/* 状态即将过期警告 */
+@keyframes buff-expiring {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.buff-icon--expiring {
+  animation: buff-expiring 0.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格结局动画 (胜利/失败)
+   符合 Grimdark UI Adapter 规范 - 宗教感的仪式化表现
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 胜利动画 - 金色光环扩散 */
+@keyframes victory-radiance {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+    filter: blur(10px);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+    filter: blur(2px);
+  }
+  70% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.victory-effect {
+  animation: victory-radiance 1s ease-out;
+}
+
+@keyframes victory-icon {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(3deg);
+  }
+}
+
+.victory-icon {
+  animation: victory-icon 1.5s ease-in-out 3;
+}
+
+/* 胜利粒子 */
+@keyframes victory-particle {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.5);
+  }
+}
+
+.victory-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #C9A94A;
+  animation: victory-particle 1.5s ease-out forwards;
+}
+
+.victory-particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+.victory-particle:nth-child(2) { left: 25%; animation-delay: 0.1s; }
+.victory-particle:nth-child(3) { left: 50%; animation-delay: 0.2s; }
+.victory-particle:nth-child(4) { left: 75%; animation-delay: 0.15s; }
+.victory-particle:nth-child(5) { left: 90%; animation-delay: 0.25s; }
+
+/* 失败动画 - 血红下沉 */
+@keyframes defeat-descent {
+  0% {
+    opacity: 0;
+    transform: scale(1.2) translateY(-20px);
+    filter: brightness(0.5);
+  }
+  40% {
+    opacity: 1;
+    filter: brightness(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: brightness(0.6) saturate(0.5);
+  }
+}
+
+.defeat-effect {
+  animation: defeat-descent 1.2s ease-out;
+}
+
+@keyframes defeat-skull {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(0.8);
+  }
+}
+
+.defeat-icon {
+  animation: defeat-skull 2s ease-in-out infinite;
+}
+
+/* 失败暗雾效果 */
+@keyframes defeat-mist {
+  0% {
+    opacity: 0;
+    transform: scale(1.1);
+    filter: blur(0);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+    filter: blur(6px);
+  }
+}
+
+.defeat-mist {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(30, 10, 10, 0.8) 100%);
+  animation: defeat-mist 2s ease-out forwards;
+}
+
+/* 结局文字出现 */
+@keyframes outcome-text-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    letter-spacing: 0.5em;
+  }
+  50% {
+    opacity: 1;
+    letter-spacing: 0.3em;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    letter-spacing: 0.15em;
+  }
+}
+
+.outcome-text {
+  animation: outcome-text-reveal 1s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   战锤风格工业装饰动画
+   符合 Grimdark UI Adapter 规范 - 机械感、仪式化
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 铆钉脉冲 - 金属质感 */
+@keyframes rivet-pulse {
+  0%, 100% {
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.5);
+  }
+  50% {
+    box-shadow: inset 0 1px 3px rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+
+.rivet {
+  animation: rivet-pulse 3s ease-in-out infinite;
+}
+
+/* 蒸汽/烟雾效果 */
+@keyframes steam-emit {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+    filter: blur(4px);
+  }
+  30% {
+    opacity: 0.6;
+    transform: translateY(-15px) scale(1);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(1.5);
+    filter: blur(6px);
+  }
+}
+
+.steam-vent {
+  position: relative;
+  overflow: hidden;
+}
+
+.steam-particle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(100,100,110,0.3), transparent 70%);
+  border-radius: 50%;
+  animation: steam-emit 2s ease-out forwards;
+}
+
+.steam-particle:nth-child(1) { left: 20%; animation-delay: 0s; }
+.steam-particle:nth-child(2) { left: 50%; animation-delay: 0.5s; }
+.steam-particle:nth-child(3) { left: 80%; animation-delay: 1s; }
+
+/* 机械齿轮连续转动 - 背景装饰 */
+@keyframes gear-cogs {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.gear-decoration {
+  animation: gear-cogs linear infinite;
+}
+
+.gear-decoration--slow { animation-duration: 20s; }
+.gear-decoration--medium { animation-duration: 10s; }
+.gear-decoration--fast { animation-duration: 5s; }
+
+/* 机械活塞往复 */
+@keyframes piston-stroke {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.piston-decoration {
+  animation: piston-stroke 1.5s ease-in-out infinite;
+}
+
+/* 指示灯闪烁 */
+@keyframes indicator-blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.indicator-light {
+  animation: indicator-blink 1s ease-in-out infinite;
+}
+
+.indicator-light--green {
+  background: #2D5A27;
+  box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.5);
+}
+
+.indicator-light--red {
+  background: #8C1F1F;
+  box-shadow: 0 0 8px 2px rgba(139, 26, 26, 0.5);
+}
+
+.indicator-light--amber {
+  background: #A67C00;
+  box-shadow: 0 0 8px 2px rgba(166, 124, 0, 0.5);
+}
+
+/* 金属面板微光 - 战锤仪式感 */
+@keyframes metal-sheen {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.metal-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.metal-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,003) 45%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: metal-sheen 4s linear infinite;
+  pointer-events: none;
+}
+
+/* 边框刻痕动画 - 机械装配感 */
+@keyframes seam-glow {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px rgba(58,58,63,0.5);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(74,74,79,0.8), 0 0 4px 1px rgba(74,74,79,0.3);
+  }
+}
+
+.panel-seam {
+  animation: seam-glow 4s ease-in-out infinite;
+}
+
+/* 祭祀符文脉冲 */
+@keyframes rune-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.3);
+  }
+}
+
+.rune-decoration {
+  animation: rune-pulse 3s ease-in-out infinite;
+}
+
+/* 警告条纹动画 */
+@keyframes hazard-stripe {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 0;
+  }
+}
+
+.hazard-stripe {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(139, 26, 26, 0.3),
+    rgba(139, 26, 26, 0.3) 10px,
+    rgba(26, 26, 30, 0.5) 10px,
+    rgba(26, 26, 30, 0.5) 20px
+  );
+  animation: hazard-stripe 1s linear infinite;
 }

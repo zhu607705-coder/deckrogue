@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { BackgroundVisualMode } from '@/ui/components/backgroundVisuals';
 import type { ThemeMode } from '@/ui/theme/ThemeContext';
 
-type ScreenId =
+export type ScreenId =
+  | 'Launcher'
   | 'CharacterSelect'
   | 'Map'
   | 'Combat'
@@ -12,6 +13,7 @@ type ScreenId =
   | 'Rest'
   | 'Upgrade'
   | 'RemoveCard'
+  | 'Enchant'
   | 'GameOver'
   | 'Victory';
 
@@ -32,6 +34,14 @@ const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
     secondaryPosition: 'center top',
     opacity: 0.52,
     secondaryOpacity: 0.18
+  },
+  Launcher: {
+    primary: ['/assets/backgrounds/menu_throne_room.png', '/assets/backgrounds/menu_war_room.png'],
+    secondary: ['/assets/backgrounds/ui_cracked_stained_glass.png'],
+    primaryPosition: 'center center',
+    secondaryPosition: 'center top',
+    opacity: 0.5,
+    secondaryOpacity: 0.16
   },
   Reward: {
     primary: ['/assets/backgrounds/ui_glowing_rune_circle.png', '/assets/backgrounds/battle_ancient_dungeon.png'],
@@ -58,6 +68,14 @@ const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
     secondaryOpacity: 0.12
   },
   Upgrade: {
+    primary: ['/assets/backgrounds/ui_mechanical_gears.png', '/assets/backgrounds/bg_mech_factory.png'],
+    secondary: ['/assets/backgrounds/bg_time_rift.png'],
+    primaryPosition: 'center center',
+    secondaryPosition: 'center center',
+    opacity: 0.36,
+    secondaryOpacity: 0.12
+  },
+  Enchant: {
     primary: ['/assets/backgrounds/ui_mechanical_gears.png', '/assets/backgrounds/bg_mech_factory.png'],
     secondary: ['/assets/backgrounds/bg_time_rift.png'],
     primaryPosition: 'center center',
@@ -191,4 +209,3 @@ export function ViewBackgroundLayer({
     </div>
   );
 }
-

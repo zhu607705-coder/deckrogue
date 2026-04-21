@@ -9,3 +9,8 @@ export * from '@/core/balance/numericsPolicy';
 export * from '@/core/balance/numericsFormulas';
 export * from '@/core/balance/numericsValuation';
 export * from '@/core/balance/numericsRuntime';
+
+export * from '@/core/balance/valuationKernel';
+export * from '@/core/balance/runtimeCoefficients';
+export * from '@/core/balance/numericProfileCompiler';
+export * from '@/core/balance/numericDiagnostics';

@@ -206,5 +206,262 @@
         }
       }
     ]
+  },
+  "cathedral_engine": {
+    "bossId": "cathedral_engine",
+    "phases": [
+      {
+        "id": "iron_litany",
+        "name": "Iron Litany",
+        "triggerHpPctLte": 1,
+        "hint": "常态压制：观察护甲循环与多段攻击节奏。",
+        "mechanics": {
+          "periodicSummon": null,
+          "playerPulse": null
+        }
+      },
+      {
+        "id": "overheat_mass",
+        "name": "Overheat Mass",
+        "triggerHpPctLte": 0.66,
+        "hint": "过热爆发：入场获大量格挡和力量，每2回合释放灼热冲击。",
+        "onEnter": {
+          "gainBlock": 24,
+          "gainStatuses": {
+            "Strength": 2
+          },
+          "warpPulse": "圣堂引擎进入过热状态，巨大的热量从机械结构中释放。"
+        },
+        "mechanics": {
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 6,
+            "trueDamage": true,
+            "statuses": {
+              "Vulnerable": 1
+            },
+            "text": "过热的机械释放灼热冲击，造成直接伤害并施加易伤。"
+          }
+        }
+      },
+      {
+        "id": "cooling_breach",
+        "name": "Cooling Breach",
+        "triggerHpPctLte": 0.3,
+        "hint": "冷却破坏：失去护甲循环，改为多段攻击与单次大击交替，存在脆弱窗口。",
+        "onEnter": {
+          "gainStatuses": {
+            "Strength": 3
+          },
+          "warpPulse": "圣堂引擎的核心冷却系统崩溃，进入最终破坏阶段。"
+        },
+        "mechanics": {
+          "playerPulse": {
+            "everyEnemyTurns": 1,
+            "damage": 8,
+            "statuses": {
+              "Frail": 1
+            },
+            "text": "冷却破坏阶段：每次行动都附带脆弱效果。"
+          }
+        }
+      }
+    ]
+  },
+  "logic_saint": {
+    "bossId": "logic_saint",
+    "phases": [
+      {
+        "id": "edict_cycle",
+        "name": "Edict Cycle",
+        "triggerHpPctLte": 1,
+        "hint": "常态裁决：单一攻击或施加虚弱交替。",
+        "mechanics": {
+          "periodicSummon": null,
+          "playerPulse": null
+        }
+      },
+      {
+        "id": "forbidden_proof",
+        "name": "Forbidden Proof",
+        "triggerHpPctLte": 0.5,
+        "hint": "禁忌证明：半血入场获得敏捷，每2回合复制玩家最高费用牌的伤害。",
+        "onEnter": {
+          "gainStatuses": {
+            "Dexterity": 1
+          },
+          "warpPulse": "逻辑圣者开始证明你的死亡定理，获得额外的敏捷来执行裁决。"
+        },
+        "mechanics": {
+          "echo": {
+            "damageScale": 0.6,
+            "minDamage": 8,
+            "everyEnemyTurns": 2,
+            "text": "逻辑圣者证明了你的攻击模式并进行了反制。"
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 3,
+            "damage": 4,
+            "statuses": {
+              "Weak": 1
+            },
+            "text": "逻辑圣者施加额外的虚弱来削弱你的攻击力。"
+          }
+        }
+      },
+      {
+        "id": "final_axiom",
+        "name": "Final Axiom",
+        "triggerHpPctLte": 0.25,
+        "hint": "最终公理：每2回合强制弃牌并施加脆弱，主击为强力打击。",
+        "onEnter": {
+          "warpPulse": "逻辑圣者进入最终公理阶段，准备执行最终裁决。"
+        },
+        "mechanics": {
+          "handHijack": {
+            "everyEnemyTurns": 2,
+            "discardCount": 1,
+            "fallbackStatuses": {
+              "Frail": 1
+            },
+            "text": "逻辑圣者要求你出示证据，强制弃掉一张牌。"
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 1,
+            "damage": 22,
+            "text": "逻辑圣者执行最终公理，造成巨大伤害。"
+          }
+        }
+      }
+    ]
+  },
+  "pox_cathedral": {
+    "bossId": "pox_cathedral",
+    "phases": [
+      {
+        "id": "festering_hymn",
+        "name": "Festering Hymn",
+        "triggerHpPctLte": 1,
+        "hint": "常态吟唱：观察毒素叠加与小规模召唤节奏。",
+        "mechanics": {
+          "periodicSummon": {
+            "everyEnemyTurns": 4,
+            "enemyId": "blight_larva",
+            "text": "疫祸圣堂母体召唤病斑幼体。"
+          },
+          "playerPulse": null
+        }
+      },
+      {
+        "id": "cathedral_bloom",
+        "name": "Cathedral Bloom",
+        "triggerHpPctLte": 0.66,
+        "hint": "绽放阶段：入场获大量格挡和仪式，每2回合全场追加毒素。",
+        "onEnter": {
+          "gainBlock": 20,
+          "gainStatuses": {
+            "Ritual": 1
+          },
+          "warpPulse": "疫祸圣堂母体进入绽放状态，巨大的毒素能量开始释放。"
+        },
+        "mechanics": {
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 0,
+            "statuses": {
+              "Poison": 1
+            },
+            "text": "绽放阶段的毒素脉冲对所有敌人施加1层毒素。"
+          }
+        }
+      },
+      {
+        "id": "rotting_apotheosis",
+        "name": "Rotting Apotheosis",
+        "triggerHpPctLte": 0.3,
+        "hint": "腐灭阶段：每2回合8x3多段并对玩家所有debuff+1。",
+        "onEnter": {
+          "gainStatuses": {
+            "Strength": 2
+          },
+          "warpPulse": "疫祸圣堂母体进入最终腐灭阶段，准备执行终极裁决。"
+        },
+        "mechanics": {
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 8,
+            "hits": 3,
+            "text": "腐灭阶段的多段攻击附带毒素增强。"
+          },
+          "debuffEscalation": {
+            "everyEnemyTurns": 2,
+            "statuses": [
+              "Weak",
+              "Vulnerable",
+              "Poison",
+              "Frail"
+            ],
+            "bonusPerDebuff": 1
+          }
+        }
+      }
+    ]
+  },
+  "the_mire_saint": {
+    "bossId": "the_mire_saint",
+    "phases": [
+      {
+        "id": "dragging_sermon",
+        "name": "Dragging Sermon",
+        "triggerHpPctLte": 1,
+        "hint": "常态拖拽：用多重debuff拖慢你的节奏。",
+        "mechanics": {
+          "periodicSummon": null,
+          "playerPulse": null
+        }
+      },
+      {
+        "id": "sinking_mass",
+        "name": "Sinking Mass",
+        "triggerHpPctLte": 0.5,
+        "hint": "沉没阶段：半血入场令玩家手牌费用随机+0/1，Boss每2回合获14格挡。",
+        "onEnter": {
+          "warpPulse": "泥潭圣者开始沉没，准备拖拽你的资源。"
+        },
+        "mechanics": {
+          "cardCostDisruption": {
+            "duration": "endOfTurn",
+            "text": "泥潭圣者干扰了你的手牌费用。"
+          },
+          "playerPulse": {
+            "everyEnemyTurns": 2,
+            "damage": 0,
+            "gainBlock": 14,
+            "text": "沉没阶段：泥潭圣者持续获得大量格挡。"
+          }
+        }
+      },
+      {
+        "id": "final_decay",
+        "name": "Final Decay",
+        "triggerHpPctLte": 0.25,
+        "hint": "终焉腐灭：26大击与Poison detonation交替，若玩家Poison≥6追加8真伤。",
+        "onEnter": {
+          "warpPulse": "泥潭圣者进入终焉腐灭，准备执行最终判决。"
+        },
+        "mechanics": {
+          "playerPulse": {
+            "everyEnemyTurns": 1,
+            "damage": 26,
+            "text": "终焉腐灭的巨大打击。"
+          },
+          "poisonDetonation": {
+            "threshold": 6,
+            "bonusDamage": 8,
+            "text": "毒素引爆：玩家身上毒素≥6时造成额外真实伤害。"
+          }
+        }
+      }
+    ]
   }
 }

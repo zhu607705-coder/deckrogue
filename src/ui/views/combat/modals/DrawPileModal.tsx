@@ -117,7 +117,7 @@ export function DrawPileModal({
   if (!showDrawPile) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/80 z-[55] flex flex-col p-6 md:p-8 overflow-hidden">
+    <div className="absolute inset-0 bg-black/80 z-[55] flex flex-col p-6 md:p-8 overflow-hidden" data-keyboard-modal="true">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold text-white">{GLOSSARY.DrawPile || '战术缓存'}（{state.drawPile.length}）</h2>
@@ -131,12 +131,14 @@ export function DrawPileModal({
               onClick={revealDrawPileOrderWithIntel}
               className="px-3 py-2 rounded-lg border border-emerald-500/60 bg-emerald-900/30 text-emerald-200 hover:bg-emerald-800/40 shadow-[0_0_18px_rgba(16,185,129,0.25)] transition-colors text-sm"
               title="消耗 1 点 Intel 揭示抽牌堆顺序"
+              data-keyboard-focus="true"
+              data-keyboard-option="1"
             >
               <Eye size={14} className="inline mr-1" />
               使用情报揭示顺序 (-1 Intel)
             </button>
           )}
-          <button onClick={closeDrawPileModal} className="text-slate-300 hover:text-white px-3 py-2 rounded-lg border border-slate-700 bg-slate-900">
+          <button onClick={closeDrawPileModal} className="text-slate-300 hover:text-white px-3 py-2 rounded-lg border border-slate-700 bg-slate-900" data-keyboard-close="true" data-keyboard-focus="true" data-keyboard-option="2">
             关闭
           </button>
         </div>

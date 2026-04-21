@@ -29,6 +29,42 @@
       "effects": {
         "startingIntel": 1
       }
+    },
+    "munitions_index": {
+      "cost": { "requisition": 6, "warpEchoes": 0 },
+      "effects": {
+        "firstTurnDraw": 1
+      }
+    },
+    "sealed_training": {
+      "cost": { "requisition": 7, "warpEchoes": 0 },
+      "effects": {
+        "upgradeRandomStarter": 1
+      }
+    },
+    "field_rations": {
+      "cost": { "requisition": 5, "warpEchoes": 0 },
+      "effects": {
+        "startingHp": 8
+      }
+    },
+    "vault_clearance": {
+      "cost": { "requisition": 8, "warpEchoes": 1 },
+      "effects": {
+        "firstShopRelicDiscount": 0.20
+      }
+    },
+    "grim_almanac": {
+      "cost": { "requisition": 9, "warpEchoes": 0 },
+      "effects": {
+        "firstRewardExtraCard": 1
+      }
+    },
+    "reactive_serum": {
+      "cost": { "requisition": 6, "warpEchoes": 1 },
+      "effects": {
+        "firstDebuffDrawPerChapter": 1
+      }
     }
   },
   "pacts": {
@@ -49,6 +85,42 @@
       "penalties": {
         "maxHpPctLoss": 0.3
       }
+    },
+    "glass_heart": {
+      "cost": { "warpEchoes": 4 },
+      "benefits": {
+        "bonusEnergyUntilChapter1Boss": 1
+      },
+      "penalties": {
+        "maxHpPctLoss": 0.20
+      }
+    },
+    "rot_exchange": {
+      "cost": { "warpEchoes": 3 },
+      "benefits": {
+        "chapter1PoisonRewardWeightBonus": 0.25
+      },
+      "penalties": {
+        "startEachChapterWithPoison": 1
+      }
+    },
+    "black_dispatch": {
+      "cost": { "warpEchoes": 4 },
+      "benefits": {
+        "firstEliteExtraRelicOption": 1
+      },
+      "penalties": {
+        "addCurseCardIds": ["paranoia"]
+      }
+    },
+    "saints_bargain": {
+      "cost": { "warpEchoes": 5 },
+      "benefits": {
+        "firstRestExtraChoice": true
+      },
+      "penalties": {
+        "firstEventMustChooseHighRisk": true
+      }
     }
   },
   "martyrLegacy": {
@@ -58,35 +130,106 @@
     "inheritedCardWeakTag": "OldEcho"
   },
   "ascension": {
-    "maxLevel": 5,
+    "maxLevel": 10,
     "levels": {
+      "0": {
+        "enemyHpMultiplier": 1.0,
+        "enemyDamageMultiplier": 1.0,
+        "eliteUpgradeChance": 0.0,
+        "intentAggroBias": 0.0,
+        "mapWeightDelta": {},
+        "playerMaxHpMultiplier": 1.0,
+        "startingCurseCardIds": []
+      },
       "1": {
         "enemyHpMultiplier": 1.08,
         "enemyDamageMultiplier": 1.05,
-        "eliteUpgradeChance": 0.03
+        "eliteUpgradeChance": 0.03,
+        "intentAggroBias": 0.04,
+        "mapWeightDelta": { "event": 0.02, "rest": -0.01 },
+        "playerMaxHpMultiplier": 1.0,
+        "startingCurseCardIds": []
       },
       "2": {
-        "enemyHpMultiplier": 1.14,
+        "enemyHpMultiplier": 1.12,
         "enemyDamageMultiplier": 1.08,
-        "eliteUpgradeChance": 0.06
+        "eliteUpgradeChance": 0.05,
+        "intentAggroBias": 0.06,
+        "mapWeightDelta": { "event": 0.03, "rest": -0.02 },
+        "playerMaxHpMultiplier": 0.97,
+        "startingCurseCardIds": []
       },
       "3": {
-        "enemyHpMultiplier": 1.2,
-        "enemyDamageMultiplier": 1.12,
-        "eliteUpgradeChance": 0.1,
-        "startingCurseCardId": "paranoia"
+        "enemyHpMultiplier": 1.16,
+        "enemyDamageMultiplier": 1.10,
+        "eliteUpgradeChance": 0.07,
+        "intentAggroBias": 0.08,
+        "mapWeightDelta": { "event": 0.04, "rest": -0.02, "elite": 0.01 },
+        "playerMaxHpMultiplier": 0.97,
+        "startingCurseCardIds": ["doubt"]
       },
       "4": {
-        "enemyHpMultiplier": 1.28,
-        "enemyDamageMultiplier": 1.16,
-        "eliteUpgradeChance": 0.14,
-        "startingCurseCardId": "psychic_backlash"
+        "enemyHpMultiplier": 1.20,
+        "enemyDamageMultiplier": 1.13,
+        "eliteUpgradeChance": 0.09,
+        "intentAggroBias": 0.10,
+        "mapWeightDelta": { "event": 0.04, "rest": -0.03, "elite": 0.01 },
+        "playerMaxHpMultiplier": 0.95,
+        "startingCurseCardIds": []
       },
       "5": {
-        "enemyHpMultiplier": 1.36,
+        "enemyHpMultiplier": 1.24,
+        "enemyDamageMultiplier": 1.16,
+        "eliteUpgradeChance": 0.11,
+        "intentAggroBias": 0.12,
+        "mapWeightDelta": { "event": 0.05, "rest": -0.03, "elite": 0.02 },
+        "playerMaxHpMultiplier": 0.95,
+        "startingCurseCardIds": ["wound"]
+      },
+      "6": {
+        "enemyHpMultiplier": 1.28,
+        "enemyDamageMultiplier": 1.19,
+        "eliteUpgradeChance": 0.13,
+        "intentAggroBias": 0.14,
+        "mapWeightDelta": { "event": 0.06, "rest": -0.04, "elite": 0.02, "shop": -0.01 },
+        "playerMaxHpMultiplier": 0.92,
+        "startingCurseCardIds": []
+      },
+      "7": {
+        "enemyHpMultiplier": 1.32,
         "enemyDamageMultiplier": 1.22,
-        "eliteUpgradeChance": 0.18,
-        "startingCurseCardId": "psychic_backlash"
+        "eliteUpgradeChance": 0.15,
+        "intentAggroBias": 0.16,
+        "mapWeightDelta": { "event": 0.07, "rest": -0.05, "elite": 0.02 },
+        "playerMaxHpMultiplier": 0.92,
+        "startingCurseCardIds": ["doubt", "wound"]
+      },
+      "8": {
+        "enemyHpMultiplier": 1.36,
+        "enemyDamageMultiplier": 1.25,
+        "eliteUpgradeChance": 0.17,
+        "intentAggroBias": 0.18,
+        "mapWeightDelta": { "event": 0.08, "rest": -0.05, "elite": 0.03, "shop": -0.01 },
+        "playerMaxHpMultiplier": 0.90,
+        "startingCurseCardIds": []
+      },
+      "9": {
+        "enemyHpMultiplier": 1.40,
+        "enemyDamageMultiplier": 1.28,
+        "eliteUpgradeChance": 0.19,
+        "intentAggroBias": 0.20,
+        "mapWeightDelta": { "event": 0.09, "rest": -0.06, "elite": 0.03 },
+        "playerMaxHpMultiplier": 0.90,
+        "startingCurseCardIds": ["regret", "wound"]
+      },
+      "10": {
+        "enemyHpMultiplier": 1.45,
+        "enemyDamageMultiplier": 1.32,
+        "eliteUpgradeChance": 0.22,
+        "intentAggroBias": 0.22,
+        "mapWeightDelta": { "event": 0.10, "rest": -0.07, "elite": 0.04, "shop": -0.02 },
+        "playerMaxHpMultiplier": 0.88,
+        "startingCurseCardIds": ["doubt", "wound", "regret"]
       }
     }
   },

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DeckRogue">
+  <defs>
+    <linearGradient id="deckrogue-favicon-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#450a0a" />
+    </linearGradient>
+    <linearGradient id="deckrogue-favicon-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#ef4444" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#deckrogue-favicon-bg)" />
+  <path
+    d="M18 16h17c6.4 0 11.5 5.1 11.5 11.5S41.4 39 35 39H26v9H18V16zm8 7v9h8.5c2.5 0 4.5-2 4.5-4.5S37 23 34.5 23H26z"
+    fill="url(#deckrogue-favicon-mark)"
+  />
+  <path
+    d="M38 35l10 13h-8.4l-6.1-8.2L38 35z"
+    fill="#f8fafc"
+    fill-opacity="0.9"
+  />
+</svg>

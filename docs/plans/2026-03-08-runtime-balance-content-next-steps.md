@@ -521,7 +521,7 @@ git commit -m "refactor: consolidate grimdark combat theme usage"
 
 **Files:**
 - Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md`
-- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/development_report_2026-03-06.md`
+- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/development-reports/project-development-report.md`
 - Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/DEVELOPMENT.md`
 
 **Step 1: Run full verification**
@@ -552,6 +552,6 @@ Document:
 **Step 3: Commit**
 
 ```bash
-git add /Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/development_report_2026-03-06.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/DEVELOPMENT.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/numerics/*.json /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/playwright/*.json
+git add /Users/zhuhangcheng/Downloads/好玩/deckrogue/progress.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/development-reports/project-development-report.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/DEVELOPMENT.md /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/numerics/*.json /Users/zhuhangcheng/Downloads/好玩/deckrogue/output/playwright/*.json
 git commit -m "docs: record runtime and balance overhaul results"
 ```

@@ -34,10 +34,10 @@ export function WarpEye({ engine }: WarpEyeProps) {
         <div className="warp-eye__pupil" />
       </div>
       <div className="warp-eye__stats">
-        <div className="warp-eye__title">Warp Tide</div>
+        <div className="warp-eye__title">亚空间潮汐</div>
         <div className="warp-eye__value">{warpTide}</div>
         <div className="warp-eye__meta">
-          {isWarpBoiling ? 'WARP BOILING' : 'Warp Stable'} · x{warpPower.toFixed(2)} / Peril {warpPerilPct}%
+          {isWarpBoiling ? '亚空间沸腾' : '亚空间稳定'} · 倍率 x{warpPower.toFixed(2)} / 灾祸 {warpPerilPct}%
           {(state.warpRiftTurns || 0) > 0 ? ` (Rift αx${effectiveAlpha.toFixed(1)})` : rawPerilPct !== warpPerilPct ? `*` : ''}
         </div>
       </div>

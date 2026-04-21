@@ -322,44 +322,44 @@ export const grimdarkEffects = {
 export const grimdarkTerminology = {
   // 资源
   resources: {
-    hp: { name: '肉体承载力', icon: '❤️', description: '生物组织的完整度' },
-    maxHp: { name: '肉体上限', icon: '💪', description: '生物组织的最大承载能力' },
-    block: { name: '虚空盾', icon: '🛡️', description: '能量护盾的剩余强度' },
-    energy: { name: '机魂/指令点', icon: '⚡', description: '机械神赐福的行动力' },
-    intel: { name: '鸟卜仪扫描', icon: '🔍', description: '战术情报的完整度' },
-    relics: { name: '圣遗物', icon: '👑', description: '帝皇赐予的神圣遗物' },
-    corruption: { name: '腐化值', icon: '☠️', description: '混沌侵蚀的程度' },
-    toxicity: { name: '毒性', icon: '☣️', description: '生物毒素的积累' },
+    hp: { name: '生命值', icon: '❤️', description: '单位存活强度' },
+    maxHp: { name: '生命上限', icon: '💪', description: '最大存活强度' },
+    block: { name: '护盾', icon: '🛡️', description: '抵消伤害的防护层' },
+    energy: { name: '能量', icon: '⚡', description: '驱动行动的核心能源' },
+    intel: { name: '情报', icon: '🔍', description: '战术分析数据' },
+    relics: { name: '遗物', icon: '👑', description: '帝皇赐福的圣物' },
+    corruption: { name: '腐化', icon: '☠️', description: '混沌侵蚀程度' },
+    toxicity: { name: '毒素积累', icon: '☣️', description: '化学中毒层级' },
   },
-  
+
   // 游戏元素
   game: {
-    deck: { name: '记忆印痕', subtitle: '战术圣典', description: '被封印的战斗记忆' },
-    drawPile: { name: '待唤醒印痕', description: '等待被唤醒的战术记忆' },
-    discardPile: { name: '已消耗印痕', description: '已使用并消耗的战术记忆' },
-    hand: { name: '当前战术', description: '可立即执行的战术指令' },
-    turn: { name: '战术周期', description: '一个完整的战术执行周期' },
-    floor: { name: '深渊层级', description: '混沌深渊的当前深度' },
+    deck: { name: '牌库', subtitle: '记忆封印', description: '被封存的战术记忆' },
+    drawPile: { name: '抽牌堆', description: '等待抽取的战术指令' },
+    discardPile: { name: '弃牌堆', description: '已使用的战术指令' },
+    hand: { name: '手牌', description: '当前可用的战术' },
+    turn: { name: '回合', description: '一个完整的行动周期' },
+    floor: { name: '层数', description: '当前探索深度' },
   },
-  
+
   // 战斗
   combat: {
-    enemy: { name: '异端/异形', description: '必须被净化的敌人' },
-    intent: { name: '敌意图', description: '敌人的战术意图预测' },
-    masquerade: { name: '意图伪装', description: '亚空间扭曲导致的虚假意图' },
-    frontline: { name: '前线阵地', description: '最前沿的防御工事' },
-    wreckage: { name: '前线残骸', description: '前线阵地的损毁程度' },
-    damage: { name: '创伤', description: '对肉体承载力的伤害' },
-    damageShare: { name: '创伤分摊', description: '前线阵地分担的伤害' },
+    enemy: { name: '敌人', description: '必须被消灭的目标' },
+    intent: { name: '意图', description: '敌人下回合的行动预测' },
+    masquerade: { name: '伪装', description: '欺骗性的意图显示' },
+    frontline: { name: '防线', description: '前排防御状态' },
+    wreckage: { name: '残骸', description: '被摧毁的防御工事' },
+    damage: { name: '伤害', description: '对目标造成的损伤' },
+    damageShare: { name: '分摊', description: '防御工事分担的伤害' },
   },
-  
+
   // 特殊机制
   mechanics: {
-    timeLayer: { name: '时层', description: '操控时间流速的奥术层' },
-    thread: { name: '线索', description: '命运之线的编织' },
-    concoction: { name: '炼金剂', description: '机械神教的神秘炼金产物' },
-    warpTide: { name: '亚空间潮汐', description: '亚空间能量的波动强度' },
-    warpEye: { name: '亚空间之眼', description: '窥视亚空间的危险窗口' },
+    timeLayer: { name: '时间层', description: '时间操控的层级' },
+    thread: { name: '丝线', description: '傀儡操控的媒介' },
+    concoction: { name: '炼金药剂', description: '化学合成的效用' },
+    warpTide: { name: '亚空间潮汐', description: '混沌能量的波动' },
+    warpEye: { name: '亚空间之眼', description: '窥视虚空的窗口' },
   },
 } as const;
 

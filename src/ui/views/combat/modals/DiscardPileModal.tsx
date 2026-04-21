@@ -17,13 +17,13 @@ export function DiscardPileModal({ engine, showDiscardPile, setShowDiscardPile, 
   if (!showDiscardPile) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/80 z-[55] flex flex-col p-6 md:p-8 overflow-hidden">
+    <div className="absolute inset-0 bg-black/80 z-[55] flex flex-col p-6 md:p-8 overflow-hidden" data-keyboard-modal="true">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold text-white">{GLOSSARY.DiscardPile || '已执行指令'}（{state.discardPile.length}）</h2>
           <div className="text-xs text-slate-400 mt-1">按弃牌顺序显示（最新在前）</div>
         </div>
-        <button onClick={() => setShowDiscardPile(false)} className="text-slate-300 hover:text-white px-3 py-2 rounded-lg border border-slate-700 bg-slate-900">
+        <button onClick={() => setShowDiscardPile(false)} className="text-slate-300 hover:text-white px-3 py-2 rounded-lg border border-slate-700 bg-slate-900" data-keyboard-close="true" data-keyboard-focus="true" data-keyboard-option="1">
           关闭
         </button>
       </div>

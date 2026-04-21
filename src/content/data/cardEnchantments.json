@@ -1,0 +1,72 @@
+[
+  {
+    "id": "blood_rune",
+    "name": "血纹刻印",
+    "scope": "persistent",
+    "effect": { "type": "damage", "amount": 2 },
+    "description": "该牌的伤害提高 2。",
+    "tone": "blessing",
+    "icon": "blood",
+    "applicableTo": ["Attack"]
+  },
+  {
+    "id": "ward_seal",
+    "name": "护印封蜡",
+    "scope": "persistent",
+    "effect": { "type": "block", "amount": 2 },
+    "description": "该牌的格挡提高 2。",
+    "tone": "ward",
+    "icon": "shield",
+    "applicableTo": ["Skill"]
+  },
+  {
+    "id": "swift_sigil",
+    "name": "迅捷印记",
+    "scope": "persistent",
+    "effect": { "type": "cost", "amount": -1 },
+    "description": "该牌费用 -1。",
+    "tone": "blessing",
+    "icon": "speed",
+    "applicableTo": ["Attack", "Skill"]
+  },
+  {
+    "id": "insight_etching",
+    "name": "洞察蚀刻",
+    "scope": "persistent",
+    "effect": { "type": "draw", "amount": 1 },
+    "description": "该牌的抽牌提高 1。",
+    "tone": "ward",
+    "icon": "insight",
+    "applicableTo": ["Attack", "Skill"]
+  },
+  {
+    "id": "dampened_edge",
+    "name": "钝刃咒蚀",
+    "scope": "combat",
+    "effect": { "type": "damage", "amount": -2 },
+    "description": "本场战斗中，该牌伤害 -2。",
+    "tone": "hex",
+    "icon": "dampen",
+    "applicableTo": ["Attack"]
+  },
+  {
+    "id": "sundered_guard",
+    "name": "碎护咒蚀",
+    "scope": "combat",
+    "effect": { "type": "block", "amount": -2 },
+    "description": "本场战斗中，该牌格挡 -2。",
+    "tone": "hex",
+    "icon": "sunder",
+    "applicableTo": ["Skill"]
+  },
+  {
+    "id": "hex_tax",
+    "name": "咒税",
+    "scope": "combat",
+    "effect": { "type": "cost", "amount": 1 },
+    "description": "本场战斗中，该牌费用 +1。",
+    "tone": "warp",
+    "icon": "tax",
+    "applicableTo": ["Attack", "Skill"]
+  }
+]

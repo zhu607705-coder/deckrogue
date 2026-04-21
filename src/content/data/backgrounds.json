@@ -1,0 +1,69 @@
+[
+  {
+    "id": "bg_ruined_cloister",
+    "name": "废墟修道院",
+    "description": "事件权重 +6%",
+    "effect": {
+      "type": "EventWeightBonus",
+      "bonus": 0.06
+    },
+    "visualTheme": "ruined_cloister",
+    "flavorText": "废墟中回荡着古老的祈祷。"
+  },
+  {
+    "id": "bg_reactor_choir",
+    "name": "反应堆圣歌",
+    "description": "机械章节敌人权重前置提示",
+    "effect": {
+      "type": "ChapterEnemyHint",
+      "chapter": 2
+    },
+    "visualTheme": "reactor_choir",
+    "flavorText": "机械的声音在回响。"
+  },
+  {
+    "id": "bg_spore_basin",
+    "name": "孢子盆地",
+    "description": "瘟疫章节事件提前显现概率 +6%",
+    "effect": {
+      "type": "ChapterEventBonus",
+      "chapter": 3,
+      "bonus": 0.06
+    },
+    "visualTheme": "spore_basin",
+    "flavorText": "孢子在黑暗中等待。"
+  },
+  {
+    "id": "bg_forgotten_foundry",
+    "name": "遗忘铸造厂",
+    "description": "商店 relic 出现概率 +5%",
+    "effect": {
+      "type": "ShopRelicBonus",
+      "bonus": 0.05
+    },
+    "visualTheme": "forgotten_foundry",
+    "flavorText": "铸造厂的火焰从未熄灭。"
+  },
+  {
+    "id": "bg_martyr_shrine",
+    "name": "殉道者神殿",
+    "description": "Rest 节点额外恢复 +3 生命",
+    "effect": {
+      "type": "RestHealBonus",
+      "bonus": 3
+    },
+    "visualTheme": "martyr_shrine",
+    "flavorText": "神殿中安息着无数英魂。"
+  },
+  {
+    "id": "bg_void_observatory",
+    "name": "虚空观测站",
+    "description": "Elite 战后额外获得 10 Gold",
+    "effect": {
+      "type": "EliteGoldBonus",
+      "bonus": 10
+    },
+    "visualTheme": "void_observatory",
+    "flavorText": "从虚空中观测一切。"
+  }
+]

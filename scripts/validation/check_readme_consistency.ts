@@ -31,7 +31,6 @@ const REQUIRED_READMES = [
   'docs/architecture/README.md',
   'docs/guides/README.md',
   'docs/plans/README.md',
-  'docs/reports/README.md',
   'docs/incidents/README.md',
   'docs/design/README.md',
   'scripts/README.md',

@@ -4,6 +4,8 @@ import { getStoryEventDef, getStoryEventOptionPresentation, relicsData } from '@
 import worldLoreData from '@/content/data/worldLore.json';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
+import { GlossaryText } from '@/ui/components/GlossaryText';
+import { getUiLabelZh } from '@/ui/content/terminology';
 
 const WORLD_LORE = worldLoreData as any;
 
@@ -197,33 +199,39 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
   return (
     <BackgroundImage 
       src={backgroundSrc} 
-      className="flex flex-col h-full text-slate-100 p-4 md:p-8"
-      overlayOpacity={0.75}
+      className="campaign-shell flex h-full flex-col px-4 py-6 text-slate-100 md:px-8"
+      overlayOpacity={0.78}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(180,180,255,0.10),transparent_55%)]" />
 
       <div className="relative z-10 flex flex-col h-full max-w-5xl mx-auto w-full">
-        <div className="mb-4 md:mb-6 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{getFloorLabel(engine)} · 叙事事件</div>
-            <h1 className="text-2xl md:text-4xl font-serif text-red-300 mt-2 drop-shadow-lg">{def.title}</h1>
-          </div>
-          <div className="px-3 py-1 rounded-full border border-slate-500/40 bg-slate-900/60 text-xs text-slate-200">
-            {event.stage === 'salvage_aftermath' ? '余波' : '遭遇'}
+        <div className="mb-6 border-b border-white/10 pb-6">
+          <div className="campaign-kicker">{getFloorLabel(engine)} · {getUiLabelZh('Narrative Event')}</div>
+          <div className="mt-4 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="campaign-title campaign-poster-title text-[clamp(2.2rem,4vw,4rem)] leading-[0.96] text-red-200">{def.title}</h1>
+              <p className="campaign-copy mt-3 max-w-2xl text-sm md:text-base">
+                事件页只负责一件事：让玩家在风险、即时收益和长期方向之间做出一次明确取舍。
+              </p>
+            </div>
+            <div className="campaign-section px-3 py-2 text-xs text-slate-200">
+              {event.stage === 'salvage_aftermath' ? '余波' : '遭遇'}
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-4 md:gap-6 flex-1 min-h-0">
-          <div className="min-h-0 rounded-2xl border border-slate-700/70 bg-slate-950/65 backdrop-blur-sm p-4 md:p-6 overflow-y-auto shadow-2xl">
+          <div className="campaign-section min-h-0 overflow-y-auto p-4 md:p-6 shadow-2xl">
+            <div className="campaign-kicker mb-3">{getUiLabelZh('Field Record')}</div>
             <div className="space-y-4">
               {npcLine && (
                 <div className="rounded-xl border border-fuchsia-700/25 bg-fuchsia-950/10 p-3 text-sm italic text-fuchsia-100/85">
-                  “{npcLine}”
+                  {'“'}<GlossaryText text={npcLine} />{'”'}
                 </div>
               )}
               {def.loreText.map((p, i) => (
                 <p key={i} className="text-sm md:text-base leading-7 text-slate-200/95">
-                  {p}
+                  <GlossaryText text={p} />
                 </p>
               ))}
               {event.id === 'nameless_martyr_shrine' && event.stage === 'free_remove' && (
@@ -234,26 +242,28 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
             </div>
           </div>
 
-          <div className="min-h-0 rounded-2xl border border-slate-700/70 bg-slate-950/60 backdrop-blur-sm p-4 md:p-5 overflow-y-auto shadow-2xl">
-            <div className="text-sm uppercase tracking-widest text-slate-400 mb-3">抉择</div>
+          <div className="campaign-section campaign-decision-column min-h-0 overflow-y-auto p-4 md:p-5 shadow-2xl md:pl-5">
+            <div className="campaign-kicker mb-3">{getUiLabelZh('Decision')}</div>
             <div className="space-y-3">
-              {options.map(option => (
+              {options.map((option, index) => (
                 <button
                   key={option.id}
                   onClick={() => engine.resolveEventChoice(option.id)}
-                  className={`w-full text-left rounded-xl border p-4 transition-colors ${dangerClasses(option.danger)}`}
+                  className={`campaign-choice w-full text-left p-4 ${dangerClasses(option.danger)}`}
+                  data-keyboard-option={String(index + 1)}
+                  data-keyboard-focus="true"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="font-bold text-slate-100">{option.text}</div>
+                    <div className="font-bold text-slate-100"><GlossaryText text={option.text} /></div>
                     <div className="text-[10px] uppercase tracking-widest text-slate-300">{dangerLabel(option.danger)}</div>
                   </div>
-                  <div className="text-sm text-slate-300 mt-1">{option.description}</div>
+                  <div className="text-sm text-slate-300 mt-1"><GlossaryText text={option.description} /></div>
 
                   {!!option.gains?.length && (
                     <div className="mt-3 rounded-lg border border-emerald-700/30 bg-emerald-950/20 p-2.5">
                       <div className="text-[11px] uppercase tracking-widest text-emerald-300 mb-1">收益</div>
                       <ul className="space-y-1 text-sm text-emerald-100/95">
-                        {option.gains.map((g, i) => <li key={i}>+ {g}</li>)}
+                        {option.gains.map((g, i) => <li key={i}>+ <GlossaryText text={g} /></li>)}
                       </ul>
                     </div>
                   )}
@@ -262,7 +272,7 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
                     <div className="mt-2 rounded-lg border border-rose-700/30 bg-rose-950/20 p-2.5">
                       <div className="text-[11px] uppercase tracking-widest text-rose-300 mb-1">代价</div>
                       <ul className="space-y-1 text-sm text-rose-100/95">
-                        {option.costs.map((c, i) => <li key={i}>- {c}</li>)}
+                        {option.costs.map((c, i) => <li key={i}>- <GlossaryText text={c} /></li>)}
                       </ul>
                     </div>
                   )}
@@ -280,9 +290,10 @@ export function EventView({ engine }: { engine: GameEngine }) {
   const event = engine.state.activeEvent;
   if (!event) {
     return (
-      <div className="flex flex-col h-full bg-slate-950 text-slate-200 p-8 items-center justify-center max-w-2xl mx-auto">
-        <div className="text-2xl text-slate-300 mb-4">无事件记录</div>
-        <button onClick={() => engine.leaveCurrentRoomToMap()} className="px-6 py-3 bg-slate-800 rounded-xl border border-slate-600">
+      <div className="campaign-terminal campaign-shell flex h-full flex-col items-center justify-center px-8 text-slate-200">
+        <div className="campaign-kicker">事件记录</div>
+        <div className="campaign-title mt-4 text-2xl text-slate-300">无事件记录</div>
+        <button onClick={() => engine.leaveCurrentRoomToMap()} className="campaign-action mt-6 px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-stone-100" data-keyboard-option="1" data-keyboard-focus="true">
           返回地图
         </button>
       </div>
@@ -301,24 +312,27 @@ export function EventView({ engine }: { engine: GameEngine }) {
     return (
       <BackgroundImage 
         src={bgImage} 
-        className="flex flex-col h-full text-slate-200 p-8 items-center justify-center max-w-3xl mx-auto"
-        overlayOpacity={0.65}
+        className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
+        overlayOpacity={0.7}
       >
-        <div className="relative z-10 flex flex-col items-center w-full">
-          <h1 className="text-4xl font-serif text-red-400 mb-6 drop-shadow-lg">异端祭坛</h1>
+        <div className="relative z-10 flex w-full max-w-4xl flex-col items-center">
+          <div className="w-full border-b border-white/10 pb-6 text-center">
+            <div className="campaign-kicker">禁忌契约</div>
+            <h1 className="campaign-title campaign-poster-title mt-4 text-[clamp(2.3rem,4vw,4rem)] text-red-200">异端祭坛</h1>
+          </div>
           {npcLine && (
-            <div className="w-full rounded-xl border border-fuchsia-700/25 bg-fuchsia-950/10 p-3 mb-4 text-sm italic text-fuchsia-100/85">
+            <div className="campaign-section mt-6 w-full p-3 text-sm italic text-fuchsia-100/85">
               “{npcLine}”
             </div>
           )}
 
-          <div className="bg-slate-900/90 border border-red-900/60 rounded-xl p-8 mb-8 text-lg leading-relaxed shadow-2xl backdrop-blur-sm">
+          <div className="campaign-section mt-6 mb-8 w-full p-8 text-lg leading-relaxed shadow-2xl">
             一座锈蚀祭坛在亚空间噪波中低鸣。血与灰构成的圆阵中央躺着一件遗物。
             接受它，记忆印痕库将被腐化烙印永久标记。
           </div>
 
           {relic && (
-            <div className="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-4 mb-6 backdrop-blur-sm">
+            <div className="campaign-section mb-6 w-full p-4">
               <div className="flex items-center gap-4">
                 <img src={relicIconSrc} alt={relic.name} className="w-14 h-14 rounded-xl object-cover border border-red-900/40 bg-slate-800 shrink-0" onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.relic)} />
                 <div>
@@ -332,15 +346,15 @@ export function EventView({ engine }: { engine: GameEngine }) {
             </div>
           )}
 
-          <div className="flex flex-col gap-4 w-full">
-            <button onClick={() => engine.resolveEventChoice('accept_corruption')} className="w-full p-4 bg-red-950/80 hover:bg-red-900/80 rounded-xl border border-red-700 flex justify-between items-center transition-colors backdrop-blur-sm">
+          <div className="flex w-full flex-col gap-4">
+            <button onClick={() => engine.resolveEventChoice('accept_corruption')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="1" data-keyboard-focus="true">
               <span className="font-bold">接受遗物</span>
-              <span className="text-red-300 text-sm">拥抱腐化</span>
+              <span className="text-red-300 text-sm block mt-1">拥抱腐化</span>
             </button>
 
-            <button onClick={() => engine.resolveEventChoice('refuse')} className="w-full p-4 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl border border-slate-600 flex justify-between items-center transition-colors backdrop-blur-sm">
+            <button onClick={() => engine.resolveEventChoice('refuse')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="2" data-keyboard-focus="true">
               <span className="font-bold">拒绝</span>
-              <span className="text-slate-400 text-sm">不触碰祭坛，立即离开</span>
+              <span className="text-slate-400 text-sm block mt-1">不触碰祭坛，立即离开</span>
             </button>
           </div>
         </div>
@@ -353,27 +367,30 @@ export function EventView({ engine }: { engine: GameEngine }) {
   return (
     <BackgroundImage 
       src={bgImage} 
-      className="flex flex-col h-full text-slate-200 p-8 items-center justify-center max-w-2xl mx-auto"
-      overlayOpacity={0.65}
+      className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
+      overlayOpacity={0.68}
     >
-      <div className="relative z-10 flex flex-col items-center w-full">
-        <h1 className="text-4xl font-serif text-blue-400 mb-6 drop-shadow-lg">无名神龛</h1>
+      <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
+        <div className="w-full border-b border-white/10 pb-6 text-center">
+          <div className="campaign-kicker">Field Omen</div>
+          <h1 className="campaign-title campaign-poster-title mt-4 text-[clamp(2.3rem,4vw,4rem)] text-blue-200">无名神龛</h1>
+        </div>
         {shrineLine && (
-          <div className="w-full rounded-xl border border-amber-700/25 bg-amber-950/10 p-3 mb-4 text-sm italic text-amber-100/85">
+          <div className="campaign-section mt-6 w-full p-3 text-sm italic text-amber-100/85">
             “{shrineLine}”
           </div>
         )}
-        <div className="bg-slate-900/90 border border-slate-700 rounded-xl p-8 mb-8 text-lg leading-relaxed shadow-2xl backdrop-blur-sm">
+        <div className="campaign-section mt-6 mb-8 w-full p-8 text-lg leading-relaxed shadow-2xl">
           你发现一座泛着幽蓝微光的古老神龛。某个声音在你的颅骨内侧回响，逼迫你做出选择。
         </div>
-        <div className="flex flex-col gap-4 w-full">
-          <button onClick={() => engine.resolveEventChoice('pray')} className="w-full p-4 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl border border-slate-600 flex justify-between items-center transition-colors backdrop-blur-sm">
+        <div className="flex w-full flex-col gap-4">
+          <button onClick={() => engine.resolveEventChoice('pray')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="1" data-keyboard-focus="true">
             <span className="font-bold">祈祷</span>
-            <span className="text-emerald-400 text-sm">肉体承载力上限 +10</span>
+            <span className="text-emerald-400 text-sm block mt-1">肉体承载力上限 +10</span>
           </button>
-          <button onClick={() => engine.resolveEventChoice('leave')} className="w-full p-4 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl border border-slate-600 flex justify-between items-center transition-colors backdrop-blur-sm">
+          <button onClick={() => engine.resolveEventChoice('leave')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="2" data-keyboard-focus="true">
             <span className="font-bold">离开</span>
-            <span className="text-slate-400 text-sm">不发生任何事</span>
+            <span className="text-slate-400 text-sm block mt-1">不发生任何事</span>
           </button>
         </div>
       </div>

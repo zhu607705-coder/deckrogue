@@ -1,5 +1,5 @@
 import { GameState, ActionSpec } from '@/core/types';
-import { ActionQueue, IAction, IActionContext, QueuedAction } from '@/core/actions/actionQueue';
+import { ActionQueue, IAction, IActionContext } from '@/core/actions/actionQueue';
 import { globalEventBus } from '@/core/events/eventBus';
 
 export interface ActionManagerConfig {
@@ -19,7 +19,11 @@ export class ActionManager {
 
   constructor(state: GameState, config?: Partial<ActionManagerConfig>) {
     this.state = state;
-    this.queue = new ActionQueue(state);
+    this.queue = new ActionQueue({
+      maxQueueSize: config?.maxQueueSize || 100,
+      processingMode: 'sequential',
+      priorityOrder: 'priority',
+    });
     this.config = {
       maxQueueSize: 100,
       enableLogging: false,
@@ -32,10 +36,16 @@ export class ActionManager {
   }
 
   private setupQueueCallbacks(): void {
-    this.queue.setCallbacks(
-      (action, context) => this.onActionStart(action, context),
-      (action, context) => this.onActionEnd(action, context)
-    );
+    this.queue.setCallbacks({
+      onActionComplete: (action: IAction, _state: GameState) => {
+        this.onActionEnd(action, { source: 'player' });
+      },
+      onQueueEmpty: () => {
+        if (this.config.enableLogging) {
+          console.log('[ActionManager] Queue empty');
+        }
+      },
+    });
   }
 
   private onActionStart(action: IAction, context: IActionContext): void {
@@ -85,10 +95,10 @@ export class ActionManager {
     spec: ActionSpec, 
     context: IActionContext,
     priority: number = 0,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
+    _source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
   ): void {
     const action = this.createAction(spec);
-    this.queue.push(action, context, priority, source);
+    this.queue.push(action, context, priority);
   }
 
   enqueueAll(
@@ -106,27 +116,27 @@ export class ActionManager {
     action: IAction,
     context: IActionContext,
     priority: number = 0,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
+    _source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
   ): void {
-    this.queue.push(action, context, priority, source);
+    this.queue.push(action, context, priority);
   }
 
   enqueueFront(
     spec: ActionSpec,
     context: IActionContext,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
+    _source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
   ): void {
     const action = this.createAction(spec);
-    this.queue.pushFront(action, context, source);
+    this.queue.pushFront(action, context);
   }
 
   enqueueBack(
     spec: ActionSpec,
     context: IActionContext,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
+    _source: 'card' | 'relic' | 'synergy' | 'system' = 'system'
   ): void {
     const action = this.createAction(spec);
-    this.queue.pushBack(action, context, source);
+    this.queue.pushBack(action, context);
   }
 
   enqueueUrgent(
@@ -134,24 +144,23 @@ export class ActionManager {
     context: IActionContext,
     source: 'card' | 'relic' | 'synergy' | 'system' = 'relic'
   ): void {
-    const action = this.createAction(spec);
-    this.queue.pushFront(action, context, source);
+    this.enqueueFront(spec, context, source);
   }
 
   enqueueUrgentAction(
     action: IAction,
     context: IActionContext,
-    source: 'card' | 'relic' | 'synergy' | 'system' = 'relic'
+    _source: 'card' | 'relic' | 'synergy' | 'system' = 'relic'
   ): void {
-    this.queue.pushFront(action, context, source);
+    this.queue.pushFront(action, context);
   }
 
   async executeAll(): Promise<void> {
-    await this.queue.processQueue();
+    this.queue.processQueue(this.state);
   }
 
   executeAllSync(): void {
-    this.queue.processQueueSync();
+    this.queue.processQueueSync(this.state);
   }
 
   executeImmediate(spec: ActionSpec, context: IActionContext): void {
@@ -178,17 +187,42 @@ export class ActionManager {
   }
 
   getQueueSnapshot(): Array<{ type: string; priority: number; source: string }> {
-    return this.queue.getQueueSnapshot();
+    return this.queue.getQueueSnapshot().map(qa => ({
+      type: qa.action.type,
+      priority: qa.priority,
+      source: qa.context.source,
+    }));
   }
 
   updateState(state: GameState): void {
     this.state = state;
-    this.queue.setState(state);
   }
 
   getCurrentContext(): IActionContext {
     return this.currentContext;
   }
+
+  static getInstance(state?: GameState): ActionManager {
+    if (!globalActionManager && state) {
+      globalActionManager = new ActionManager(state);
+    }
+    if (!globalActionManager) {
+      throw new Error('ActionManager not initialized');
+    }
+    return globalActionManager;
+  }
+
+  static resetInstance(): void {
+    globalActionManager = null;
+  }
+}
+
+export function createActionManager(state: GameState, config?: Partial<ActionManagerConfig>): ActionManager {
+  return new ActionManager(state, config);
+}
+
+export function getActionManager(): ActionManager {
+  return ActionManager.getInstance();
 }
 
 class NullAction implements IAction {
@@ -196,20 +230,7 @@ class NullAction implements IAction {
   
   constructor(private spec: ActionSpec) {}
   
-  execute(): void {
-    console.warn(`NullAction executed for unknown type: ${this.spec.type}`);
+  execute(_state: GameState, _queue: ActionQueue): void {
+    console.warn(`NullAction executed for spec: ${this.spec.type}`);
   }
 }
-
-export const createActionManager = (state: GameState, config?: Partial<ActionManagerConfig>): ActionManager => {
-  globalActionManager = new ActionManager(state, config);
-  return globalActionManager;
-};
-
-export const getActionManager = (): ActionManager | null => {
-  return globalActionManager;
-};
-
-export const setActionManager = (manager: ActionManager): void => {
-  globalActionManager = manager;
-};

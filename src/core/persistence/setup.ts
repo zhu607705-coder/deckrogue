@@ -23,6 +23,15 @@ export interface GameState {
   currentSaveSlot: string | null;
 }
 
+function shouldEnableDebugLogging(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem('deckrogue_debug_logs') === 'true';
+  } catch {
+    return false;
+  }
+}
+
 class GameSetup {
   private engine: GameEngine | null = null;
   private config: GameSetupConfig;
@@ -42,7 +51,7 @@ class GameSetup {
     this.config = {
       enableAutoSave: true,
       autoSaveInterval: 60000,
-      enableDebugLogging: process.env.NODE_ENV === 'development',
+      enableDebugLogging: shouldEnableDebugLogging(),
       ...config
     };
   }
@@ -171,7 +180,7 @@ class GameSetup {
 
     const saveData = saveManager.loadGame(slotId);
     if (!saveData) {
-      console.error(`[GameSetup] Failed to load save from slot: ${slotId}`);
+      this.log(`Failed to load save from slot: ${slotId}`);
       return null;
     }
 
@@ -252,8 +261,8 @@ class GameSetup {
     this.disposables.splice(0).forEach((dispose) => {
       try {
         dispose();
-      } catch (error) {
-        console.error('[GameSetup] Failed to dispose subscription:', error);
+      } catch {
+        this.log('Failed to dispose subscription');
       }
     });
 
@@ -269,7 +278,7 @@ class GameSetup {
 
   quickSave(): boolean {
     if (!this.engine || !this.state.isRunning) {
-      console.warn('[GameSetup] Cannot quick save: no active run');
+      this.log('Cannot quick save: no active run');
       return false;
     }
 
@@ -294,7 +303,7 @@ class GameSetup {
 
   saveToSlot(slotId: string, name?: string): boolean {
     if (!this.engine || !this.state.isRunning) {
-      console.warn('[GameSetup] Cannot save: no active run');
+      this.log('Cannot save: no active run');
       return false;
     }
 
@@ -307,6 +316,70 @@ class GameSetup {
     }
 
     return result;
+  }
+
+  saveAndQuit(): { ok: boolean; error?: string } {
+    if (!this.engine || !this.state.isRunning) {
+      return { ok: false, error: '没有正在运行的局' };
+    }
+
+    const playTime = saveManager.getCurrentPlayTime();
+    const preferredSlotId = this.resolveSaveAndQuitSlotId();
+
+    const quicksaveResult = saveManager.quickSave(this.engine.state, playTime);
+    if (!quicksaveResult) {
+      return { ok: false, error: '快速保存失败' };
+    }
+
+    const slotSaveResult = saveManager.saveGame(preferredSlotId, this.engine.state, playTime);
+    if (!slotSaveResult) {
+      return { ok: false, error: '存档槽保存失败' };
+    }
+    this.state.currentSaveSlot = preferredSlotId;
+
+    this.engine = null;
+    this.state.isRunning = false;
+    this.state.isPaused = false;
+    this.log('保存并退出成功');
+
+    return { ok: true };
+  }
+
+  restartCurrentCombat(): { ok: boolean; error?: string } {
+    if (!this.engine || !this.state.isRunning) {
+      return { ok: false, error: '没有正在运行的局' };
+    }
+
+    const checkpoint = this.engine.state.combatRestartCheckpoint;
+    if (!checkpoint) {
+      return { ok: false, error: '没有可用的战斗重开点' };
+    }
+
+    const currentScreen = this.engine.state.screen;
+    if (currentScreen !== 'Combat' && currentScreen !== 'Reward' && currentScreen !== 'Map') {
+      return { ok: false, error: '当前不在战斗中' };
+    }
+
+    if (currentScreen === 'Reward' || currentScreen === 'Map') {
+      return { ok: false, error: '战斗已结束，无法重开' };
+    }
+
+    const restarted = this.engine.restartCombatFromCheckpoint(checkpoint);
+    if (!restarted) {
+      return { ok: false, error: '战斗重开失败' };
+    }
+
+    this.log(`重开当前战斗: ${checkpoint.nodeType} ${checkpoint.nodeId}`);
+
+    return { ok: true };
+  }
+
+  hasCombatRestartCheckpoint(): boolean {
+    if (!this.engine || !this.engine.state) return false;
+    const checkpoint = this.engine.state.combatRestartCheckpoint;
+    if (!checkpoint) return false;
+    const currentScreen = this.engine.state.screen;
+    return currentScreen === 'Combat';
   }
 
   private triggerAutoSave(reason: string): void {
@@ -350,8 +423,8 @@ class GameSetup {
       const newAchievementIds = (nextMeta.achievements?.unlockedIds || []).filter((id) => !prevAch.has(id));
       globalEventBus.publish({ type: 'MetaProfileUpdated', summary, newAchievementIds } as any);
       this.log('Meta progression updated from run summary', summary);
-    } catch (error) {
-      console.error('[GameSetup] Failed to update meta progression:', error);
+    } catch {
+      this.log('Failed to update meta progression');
     }
 
     this.state.isRunning = false;
@@ -400,6 +473,23 @@ class GameSetup {
     this.engine.dispose();
     this.engine = null;
   }
+
+  private resolveSaveAndQuitSlotId(): string {
+    if (this.state.currentSaveSlot && this.state.currentSaveSlot !== 'quicksave') {
+      return this.state.currentSaveSlot;
+    }
+
+    const latestRegularSlot = saveManager
+      .getSaveSlots()
+      .filter((slot) => slot.id !== 'quicksave')
+      .sort((left, right) => right.timestamp - left.timestamp)[0];
+
+    if (latestRegularSlot) {
+      return latestRegularSlot.id;
+    }
+
+    return `autosave_${Date.now()}`;
+  }
 }
 
 // ==================== 单例导出 ====================
@@ -408,7 +498,6 @@ let globalSetup: GameSetup | null = null;
 
 export function createGameSetup(config?: Partial<GameSetupConfig>): GameSetup {
   if (globalSetup) {
-    console.warn('[GameSetup] Global setup already exists, returning existing instance');
     return globalSetup;
   }
 

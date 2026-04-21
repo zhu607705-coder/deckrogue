@@ -1,5 +1,87 @@
 {
   "version": 1,
+  "chapters": {
+    "chapter2": {
+      "nodeWeights": {
+        "floor_11_12": {
+          "Combat": 0.52,
+          "Elite": 0.14,
+          "Event": 0.18,
+          "Shop": 0.08,
+          "Rest": 0.08
+        },
+        "floor_13_15": {
+          "Combat": 0.46,
+          "Elite": 0.22,
+          "Event": 0.16,
+          "Shop": 0.08,
+          "Rest": 0.08
+        },
+        "floor_16": {
+          "Combat": 0.38,
+          "Elite": 0.36,
+          "Event": 0.10,
+          "Shop": 0.06,
+          "Rest": 0.10
+        }
+      },
+      "enemyFloorEligibility": {
+        "floor_11_12": {
+          "allow": ["coolant_hound", "servo_confessor", "reactor_thrall", "data_leech", "iron_choir_twin_a", "iron_choir_twin_b", "scrap_surgeon"],
+          "exclude": []
+        },
+        "floor_13_15": {
+          "allow": ["coolant_hound", "servo_confessor", "reactor_thrall", "data_leech", "iron_choir_twin_a", "iron_choir_twin_b", "scrap_surgeon", "sanctum_praetor", "overclocked_abbot", "fusion_censer"],
+          "exclude": []
+        },
+        "floor_16": {
+          "allow": ["coolant_hound", "servo_confessor", "reactor_thrall", "data_leech", "iron_choir_twin_a", "iron_choir_twin_b", "scrap_surgeon", "sanctum_praetor", "overclocked_abbot", "fusion_censer"],
+          "exclude": []
+        }
+      },
+      "bossPool": ["cathedral_engine", "logic_saint"]
+    },
+    "chapter3": {
+      "nodeWeights": {
+        "floor_19_20": {
+          "Combat": 0.48,
+          "Elite": 0.16,
+          "Event": 0.20,
+          "Shop": 0.08,
+          "Rest": 0.08
+        },
+        "floor_21_23": {
+          "Combat": 0.42,
+          "Elite": 0.26,
+          "Event": 0.18,
+          "Shop": 0.06,
+          "Rest": 0.08
+        },
+        "floor_24": {
+          "Combat": 0.34,
+          "Elite": 0.44,
+          "Event": 0.10,
+          "Shop": 0.04,
+          "Rest": 0.08
+        }
+      },
+      "enemyFloorEligibility": {
+        "floor_19_20": {
+          "allow": ["spore_wretch", "rot_hound", "plague_choir", "cyst_bearer", "grave_mender", "blight_larva", "mire_guard"],
+          "exclude": []
+        },
+        "floor_21_23": {
+          "allow": ["spore_wretch", "rot_hound", "plague_choir", "cyst_bearer", "grave_mender", "blight_larva", "mire_guard", "plague_abbot", "maggot_reliquary", "corrupt_titanus", "catacomb_matron"],
+          "exclude": []
+        },
+        "floor_24": {
+          "allow": ["spore_wretch", "rot_hound", "plague_choir", "cyst_bearer", "grave_mender", "blight_larva", "mire_guard", "plague_abbot", "maggot_reliquary", "corrupt_titanus", "catacomb_matron"],
+          "exclude": []
+        }
+      },
+      "bossPool": ["pox_cathedral", "the_mire_saint"]
+    }
+  },
   "cards": {
     "byId": {
       "strike": {

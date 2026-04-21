@@ -7,6 +7,7 @@ export interface SaveSlot {
   timestamp: number;
   playTime: number;
   floor: number;
+  chapterIndex: number;
   characterId: string;
   checksum: string;
 }
@@ -18,6 +19,7 @@ export interface SaveData {
   state: GameState;
   metadata: {
     floor: number;
+    chapterIndex: number;
     characterId: string;
     seed: number;
     runStartTime: number;
@@ -60,6 +62,7 @@ export class SaveManager {
       timestamp: Date.now(),
       playTime: data.playTime || 0,
       floor: data.floor || 1,
+      chapterIndex: data.chapterIndex || 1,
       characterId: data.characterId || '',
       checksum: data.checksum || ''
     };
@@ -82,7 +85,10 @@ export class SaveManager {
 
       return true;
     } catch (error) {
-      console.error('Failed to delete save slot:', error);
+      globalEventBus.publish({
+        type: 'SaveFailed',
+        error: `deleteSaveSlot:${String(error)}`
+      });
       return false;
     }
   }
@@ -98,6 +104,7 @@ export class SaveManager {
         state: this.serializeState(state),
         metadata: {
           floor: this.getCurrentFloor(state),
+          chapterIndex: this.getCurrentChapter(state),
           characterId: state.character?.id || '',
           seed: state.seed,
           runStartTime: this.currentRunStartTime
@@ -110,10 +117,11 @@ export class SaveManager {
       localStorage.setItem(`${SaveManager.SAVE_KEY_PREFIX}${slotId}`, serialized);
 
       this.updateSaveSlot(slotId, {
-        name: `${state.character?.name || 'Unknown'} - Floor ${saveData.metadata.floor}`,
+        name: `${state.character?.name || 'Unknown'} - Chapter ${saveData.metadata.chapterIndex} Floor ${saveData.metadata.floor}`,
         timestamp: saveData.timestamp,
         playTime: saveData.playTime,
         floor: saveData.metadata.floor,
+        chapterIndex: saveData.metadata.chapterIndex,
         characterId: saveData.metadata.characterId,
         checksum
       });
@@ -126,7 +134,6 @@ export class SaveManager {
 
       return true;
     } catch (error) {
-      console.error('Failed to save game:', error);
       globalEventBus.publish({
         type: 'SaveFailed',
         error: String(error)
@@ -143,7 +150,6 @@ export class SaveManager {
       const saveData: SaveData = JSON.parse(data);
 
       if (saveData.version !== SaveManager.SAVE_VERSION) {
-        console.warn(`Save version mismatch: ${saveData.version} vs ${SaveManager.SAVE_VERSION}`);
         const migrated = this.migrateSaveData(saveData);
         if (!migrated) return null;
         return migrated;
@@ -160,7 +166,6 @@ export class SaveManager {
 
       return saveData;
     } catch (error) {
-      console.error('Failed to load game:', error);
       globalEventBus.publish({
         type: 'LoadFailed',
         error: String(error)
@@ -373,12 +378,22 @@ export class SaveManager {
   // ==================== Utility ====================
 
   private serializeState(state: GameState): GameState {
-    return JSON.parse(JSON.stringify(state));
+    try {
+      return JSON.parse(JSON.stringify(state));
+    } catch {
+      return state;
+    }
   }
 
   private getCurrentFloor(state: GameState): number {
     if (!state.map || !state.currentNodeId) return 1;
     return state.map.findIndex(n => n.id === state.currentNodeId) + 1;
+  }
+
+  private getCurrentChapter(state: GameState): number {
+    const floor = this.getCurrentFloor(state);
+    if (floor <= 10) return 1;
+    return 2;
   }
 
   private calculateChecksum(data: string): string {
@@ -393,7 +408,7 @@ export class SaveManager {
 
   private migrateSaveData(oldData: SaveData): SaveData | null {
     if (!oldData.version) {
-      console.error('Save data has no version');
+      globalEventBus.publish({ type: 'LoadFailed', error: 'Save data has no version' });
       return null;
     }
 
@@ -401,7 +416,7 @@ export class SaveManager {
     const currentParts = SaveManager.SAVE_VERSION.split('.').map(Number);
 
     if (versionParts[0] < currentParts[0]) {
-      console.error('Major version mismatch, cannot migrate');
+      globalEventBus.publish({ type: 'LoadFailed', error: 'Major version mismatch, cannot migrate' });
       return null;
     }
 
@@ -420,8 +435,7 @@ export class SaveManager {
     try {
       const compressed = btoa(data);
       return compressed;
-    } catch (error) {
-      console.error('Failed to export save:', error);
+    } catch {
       return null;
     }
   }
@@ -448,8 +462,7 @@ export class SaveManager {
       });
 
       return true;
-    } catch (error) {
-      console.error('Failed to import save:', error);
+    } catch {
       return false;
     }
   }

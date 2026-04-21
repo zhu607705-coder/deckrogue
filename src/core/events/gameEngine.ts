@@ -3,7 +3,7 @@
  * Prefer importing runtime entrypoints from '@/core/persistence/setup' and domain modules under '@/core/*' and '@/features/*'.
  */
 import { GameState, ActionSpec, CardDef, RunCardInstance, MapNode, ActiveEventState, MetaProfile, CharacterDef } from '@/core/types';
-import { createRNG } from '@/infrastructure/rng/rng';
+import { createRNG, RNG } from '@/infrastructure/rng/rng';
 import { globalEventBus } from '@/core/events/eventBus';
 import { relicSystem } from '@/features/relics/relicSystem';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
@@ -53,6 +53,7 @@ const charactersData = charactersDataRaw as CharacterDef[];
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RuntimeEventType } from '@/core/events/eventContract';
 import { deriveRunTransitionState, runPhaseToScreen, transitionRunState, type RunAction } from '@/core/events/runStateMachine';
+import { safeArrayAccess, safeArrayFirst } from '@/core/utils/safeArray';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 import { projectRuleSnapshotToLegacyState } from '@/runtimeV2/legacyStateProjector';
 import type { RuleSnapshot } from '@/runtimeV2/contracts';
@@ -82,7 +83,7 @@ export type {
 
 export class GameEngine {
   state: GameState;
-  rng: () => number;
+  rng: RNG;
   listeners: (() => void)[] = [];
   private globalDisposables: Array<() => void> = [];
   private actionManager: ActionManager;
@@ -99,6 +100,12 @@ export class GameEngine {
   private readonly gameFlowOrchestrator: GameFlowOrchestrator;
   private disposed = false;
 
+  private syncRngState(): void {
+    if (this.rng.getState) {
+      this.state.rngState = this.rng.getState();
+    }
+  }
+
   constructor(seed?: number, metaProfile?: MetaProfile | null, options: GameEngineRuntimeDelegateOptions = {}) {
     this.state = this.createInitialState(seed);
     this.metaProfileForRun = metaProfile || null;
@@ -106,7 +113,7 @@ export class GameEngine {
     bindStateRng(this.state, this.rng);
     economySystem.setRandomGenerator(this.rng);
     this.actionManager = createActionManager(this.state, {
-      enableLogging: process.env.NODE_ENV === 'development',
+      enableLogging: false,
       enableAnimationDelay: false
     });
     setupActionManager(this.actionManager);
@@ -806,7 +813,7 @@ export class GameEngine {
     if (!afflictionId) return;
     const affliction = getCardEnchantmentDefById(afflictionId);
     if (!affliction || affliction.scope !== 'combat') return;
-    const target = targetPool[Math.floor(this.rng() * targetPool.length)];
+    const target = safeArrayAccess(targetPool, Math.floor(this.rng() * targetPool.length));
     if (!target?.instanceId) return;
     const updated = applyCombatAfflictionToInstance(normalizeRunCardInstance(target, () => this.generateId()), affliction);
     this.replaceRunCardInstance(updated);
@@ -914,6 +921,22 @@ export class GameEngine {
   // ==================== Combat System ====================
 
   private startCombat(nodeType: 'Combat' | 'Elite' | 'Boss'): void {
+    const nodeId = this.state.currentNodeId || '';
+    this.syncRngState();
+    const stateSnapshot = this.cloneGameStateSnapshot({
+      ...this.state,
+      combat: null,
+      combatRestartCheckpoint: undefined,
+    });
+
+    this.state.combatRestartCheckpoint = {
+      nodeId,
+      nodeType,
+      stateSnapshot,
+      rngState: this.state.rngState,
+      pendingNodeResolution: this.state.pendingNodeResolution
+    };
+
     const floor = this.getCurrentFloorNumber();
     const hpMultiplier = economySystem.calculateHpMultiplier(floor) * Math.max(1, Number(this.state.metaRuntime?.ascensionEnemyHpMultiplier || 1));
     const damageMultiplier = economySystem.calculateDamageMultiplier(floor) * Math.max(1, Number(this.state.metaRuntime?.ascensionEnemyDamageMultiplier || 1));
@@ -980,14 +1003,122 @@ export class GameEngine {
     this.startTurn();
   }
 
+  public restartCombatFromCheckpoint(checkpoint: NonNullable<GameState['combatRestartCheckpoint']>): boolean {
+    const snapshot = this.cloneGameStateSnapshot(checkpoint.stateSnapshot);
+    const restoredState = {
+      ...this.state,
+      ...snapshot,
+      combat: null,
+      combatRestartCheckpoint: undefined,
+      rngState: checkpoint.rngState,
+      pendingNodeResolution: checkpoint.pendingNodeResolution ?? snapshot.pendingNodeResolution ?? true,
+    } as GameState;
+
+    this.state = restoredState;
+    this.rng = createRNG(this.state.seed, this.state.rngState);
+    bindStateRng(this.state, this.rng);
+    economySystem.setRandomGenerator(this.rng);
+    this.actionManager.updateState(this.state);
+
+    const currentNode = this.state.currentNodeId
+      ? this.state.map.find((node) => node.id === this.state.currentNodeId) ?? null
+      : null;
+    if (!currentNode || currentNode.id !== checkpoint.nodeId) {
+      return false;
+    }
+    if (this.state.screen !== 'Map') {
+      this.state.screen = 'Map';
+    }
+    this.resolveCurrentNodeEntry(currentNode);
+    this.notify();
+    return this.state.combat !== null;
+  }
+
+  private cloneGameStateSnapshot<T>(snapshot: T): T {
+    try {
+      return JSON.parse(JSON.stringify(snapshot)) as T;
+    } catch (error) {
+      console.error('Failed to clone game state snapshot:', error);
+      return snapshot;
+    }
+  }
+
   private applyAscensionMapModifiers(): void {
-    const chance = Math.max(0, Math.min(0.9, Number(this.state.metaRuntime?.ascensionEliteUpgradeChance || 0)));
-    if (!chance || !Array.isArray(this.state.map) || this.state.map.length === 0) return;
+    const meta = this.state.metaRuntime;
+    if (!meta) return;
+
+    const chance = Math.max(0, Math.min(0.9, Number(meta.ascensionEliteUpgradeChance || 0)));
+    const delta = meta.ascensionMapWeightDelta || {};
+    if (!chance && !delta.event && !delta.rest && !delta.elite && !delta.shop) return;
+    if (!Array.isArray(this.state.map) || this.state.map.length === 0) return;
+
+    const combatNodes: typeof this.state.map = [];
+    const eventNodes: typeof this.state.map = [];
+    const restNodes: typeof this.state.map = [];
+    const eliteNodes: typeof this.state.map = [];
+    const shopNodes: typeof this.state.map = [];
+
     for (const node of this.state.map) {
-      if (!node || node.type !== 'Combat') continue;
-      if (node.y <= 0) continue; // keep first pick readable and fair
-      if (this.rng() < chance) {
-        node.type = 'Elite';
+      if (!node) continue;
+      if (node.type === 'Combat') combatNodes.push(node);
+      else if (node.type === 'Event') eventNodes.push(node);
+      else if (node.type === 'Rest') restNodes.push(node);
+      else if (node.type === 'Elite') eliteNodes.push(node);
+      else if (node.type === 'Shop') shopNodes.push(node);
+    }
+
+    const upgradeCombatToElite = () => {
+      if (combatNodes.length === 0) return false;
+      const idx = Math.floor(this.rng() * combatNodes.length);
+      if (idx >= 0 && idx < combatNodes.length && combatNodes[idx]) {
+        combatNodes[idx].type = 'Elite';
+        eliteNodes.push(combatNodes.splice(idx, 1)[0]);
+        return true;
+      }
+      return false;
+    };
+
+    const upgradeCombatToEvent = () => {
+      if (combatNodes.length === 0) return false;
+      const idx = Math.floor(this.rng() * combatNodes.length);
+      if (idx >= 0 && idx < combatNodes.length && combatNodes[idx]) {
+        combatNodes[idx].type = 'Event';
+        eventNodes.push(combatNodes.splice(idx, 1)[0]);
+        return true;
+      }
+      return false;
+    };
+
+    const downgradeRestToCombat = () => {
+      const eligible = restNodes.filter(n => n.y > 0);
+      if (eligible.length === 0) return false;
+      const idx = Math.floor(this.rng() * eligible.length);
+      const node = eligible[idx];
+      if (node) {
+        node.type = 'Combat';
+        return true;
+      }
+      return false;
+    };
+
+    const totalNonBoss = combatNodes.length + eventNodes.length + restNodes.length + eliteNodes.length + shopNodes.length;
+    if (totalNonBoss === 0) return;
+
+    if (delta.elite > 0 && chance > 0) {
+      for (let i = 0; i < Math.floor(delta.elite * 10); i++) {
+        if (this.rng() < chance) upgradeCombatToElite();
+      }
+    }
+
+    if (delta.event > 0) {
+      for (let i = 0; i < Math.floor(delta.event * 10); i++) {
+        upgradeCombatToEvent();
+      }
+    }
+
+    if (delta.rest < 0) {
+      for (let i = 0; i < Math.floor(-delta.rest * 10); i++) {
+        downgradeRestToCombat();
       }
     }
   }
@@ -1311,7 +1442,10 @@ export class GameEngine {
     const enemyPool = stagedEnemies.length > 0 ? stagedEnemies : validEnemies;
 
     return Array.from({ length: count }, (_, i) => {
-      const def = enemyPool[Math.floor(this.rng() * enemyPool.length)];
+      const def = safeArrayAccess(enemyPool, Math.floor(this.rng() * enemyPool.length));
+      if (!def) {
+        return null;
+      }
       if (def?.id) {
         const eliteLike = !!def.keywords?.includes('elite') || !!def.keywords?.includes('boss');
         unlockCodexEntry(eliteLike ? 'elites' : 'enemies', def.id);
@@ -1332,7 +1466,7 @@ export class GameEngine {
         corruptionAxis: 0,
         axisDisposition: 'balanced'
       };
-    }).map((enemy) => {
+    }).filter((enemy): enemy is NonNullable<typeof enemy> => enemy !== null).map((enemy) => {
       // Single small slime rooms can feel like free turns; add a light bump.
       const slimeBoost = getSingleSlimeRoomBoostConfig();
       if (
@@ -1361,18 +1495,32 @@ export class GameEngine {
   }
 
   private selectIntent(enemyDef: any): string {
-    const weights = Array.isArray(enemyDef.intent_policy)
+    const baseWeights = Array.isArray(enemyDef.intent_policy)
       ? enemyDef.intent_policy.map((p: any) => Math.max(0, Number(p.weight) || 0))
       : [];
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    const totalWeight = baseWeights.reduce((sum, w) => sum + w, 0);
     if (totalWeight <= 0) {
       return enemyDef.intent_policy?.[0]?.intent || 'Attack';
     }
-    const roll = this.rng() * totalWeight;
+
+    const aggroBias = Math.max(0, Number(this.state.metaRuntime?.ascensionIntentAggroBias || 0));
+    let weights = [...baseWeights];
+    if (aggroBias > 0 && Array.isArray(enemyDef.intent_policy)) {
+      for (let i = 0; i < enemyDef.intent_policy.length; i++) {
+        const intent = enemyDef.intent_policy[i]?.intent || '';
+        const isAggressive = /attack|strike|damage|slam|burn|punch|kick|gore|claw|bite|curse|doom/.test(intent.toLowerCase());
+        if (isAggressive) {
+          weights[i] = weights[i] * (1 + aggroBias);
+        }
+      }
+    }
+
+    const totalAdjustedWeight = weights.reduce((sum, w) => sum + w, 0);
+    const roll = this.rng() * totalAdjustedWeight;
     let cumulative = 0;
-    for (const policy of enemyDef.intent_policy) {
-      cumulative += Math.max(0, Number(policy.weight) || 0);
-      if (roll <= cumulative) return policy.intent;
+    for (let i = 0; i < weights.length; i++) {
+      cumulative += weights[i];
+      if (roll <= cumulative) return enemyDef.intent_policy[i]?.intent || 'Attack';
     }
     return enemyDef.intent_policy[0]?.intent || 'Attack';
   }
@@ -1520,7 +1668,7 @@ export class GameEngine {
       const atk = Math.max(0, construct.atk || 0);
       if (atk <= 0) continue;
       
-      const target = aliveEnemies[Math.floor(this.rng() * aliveEnemies.length)];
+      const target = safeArrayAccess(aliveEnemies, Math.floor(this.rng() * aliveEnemies.length));
       if (!target) continue;
       
       const damage = this.calculateDamage(atk, {}, target.statuses || {}, 'player');
@@ -1752,6 +1900,7 @@ export class GameEngine {
       this.state.player.gold += rewards.gold;
       this.state.rewardCards = this.generateCardRewards(3);
       this.state.combat = null;
+      this.state.combatRestartCheckpoint = undefined;
       this.applyRunTransition({ type: 'COMBAT_WON' });
       this.notify();
     } finally {
@@ -1769,6 +1918,7 @@ export class GameEngine {
         this.snapshotDeathVoxLog();
       }
       this.clearCombatAfflictionsForRunCards();
+      this.state.combatRestartCheckpoint = undefined;
       metricsTracker.recordRunEnd(false, this.getCurrentFloorNumber());
       this.applyRunTransition({ type: 'PLAYER_DIED' });
       globalEventBus.publish({
@@ -1836,8 +1986,9 @@ export class GameEngine {
         const target = combat.enemies.find(e => e.id === targetId && e.hp > 0);
         if (!target) {
           const aliveEnemies = combat.enemies.filter(e => e.hp > 0);
-          if (aliveEnemies.length > 0) {
-            targetId = aliveEnemies[Math.floor(this.rng() * aliveEnemies.length)].id;
+          const randomEnemy = safeArrayAccess(aliveEnemies, Math.floor(this.rng() * aliveEnemies.length));
+          if (randomEnemy) {
+            targetId = randomEnemy.id;
           } else {
             targetId = undefined;
           }
@@ -1908,7 +2059,7 @@ export class GameEngine {
           }
         }
         const pickPool = weightedPool.length > 0 ? weightedPool : pool;
-        card = pickPool[Math.floor(this.rng() * pickPool.length)];
+        card = safeArrayAccess(pickPool, Math.floor(this.rng() * pickPool.length));
       }
       if (card) {
         rewards.push(this.createRuntimeCard(card as CardDef));
@@ -1941,14 +2092,15 @@ export class GameEngine {
     }
 
     const events: ActiveEventState['id'][] = ['mysterious_shrine', 'heretic_altar'];
-    const eventId = events[Math.floor(this.rng() * events.length)];
+    const eventId = safeArrayAccess(events, Math.floor(this.rng() * events.length)) ?? 'mysterious_shrine';
 
     this.state.activeEvent = { id: eventId };
     unlockCodexEntry('events', eventId);
 
     if (eventId === 'mysterious_shrine') {
       const relics = relicsData.filter(r => !r.corrupted);
-      this.state.activeEvent.offeredRelicId = relics[Math.floor(this.rng() * relics.length)]?.id;
+      const relic = safeArrayAccess(relics, Math.floor(this.rng() * relics.length));
+      this.state.activeEvent.offeredRelicId = relic?.id;
       if (this.state.activeEvent.offeredRelicId) unlockCodexEntry('relics', this.state.activeEvent.offeredRelicId);
     }
 
@@ -2245,14 +2397,14 @@ export class GameEngine {
       }
     }
     const sourcePool = weighted.length > 0 ? weighted : pool;
-    const relic = sourcePool[Math.floor(this.rng() * Math.max(1, sourcePool.length))];
+    const relic = safeArrayAccess(sourcePool, Math.floor(this.rng() * Math.max(1, sourcePool.length)));
     if (relic?.id) this.grantRelicDirect(relic.id);
   }
 
   private destroyRandomNonBasicCard(): void {
     const candidates = this.state.player.deck.filter(c => !['strike', 'defend'].includes(c.id));
     if (candidates.length === 0) return;
-    const doomed = candidates[Math.floor(this.rng() * candidates.length)];
+    const doomed = safeArrayAccess(candidates, Math.floor(this.rng() * candidates.length));
     if (!doomed?.instanceId) return;
     this.state.player.deck = this.state.player.deck.filter(c => c.instanceId !== doomed.instanceId);
   }
@@ -2267,7 +2419,7 @@ export class GameEngine {
     if (pool.length === 0) return;
     this.state.player.deck = this.state.player.deck.map(card => {
       if (!['strike', 'defend'].includes(card.id)) return card;
-      const replacement = pool[Math.floor(this.rng() * pool.length)];
+      const replacement = safeArrayAccess(pool, Math.floor(this.rng() * pool.length));
       if (!replacement) return card;
       return this.createRuntimeCard(replacement as CardDef, card.instanceId || this.generateId());
     });
@@ -2708,7 +2860,9 @@ export class GameEngine {
 
   usePotion(index: number): void {
     const combat = this.state.combat;
-    const potionId = this.state.player.potions[index];
+    const potions = this.state.player.potions;
+    if (index < 0 || index >= potions.length) return;
+    const potionId = potions[index];
     if (!combat || potionId == null) return;
     unlockCodexEntry('potions', potionId);
 

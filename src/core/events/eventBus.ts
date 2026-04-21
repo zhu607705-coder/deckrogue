@@ -1,5 +1,10 @@
+/**
+ * Global Event Bus
+ * @deprecated This bus is now for OBSERVATION/ANIMATION/TRIGGERS ONLY.
+ * Do NOT use for rule progression - use ResolutionPipeline instead.
+ * Rule progression should go through: ResolutionIntent -> ResolutionPipeline -> ResolutionResult
+ */
 export type GameEvent = 
-  | { type: 'GameInitialized'; timestamp: number }
   | { type: 'GameShutdown'; timestamp: number }
   | { type: 'RunStarted'; seed: number; timestamp: number }
   | { type: 'RunLoaded'; slotId: string; seed: number; timestamp: number }

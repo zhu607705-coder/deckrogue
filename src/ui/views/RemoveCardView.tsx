@@ -25,9 +25,17 @@ export function RemoveCardView({ engine }: { engine: GameEngine }) {
 
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-wrap gap-4 justify-center max-w-5xl mx-auto">
-          {player.deck.map((card: any) => (
+          {player.deck.map((card: any, index: number) => (
             <div key={card.instanceId} className="relative group">
-              <CardView card={card} onClick={() => engine.removeCard(card.instanceId)} />
+              <CardView 
+                card={card} 
+                onClick={() => engine.removeCard(card.instanceId)} 
+                rootProps={{
+                  'data-keyboard-option': index < 10 ? String(index + 1) : undefined,
+                  'data-keyboard-focus': 'true',
+                  'aria-label': `${index + 1}. ${card.name}`
+                }}
+              />
               <div className="absolute inset-0 bg-red-900/0 group-hover:bg-red-900/50 transition-colors rounded-xl pointer-events-none flex items-center justify-center">
                 <div className="opacity-0 group-hover:opacity-100 text-white font-bold text-center drop-shadow-md">
                   <div className="text-xl">焚毁</div>
@@ -45,6 +53,9 @@ export function RemoveCardView({ engine }: { engine: GameEngine }) {
         <button 
           onClick={() => engine.cancelCardRemoval()}
           className="px-8 py-3 bg-slate-800/80 hover:bg-slate-700/80 text-white font-bold rounded-xl border border-slate-600 transition-colors backdrop-blur-sm"
+          data-keyboard-close="true"
+          data-keyboard-focus="true"
+          data-keyboard-option="10"
         >
           {isEventRemoval ? '返回事件' : '取消'}
         </button>

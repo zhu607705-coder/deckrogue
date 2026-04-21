@@ -10,11 +10,11 @@ function getCard(id: string) {
   return card;
 }
 
-test('gather_intel should gain 2 Intel and draw 2 cards', () => {
+test('gather_intel should gain 1 Intel and draw 2 cards after the balance nerf', () => {
   const card = getCard('gather_intel');
   const gainIntel = card.actions.find((action: any) => action.type === 'GainIntel');
   const draw = card.actions.find((action: any) => action.type === 'Draw');
-  assert.equal(gainIntel?.amount, 2, `expected gather_intel GainIntel 2, got ${gainIntel?.amount}`);
+  assert.equal(gainIntel?.amount, 1, `expected gather_intel GainIntel 1, got ${gainIntel?.amount}`);
   assert.equal(draw?.amount, 2, `expected gather_intel Draw 2, got ${draw?.amount}`);
 });
 
@@ -31,16 +31,17 @@ test('calculated_strike should spend 1 Intel and deal total 14 damage when condi
   assert.equal(bonusDamage?.amount, 7, `expected calculated_strike bonus damage 7, got ${bonusDamage?.amount}`);
 });
 
-test('weak_point_analysis should gain 2 Intel and apply 1 Vulnerable', () => {
+test('weak_point_analysis should gain 1 Intel and apply 1 Vulnerable after the balance nerf', () => {
   const card = getCard('weak_point_analysis');
   const gainIntel = card.actions.find((action: any) => action.type === 'GainIntel');
   const vulnerable = card.actions.find(
     (action: any) => action.type === 'ApplyStatus' && action.status === 'Vulnerable'
   );
-  assert.equal(gainIntel?.amount, 2, `expected weak_point_analysis GainIntel 2, got ${gainIntel?.amount}`);
+  assert.equal(gainIntel?.amount, 1, `expected weak_point_analysis GainIntel 1, got ${gainIntel?.amount}`);
   assert.equal(
     vulnerable?.amount,
     1,
     `expected weak_point_analysis Vulnerable 1, got ${vulnerable?.amount}`
   );
+  assert.match(card.text, /获得 1 点情报。施加 1 层易伤。/);
 });

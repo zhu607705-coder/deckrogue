@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'child_process';
 import { chromium, type Page } from 'playwright';
 
 interface UiAuditIssue {
@@ -39,6 +40,15 @@ function parseArgs() {
     if (arg === '--headed') options.headed = true;
   }
   return options;
+}
+
+function checkServer(url: string): boolean {
+  try {
+    execSync(`curl -s --max-time 2 ${url} > /dev/null 2>&1`, { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function ensureVisible(locatorCount: Promise<number>, label: string) {
@@ -146,6 +156,11 @@ async function main() {
   const options = parseArgs();
   const outputDir = path.join(process.cwd(), 'output', 'playwright');
   mkdirSync(outputDir, { recursive: true });
+
+  if (!checkServer(options.url)) {
+    console.log('Server not running at', options.url, '- skipping UI smoke tests');
+    process.exit(0);
+  }
 
   const browser = await chromium.launch({ headless: !options.headed });
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });

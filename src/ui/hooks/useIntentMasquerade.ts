@@ -1,6 +1,8 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import type { GameEngine } from '@/core';
-import type { EnemyInstance, IntentDisplay, IntentType } from '@/types';
+import type { IntentDisplay, IntentType } from '@/types';
+
+type RuntimeEnemy = NonNullable<GameEngine['state']['combat']>['enemies'][number];
 
 interface MasqueradeMask {
   icon: string;
@@ -29,14 +31,14 @@ export function useIntentMasquerade(engine: GameEngine) {
     return h >>> 0;
   }, []);
 
-  const maybeMasqueradeIntent = useCallback((enemy: EnemyInstance, intent: IntentDisplay): IntentDisplay => {
+  const maybeMasqueradeIntent = useCallback((enemy: RuntimeEnemy, intent: IntentDisplay): IntentDisplay => {
     const warpTide = Math.max(0, Math.min(100, Number(state.warpTide || 0)));
     if (warpTide < 70) return intent;
     if (!intent || intent.tone === 'neutral') return intent;
     if (enemy.hp <= 0) return intent;
 
     const chaos = (warpTide - 70) / 30;
-    const roll = (hashIntentSeed(`${enemy.id}:${enemy.nextMove?.id || 'unknown'}:${state.turn}:${intentDeceptionTick}`) % 1000) / 1000;
+    const roll = (hashIntentSeed(`${enemy.id}:${enemy.nextIntent || 'unknown'}:${state.turn}:${intentDeceptionTick}`) % 1000) / 1000;
     const shouldLie = roll < (0.18 + chaos * 0.42);
     if (!shouldLie) return intent;
 

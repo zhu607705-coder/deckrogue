@@ -4,6 +4,7 @@ import { potionsData } from '@/content/narrative/numericSystem';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { STORY_EVENTS } from '@/content/narrative/numericSystem';
 import type { CodexCategory } from '@/core';
+import { getCardNameZh, getCardTargetingZh, getCardTextZh, getUiLabelZh } from '@/ui/content/terminology';
 
 export interface CodexCatalogEntry {
   category: CodexCategory;
@@ -240,12 +241,13 @@ function applyNarrativeOverride(entry: CodexCatalogEntry, override?: NarrativeOv
 }
 
 function createCardDemo(card: any): CodexDemoPanelDef | undefined {
+  const localizedName = getCardNameZh(card);
   const actions = Array.isArray(card.actions) ? card.actions : [];
   const frames: CodexDemoFrame[] = [
     {
       label: '步骤 1',
-      headline: `打出《${card.name}》`,
-      detail: `消耗 ${card.cost ?? 0} 点能量，类型：${card.type || 'Card'}，目标：${card.targeting || 'Unknown'}`,
+      headline: `打出《${localizedName}》`,
+      detail: `消耗 ${card.cost ?? 0} 点能量，类型：${card.type || '卡牌'}，目标：${getCardTargetingZh(card.targeting)}`,
       tone: 'neutral'
     }
   ];
@@ -376,11 +378,14 @@ function parseEnemyMoves(enemy: any): { mechanics: string[]; interactions: strin
 
 function buildCardEntries(): CodexCatalogEntry[] {
   return (cardsData as any[]).map((card) => {
+    const localizedName = getCardNameZh(card);
+    const localizedText = getCardTextZh(card, card.text || '卡牌效果');
+    const localizedUpgradeText = card.upgrade?.text ? getCardTextZh(card, card.upgrade.text) : '';
     const actions = Array.isArray(card.actions) ? card.actions : [];
     const upgradeActions = Array.isArray(card.upgrade?.actions) ? card.upgrade.actions : [];
     const mechanics = [
-      `基础效果：${actions.length ? actions.map(actionSummary).join('；') : card.text || '无'}`,
-      card.upgrade ? `升级后（${card.upgrade.name || `${card.name}+`}）：${card.upgrade.text || upgradeActions.map(actionSummary).join('；')}` : ''
+      `基础效果：${actions.length ? localizedText || actions.map(actionSummary).join('；') : localizedText || '无'}`,
+      card.upgrade ? `升级后（${localizedName}+）：${localizedUpgradeText || upgradeActions.map(actionSummary).join('；')}` : ''
     ].filter(Boolean);
 
     const interactions = uniqStrings([
@@ -392,8 +397,8 @@ function buildCardEntries(): CodexCatalogEntry[] {
     ]);
 
     const examples = uniqStrings([
-      `示例：${card.cost ?? 0} 费打出《${card.name}》，然后根据其效果安排后续能量与目标。`,
-      card.upgrade ? `升级收益示例：优先升级《${card.name}》可提升 ${card.upgrade.text || '核心效果'}。` : ''
+      `示例：${card.cost ?? 0} 费打出《${localizedName}》，然后根据其效果安排后续能量与目标。`,
+      card.upgrade ? `升级收益示例：优先升级《${localizedName}》可提升 ${localizedUpgradeText || '核心效果'}。` : ''
     ]);
 
     const loreFragments = uniqStrings([
@@ -402,12 +407,13 @@ function buildCardEntries(): CodexCatalogEntry[] {
 
     const keywords = uniqStrings([
       card.name,
+      localizedName,
       card.id,
       card.type,
       card.rarity,
       ...(card.tags || []),
       card.character,
-      card.text
+      localizedText
     ]);
 
     const searchText = [...keywords, ...mechanics, ...interactions, ...examples, ...loreFragments].join(' ').toLowerCase();
@@ -415,12 +421,12 @@ function buildCardEntries(): CodexCatalogEntry[] {
     const entry = {
       category: 'cards',
       id: card.id,
-      name: card.name,
+      name: localizedName,
       imageSrc: `/assets/cards/${card.id}.png`,
       rarity: card.rarity,
-      subtitle: `${card.type} · ${card.targeting}`,
+      subtitle: `${card.type} · ${getCardTargetingZh(card.targeting)}`,
       keywords,
-      summary: card.text || '卡牌效果',
+      summary: localizedText || '卡牌效果',
       mechanics,
       interactions,
       examples,
@@ -429,7 +435,7 @@ function buildCardEntries(): CodexCatalogEntry[] {
       dataPoints: [
         { label: '费用', value: String(card.cost ?? '-') },
         { label: '类型', value: String(card.type || '-') },
-        { label: '目标', value: String(card.targeting || '-') },
+        { label: '目标', value: getCardTargetingZh(card.targeting) },
         { label: '角色', value: String(card.character || 'All') }
       ],
       loreFragments: card.lastWords ? [{
@@ -438,7 +444,7 @@ function buildCardEntries(): CodexCatalogEntry[] {
         source: inferCardLoreSource(card),
         tone: card.tags?.includes('warp') ? 'warp' : 'grim'
       }] : undefined,
-      notes: card.upgrade ? [`升级文本：${card.upgrade.text || '见动作定义'}`] : undefined,
+      notes: card.upgrade ? [`升级文本：${localizedUpgradeText || '见动作定义'}`] : undefined,
       demo: createCardDemo(card)
     } satisfies CodexCatalogEntry;
     return applyNarrativeOverride(entry, HANDWRITTEN_CARD_GUIDES[card.id]);
@@ -447,8 +453,10 @@ function buildCardEntries(): CodexCatalogEntry[] {
 
 function buildRelicEntries(): CodexCatalogEntry[] {
   return (relicsData as any[]).map((relic) => {
+    const triggerLabel = getUiLabelZh(relic.trigger || 'Passive');
+    const rarityLabel = relic.corrupted ? getUiLabelZh('Corrupted') : getUiLabelZh((relic.price ?? 0) >= 180 ? 'Rare' : (relic.price ?? 0) >= 140 ? 'Uncommon' : 'Common');
     const mechanics = [
-      `触发时机：${relic.trigger || 'Passive'}`,
+      `触发时机：${triggerLabel}`,
       `核心效果：${effectSummary(relic.effect)}`
     ];
     if (relic.resonanceGroup) mechanics.push(`共振组：${relic.resonanceGroup}（多个同组奇物可能触发共振收益）`);
@@ -462,7 +470,7 @@ function buildRelicEntries(): CodexCatalogEntry[] {
     ]);
 
     const examples = uniqStrings([
-      `示例：携带《${relic.name}》进入战斗时，系统会在 ${relic.trigger || 'Passive'} 阶段自动处理效果。`
+      `示例：携带《${relic.name}》进入战斗时，系统会在${triggerLabel}自动处理效果。`
     ]);
     const loreFragments = [
       relic.inscription ? {
@@ -488,18 +496,18 @@ function buildRelicEntries(): CodexCatalogEntry[] {
       id: relic.id,
       name: relic.name,
       imageSrc: `/assets/relics/${relic.id}.png`,
-      rarity: relic.corrupted ? 'Corrupted' : ((relic.price ?? 0) >= 180 ? 'Rare' : (relic.price ?? 0) >= 140 ? 'Uncommon' : 'Common'),
-      subtitle: `Trigger · ${relic.trigger || 'Passive'}`,
+      rarity: rarityLabel,
+      subtitle: `触发 · ${triggerLabel}`,
       keywords,
       summary: relic.description || '奇物效果',
       mechanics,
       interactions,
       examples,
-      badges: uniqStrings([relic.corrupted ? 'Corrupted' : 'Standard', relic.trigger, relic.resonanceGroup, ...(relic.tags || []).slice(0, 4)]),
+      badges: uniqStrings([relic.corrupted ? getUiLabelZh('Corrupted') : '常规', triggerLabel, relic.resonanceGroup, ...(relic.tags || []).slice(0, 4)]),
       searchText: [...keywords, ...mechanics, ...interactions, ...examples, ...loreFragments.map((x) => `${x.label} ${x.text}`)].join(' ').toLowerCase(),
       dataPoints: [
         { label: '价格', value: String(relic.price ?? '-') },
-        { label: '触发', value: String(relic.trigger || 'Passive') },
+        { label: '触发', value: triggerLabel },
         { label: '共振', value: relic.resonanceGroup || '无' }
       ],
       loreFragments: loreFragments.length ? loreFragments : undefined

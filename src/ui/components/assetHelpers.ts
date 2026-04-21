@@ -4,8 +4,8 @@ export const ASSET_PLACEHOLDERS = {
   potion: '/assets/potions/healing_potion.png',
   character: '/assets/characters/informant.png',
   enemy: '/assets/enemies/goblin.png',
-  mapRoom: '/assets/map/map_event.png',
-  merchant: '/assets/map/map_shop.png'
+  mapRoom: '/assets/map/map_event.svg',
+  merchant: '/assets/map/map_shop.svg'
 } as const;
 
 export function localCardArt(id: string): string {

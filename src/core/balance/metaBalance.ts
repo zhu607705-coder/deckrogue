@@ -14,7 +14,6 @@ export function getAscensionMaxLevel(): number {
 
 export function getAscensionLevelConfig(level: number): any | null {
   const normalized = Math.max(0, Math.floor(Number(level) || 0));
-  if (normalized <= 0) return null;
   const levels = (metaBalance as any).ascension?.levels;
   if (!levels || typeof levels !== 'object') return null;
   return levels[String(normalized)] || null;

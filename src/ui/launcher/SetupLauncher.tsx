@@ -1,11 +1,13 @@
 import React from 'react';
 import type { MetaProfile, SaveSlot } from '@/core';
+import { getUiLabelZh } from '@/ui/content/terminology';
 
 interface SetupLauncherProps {
   canContinue: boolean;
   saveSlots: SaveSlot[];
   metaProfile: MetaProfile;
   onNewRun: () => void;
+  onOpenTutorial: () => void;
   onContinue: () => void;
   onLoadSlot: (slotId: string) => void;
   onDeleteSlot: (slotId: string) => void;
@@ -39,152 +41,219 @@ export function SetupLauncher({
   saveSlots,
   metaProfile,
   onNewRun,
+  onOpenTutorial,
   onContinue,
   onLoadSlot,
   onDeleteSlot,
   error
 }: SetupLauncherProps) {
   const latestRun = metaProfile.runHistory?.[0] || null;
+  const sortedSlots = saveSlots.slice().sort((a, b) => b.timestamp - a.timestamp);
 
   return (
-    <div className="min-h-screen w-full bg-black text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b_0%,#020617_45%,#000000_100%)] opacity-95" />
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(148,163,184,0.06),transparent_35%,rgba(168,85,247,0.08)_100%)]" />
+    <div className="launcher-shell relative min-h-screen w-full overflow-hidden text-white">
+      <div className="launcher-veil absolute inset-0" />
+      <div className="launcher-grain absolute inset-0 opacity-60" />
+      <div className="launcher-orb launcher-orb-left absolute" />
+      <div className="launcher-orb launcher-orb-right absolute" />
 
-      <div className="relative z-10 min-h-screen px-6 py-10 md:px-10 lg:px-14">
-        <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl flex-col justify-center gap-8">
-          <div className="max-w-3xl">
-            <div className="mb-3 text-xs uppercase tracking-[0.35em] text-slate-400">DeckRogue Launcher</div>
-            <h1 className="text-4xl font-black tracking-tight text-slate-50 md:text-6xl">
-              战区启动器
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
-              使用正式启动器进入游戏、继续上一次作战、管理存档和查看局外进度。
-              入口不再依赖直接打开单个 HTML 页面。
-            </p>
-            {error ? (
-              <div className="mt-4 rounded-xl border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-100">
-                {error}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-2xl backdrop-blur-md md:p-6">
-              <div className="mb-4 text-xs uppercase tracking-[0.22em] text-slate-500">启动操作</div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <button
-                  onClick={onNewRun}
-                  className="rounded-2xl border border-emerald-700/60 bg-emerald-950/40 px-5 py-4 text-left transition hover:border-emerald-500 hover:bg-emerald-900/40"
-                >
-                  <div className="text-sm uppercase tracking-[0.2em] text-emerald-300">New Run</div>
-                  <div className="mt-2 text-2xl font-bold text-white">开始新战区</div>
-                  <div className="mt-2 text-sm text-emerald-100/80">初始化新种子并进入角色选择。</div>
-                </button>
-
-                <button
-                  onClick={onContinue}
-                  disabled={!canContinue}
-                  className="rounded-2xl border border-violet-700/60 bg-violet-950/40 px-5 py-4 text-left transition enabled:hover:border-violet-500 enabled:hover:bg-violet-900/40 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <div className="text-sm uppercase tracking-[0.2em] text-violet-300">Continue</div>
-                  <div className="mt-2 text-2xl font-bold text-white">继续作战</div>
-                  <div className="mt-2 text-sm text-violet-100/80">优先读取快速存档，没有则读取最近存档。</div>
-                </button>
-              </div>
-
-              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-500">局外概览</div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">征用点</div>
-                    <div className="mt-2 text-xl font-bold text-amber-300">{metaProfile.currencies.requisition}</div>
-                  </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">亚空间回响</div>
-                    <div className="mt-2 text-xl font-bold text-violet-300">{metaProfile.currencies.warpEchoes}</div>
-                  </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">解锁角色</div>
-                    <div className="mt-2 text-xl font-bold text-cyan-200">{metaProfile.unlocks.characters.length}</div>
-                  </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">局数档案</div>
-                    <div className="mt-2 text-xl font-bold text-slate-100">{metaProfile.runHistory.length}</div>
-                  </div>
+      <div className="relative z-10 min-h-screen px-6 py-8 md:px-10 lg:px-14">
+        <div className="mx-auto max-w-7xl">
+          <section className="flex min-h-[calc(100vh-4rem)] flex-col justify-center py-10">
+            <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+              <div className="max-w-4xl">
+                <div className="launcher-kicker mb-4 text-[11px] uppercase tracking-[0.4em] text-amber-200/70">
+                  {getUiLabelZh('Ritual Access Node')}
                 </div>
-
+                <div className="launcher-brand reveal-rise">
+                  <div className="text-[clamp(3.75rem,11vw,8.8rem)] font-black uppercase leading-[0.85] tracking-[0.08em] text-amber-50">
+                    DeckRogue
+                  </div>
+                  <h1 className="mt-3 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-100">
+                    战区启动器
+                  </h1>
+                </div>
+                <p className="reveal-rise mt-6 max-w-xl text-sm leading-7 text-stone-300 md:text-base">
+                  继续推进三章节远征，管理作战档案，保留每一次失败后的可复现路径与下一局方向。
+                </p>
                 {latestRun ? (
-                  <div className="mt-4 rounded-xl border border-slate-800 bg-black/30 p-4">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">最近作战记录</div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-300">
-                      <span>层数：{latestRun.reachedFloor}</span>
-                      <span>结果：{latestRun.isVictory ? '胜利' : '失败'}</span>
-                      <span>结局：{latestRun.causeOfDeath}</span>
-                      <span>档案号：{latestRun.runId}</span>
-                    </div>
+                  <div className="reveal-rise mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-stone-300/80">
+                    <span>最近层数 {latestRun.reachedFloor}</span>
+                    <span>{latestRun.isVictory ? '最近结果 胜利' : '最近结果 失败'}</span>
+                    <span>记录号 {latestRun.runId}</span>
+                  </div>
+                ) : (
+                  <div className="reveal-rise mt-8 text-sm text-stone-400">当前还没有作战记录。</div>
+                )}
+                {error ? (
+                  <div className="reveal-rise mt-6 max-w-xl border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+                    {error}
                   </div>
                 ) : null}
               </div>
-            </section>
 
-            <section className="rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-2xl backdrop-blur-md md:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.22em] text-slate-500">存档面板</div>
-                  <div className="mt-1 text-lg font-semibold text-slate-100">本地作战档案</div>
+              <div className="launcher-panel reveal-rise overflow-hidden border border-white/10 bg-black/35 p-5 backdrop-blur-md md:p-6">
+                <div className="text-[11px] uppercase tracking-[0.34em] text-stone-400">{getUiLabelZh('Launch Sequence')}</div>
+                <div className="mt-5 space-y-3">
+                  <button
+                    onClick={onNewRun}
+                    className="launcher-action group w-full border border-emerald-500/35 bg-emerald-950/35 px-5 py-5 text-left transition hover:border-emerald-300 hover:bg-emerald-900/35"
+                    data-keyboard-option="1"
+                    data-keyboard-focus="true"
+                  >
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-300/75">{getUiLabelZh('New Run')}</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">开始新战区</div>
+                    <div className="mt-3 max-w-sm text-sm leading-6 text-emerald-50/80">
+                      初始化新种子并进入角色选择，沿着当前版本冻结线开始一局完整远征。
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={onContinue}
+                    disabled={!canContinue}
+                    className="launcher-action group w-full border border-amber-500/30 bg-amber-950/20 px-5 py-5 text-left transition enabled:hover:border-amber-200 enabled:hover:bg-amber-900/25 disabled:cursor-not-allowed disabled:opacity-40"
+                    data-keyboard-option="2"
+                    data-keyboard-focus="true"
+                  >
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-amber-200/70">{getUiLabelZh('Continue')}</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">继续作战</div>
+                    <div className="mt-3 max-w-sm text-sm leading-6 text-stone-200/80">
+                      优先读取快速存档，没有则读取最近普通槽位。
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={onOpenTutorial}
+                    className="launcher-action group w-full border border-sky-500/25 bg-sky-950/18 px-5 py-4 text-left transition hover:border-sky-300 hover:bg-sky-900/22"
+                    data-keyboard-focus="true"
+                  >
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-sky-200/70">战区教程</div>
+                    <div className="mt-2 text-xl font-semibold text-white">术语、资源与战斗流程</div>
+                    <div className="mt-3 max-w-sm text-sm leading-6 text-stone-200/80">
+                      先看一遍关键术语、回合顺序与房间推进规则，再进入正式远征。
+                    </div>
+                  </button>
                 </div>
-                <div className="text-xs text-slate-500">{saveSlots.length} 个槽位</div>
+
+                <div className="mt-6 border-t border-white/10 pt-5">
+                  <div className="text-[11px] uppercase tracking-[0.28em] text-stone-500">局外状态</div>
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                    <div>
+                      <dt className="text-stone-500">征用点</dt>
+                      <dd className="mt-1 text-2xl font-semibold text-amber-300">
+                        {metaProfile.currencies.requisition}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-stone-500">亚空间回响</dt>
+                      <dd className="mt-1 text-2xl font-semibold text-fuchsia-300">
+                        {metaProfile.currencies.warpEchoes}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-stone-500">解锁角色</dt>
+                      <dd className="mt-1 text-xl font-semibold text-stone-100">
+                        {metaProfile.unlocks.characters.length}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-stone-500">局数档案</dt>
+                      <dd className="mt-1 text-xl font-semibold text-stone-100">
+                        {metaProfile.runHistory.length}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-6 border-t border-white/10 py-10 lg:grid-cols-[0.8fr_1.2fr]">
+            <div className="space-y-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.34em] text-stone-500">{getUiLabelZh('Version State')}</div>
+                <h2 className="mt-3 text-2xl font-semibold text-stone-100">局外概览</h2>
+                <p className="mt-3 max-w-md text-sm leading-7 text-stone-400">
+                  当前版本冻结于六角色、三章节、六类节点结构。这里只显示影响继续作战和长期成长的关键状态。
+                </p>
+              </div>
+              <div className="space-y-3 text-sm text-stone-300/85">
+                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+                  <span>征用点</span>
+                  <span className="font-semibold text-amber-300">{metaProfile.currencies.requisition}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+                  <span>亚空间回响</span>
+                  <span className="font-semibold text-fuchsia-300">{metaProfile.currencies.warpEchoes}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+                  <span>解锁角色</span>
+                  <span className="font-semibold text-stone-100">{metaProfile.unlocks.characters.length}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-white/8 pb-3">
+                  <span>局数档案</span>
+                  <span className="font-semibold text-stone-100">{metaProfile.runHistory.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.34em] text-stone-500">{getUiLabelZh('Archive')}</div>
+                  <h2 className="mt-3 text-2xl font-semibold text-stone-100">本地作战档案</h2>
+                </div>
+                <div className="text-xs text-stone-500">{sortedSlots.length} 个槽位</div>
               </div>
 
-              {saveSlots.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-800 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+              {sortedSlots.length === 0 ? (
+                <div className="border border-dashed border-white/10 bg-black/15 px-4 py-8 text-center text-sm text-stone-500">
                   当前没有可用存档。
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {saveSlots
-                    .slice()
-                    .sort((a, b) => b.timestamp - a.timestamp)
-                    .map((slot) => (
-                      <div key={slot.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-slate-100">{slot.name}</div>
-                            <div className="mt-1 text-xs text-slate-500">
-                              {slot.id} · {formatTime(slot.timestamp)}
-                            </div>
-                          </div>
-                          <div className="rounded-lg border border-slate-700 bg-black/20 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                            Floor {slot.floor}
+                  {sortedSlots.map((slot, index) => (
+                    <div key={slot.id} className="border border-white/10 bg-black/20 px-4 py-4 backdrop-blur-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-base font-semibold text-stone-100">{slot.name}</div>
+                          <div className="mt-1 text-xs text-stone-500">
+                            {slot.id} · {formatTime(slot.timestamp)}
                           </div>
                         </div>
-
-                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                          <span>角色：{slot.characterId || '未知'}</span>
-                          <span>时长：{formatPlayTime(slot.playTime)}</span>
-                        </div>
-
-                        <div className="mt-4 flex gap-2">
-                          <button
-                            onClick={() => onLoadSlot(slot.id)}
-                            className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 transition hover:bg-slate-700"
-                          >
-                            读取
-                          </button>
-                          <button
-                            onClick={() => onDeleteSlot(slot.id)}
-                            className="rounded-xl border border-red-900/50 bg-red-950/20 px-3 py-2 text-sm text-red-200 transition hover:bg-red-900/20"
-                          >
-                            删除
-                          </button>
+                        <div className="border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-stone-400">
+                          第 {slot.floor} 层
                         </div>
                       </div>
-                    ))}
+
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-400">
+                        <span>角色：{slot.characterId || '未知'}</span>
+                        <span>时长：{formatPlayTime(slot.playTime)}</span>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => onLoadSlot(slot.id)}
+                          className="border border-white/10 bg-white/5 px-3 py-2 text-sm text-stone-100 transition hover:bg-white/10"
+                          data-keyboard-option={String(index + 3)}
+                          data-keyboard-focus="true"
+                        >
+                          读取
+                        </button>
+                        <button
+                          onClick={() => onDeleteSlot(slot.id)}
+                          className="border border-red-900/50 bg-red-950/15 px-3 py-2 text-sm text-red-200 transition hover:bg-red-900/20"
+                          data-keyboard-focus="true"
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-            </section>
-          </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

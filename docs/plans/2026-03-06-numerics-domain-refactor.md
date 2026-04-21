@@ -151,8 +151,8 @@ git commit -m "feat: add unified numerics regression diagnostics"
 ### Task 4: Update the development report
 
 **Files:**
-- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/development_report_2026-03-06.md`
-- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/development/README.md`
+- Modify: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/development-reports/project-development-report.md`
+- Refresh: `/Users/zhuhangcheng/Downloads/好玩/deckrogue/docs/reports/report_bundle.md`
 
 **Step 1: Rewrite the numerics architecture section**
 

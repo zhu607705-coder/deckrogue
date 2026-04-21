@@ -14,12 +14,14 @@ import {
 } from '@/core';
 import { CodexCatalogEntry, CodexDemoPanelDef, getCodexCatalog, getCodexCatalogCounts } from '@/ui/overlays/codexCatalog';
 import { getAchievementsLinkedToEntity } from '@/features/achievements/achievementSystem';
+import { GlossaryText } from '@/ui/components/GlossaryText';
+import { getUiLabelZh } from '@/ui/content/terminology';
 
 const CATEGORY_ORDER: Array<{ id: CodexCategory; label: string; icon: React.ReactNode; color: string }> = [
   { id: 'relics', label: '遗物', icon: <Shield size={14} />, color: 'text-violet-300' },
   { id: 'potions', label: '药水', icon: <FlaskConical size={14} />, color: 'text-emerald-300' },
   { id: 'cards', label: '卡牌', icon: <BookOpen size={14} />, color: 'text-amber-300' },
-  { id: 'enemies', label: '敌人', icon: <Swords size={14} />, color: 'text-rose-300' },
+  { id: 'enemies', label: '异端', icon: <Swords size={14} />, color: 'text-rose-300' },
   { id: 'elites', label: '精英怪', icon: <Swords size={14} />, color: 'text-orange-300' },
   { id: 'events', label: '事件', icon: <ScrollText size={14} />, color: 'text-cyan-300' }
 ];
@@ -235,7 +237,7 @@ export function CodexOverlay({
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-slate-100">
               <BookOpen size={18} className="text-amber-300" />
-              <h2 className="text-lg sm:text-xl font-serif tracking-wide">图鉴 / Codex</h2>
+              <h2 className="text-lg sm:text-xl font-serif tracking-wide">图鉴 / {getUiLabelZh('Codex')}</h2>
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
               遇见即解锁 · {totalUnlocked}/{totalEntries} 已解锁
@@ -384,10 +386,10 @@ export function CodexOverlay({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className={`text-sm font-semibold truncate ${unlocked ? 'text-slate-100' : 'text-slate-500'}`}>
+                            <div className={`text-sm font-semibold leading-snug break-words ${unlocked ? 'text-slate-100' : 'text-slate-500'}`}>
                               {unlocked ? entry.name : '未解锁条目'}
                             </div>
-                            <div className="text-[11px] text-slate-400 truncate">
+                            <div className="text-[11px] text-slate-400 leading-snug break-words">
                               {categoryLabel(entry.category)} · {unlocked ? (entry.subtitle || entry.rarity || '') : '遇见后显示'}
                             </div>
                           </div>
@@ -400,7 +402,7 @@ export function CodexOverlay({
                           </button>
                         </div>
                         <div className="mt-1 text-xs text-slate-400 line-clamp-2">
-                          {unlocked ? entry.summary : '完成一次遭遇、拾取、使用或进入相关事件后将自动解锁。'}
+                          {unlocked ? <GlossaryText text={entry.summary} /> : '完成一次遭遇、拾取、使用或进入相关事件后将自动解锁。'}
                         </div>
                       </div>
                     </div>
@@ -471,14 +473,14 @@ export function CodexOverlay({
                       </div>
 
                       <div className="mt-3 text-sm text-slate-200 leading-relaxed">
-                        {selectedUnlocked ? selectedEntry.summary : '该条目尚未解锁。进入相关战斗、事件、商店或获得对应物品后，图鉴会自动记录。'}
+                        {selectedUnlocked ? <GlossaryText text={selectedEntry.summary} /> : '该条目尚未解锁。进入相关战斗、事件、商店或获得对应物品后，图鉴会自动记录。'}
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {selectedEntry.dataPoints.map((dp) => (
                           <div key={dp.label} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
                             <div className="text-[10px] uppercase tracking-wide text-slate-500">{dp.label}</div>
-                            <div className="text-xs sm:text-sm text-slate-200 mt-0.5 break-words">{selectedUnlocked ? dp.value : '???'}</div>
+                            <div className="text-xs sm:text-sm text-slate-200 mt-0.5 break-words">{selectedUnlocked ? <GlossaryText text={dp.value} /> : '???'}</div>
                           </div>
                         ))}
                       </div>
@@ -495,7 +497,7 @@ export function CodexOverlay({
                     <div className="space-y-2 text-sm">
                       {(selectedUnlocked ? selectedEntry.mechanics : ['未解锁前仅显示概要。解锁后会展示完整机制拆解与示例。']).map((line, idx) => (
                         <div key={idx} className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-slate-200">
-                          <span className="text-slate-500 mr-2">#{idx + 1}</span>{line}
+                          <span className="text-slate-500 mr-2">#{idx + 1}</span><GlossaryText text={line} />
                         </div>
                       ))}
                     </div>
@@ -506,7 +508,7 @@ export function CodexOverlay({
                     <div className="space-y-2">
                       {(selectedUnlocked ? selectedEntry.interactions : ['遇见后解锁具体联动说明。']).map((line, idx) => (
                         <div key={idx} className="text-xs text-slate-300 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
-                          {line}
+                          <GlossaryText text={line} />
                         </div>
                       ))}
                     </div>
@@ -514,7 +516,7 @@ export function CodexOverlay({
                     <div className="space-y-2">
                       {(selectedUnlocked ? selectedEntry.examples : ['示例会在解锁后显示。']).map((line, idx) => (
                         <div key={idx} className="text-xs text-slate-300 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
-                          {line}
+                          <GlossaryText text={line} />
                         </div>
                       ))}
                     </div>
@@ -535,7 +537,7 @@ export function CodexOverlay({
                               </div>
                             )}
                           </div>
-                          <div className="mt-1 text-sm leading-relaxed">{fragment.text}</div>
+                          <div className="mt-1 text-sm leading-relaxed"><GlossaryText text={fragment.text} /></div>
                         </div>
                       ))}
                     </div>
@@ -552,7 +554,7 @@ export function CodexOverlay({
                     <ul className="space-y-2">
                       {selectedEntry.notes.map((note, idx) => (
                         <li key={idx} className="text-sm text-slate-300 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
-                          {note}
+                          <GlossaryText text={note} />
                         </li>
                       ))}
                     </ul>

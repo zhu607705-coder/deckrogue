@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GameEngine, MapNode } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { Eye, ZoomIn, ZoomOut, Maximize2, Skull, Flame } from 'lucide-react';
 import { MapIcon } from '@/ui/components/MapIcon';
 import { BackgroundVisualMode, getMapBackgroundTuning } from '@/ui/components/backgroundVisuals';
@@ -12,24 +13,26 @@ const ZOOM_STEP = 0.1;
 const WORLD_LORE = worldLoreData as any;
 
 const nodeTypeNames: Record<string, string> = {
-  Combat: '遭遇战 (Skirmish)',
-  Elite: '异端头目 (Heretic Elite)',
-  Event: '亚空间异动 (Warp Anomaly)',
-  Shop: '行商浪人 (Rogue Trader)',
-  Rest: '国教神龛 (Shrine)',
-  Boss: '大魔降世 (Greater Threat)'
+  Combat: '遭遇战',
+  Elite: '异端头目',
+  Event: '亚空间异动',
+  Shop: '行商浪人',
+  Rest: '国教神龛',
+  Boss: '大魔降世'
 };
 
 export function MapView({
   engine,
+  renderModel,
   backgroundVisualMode = 'balanced'
 }: {
   engine: GameEngine;
+  renderModel?: RenderModel | null;
   backgroundVisualMode?: BackgroundVisualMode;
 }) {
   const map = engine.state.map;
   const intel = engine.state.player.intel;
-  const currentNodeId = engine.state.currentNodeId;
+  const currentNodeId = renderModel?.map.currentNodeId ?? engine.state.currentNodeId;
 
   const [zoom, setZoom] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -50,15 +53,19 @@ export function MapView({
 
   const isNodeSelectable = (node: MapNode) => {
     if (engine.state.pendingNodeResolution) return false;
+    if (renderModel) {
+      return renderModel.map.availableNodeIds.includes(node.id);
+    }
     if (!currentNodeId) return node.y === 0;
     const currentNode = map.find(n => n.id === currentNodeId);
     return currentNode?.next.includes(node.id) ?? false;
   };
 
-  const currentY = map.find(n => n.id === currentNodeId)?.y ?? -1;
+  const currentY = renderModel?.map.currentFloor ? renderModel.map.currentFloor - 1 : map.find(n => n.id === currentNodeId)?.y ?? -1;
   const totalFloors = Math.max(...map.map(n => n.y)) + 1;
   const totalFloorSpan = Math.max(1, totalFloors - 1);
   const floorLabel = currentNodeId ? `扇区深度 ${currentY + 1}` : '空投区 (降落阶段)';
+  const selectableNodeIds = (renderModel?.map.availableNodeIds ?? map.filter(isNodeSelectable).slice(0, 10).map((node) => node.id)).slice(0, 10);
   const mapAtmosphere = WORLD_LORE?.viewAtmosphere?.Map || '';
   const currentNodeType = currentNodeId ? map.find(n => n.id === currentNodeId)?.type : null;
   const currentEnvironmentDescription = currentNodeType
@@ -163,7 +170,7 @@ export function MapView({
   }, [currentNodeId, map.length]);
 
   return (
-    <div className="grimdark-terminal-screen flex flex-col h-full text-[#d4d4d8]">
+    <div className="grimdark-terminal-screen campaign-shell flex flex-col h-full text-[#d4d4d8]">
       <div className="absolute inset-0 pointer-events-none">
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -200,8 +207,8 @@ export function MapView({
           <div className="flex items-center gap-3">
             <Skull size={28} className="text-[#b45309]" />
             <div>
-              <h1 className="grimdark-terminal-heading text-2xl font-black">全面净化指令</h1>
-              <div className="grimdark-terminal-kicker text-[10px]">Ordo Hereticus - Active Sector</div>
+              <div className="campaign-kicker">Ordo Hereticus - Active Sector</div>
+              <h1 className="campaign-title text-2xl font-black text-stone-100">全面净化指令</h1>
             </div>
           </div>
           <div className="grimdark-terminal-divider h-10" />
@@ -235,6 +242,7 @@ export function MapView({
             disabled={zoom >= MAX_ZOOM}
             className="grimdark-control-btn p-2 flex items-center justify-center"
             title="放大"
+            data-keyboard-focus="true"
           >
             <ZoomIn size={20} />
           </button>
@@ -248,6 +256,7 @@ export function MapView({
             disabled={zoom <= MIN_ZOOM}
             className="grimdark-control-btn p-2 flex items-center justify-center"
             title="缩小"
+            data-keyboard-focus="true"
           >
             <ZoomOut size={20} />
           </button>
@@ -256,6 +265,7 @@ export function MapView({
           onClick={resetView}
           className="grimdark-control-panel grimdark-control-btn p-2 rounded-sm backdrop-blur-sm"
           title="重置视图"
+          data-keyboard-focus="true"
         >
           <Maximize2 size={20} />
         </button>
@@ -340,6 +350,7 @@ export function MapView({
                     : isSelectable
                       ? 'grimdark-node-card--selectable'
                       : '';
+                const unknownClass = !node.revealed ? 'grimdark-node-card--unknown' : '';
                 const nodeCursorClass = isSelectable ? 'cursor-pointer' : isPast ? 'cursor-default' : 'cursor-not-allowed';
 
                 return (
@@ -353,7 +364,9 @@ export function MapView({
                       disabled={!isSelectable}
                       data-node-id={node.id}
                       data-floor={node.y}
-                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${nodeCursorClass} w-28 min-h-[90px] px-2.5 py-2.5 flex flex-col items-center justify-center gap-2`}
+                      data-keyboard-focus="true"
+                      data-keyboard-option={isSelectable ? String(selectableNodeIds.indexOf(node.id) + 1) : undefined}
+                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${unknownClass} ${nodeCursorClass} w-28 min-h-[90px] px-2.5 py-2.5 flex flex-col items-center justify-center gap-2`}
                     >
                       {node.revealed ? (
                         <>
@@ -367,22 +380,25 @@ export function MapView({
                           <span className="text-[10px] font-bold tracking-wide text-center leading-tight uppercase">{typeName}</span>
                         </>
                       ) : (
-                        <div className="grimdark-node-card__iconFrame grimdark-node-card__iconFrame--unknown w-10 h-10 flex items-center justify-center">
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="w-7 h-7 text-[#d4d4d8]"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-label="Unknown room"
-                          >
-                            <path d="M9.1 9a3 3 0 1 1 5.2 2c-.7.8-1.5 1.2-2 1.9-.3.4-.4.8-.4 1.6" />
-                            <circle cx="12" cy="17.3" r="0.8" fill="currentColor" stroke="none" />
-                            <circle cx="12" cy="12" r="9.2" opacity="0.25" />
-                          </svg>
-                        </div>
+                        <>
+                          <div className="grimdark-node-card__iconFrame grimdark-node-card__iconFrame--unknown w-10 h-10 flex items-center justify-center">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-7 h-7 text-[#d4d4d8]"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-label="未探明区域"
+                            >
+                              <path d="M9.1 9a3 3 0 1 1 5.2 2c-.7.8-1.5 1.2-2 1.9-.3.4-.4.8-.4 1.6" />
+                              <circle cx="12" cy="17.3" r="0.8" fill="currentColor" stroke="none" />
+                              <circle cx="12" cy="12" r="9.2" opacity="0.25" />
+                            </svg>
+                          </div>
+                          <span className="grimdark-node-card__unknownLabel">未探明</span>
+                        </>
                       )}
                     </button>
 
@@ -396,6 +412,7 @@ export function MapView({
                       <button 
                         onClick={(e) => { e.stopPropagation(); engine.revealNode(node.id); }}
                         className="grimdark-node-reveal-btn absolute -bottom-12 text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-none transition-all"
+                        data-keyboard-focus="true"
                       >
                         <Eye size={12} />
                         启动侦测
