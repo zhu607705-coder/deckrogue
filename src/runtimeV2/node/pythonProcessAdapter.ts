@@ -3,6 +3,8 @@ import path from 'node:path';
 import readline from 'node:readline';
 
 import { RunGenerator } from '@/core/events/runGenerator';
+import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
+import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
 import type { EngineHostStartOptions, RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
 
@@ -20,6 +22,8 @@ type PythonResponse = {
   error?: string;
   snapshot?: Record<string, unknown>;
 };
+
+const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
 
 function snakeToCamelKey(key: string): string {
   return key.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
@@ -47,10 +51,67 @@ function convertKeys(value: unknown, keyMapper: (key: string) => string): unknow
 function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapshot {
   const converted = convertKeys(snapshot, snakeToCamelKey) as Partial<RuleSnapshot>;
   const player = converted.player ?? ({} as RuleSnapshot['player']);
+  const rawPlayer = (snapshot.player as Record<string, unknown> | undefined) ?? {};
+  const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
+    ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
+    ?? {};
+  const normalizedRelicStates = Object.fromEntries(
+    Object.entries(rawRelicStates).map(([key, value]) => [key, convertKeys(value, snakeToCamelKey)]),
+  ) as RuleSnapshot['player']['relicStates'];
   const map = converted.map ?? { currentNodeId: null, nodes: [] };
   const combat = converted.combat ?? null;
   const reward = converted.reward ?? null;
+  const shop = converted.shop ?? null;
   const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
+  const derivedRouteState = (() => {
+    if (converted.routeState) {
+      return converted.routeState;
+    }
+    const characterId = player.characterId ?? null;
+    if (!characterId) {
+      return null;
+    }
+    const knownRouteTags = getKnownRouteTagsForCharacter(characterId);
+    if (knownRouteTags.length === 0) {
+      return null;
+    }
+    const deckCards = (player.deck ?? []).map((cardId) => ({ id: cardId }));
+    const baseRouteState = deriveRouteStateFromDeck(deckCards, knownRouteTags, null);
+    const startingDeckSize =
+      runtimeV2ContentBundle.characters.find((entry) => entry.id === characterId)?.starting_deck.length ?? deckCards.length;
+    if (!baseRouteState.primaryTag || deckCards.length <= startingDeckSize) {
+      return baseRouteState;
+    }
+    const currentNode = (map.nodes ?? []).find((entry) => entry.id === map.currentNodeId);
+    const floor = currentNode ? currentNode.y + 1 : 1;
+    const source =
+      converted.lifecycle?.phase === 'shop'
+        ? 'shop'
+        : converted.lifecycle?.phase === 'event'
+          ? 'event'
+          : converted.lifecycle?.phase === 'rest'
+            ? 'rest'
+            : converted.lifecycle?.phase === 'upgrade'
+              ? 'upgrade'
+              : converted.lifecycle?.phase === 'enchant'
+                ? 'enchant'
+                : converted.lifecycle?.phase === 'relic_upgrade'
+                  ? 'relic_upgrade'
+                  : 'reward';
+    return deriveRouteStateFromDeck(deckCards, knownRouteTags, {
+      ...baseRouteState,
+      recentCommits: [
+        {
+          tag: baseRouteState.primaryTag,
+          source,
+          floor,
+          weight: 12,
+        },
+      ],
+    });
+  })();
+
+  const activeEventData = converted.activeEvent?.data as Record<string, unknown> | undefined;
 
   return {
     schemaVersion: converted.schemaVersion ?? 2,
@@ -72,6 +133,7 @@ function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapsho
       deck: player.deck ?? [],
       relicIds: player.relicIds ?? [],
       potionIds: player.potionIds ?? [],
+      relicStates: normalizedRelicStates,
     },
     map: {
       currentNodeId: map.currentNodeId ?? null,
@@ -96,12 +158,37 @@ function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapsho
           source: reward.source ?? 'combat',
         }
       : null,
-    activeEvent: converted.activeEvent ?? null,
+    shop: shop
+      ? {
+          cards: shop.cards ?? [],
+          relics: shop.relics ?? [],
+          potions: shop.potions ?? [],
+          cardRemovalCost: shop.cardRemovalCost ?? 75,
+        }
+      : null,
+    activeEvent: converted.activeEvent
+      ? {
+          ...converted.activeEvent,
+          lastChoiceId: (converted.activeEvent.lastChoiceId as string | undefined) ?? (activeEventData?.lastChoiceId as string | undefined) ?? null,
+          choiceRole:
+            (converted.activeEvent.choiceRole as 'confirm' | 'payoff' | 'pivot' | 'support' | undefined)
+            ?? (activeEventData?.choiceRole as 'confirm' | 'payoff' | 'pivot' | 'support' | undefined)
+            ?? null,
+          outcomeKind:
+            (converted.activeEvent.outcomeKind as 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | undefined)
+            ?? (activeEventData?.outcomeKind as 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | undefined)
+            ?? null,
+        }
+      : null,
+    routeState: derivedRouteState,
+    surfaceContext: converted.surfaceContext ?? null,
+    roomSession: converted.roomSession ?? null,
     meta: {
       runId: meta.runId ?? null,
       replayLength: meta.replayLength ?? 0,
       generatedAt: meta.generatedAt ?? new Date(0).toISOString(),
       adapter: 'python-wasm',
+      runtimeRngState: meta.runtimeRngState ?? 0,
     },
   };
 }

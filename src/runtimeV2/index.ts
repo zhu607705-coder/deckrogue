@@ -16,6 +16,13 @@ export type {
   SaveGameV2,
 } from './contracts';
 export { normalizeLegacyGameState } from './normalizeLegacyGameState';
+export {
+  projectRuleActiveEventForParity,
+  readLegacyActiveEventOutcome,
+  readRuleActiveEventOutcome,
+  type ActiveEventParityProjection,
+  type ActiveEventOutcomeProjection,
+} from './activeEventOutcome';
 export { migrateLegacySaveDataToSaveGameV2 } from './migration';
 export { createRenderModel } from './renderModel';
 export { createLegacyRenderModel } from './legacyRenderBridge';
@@ -23,6 +30,33 @@ export { EngineHost, createEngineHost } from './bridge/engineHost';
 export { LegacyOracleAdapter, createLegacyOracleAdapter } from './bridge/legacyOracleAdapter';
 export { PythonWasmAdapter, createPythonWasmAdapter } from './bridge/pythonWasmAdapter';
 export { buildRuntimeV2ContentBundle } from './content/buildContentBundle';
+export { ContentService, getContentService, resetContentService } from './content/contentService';
+export type { CardData, CharacterData, EnemyData, RelicData } from './content/contentService';
+export type {
+  UIModel,
+  UICard,
+  UIPlayerModel,
+  UIMapModel,
+  UIRoomModel,
+  UICombatModel,
+  UIRewardModel,
+  UIEventModel,
+  UINotification,
+  ScreenId,
+  RoomKind,
+  CardType,
+  CardRarity,
+} from './uiModel';
+export { UIModelConverter, getUIModelConverter, convertToUIModel } from './uiModelConverter';
+export { EventBus, getEventBus, resetEventBus } from './eventBus';
+export type { EventType, UIEvent, CombatDamageEvent, RewardOfferedEvent, PlayerStatChangedEvent } from './eventBus';
+export { UIModelManager, getUIModelManager, resetUIModelManager } from './uiModelManager';
+export type { Change, ChangeEvent } from './uiModelManager';
+export { deepEqual, generateHash } from './utils';
+export { PluginManager, VersionManager, getPluginManager, getVersionManager, resetPluginManager, resetVersionManager } from './pluginSystem';
+export type { UIPlugin, UISystem, UIModelVersion } from './pluginSystem';
+export { ErrorHandler, getErrorHandler, resetErrorHandler } from './errorHandler';
+export type { ValidationResult, ErrorContext } from './errorHandler';
 export {
   runParityScenario,
   runResolvedParityScenario,
@@ -37,6 +71,7 @@ export {
   type MapSnapshotComparison,
   type ParityReportEntry,
   type ParityReportSummary,
+  type RuleCommandSemanticCode,
 } from './parityReport';
 export {
   appendReplayCommand,
@@ -100,12 +135,14 @@ export {
   RestScene,
   EventScene,
   ShopScene,
+  SurfaceScene,
   type MapSceneComponentProps,
   type CombatSceneComponentProps,
   type RewardSceneComponentProps,
   type RestSceneComponentProps,
   type EventSceneComponentProps,
   type ShopSceneComponentProps,
+  type SurfaceSceneProps,
 } from './scenes';
 export {
   COLORS,

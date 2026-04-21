@@ -34,12 +34,12 @@ export function safeStorageGet<T>(key: string, defaultValue: T): StorageResult<T
     if (!storage) {
       return { success: false, value: defaultValue, error: STORAGE_UNAVAILABLE };
     }
-    
+
     const raw = storage.getItem(key);
     if (raw === null) {
       return { success: true, value: defaultValue };
     }
-    
+
     const parsed = JSON.parse(raw);
     return { success: true, value: parsed };
   } catch (error) {
@@ -54,21 +54,21 @@ export function safeStorageSet<T>(key: string, value: T): StorageResult<void> {
     if (!storage) {
       return { success: false, value: null, error: STORAGE_UNAVAILABLE };
     }
-    
+
     const serialized = JSON.stringify(value);
     storage.setItem(key, serialized);
     return { success: true, value: null };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown storage error';
-    
+
     if (errorMessage.includes('quota') || errorMessage.includes('QuotaExceededError')) {
       return { success: false, value: null, error: 'Storage quota exceeded. Please free up some space.' };
     }
-    
+
     if (errorMessage.includes('permission') || errorMessage.includes('access')) {
       return { success: false, value: null, error: 'Storage access denied. Please check browser permissions.' };
     }
-    
+
     return { success: false, value: null, error: errorMessage };
   }
 }
@@ -79,7 +79,7 @@ export function safeStorageRemove(key: string): StorageResult<void> {
     if (!storage) {
       return { success: false, value: null, error: STORAGE_UNAVAILABLE };
     }
-    
+
     storage.removeItem(key);
     return { success: true, value: null };
   } catch (error) {
@@ -94,7 +94,7 @@ export function safeStorageClear(): StorageResult<void> {
     if (!storage) {
       return { success: false, value: null, error: STORAGE_UNAVAILABLE };
     }
-    
+
     storage.clear();
     return { success: true, value: null };
   } catch (error) {
@@ -107,7 +107,7 @@ export function getStorageSize(): number {
   try {
     const storage = getStorage();
     if (!storage) return 0;
-    
+
     let total = 0;
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
@@ -136,10 +136,10 @@ export function getStorageQuota(): { used: number; available: number } {
 
 export function withStorageFallback<T>(key: string, getValue: () => T, defaultValue: T): T {
   const result = safeStorageGet<T>(key, defaultValue);
-  if (result.success && result.value !== defaultValue) {
-    return result.value;
+  if (result.success) {
+    return result.value ?? defaultValue;
   }
-  
+
   const newValue = getValue();
   safeStorageSet(key, newValue);
   return newValue;

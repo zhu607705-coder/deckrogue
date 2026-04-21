@@ -4,7 +4,7 @@
  * Do NOT use for rule progression - use ResolutionPipeline instead.
  * Rule progression should go through: ResolutionIntent -> ResolutionPipeline -> ResolutionResult
  */
-export type GameEvent = 
+export type GameEvent =
   | { type: 'GameShutdown'; timestamp: number }
   | { type: 'RunStarted'; seed: number; timestamp: number }
   | { type: 'RunLoaded'; slotId: string; seed: number; timestamp: number }
@@ -12,6 +12,8 @@ export type GameEvent =
   | { type: 'GameResumed'; timestamp: number }
   | { type: 'TurnStart'; playerTurn: boolean }
   | { type: 'TurnEnd'; playerTurn: boolean }
+  | { type: 'ActionStart'; actionId: string; sequence: number; actionType: string; source: string; sourceId?: string; targetId?: string; cardId?: string; cardInstanceId?: string }
+  | { type: 'ActionEnd'; actionId: string; sequence: number; actionType: string; source: string; sourceId?: string; targetId?: string; cardId?: string; cardInstanceId?: string }
   | { type: 'CombatStart' }
   | { type: 'CombatVictory' }
   | { type: 'CombatEnd'; victory: boolean }

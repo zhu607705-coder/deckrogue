@@ -95,3 +95,24 @@ test('rest route advice falls back to heal stability when route sustain actions 
   assert.equal(advice.actionHints.enchant, undefined);
   assert.equal(advice.actionHints.relic_upgrade, undefined);
 });
+
+test('rest route advice treats affinity override cards as aligned enchant targets', () => {
+  const advice = buildRestRouteAdvice({
+    characterId: 'informant',
+    deck: [
+      makeRuntimeCard('planted_witness', 'route-confirm'),
+      makeRuntimeCard('sealed_testimony', 'override-enchant'),
+    ],
+    relicIds: [],
+    currentHp: 30,
+    maxHp: 40,
+    canHeal: true,
+    canUpgrade: false,
+    canEnchant: true,
+    canUpgradeRelic: false,
+  });
+
+  assert.equal(advice.preferredRouteTag, 'informant:evidence');
+  assert.equal(advice.primaryAction, 'enchant');
+  assert.equal(advice.actionHints.enchant?.routeTag, 'informant:evidence');
+});

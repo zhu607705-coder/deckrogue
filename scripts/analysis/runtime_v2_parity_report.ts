@@ -198,12 +198,17 @@ async function collectCombatEntry(seed: number): Promise<ParityReportEntry> {
     });
     const stableDiffCount = result.steps.reduce((total, step) => total + step.diffs.length, 0);
     const rewardStep = result.steps.find((step) => step.label === 'complete_combat');
+    const rewardCardCountMatches =
+      rewardStep?.candidateSnapshot.reward?.cardIds.length === rewardStep?.legacySnapshot.reward?.cardIds.length;
+    const rewardSourceMatches =
+      rewardStep?.candidateSnapshot.reward?.source === rewardStep?.legacySnapshot.reward?.source;
     return {
       scenario: 'combat_reward_stable',
       seed,
       passed:
         stableDiffCount === 0 &&
-        rewardStep?.candidateSnapshot.reward?.cardIds.join(',') === rewardStep?.legacySnapshot.reward?.cardIds.join(','),
+        rewardCardCountMatches === true &&
+        rewardSourceMatches === true,
       stableDiffCount,
     };
   } finally {

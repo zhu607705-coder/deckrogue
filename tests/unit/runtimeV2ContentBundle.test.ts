@@ -26,6 +26,9 @@ test('runtime v2 content bundle projects real character and enemy content for th
   assert.ok(bundle.map.encounters.normal.length > 0);
   assert.ok(bundle.map.encounters.elite.length > 0);
   assert.ok(bundle.map.encounters.boss.length > 0);
+  assert.equal(bundle.map.runtime_strategy?.floor_type_caps?.Event, 1);
+  assert.equal(bundle.map.runtime_strategy?.opening_route_expectation?.max_spread, 15);
+  assert.equal(bundle.map.runtime_strategy?.opening_route_expectation?.max_branches_per_floor?.floor_1, 2);
 
   const informant = bundle.characters.find((entry) => entry.id === 'informant');
   const informantSource = charactersData.find((entry) => entry.id === 'informant');

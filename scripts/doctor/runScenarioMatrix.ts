@@ -320,7 +320,7 @@ function scenarioCheckpointRestart(): Omit<ScenarioResult, 'scenarioId' | 'chara
     if (combat.enemies[0]) {
       combat.enemies[0].hp = Math.max(0, combat.enemies[0].hp - 5);
     }
-    const restarted = engine.restartCombatFromCheckpoint(checkpoint);
+    const restarted = engine.restartCombatFromCheckpoint();
     assertCondition(restarted, 'restartCombatFromCheckpoint returned false');
     const after = snapshotCombatSignature(engine.state);
     assertCondition(JSON.stringify(before.enemyDefs) === JSON.stringify(after.enemyDefs), 'enemy lineup mismatch after restart');

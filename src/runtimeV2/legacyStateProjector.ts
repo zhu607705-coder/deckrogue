@@ -39,6 +39,7 @@ export interface LegacyStateProjection {
     deckIds: string[];
     relicIds: string[];
     potionIds: string[];
+    relicStates?: Record<string, { level?: number; progress?: number; corrupted?: boolean }>;
   };
   map: GameState['map'];
   currentNodeId: string | null;
@@ -76,6 +77,9 @@ function cloneSurfaceContext(surfaceContext: GameState['surfaceContext']): GameS
 
 export function projectRuleSnapshotToLegacyState(snapshot: RuleSnapshot): LegacyStateProjection {
   const surfaceContext = cloneSurfaceContext(snapshot.surfaceContext ?? null);
+  const hasActiveRoomSession =
+    !!snapshot.roomSession &&
+    (snapshot.lifecycle.pendingNodeResolution || snapshot.lifecycle.phase !== 'map');
   return {
     characterId: snapshot.player.characterId,
     player: {
@@ -88,6 +92,9 @@ export function projectRuleSnapshotToLegacyState(snapshot: RuleSnapshot): Legacy
       deckIds: [...snapshot.player.deck],
       relicIds: [...snapshot.player.relicIds],
       potionIds: [...snapshot.player.potionIds],
+      relicStates: Object.fromEntries(
+        Object.entries(snapshot.player.relicStates ?? {}).map(([relicId, relicState]) => [relicId, { ...relicState }])
+      ),
     },
     map: snapshot.map.nodes.map((node) => ({
       id: node.id,
@@ -99,10 +106,10 @@ export function projectRuleSnapshotToLegacyState(snapshot: RuleSnapshot): Legacy
     })),
     currentNodeId: snapshot.map.currentNodeId,
     screen: coerceLegacyScreen(snapshot.lifecycle.screen),
-    pendingNodeResolution: !!(snapshot.roomSession ?? snapshot.lifecycle.pendingNodeResolution),
+    pendingNodeResolution: snapshot.lifecycle.pendingNodeResolution || hasActiveRoomSession,
     routeState: cloneRouteState(snapshot.routeState ?? null),
     surfaceContext,
-    roomSession: snapshot.roomSession
+    roomSession: hasActiveRoomSession && snapshot.roomSession
       ? {
           token: snapshot.roomSession.token,
           nodeId: snapshot.roomSession.nodeId,

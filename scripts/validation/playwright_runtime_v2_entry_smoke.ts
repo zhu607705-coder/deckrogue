@@ -31,7 +31,7 @@ function appendQuery(url: string, query: string) {
 async function bootToCharacterSelect(page: Page, url: string, screenshotPath: string) {
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.getByText('Launch Runtime V2').waitFor({ timeout: 10_000 });
-  await page.getByRole('button', { name: 'Start New Run' }).click();
+  await page.getByRole('button', { name: /开始新局|Start New Run/ }).click();
   await page.locator('[data-screen="CharacterSelect"]').waitFor({ timeout: 30_000 });
   await page.screenshot({ path: screenshotPath, fullPage: true });
 }
@@ -93,7 +93,7 @@ async function main() {
       throw new Error('runtime-v2 entry smoke failed: python-wasm DOM path did not expose dom renderer.');
     }
     await page.locator('button[data-character-id="informant"]').click();
-    await page.getByText('Map Route').waitFor({ timeout: 30_000 });
+    await page.locator('[data-screen="Map"][data-renderer="dom"][data-adapter="python-wasm"]').waitFor({ timeout: 30_000 });
     report.checks.push({ label: 'python_dom_map', status: 'passed', detail: 'python-wasm + DOM path advanced to DOM map.' });
 
     const pythonPixiUrl = appendQuery(options.url, 'runtimeV2=1&adapter=python-wasm&renderer=pixi&seed=2468');
@@ -109,7 +109,7 @@ async function main() {
       throw new Error('runtime-v2 entry smoke failed: legacy adapter path did not expose legacy adapter.');
     }
     await page.locator('button[data-character-id="informant"]').click();
-    await page.getByText('Map Route').waitFor({ timeout: 30_000 });
+    await page.locator('[data-screen="Map"][data-renderer="dom"][data-adapter="legacy"]').waitFor({ timeout: 30_000 });
     report.checks.push({ label: 'legacy_adapter_dom_map', status: 'passed', detail: 'legacy adapter + DOM path advanced to DOM map.' });
 
     const legacyFallbackUrl = appendQuery(options.url, 'legacy=1');

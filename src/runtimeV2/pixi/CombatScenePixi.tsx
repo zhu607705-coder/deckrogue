@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { CombatSceneProps } from '../sceneProps';
-import { createTextStyle, drawRoundedRect, COLORS } from './pixiUtils';
+import {
+  createDedupedPointerHandler,
+  createTextStyle,
+  dispatchPixiCanvasHit,
+  drawRoundedRect,
+  COLORS,
+  publishPixiHitTargets,
+  type PixiHitHandler,
+} from './pixiUtils';
 
 export interface CombatScenePixiProps {
   scene: CombatSceneProps;
@@ -23,6 +31,8 @@ export function CombatScenePixi({
 }: CombatScenePixiProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
+  const hitHandlersRef = useRef<PixiHitHandler[]>([]);
 
   useEffect(() => {
     if (!containerRef.current || appRef.current) {
@@ -30,8 +40,8 @@ export function CombatScenePixi({
     }
 
     const app = new Application();
-    
-    app.init({
+
+    const initPromise = app.init({
       width,
       height,
       backgroundColor: COLORS.background,
@@ -39,18 +49,26 @@ export function CombatScenePixi({
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
     }).then(() => {
+      app.stage.eventMode = 'static';
+      app.stage.hitArea = app.screen;
       if (containerRef.current && app.canvas) {
         containerRef.current.appendChild(app.canvas);
+        app.canvas.addEventListener('click', (event) => dispatchPixiCanvasHit(event, hitHandlersRef.current));
         appRef.current = app;
         renderCombat(app);
       }
+    }).catch((error) => {
+      console.error('[CombatScenePixi] Pixi Application init failed:', error);
     });
+
+    initPromiseRef.current = initPromise;
 
     return () => {
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
         appRef.current = null;
       }
+      initPromiseRef.current = null;
     };
   }, [width, height]);
 
@@ -63,9 +81,20 @@ export function CombatScenePixi({
 
   const renderCombat = useCallback((app: Application) => {
     const stage = app.stage;
+
+    const existingChildren = stage.children.slice();
     stage.removeChildren();
+    existingChildren.forEach(child => {
+      if (child instanceof Container) {
+        child.removeAllListeners();
+      }
+      if ('destroy' in child && typeof child.destroy === 'function') {
+        child.destroy({ children: true });
+      }
+    });
 
     const { player, combat, room } = scene;
+    const targets: PixiHitHandler[] = [];
 
     const hudContainer = new Container();
     stage.addChild(hudContainer);
@@ -110,6 +139,17 @@ export function CombatScenePixi({
     blockText.x = 220;
     blockText.y = 10;
     hudContainer.addChild(blockText);
+
+    if (room.guidance) {
+      const guidanceText = new Text({
+        text: `${room.guidance.headline}: ${room.guidance.routeLabel ? `${room.guidance.routeLabel} · ` : ''}${room.guidance.reason}`,
+        style: createTextStyle({ fontSize: 12, fill: COLORS.highlight, wordWrap: true, wordWrapWidth: width - 80 }),
+      });
+      guidanceText.x = width / 2;
+      guidanceText.y = 48;
+      guidanceText.anchor.set(0.5, 0);
+      hudContainer.addChild(guidanceText);
+    }
 
     const enemiesContainer = new Container();
     stage.addChild(enemiesContainer);
@@ -192,11 +232,11 @@ export function CombatScenePixi({
 
     const handY = height - CARD_HEIGHT - 30;
     const cardSpacing = CARD_WIDTH + 10;
-    const totalHandWidth = combat.hand.length * cardSpacing - 10;
-    const handStartX = (width - totalHandWidth) / 2 + CARD_WIDTH / 2;
+    const totalHandWidth = combat.handCards.length * cardSpacing - 10;
+    const handStartX = totalHandWidth > 0 ? (width - totalHandWidth) / 2 + CARD_WIDTH / 2 : width / 2;
 
-    for (let i = 0; i < combat.hand.length; i++) {
-      const cardId = combat.hand[i];
+    for (let i = 0; i < combat.handCards.length; i++) {
+      const card = combat.handCards[i];
       const cardContainer = new Container();
       cardContainer.x = handStartX + i * cardSpacing;
       cardContainer.y = handY;
@@ -216,11 +256,20 @@ export function CombatScenePixi({
       cardContainer.addChild(cardGraphics);
 
       const cardText = new Text({
-        text: cardId.substring(0, 10),
+        text: `${card.cost} ${card.name}`.substring(0, 12),
         style: createTextStyle({ fontSize: 9, fill: COLORS.text }),
       });
       cardText.anchor.set(0.5);
+      cardText.y = -8;
       cardContainer.addChild(cardText);
+
+      const hintText = new Text({
+        text: card.playHint.substring(0, 18),
+        style: createTextStyle({ fontSize: 7, fill: COLORS.textMuted, wordWrap: true, wordWrapWidth: CARD_WIDTH - 8 }),
+      });
+      hintText.anchor.set(0.5, 0);
+      hintText.y = 8;
+      cardContainer.addChild(hintText);
 
       handContainer.addChild(cardContainer);
     }
@@ -246,6 +295,7 @@ export function CombatScenePixi({
     endCombatBtn.y = 60;
     endCombatBtn.eventMode = 'static';
     endCombatBtn.cursor = 'pointer';
+    endCombatBtn.hitArea = new Rectangle(-60, -20, 120, 40);
 
     const btnGraphics = new Graphics();
     drawRoundedRect(btnGraphics, -40, -15, 80, 30, 6, COLORS.highlight);
@@ -268,10 +318,22 @@ export function CombatScenePixi({
       drawRoundedRect(btnGraphics, -40, -15, 80, 30, 6, COLORS.highlight);
       btnGraphics.alpha = 1;
     });
-    endCombatBtn.on('click', onComplete);
-    endCombatBtn.on('tap', onComplete);
+    const activateComplete = createDedupedPointerHandler(onComplete);
+    endCombatBtn.on('click', activateComplete);
+    endCombatBtn.on('tap', activateComplete);
+    endCombatBtn.on('pointertap', activateComplete);
+    targets.push({
+      action: 'complete_combat',
+      x: endCombatBtn.x,
+      y: endCombatBtn.y,
+      width: 120,
+      height: 40,
+      handler: activateComplete,
+    });
 
     stage.addChild(endCombatBtn);
+    hitHandlersRef.current = targets;
+    publishPixiHitTargets('Combat', width, height, targets);
   }, [scene, width, height, onComplete]);
 
   return <div ref={containerRef} className="combat-scene-pixi" style={{ width, height }} />;

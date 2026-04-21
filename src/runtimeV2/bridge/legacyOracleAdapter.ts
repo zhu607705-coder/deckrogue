@@ -9,9 +9,13 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
   private engineUnsubscribe: (() => void) | null = null;
   private listeners = new Set<(snapshot: RuleSnapshot) => void>();
 
+  private createEngine(seed?: number): GameEngine {
+    return new GameEngine(seed, null, { enableRuntimeDelegation: false });
+  }
+
   async start(options: EngineHostStartOptions = {}): Promise<RuleSnapshot> {
     this.dispose();
-    this.engine = new GameEngine(options.seed, null, { enableRuntimeDelegation: false });
+    this.engine = this.createEngine(options.seed);
     this.engineUnsubscribe = this.engine.subscribe(() => {
       this.snapshot = normalizeLegacyGameState(this.engine!.state, this.engine!.getSaveData());
       this.emit();
@@ -36,6 +40,17 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
       throw new Error('Legacy oracle adapter failed to initialize GameEngine');
     }
 
+    const resolveDeckInstanceId = (token?: string): string | undefined => {
+      if (!token) return undefined;
+      const [indexPart, rawCardId] = token.split(':');
+      const index = Number(indexPart);
+      if (Number.isInteger(index) && index >= 0) {
+        return this.engine!.state.player.deck[index]?.instanceId;
+      }
+      const normalizedCardId = rawCardId ?? token;
+      return this.engine!.state.player.deck.find((card) => card.id === normalizedCardId)?.instanceId;
+    };
+
     if (command.type === 'start_run') {
       return this.start({ seed: command.seed });
     }
@@ -54,6 +69,50 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
 
     if (command.type === 'leave_room') {
       this.engine.leaveCurrentRoomToMap();
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'cancel_surface') {
+      if (this.engine.state.screen === 'Upgrade') {
+        this.engine.cancelUpgrade();
+      } else if (this.engine.state.screen === 'RemoveCard') {
+        this.engine.cancelCardRemoval();
+      } else if (this.engine.state.screen === 'Enchant') {
+        this.engine.cancelEnchant();
+      } else if (this.engine.state.screen === 'RelicUpgrade') {
+        this.engine.cancelRelicUpgrade();
+      } else {
+        throw new Error('cancel_surface is only valid during upgrade, remove_card, enchant, or relic_upgrade phase');
+      }
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'buy_shop_card') {
+      const shopCard = this.engine.state.shopCards.find((card) => card.id === command.cardId);
+      if (!shopCard) {
+        throw new Error(`Shop card is not offered: ${command.cardId}`);
+      }
+      this.engine.buyShopCard(shopCard.instanceId);
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'buy_shop_relic') {
+      if (!this.engine.state.shopRelics.includes(command.relicId)) {
+        throw new Error(`Shop relic is not offered: ${command.relicId}`);
+      }
+      this.engine.buyShopRelic(command.relicId);
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'buy_shop_potion') {
+      if (!this.engine.state.shopPotions.includes(command.potionId)) {
+        throw new Error(`Shop potion is not offered: ${command.potionId}`);
+      }
+      this.engine.buyShopPotion(command.potionId);
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
     }
@@ -107,16 +166,69 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
       return this.snapshot;
     }
 
+    if (command.type === 'enter_enchant') {
+      if (this.engine.state.screen === 'Rest') {
+        this.engine.restEnchant();
+      } else if (this.engine.state.screen === 'Shop') {
+        this.engine.enterShopEnchant();
+      }
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'apply_enchantment') {
+      const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+      if (!resolvedInstanceId) {
+        throw new Error(`Enchant target could not be resolved: ${command.cardInstanceId ?? 'missing'}`);
+      }
+      this.engine.applyEnchantment(resolvedInstanceId);
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'enter_relic_upgrade') {
+      if (this.engine.state.screen === 'Rest') {
+        this.engine.restUpgradeRelic();
+      }
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
+    if (command.type === 'upgrade_relic') {
+      if (this.engine.state.screen !== 'RelicUpgrade') {
+        throw new Error('upgrade_relic is only valid during relic_upgrade phase');
+      }
+      const relicState = this.engine.state.player.relicStates[command.relicId];
+      if (!relicState) {
+        throw new Error(`Relic is not available for upgrade: ${command.relicId}`);
+      }
+      if (!relicState.corrupted) {
+        throw new Error(`Relic is not corrupted and cannot use the runtime-v2 relic upgrade flow: ${command.relicId}`);
+      }
+      const upgradeInfo = this.engine.getRelicUpgradeInfo(command.relicId);
+      if (!upgradeInfo?.canAfford) {
+        throw new Error('Not enough gold to upgrade relic');
+      }
+      this.engine.upgradeRelic(command.relicId);
+      this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
+      return this.snapshot;
+    }
+
     if (command.type === 'upgrade_card') {
       const engine = this.engine as unknown as {
-        restUpgrade?: () => void;
+        enterUpgrade?: (returnScreen?: 'Rest' | 'Shop') => void;
         upgradeCard?: (cardInstanceId: string) => void;
-        state: { deck: Array<{ instanceId: string }> };
       };
-      if (command.cardInstanceId && typeof engine.upgradeCard === 'function') {
-        engine.upgradeCard(command.cardInstanceId);
-      } else if (typeof engine.restUpgrade === 'function') {
-        engine.restUpgrade();
+      const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+      if (resolvedInstanceId && typeof engine.upgradeCard === 'function') {
+        if (this.engine.state.screen !== 'Upgrade') {
+          throw new Error('upgrade_card with card selector is only valid during upgrade phase');
+        }
+        engine.upgradeCard(resolvedInstanceId);
+      } else if (typeof engine.enterUpgrade === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop')) {
+        engine.enterUpgrade(this.engine.state.screen);
+      } else if (command.cardInstanceId) {
+        throw new Error(`Upgrade target could not be resolved: ${command.cardInstanceId}`);
       }
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
@@ -124,16 +236,24 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
 
     if (command.type === 'remove_card') {
       const engine = this.engine as unknown as {
+        enterCardRemoval?: () => void;
         removeCard?: (cardInstanceId: string) => void;
-        state: { deck: Array<{ instanceId: string }> };
       };
-      if (command.cardInstanceId && typeof engine.removeCard === 'function') {
-        engine.removeCard(command.cardInstanceId);
-      } else if (typeof engine.removeCard === 'function') {
-        const firstCard = engine.state.deck[0];
-        if (firstCard) {
-          engine.removeCard(firstCard.instanceId);
+      const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+      if (resolvedInstanceId && typeof engine.removeCard === 'function') {
+        if (this.engine.state.screen !== 'RemoveCard') {
+          throw new Error('remove_card with card selector is only valid during remove_card phase');
         }
+        engine.removeCard(resolvedInstanceId);
+      } else if (typeof engine.enterCardRemoval === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop' || this.engine.state.screen === 'Event')) {
+        if (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop') {
+          this.engine.state.upgradeReturnScreen = this.engine.state.screen;
+        }
+        engine.enterCardRemoval();
+      } else if (command.cardInstanceId) {
+        throw new Error(`Remove-card target could not be resolved: ${command.cardInstanceId}`);
+      } else {
+        throw new Error('remove_card without card selector is only valid during rest, shop, or event phase');
       }
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
@@ -145,7 +265,7 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
         throw new Error('load_snapshot requires compat.legacySaveData when using the legacy oracle adapter');
       }
       this.dispose();
-      this.engine = new GameEngine(command.snapshot.seed, null);
+      this.engine = this.createEngine(command.snapshot.seed);
       this.engine.loadSaveData(legacySaveData);
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;

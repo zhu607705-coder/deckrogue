@@ -1,5 +1,29 @@
 import { Graphics, TextStyle } from 'pixi.js';
 
+export interface PixiHitTarget {
+  action: string;
+  id?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PixiHitHandler extends PixiHitTarget {
+  handler: () => void;
+}
+
+declare global {
+  interface Window {
+    __deckrogueRuntimeV2PixiTargets?: {
+      screen: string;
+      width: number;
+      height: number;
+      targets: PixiHitTarget[];
+    };
+  }
+}
+
 export const COLORS = {
   background: 0x1a1a2e,
   panel: 0x16213e,
@@ -65,4 +89,49 @@ export function drawCircle(
   if (strokeColor !== undefined) {
     graphics.stroke({ width: strokeWidth, color: strokeColor });
   }
+}
+
+export function publishPixiHitTargets(screen: string, width: number, height: number, targets: PixiHitTarget[]): void {
+  if (typeof window === 'undefined') return;
+  window.__deckrogueRuntimeV2PixiTargets = {
+    screen,
+    width,
+    height,
+    targets: targets.map((target) => ({
+      action: target.action,
+      id: target.id,
+      x: target.x,
+      y: target.y,
+      width: target.width,
+      height: target.height,
+    })),
+  };
+}
+
+export function createDedupedPointerHandler(handler: () => void): () => void {
+  let lastTriggeredAt = 0;
+  return () => {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - lastTriggeredAt < 250) return;
+    lastTriggeredAt = now;
+    handler();
+  };
+}
+
+export function dispatchPixiCanvasHit(event: MouseEvent, handlers: PixiHitHandler[]): boolean {
+  const registry = typeof window !== 'undefined' ? window.__deckrogueRuntimeV2PixiTargets : undefined;
+  const canvas = event.currentTarget;
+  if (!registry || !(canvas instanceof HTMLCanvasElement)) return false;
+  const rect = canvas.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * registry.width;
+  const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * registry.height;
+  const target = [...handlers].reverse().find((entry) =>
+    x >= entry.x - entry.width / 2 &&
+    x <= entry.x + entry.width / 2 &&
+    y >= entry.y - entry.height / 2 &&
+    y <= entry.y + entry.height / 2
+  );
+  if (!target) return false;
+  target.handler();
+  return true;
 }

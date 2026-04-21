@@ -130,3 +130,24 @@ test('shop route advice returns empty hints when no route has formed', () => {
   assert.deepEqual(advice.relicHints, {});
   assert.deepEqual(advice.serviceHints, {});
 });
+
+test('shop route advice surfaces affinity override cards in hints', () => {
+  const advice = buildShopRouteAdvice({
+    characterId: 'informant',
+    deck: [
+      makeRuntimeCard('planted_witness', 'route-confirm'),
+      makeRuntimeCard('cross_examiner', 'route-payoff'),
+    ],
+    gold: 200,
+    cardOffers: [
+      { card: makeRuntimeCard('sealed_testimony', 'offer-override'), price: 55 },
+    ],
+    relicOffers: [],
+    canUpgrade: false,
+    canEnchant: true,
+  });
+
+  assert.equal(advice.preferredRouteTag, 'informant:evidence');
+  assert.equal(advice.cardHints['offer-override']?.routeTag, 'informant:evidence');
+  assert.equal(advice.primaryHint?.targetId, 'offer-override');
+});

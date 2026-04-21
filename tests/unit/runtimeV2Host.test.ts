@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { GameEngine } from '@/core/events/gameEngine';
+import { potionsData } from '@/content/narrative/numericSystem';
 import {
   createEngineHost,
   createLegacyOracleAdapter,
+  createPythonWasmAdapter,
   normalizeLegacyGameState,
   type RuleRuntimeAdapter,
   type RuleSnapshot
@@ -311,6 +313,100 @@ test('engine host render model exposes generic room kind for shop snapshots', as
   assert.equal(renderModel.room?.kind, 'shop');
 });
 
+test('legacy oracle shop snapshots expose purchasable card offers to runtime-v2 render model', async () => {
+  const host = createEngineHost(createLegacyOracleAdapter());
+  let selectedShopNodeId: string | null = null;
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const renderModel = host.getRenderModel();
+    const candidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Shop' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    if (candidate) {
+      selectedShopNodeId = candidate.id;
+      break;
+    }
+  }
+
+  assert.ok(selectedShopNodeId, 'expected at least one seed with an available first-floor shop node');
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedShopNodeId! });
+  const renderModel = host.getRenderModel();
+  const offers = ((renderModel?.room as any)?.cards ?? []) as Array<{ id: string; price: number }>;
+  const relicOffers = ((renderModel?.room as any)?.relics ?? []) as Array<{ id: string; price: number }>;
+  const potionOffers = ((renderModel?.room as any)?.potions ?? []) as Array<{ id: string; price: number }>;
+
+  assert.equal(renderModel?.room?.kind, 'shop');
+  assert.ok(offers.length > 0, 'expected runtime-v2 shop room to expose at least one purchasable card');
+  assert.ok(relicOffers.length > 0, 'expected runtime-v2 shop room to expose at least one purchasable relic');
+  assert.ok(potionOffers.length > 0, 'expected runtime-v2 shop room to expose at least one purchasable potion');
+  assert.equal(typeof offers[0]?.id, 'string');
+  assert.equal(typeof offers[0]?.price, 'number');
+  assert.equal(typeof relicOffers[0]?.id, 'string');
+  assert.equal(typeof potionOffers[0]?.id, 'string');
+
+  host.dispose();
+});
+
+test('legacy normalizer serializes adjusted shop prices from the live engine state', () => {
+  let engine: GameEngine | null = null;
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const candidate = new GameEngine(seed, null, { enableRuntimeDelegation: false });
+    candidate.selectCharacter('informant');
+    const shopNode = candidate.state.map.find((node) => node.type === 'Shop' && node.y === 0);
+    if (shopNode) {
+      engine = candidate;
+      candidate.state.player.relics.push('lantern');
+      candidate.enterNode(shopNode.id);
+      break;
+    }
+    candidate.dispose();
+  }
+
+  assert.ok(engine, 'expected at least one seed with an available first-floor shop node');
+
+  try {
+    const snapshot = normalizeLegacyGameState(engine.state, engine.getSaveData());
+    const firstCard = engine.state.shopCards[0];
+    assert.ok(firstCard, 'expected at least one shop card');
+    const expectedPrice = engine.getAdjustedShopPrice(
+      firstCard.rarity === 'Rare' ? 150 : firstCard.rarity === 'Uncommon' ? 75 : 50
+    );
+
+    assert.equal(snapshot.shop?.cards[0]?.id, firstCard.id);
+    assert.equal(snapshot.shop?.cards[0]?.price, expectedPrice);
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('legacy normalizer serializes finite fallback prices for malformed potion offers', () => {
+  const potion = potionsData.find((entry) => entry.id === 'healing_potion');
+  assert.ok(potion, 'missing healing_potion fixture');
+  const originalPrice = potion.price;
+  (potion as any).price = undefined;
+  const engine = new GameEngine(20260416, null, { enableRuntimeDelegation: false });
+
+  try {
+    engine.selectCharacter('informant');
+    engine.state.screen = 'Shop';
+    engine.state.player.gold = 100;
+    engine.state.shopPotions = ['healing_potion'];
+
+    const snapshot = normalizeLegacyGameState(engine.state, engine.getSaveData());
+
+    assert.equal(snapshot.shop?.potions[0]?.id, 'healing_potion');
+    assert.equal(snapshot.shop?.potions[0]?.price, 65);
+    assert.ok(Number.isFinite(snapshot.shop?.potions[0]?.price));
+  } finally {
+    potion.price = originalPrice;
+    engine.dispose();
+  }
+});
+
 test('engine host render model keeps current-node successors available even before reveal flags advance', async () => {
   class StubProgressionAdapter extends StubRoomAdapter {
     override async start(): Promise<RuleSnapshot> {
@@ -371,6 +467,74 @@ test('legacy oracle event rooms still expose follow-up map nodes after leaving t
   const renderModel = host.getRenderModel();
   assert.ok(renderModel);
   assert.ok(renderModel.map.availableNodeIds.length > 0, 'event return should still expose at least one follow-up node');
+
+  host.dispose();
+});
+
+test('legacy oracle upgrade and remove-card commands enter dedicated surfaces before applying card selections', async () => {
+  const host = createEngineHost(createLegacyOracleAdapter());
+  let selectedRestNodeId: string | null = null;
+  let selectedShopNodeId: string | null = null;
+
+  for (let seed = 1; seed <= 60; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const renderModel = host.getRenderModel();
+    const restCandidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Rest' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    const shopCandidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Shop' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    if (restCandidate && shopCandidate) {
+      selectedRestNodeId = restCandidate.id;
+      selectedShopNodeId = shopCandidate.id;
+      break;
+    }
+  }
+
+  assert.ok(selectedRestNodeId, 'expected a first-floor rest node');
+  assert.ok(selectedShopNodeId, 'expected a first-floor shop node');
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedRestNodeId! });
+  await host.dispatch({ type: 'upgrade_card' });
+  let renderModel = host.getRenderModel();
+  assert.equal(renderModel?.screen, 'Upgrade');
+  assert.equal(renderModel?.room?.kind, 'upgrade');
+  assert.ok((renderModel?.room?.choices?.length ?? 0) > 0);
+
+  await host.dispatch({ type: 'cancel_surface' });
+  renderModel = host.getRenderModel();
+  assert.equal(renderModel?.screen, 'Rest');
+
+  await host.start({ seed: 1 });
+  for (let seed = 1; seed <= 60; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const candidateModel = host.getRenderModel();
+    const shopCandidate = candidateModel?.map.nodes.find(
+      (node) => node.type === 'Shop' && candidateModel.map.availableNodeIds.includes(node.id)
+    );
+    if (shopCandidate) {
+      selectedShopNodeId = shopCandidate.id;
+      break;
+    }
+  }
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedShopNodeId! });
+  const shopRenderModel = host.getRenderModel();
+  const initialDeckCount = shopRenderModel?.player.deckCount ?? 0;
+  await host.dispatch({ type: 'remove_card' });
+  renderModel = host.getRenderModel();
+  assert.equal(renderModel?.screen, 'RemoveCard');
+  assert.equal(renderModel?.room?.kind, 'remove_card');
+  const selectedToken = renderModel?.room?.choices?.[0]?.id;
+  assert.ok(selectedToken, 'expected at least one remove-card token');
+
+  await host.dispatch({ type: 'remove_card', cardInstanceId: selectedToken });
+  renderModel = host.getRenderModel();
+  assert.equal(renderModel?.screen, 'Shop');
+  assert.equal(renderModel?.player.deckCount, initialDeckCount - 1);
 
   host.dispose();
 });
@@ -477,4 +641,37 @@ test('load_snapshot preserves follow-up map nodes after legacy reward return', a
 
   host.dispose();
   restoredHost.dispose();
+});
+
+test.skip('python wasm rest command heals and returns to map with follow-up nodes intact', async () => {
+  const host = createEngineHost(createPythonWasmAdapter());
+  let selectedRestNodeId: string | null = null;
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const renderModel = host.getRenderModel();
+    const candidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Rest' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    if (candidate) {
+      selectedRestNodeId = candidate.id;
+      break;
+    }
+  }
+
+  assert.ok(selectedRestNodeId, 'expected at least one seed with an available first-floor rest node');
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedRestNodeId });
+  const hpBeforeRest = host.getSnapshot()?.player.hp ?? 0;
+  await host.dispatch({ type: 'rest' });
+
+  const renderModel = host.getRenderModel();
+  const snapshot = host.getSnapshot();
+  assert.equal(renderModel?.screen, 'Map');
+  assert.equal(snapshot?.lifecycle.phase, 'map');
+  assert.ok((snapshot?.player.hp ?? 0) >= hpBeforeRest);
+  assert.ok((renderModel?.map.availableNodeIds.length ?? 0) > 0, 'rest return should still expose follow-up map nodes');
+
+  host.dispose();
 });

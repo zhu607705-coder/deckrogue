@@ -157,3 +157,202 @@ test('UnifiedRuntimeV2Screen renders real character choices and map scenes witho
   assert.match(mapHtml, /data-scene="map"/);
   assert.match(mapHtml, /floor_1_node_0/);
 });
+
+test('UnifiedRuntimeV2Screen renders dedicated runtime-v2 surface for RelicUpgrade', () => {
+  const html = renderToStaticMarkup(
+    <UnifiedRuntimeV2Screen
+      renderModel={createRenderModel({
+        screen: 'RelicUpgrade',
+        lifecycle: {
+          screen: 'RelicUpgrade',
+          phase: 'relic_upgrade',
+          pendingNodeResolution: true,
+        },
+        room: {
+          kind: 'rest',
+          title: 'Relic Upgrade',
+          body: 'Choose a relic to refine.',
+        },
+      })}
+      adapter={createAdapterStub()}
+      characters={buildUnifiedRuntimeV2Characters()}
+    />
+  );
+
+  assert.match(html, /data-screen="RelicUpgrade"/);
+  assert.match(html, /data-scene="runtime-v2-surface"/);
+  assert.match(html, /Relic Upgrade/);
+});
+
+test('UnifiedRuntimeV2Screen renders dedicated runtime-v2 surface actions for Upgrade and RemoveCard', () => {
+  const upgradeHtml = renderToStaticMarkup(
+    <UnifiedRuntimeV2Screen
+      renderModel={createRenderModel({
+        screen: 'Upgrade',
+        lifecycle: {
+          screen: 'Upgrade',
+          phase: 'upgrade',
+          pendingNodeResolution: true,
+        },
+        player: {
+          characterId: 'informant',
+          hp: 70,
+          maxHp: 70,
+          gold: 50,
+          intel: 0,
+          devotion: 0,
+          corruption: 0,
+          deck: ['strike', 'defend'],
+          deckCount: 2,
+          relicCount: 0,
+          potionCount: 0,
+          healthRatio: 1,
+        },
+        room: {
+          kind: 'upgrade',
+          title: '牌库强化',
+          body: '选择一张牌强化。',
+          choices: [
+            { id: '0:strike', label: '打击' },
+            { id: '1:defend', label: '防御' },
+          ],
+        },
+      })}
+      adapter={createAdapterStub()}
+      characters={buildUnifiedRuntimeV2Characters()}
+    />
+  );
+
+  assert.match(upgradeHtml, /data-scene="runtime-v2-surface"/);
+  assert.match(upgradeHtml, /data-action="upgrade-card"/);
+  assert.match(upgradeHtml, /data-card-token="0:strike"/);
+  assert.match(upgradeHtml, /data-action="cancel-surface"/);
+
+  const removeHtml = renderToStaticMarkup(
+    <UnifiedRuntimeV2Screen
+      renderModel={createRenderModel({
+        screen: 'RemoveCard',
+        lifecycle: {
+          screen: 'RemoveCard',
+          phase: 'remove_card',
+          pendingNodeResolution: true,
+        },
+        player: {
+          characterId: 'informant',
+          hp: 70,
+          maxHp: 70,
+          gold: 50,
+          intel: 0,
+          devotion: 0,
+          corruption: 0,
+          deck: ['strike', 'defend'],
+          deckCount: 2,
+          relicCount: 0,
+          potionCount: 0,
+          healthRatio: 1,
+        },
+        room: {
+          kind: 'remove_card',
+          title: '移除卡牌',
+          body: '移除一张牌。',
+          choices: [
+            { id: '0:strike', label: '打击' },
+            { id: '1:defend', label: '防御' },
+          ],
+        },
+      })}
+      adapter={createAdapterStub()}
+      characters={buildUnifiedRuntimeV2Characters()}
+    />
+  );
+
+  assert.match(removeHtml, /data-scene="runtime-v2-surface"/);
+  assert.match(removeHtml, /data-action="remove-card"/);
+  assert.match(removeHtml, /data-card-token="0:strike"/);
+  assert.match(removeHtml, /data-action="cancel-surface"/);
+});
+
+test('UnifiedRuntimeV2Screen renders dedicated runtime-v2 surface actions for Enchant and RelicUpgrade', () => {
+  const enchantHtml = renderToStaticMarkup(
+    <UnifiedRuntimeV2Screen
+      renderModel={createRenderModel({
+        screen: 'Enchant',
+        lifecycle: {
+          screen: 'Enchant',
+          phase: 'enchant',
+          pendingNodeResolution: true,
+        },
+        player: {
+          characterId: 'informant',
+          hp: 70,
+          maxHp: 70,
+          gold: 50,
+          intel: 0,
+          devotion: 0,
+          corruption: 0,
+          deck: ['strike', 'defend'],
+          deckCount: 2,
+          relicCount: 1,
+          potionCount: 0,
+          healthRatio: 1,
+        },
+        room: {
+          kind: 'enchant',
+          title: '黑市附魔',
+          body: '选择一张牌施加附魔。',
+          choices: [
+            { id: '0:strike', label: '打击' },
+            { id: '1:defend', label: '防御' },
+          ],
+        },
+      })}
+      adapter={createAdapterStub()}
+      characters={buildUnifiedRuntimeV2Characters()}
+    />
+  );
+
+  assert.match(enchantHtml, /data-action="enchant-card"/);
+  assert.match(enchantHtml, /data-card-token="0:strike"/);
+  assert.match(enchantHtml, /data-action="cancel-surface"/);
+
+  const relicUpgradeHtml = renderToStaticMarkup(
+    <UnifiedRuntimeV2Screen
+      renderModel={createRenderModel({
+        screen: 'RelicUpgrade',
+        lifecycle: {
+          screen: 'RelicUpgrade',
+          phase: 'relic_upgrade',
+          pendingNodeResolution: true,
+        },
+        player: {
+          characterId: 'informant',
+          hp: 70,
+          maxHp: 70,
+          gold: 150,
+          intel: 0,
+          devotion: 0,
+          corruption: 0,
+          deck: ['strike', 'defend'],
+          deckCount: 2,
+          relicCount: 1,
+          potionCount: 0,
+          healthRatio: 1,
+        },
+        room: {
+          kind: 'relic_upgrade',
+          title: '遗物升级',
+          body: '选择一件遗物进行升级。',
+          choices: [
+            { id: 'corrupted_relic', label: '失落圣骨匣' },
+          ],
+        },
+      })}
+      adapter={createAdapterStub()}
+      characters={buildUnifiedRuntimeV2Characters()}
+    />
+  );
+
+  assert.match(relicUpgradeHtml, /data-action="upgrade-relic"/);
+  assert.match(relicUpgradeHtml, /data-relic-id="corrupted_relic"/);
+  assert.match(relicUpgradeHtml, /data-action="cancel-surface"/);
+});

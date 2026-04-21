@@ -15,6 +15,7 @@ import {
   RestScene,
   EventScene,
   ShopScene,
+  SurfaceScene,
 } from '../scenes';
 import {
   MapScenePixi,
@@ -23,6 +24,7 @@ import {
   RestScenePixi,
   EventScenePixi,
   ShopScenePixi,
+  SurfaceScenePixi,
 } from '../pixi';
 
 export type RendererType = 'dom' | 'pixi';
@@ -61,8 +63,29 @@ export interface RuntimeV2AppShellProps {
   onSkipReward: () => void;
   onChooseEventOption: (choiceId: string) => void;
   onRest: () => void;
-  onUpgrade: () => void;
-  onRemoveCard: () => void;
+  onBuyShopCard: (cardId: string) => void;
+  onBuyShopRelic: (relicId: string) => void;
+  onBuyShopPotion: (potionId: string) => void;
+  onEnterEnchant: () => void;
+  onApplyEnchantment: (cardToken: string) => void;
+  onEnterRelicUpgrade: () => void;
+  onUpgradeRelic: (relicId: string) => void;
+  onUpgrade: (cardToken?: string) => void;
+  onRemoveCard: (cardToken?: string) => void;
+  onCancelSurface: () => void;
+}
+
+function isSurfaceScreen(
+  screen: RenderModel['screen'],
+): screen is Extract<RenderModel['screen'], 'Upgrade' | 'RemoveCard' | 'Enchant' | 'RelicUpgrade' | 'Victory' | 'GameOver'> {
+  return (
+    screen === 'Upgrade'
+    || screen === 'RemoveCard'
+    || screen === 'Enchant'
+    || screen === 'RelicUpgrade'
+    || screen === 'Victory'
+    || screen === 'GameOver'
+  );
 }
 
 export function RuntimeV2AppShell({
@@ -89,8 +112,16 @@ export function RuntimeV2AppShell({
   onSkipReward,
   onChooseEventOption,
   onRest,
+  onBuyShopCard,
+  onBuyShopRelic,
+  onBuyShopPotion,
+  onEnterEnchant,
+  onApplyEnchantment,
+  onEnterRelicUpgrade,
+  onUpgradeRelic,
   onUpgrade,
   onRemoveCard,
+  onCancelSurface,
 }: RuntimeV2AppShellProps) {
   if (!renderModel) {
     return (
@@ -201,11 +232,21 @@ export function RuntimeV2AppShell({
             <ShopScenePixi
               scene={shopSceneProps}
               onLeave={onLeaveRoom}
+              onBuyCard={onBuyShopCard}
+              onBuyRelic={onBuyShopRelic}
+              onBuyPotion={onBuyShopPotion}
+              onEnterEnchant={onEnterEnchant}
+              onRemoveCard={onRemoveCard}
             />
           ) : (
             <ShopScene
               scene={shopSceneProps}
+              onBuyCard={onBuyShopCard}
+              onBuyRelic={onBuyShopRelic}
+              onBuyPotion={onBuyShopPotion}
+              onEnterEnchant={onEnterEnchant}
               onLeave={onLeaveRoom}
+              onRemoveCard={onRemoveCard}
             />
           )
         )}
@@ -216,6 +257,8 @@ export function RuntimeV2AppShell({
               scene={restSceneProps}
               onRest={onRest}
               onUpgrade={onUpgrade}
+              onEnterEnchant={onEnterEnchant}
+              onEnterRelicUpgrade={onEnterRelicUpgrade}
               onRemoveCard={onRemoveCard}
               onLeave={onLeaveRoom}
             />
@@ -224,6 +267,8 @@ export function RuntimeV2AppShell({
               scene={restSceneProps}
               onRest={onRest}
               onUpgrade={onUpgrade}
+              onEnterEnchant={onEnterEnchant}
+              onEnterRelicUpgrade={onEnterRelicUpgrade}
               onRemoveCard={onRemoveCard}
               onLeave={onLeaveRoom}
             />
@@ -244,13 +289,45 @@ export function RuntimeV2AppShell({
           )
         )}
 
+        {isSurfaceScreen(screen) && (
+          renderer === 'pixi' ? (
+            <SurfaceScenePixi
+              screen={screen}
+              room={room}
+              player={player}
+              onUpgrade={onUpgrade}
+              onRemoveCard={onRemoveCard}
+              onApplyEnchantment={onApplyEnchantment}
+              onUpgradeRelic={onUpgradeRelic}
+              onCancelSurface={onCancelSurface}
+            />
+          ) : (
+            <SurfaceScene
+              screen={screen}
+              room={room}
+              player={player}
+              onUpgrade={onUpgrade}
+              onRemoveCard={onRemoveCard}
+              onApplyEnchantment={onApplyEnchantment}
+              onUpgradeRelic={onUpgradeRelic}
+              onCancelSurface={onCancelSurface}
+            />
+          )
+        )}
+
         {screen !== 'CharacterSelect' &&
           screen !== 'Map' &&
           screen !== 'Combat' &&
           screen !== 'Reward' &&
           screen !== 'Shop' &&
           screen !== 'Rest' &&
-          screen !== 'Event' && (
+          screen !== 'Event' &&
+          screen !== 'Upgrade' &&
+          screen !== 'RemoveCard' &&
+          screen !== 'Enchant' &&
+          screen !== 'RelicUpgrade' &&
+          screen !== 'Victory' &&
+          screen !== 'GameOver' && (
             <GenericRoomScreen
               title={`${screen} Room`}
               description={`Phase: ${renderModel.lifecycle.phase}`}

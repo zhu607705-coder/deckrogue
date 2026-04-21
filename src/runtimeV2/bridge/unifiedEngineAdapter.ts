@@ -18,13 +18,13 @@ export interface UnifiedEngineAdapter {
 export class LegacyEngineAdapter implements UnifiedEngineAdapter {
   readonly mode = 'legacy' as const;
   private listeners = new Set<() => void>();
-  
+
   constructor(private engine: GameEngine) {}
-  
+
   get snapshot(): RuleSnapshot | null {
     return null;
   }
-  
+
   get renderModel(): RenderModel | null {
     return createLegacyRenderModel(this.engine);
   }
@@ -32,11 +32,11 @@ export class LegacyEngineAdapter implements UnifiedEngineAdapter {
   getLegacyEngine(): GameEngine | null {
     return this.engine;
   }
-  
+
   async start(options?: { seed?: number }): Promise<void> {
     // Legacy engine doesn't need explicit start
   }
-  
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     const unsubscribe = this.engine.subscribe(() => {
@@ -47,8 +47,19 @@ export class LegacyEngineAdapter implements UnifiedEngineAdapter {
       unsubscribe();
     };
   }
-  
+
   async dispatch(command: RuleCommand): Promise<void> {
+    const resolveDeckInstanceId = (token?: string): string | undefined => {
+      if (!token) return undefined;
+      const [indexPart, rawCardId] = token.split(':');
+      const index = Number(indexPart);
+      if (Number.isInteger(index) && index >= 0) {
+        return this.engine.state.player.deck[index]?.instanceId;
+      }
+      const normalizedCardId = rawCardId ?? token;
+      return this.engine.state.player.deck.find((card) => card.id === normalizedCardId)?.instanceId;
+    };
+
     switch (command.type) {
       case 'select_character':
         this.engine.selectCharacter(command.characterId);
@@ -58,6 +69,30 @@ export class LegacyEngineAdapter implements UnifiedEngineAdapter {
         break;
       case 'leave_room':
         this.engine.leaveCurrentRoomToMap();
+        break;
+      case 'cancel_surface':
+        if (this.engine.state.screen === 'Upgrade') {
+          this.engine.cancelUpgrade();
+        } else if (this.engine.state.screen === 'RemoveCard') {
+          this.engine.cancelCardRemoval();
+        } else if (this.engine.state.screen === 'Enchant') {
+          this.engine.cancelEnchant();
+        } else if (this.engine.state.screen === 'RelicUpgrade') {
+          this.engine.cancelRelicUpgrade();
+        }
+        break;
+      case 'buy_shop_card': {
+        const shopCard = this.engine.state.shopCards.find((card) => card.id === command.cardId);
+        if (shopCard) {
+          this.engine.buyShopCard(shopCard.instanceId);
+        }
+        break;
+      }
+      case 'buy_shop_relic':
+        this.engine.buyShopRelic(command.relicId);
+        break;
+      case 'buy_shop_potion':
+        this.engine.buyShopPotion(command.potionId);
         break;
       case 'take_reward': {
         const rewardCard = command.cardId
@@ -96,29 +131,55 @@ export class LegacyEngineAdapter implements UnifiedEngineAdapter {
         }
         break;
       }
+      case 'enter_enchant': {
+        if (this.engine.state.screen === 'Rest') {
+          this.engine.restEnchant();
+        } else if (this.engine.state.screen === 'Shop') {
+          this.engine.enterShopEnchant();
+        }
+        break;
+      }
+      case 'apply_enchantment': {
+        const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+        if (resolvedInstanceId) {
+          this.engine.applyEnchantment(resolvedInstanceId);
+        }
+        break;
+      }
+      case 'enter_relic_upgrade':
+        if (this.engine.state.screen === 'Rest') {
+          this.engine.restUpgradeRelic();
+        }
+        break;
+      case 'upgrade_relic':
+        this.engine.upgradeRelic(command.relicId);
+        break;
       case 'upgrade_card': {
         const engine = this.engine as unknown as {
-          restUpgrade?: () => void;
+          enterUpgrade?: (returnScreen?: 'Rest' | 'Shop') => void;
           upgradeCard?: (cardInstanceId: string) => void;
         };
-        if (command.cardInstanceId && typeof engine.upgradeCard === 'function') {
-          engine.upgradeCard(command.cardInstanceId);
-        } else if (typeof engine.restUpgrade === 'function') {
-          engine.restUpgrade();
+        const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+        if (resolvedInstanceId && typeof engine.upgradeCard === 'function') {
+          engine.upgradeCard(resolvedInstanceId);
+        } else if (typeof engine.enterUpgrade === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop')) {
+          engine.enterUpgrade(this.engine.state.screen);
         }
         break;
       }
       case 'remove_card': {
-        const engine = this.engine as unknown as { removeCard?: (cardInstanceId: string) => void };
-        if (typeof engine.removeCard === 'function') {
-          if (command.cardInstanceId) {
-            engine.removeCard(command.cardInstanceId);
-          } else {
-            const firstCard = this.engine.state.player.deck[0];
-            if (firstCard) {
-              engine.removeCard(firstCard.instanceId);
-            }
+        const engine = this.engine as unknown as {
+          enterCardRemoval?: () => void;
+          removeCard?: (cardInstanceId: string) => void;
+        };
+        const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
+        if (resolvedInstanceId && typeof engine.removeCard === 'function') {
+          engine.removeCard(resolvedInstanceId);
+        } else if (typeof engine.enterCardRemoval === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop' || this.engine.state.screen === 'Event')) {
+          if (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop') {
+            this.engine.state.upgradeReturnScreen = this.engine.state.screen;
           }
+          engine.enterCardRemoval();
         }
         break;
       }
@@ -127,12 +188,12 @@ export class LegacyEngineAdapter implements UnifiedEngineAdapter {
     }
     this.emit();
   }
-  
+
   dispose(): void {
     this.engine.dispose();
     this.listeners.clear();
   }
-  
+
   private emit(): void {
     for (const listener of this.listeners) {
       listener();
@@ -145,13 +206,13 @@ export class RuntimeV2EngineAdapter implements UnifiedEngineAdapter {
   private listeners = new Set<() => void>();
   private _snapshot: RuleSnapshot | null = null;
   private _renderModel: RenderModel | null = null;
-  
+
   constructor(private host: EngineHost) {}
-  
+
   get snapshot(): RuleSnapshot | null {
     return this._snapshot;
   }
-  
+
   get renderModel(): RenderModel | null {
     return this._renderModel;
   }
@@ -163,14 +224,14 @@ export class RuntimeV2EngineAdapter implements UnifiedEngineAdapter {
     }
     return null;
   }
-  
+
   async start(options?: { seed?: number }): Promise<void> {
     await this.host.start(options);
     this._snapshot = this.host.getSnapshot();
     this._renderModel = this.host.getRenderModel();
     this.emit();
   }
-  
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     const unsubscribeSnapshot = this.host.subscribe((snapshot) => {
@@ -188,21 +249,21 @@ export class RuntimeV2EngineAdapter implements UnifiedEngineAdapter {
       unsubscribeRender();
     };
   }
-  
+
   async dispatch(command: RuleCommand): Promise<void> {
     await this.host.dispatch(command);
     this._snapshot = this.host.getSnapshot();
     this._renderModel = this.host.getRenderModel();
     this.emit();
   }
-  
+
   dispose(): void {
     this.host.dispose();
     this.listeners.clear();
     this._snapshot = null;
     this._renderModel = null;
   }
-  
+
   private emit(): void {
     for (const listener of this.listeners) {
       listener();
