@@ -13,6 +13,12 @@ export function EventScene({ scene, onChooseOption }: EventSceneComponentProps) 
     <div className="event-scene" data-scene="event">
       <h2>{room.title ?? 'Event'}</h2>
       {room.body && <p className="event-description">{room.body}</p>}
+      {room.guidance && (
+        <div className="route-guidance-panel">
+          <strong>{room.guidance.headline}</strong>
+          <span>{room.guidance.routeLabel ? `${room.guidance.routeLabel} · ` : ''}{room.guidance.reason}</span>
+        </div>
+      )}
       <div className="event-choices">
         {room.choices.map((choice) => (
           <button
@@ -24,6 +30,7 @@ export function EventScene({ scene, onChooseOption }: EventSceneComponentProps) 
           >
             <span className="choice-label">{choice.label}</span>
             {choice.description && <span className="choice-desc">{choice.description}</span>}
+            {choice.routeReason && <span className="choice-route">{choice.routeReason}</span>}
           </button>
         ))}
       </div>

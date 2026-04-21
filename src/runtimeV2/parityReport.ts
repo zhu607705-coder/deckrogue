@@ -1,5 +1,12 @@
 import type { RuleSnapshot } from './contracts';
 
+export type RuleCommandSemanticCode =
+  | 'selector_out_of_range'
+  | 'shop_offer_missing'
+  | 'invalid_phase'
+  | 'invalid_surface_state'
+  | 'unknown';
+
 export interface MapSnapshotComparison {
   metadataMatches: boolean;
   topologyMatches: boolean;
@@ -12,6 +19,27 @@ export interface ParityReportEntry {
   seed: number;
   passed: boolean;
   stableDiffCount: number;
+  stableDiffFields?: string[];
+  stableDiffSamples?: Array<{
+    field: string;
+    legacy: unknown;
+    candidate: unknown;
+  }>;
+  errorMessages?: {
+    legacy?: string;
+    candidate?: string;
+  };
+  errorClassification?: {
+    legacyErrorKind: string | null;
+    candidateErrorKind: string | null;
+    legacySemanticCode: RuleCommandSemanticCode;
+    candidateSemanticCode: RuleCommandSemanticCode;
+    semanticCodeMatch: boolean;
+    legacyHasTimeout: boolean;
+    candidateHasTimeout: boolean;
+    postErrorSnapshotStable: boolean;
+    liveSnapshotObservedAfterError?: boolean;
+  };
   metadataMatches?: boolean;
   topologyMatches?: boolean;
   metadataMismatchNodeIds?: string[];

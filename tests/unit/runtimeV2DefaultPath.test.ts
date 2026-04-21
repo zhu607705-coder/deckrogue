@@ -12,5 +12,5 @@ test('legacy UI remains the default entry path and runtime-v2 stays explicit', (
   assert.equal(resolveAppEntryMode('?runtimeV2=1'), 'runtime-v2');
   assert.equal(resolveAppEntryMode('?legacy=1'), 'legacy');
   assert.equal(DEFAULT_RUNTIME_V2_ADAPTER, 'python-wasm');
-  assert.equal(DEFAULT_RUNTIME_V2_RENDERER, 'pixi');
+  assert.equal(DEFAULT_RUNTIME_V2_RENDERER, 'dom');
 });

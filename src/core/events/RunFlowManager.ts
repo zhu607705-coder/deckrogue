@@ -24,6 +24,8 @@ import {
   getRouteSupportRelicIds,
   potionsData,
   relicsData,
+  resolvePreferredRouteTag,
+  resolveShopOfferPrice,
   syncRouteStateFromLegacyState,
 } from '@/content/narrative/numericSystem';
 import { balanceSystem } from '@/core/balance/balanceSystem';
@@ -32,6 +34,20 @@ import charactersDataRaw from '@/content/data/characters.json';
 import type { CharacterDef } from '@/core/types';
 
 const charactersData = charactersDataRaw as CharacterDef[];
+
+function resolveCurrentRouteTag(
+  deck: RunCardInstance[],
+  routeTagsForCharacter: string[],
+  routeState: GameState['routeState'],
+): string | null {
+  const statePreferredTag = getPreferredRouteTagFromState(deck, routeTagsForCharacter, routeState ?? null);
+  const latestCardPreferredTag = resolvePreferredRouteTag(deck, routeTagsForCharacter, 1);
+  const hasExplicitRecentCommit = (routeState?.recentCommits?.length ?? 0) > 0;
+  if (latestCardPreferredTag && latestCardPreferredTag !== statePreferredTag && !hasExplicitRecentCommit) {
+    return latestCardPreferredTag;
+  }
+  return statePreferredTag ?? latestCardPreferredTag;
+}
 
 export interface RunFlowManagerDeps {
   getState: () => GameState;
@@ -255,11 +271,7 @@ export class RunFlowManager {
     const routeProfile = analyzeRouteSignals(state.player.deck);
     const routeTagsForCharacter = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
     syncRouteStateFromLegacyState(state);
-    const preferredRouteTag = getPreferredRouteTagFromState(
-      state.player.deck,
-      routeTagsForCharacter,
-      state.routeState ?? null,
-    );
+    const preferredRouteTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
 
     const weightedShufflePick = <T extends { id: string }>(pool: T[], count: number): T[] => {
       return [...pool]
@@ -299,7 +311,10 @@ export class RunFlowManager {
     const card = state.shopCards.find(c => c.instanceId === cardInstanceId);
     if (!card) return;
 
-    const price = priceOverride ?? ((balanceSystem as any).getCardPrice?.(card.rarity) ?? (card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50));
+    const price = resolveShopOfferPrice(
+      'card',
+      priceOverride ?? ((balanceSystem as any).getCardPrice?.(card.rarity) ?? (card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50)),
+    );
     if (state.player.gold < price) return;
 
     state.player.gold -= price;
@@ -316,7 +331,7 @@ export class RunFlowManager {
     const relic = relicsData.find(r => r.id === relicId);
     if (!relic || state.player.relics.includes(relicId)) return;
 
-    const price = priceOverride ?? relic.price;
+    const price = resolveShopOfferPrice('relic', priceOverride ?? relic.price);
     if (state.player.gold < price) return;
 
     state.player.gold -= price;
@@ -338,7 +353,7 @@ export class RunFlowManager {
     const potion = (potionsData as PotionDef[]).find(p => p.id === potionId);
     if (!potion) return;
 
-    const price = priceOverride ?? potion.price;
+    const price = resolveShopOfferPrice('potion', priceOverride ?? potion.price);
     if (state.player.gold < price) return;
     if (state.player.potions.length >= getPotionRuntimeConfig().slotLimit) return;
 
@@ -539,6 +554,13 @@ export class RunFlowManager {
 
   enterCardRemoval(): void {
     const state = this.deps.getState();
+    if (!this.deps.isEventFreeCardRemovalMode()) {
+      if (state.screen === 'Shop') {
+        state.upgradeReturnScreen = 'Shop';
+      } else if (state.screen === 'Rest') {
+        state.upgradeReturnScreen = 'Rest';
+      }
+    }
     state.screen = 'RemoveCard';
     syncRoomSessionFromLegacyState(state, {
       isEventFreeCardRemovalMode: this.deps.isEventFreeCardRemovalMode(),

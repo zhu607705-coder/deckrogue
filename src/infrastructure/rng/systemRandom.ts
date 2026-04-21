@@ -21,7 +21,8 @@ export function systemRandom(): number {
   if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
     const arr = new Uint32Array(1);
     cryptoApi.getRandomValues(arr);
-    return arr[0]! / 4294967296;
+    const value = arr[0];
+    return (value ?? nextFallbackUint32()) / 4294967296;
   }
   return nextFallbackUint32() / 4294967296;
 }

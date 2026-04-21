@@ -23,6 +23,7 @@ import {
   potionsData,
   getPotionRuntimeConfig,
   getCardEnchantmentDefById,
+  resolvePreferredRouteTag,
   syncRouteStateFromLegacyState,
 } from '@/content/narrative/numericSystem';
 import { unlockCodexEntry, unlockManyCodexEntries } from '@/core/persistence/codexStore';
@@ -67,6 +68,20 @@ function stablePickBySeed<T>(items: T[], key: string): T | undefined {
   return items[stableHash(key) % items.length];
 }
 
+function resolveCurrentRouteTag(
+  deck: RunCardInstance[],
+  routeTagsForCharacter: string[],
+  routeState: GameState['routeState'],
+): string | null {
+  const statePreferredTag = getPreferredRouteTagFromState(deck, routeTagsForCharacter, routeState ?? null);
+  const latestCardPreferredTag = resolvePreferredRouteTag(deck, routeTagsForCharacter, 1);
+  const hasExplicitRecentCommit = (routeState?.recentCommits?.length ?? 0) > 0;
+  if (latestCardPreferredTag && latestCardPreferredTag !== statePreferredTag && !hasExplicitRecentCommit) {
+    return latestCardPreferredTag;
+  }
+  return statePreferredTag ?? latestCardPreferredTag;
+}
+
 export class EventManager {
   constructor(private deps: EventManagerDeps) {}
 
@@ -77,11 +92,7 @@ export class EventManager {
     const eligibleStoryEvents = STORY_EVENTS.filter(e => floor >= e.floorMin && floor <= e.floorMax);
     if (eligibleStoryEvents.length > 0) {
       const routeTagsForCharacter = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
-      const dominantTag = getPreferredRouteTagFromState(
-        state.player.deck,
-        routeTagsForCharacter,
-        state.routeState ?? null,
-      );
+      const dominantTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
       if (dominantTag) {
         const matchedEvents = eligibleStoryEvents.filter((eventDef) => getEventRouteSignal(eventDef.id)?.routeTags.includes(dominantTag));
         const directMatch =
@@ -220,12 +231,20 @@ export class EventManager {
     const state = this.deps.getState();
     const event = state.activeEvent;
     if (!event) return;
-    event.data = { ...(event.data || {}), lastChoiceId: choice };
     const routeSignal = getEventRouteSignal(event.id);
     const routeCommitWeight = getEventChoiceRouteCommitWeight(event.id, choice);
+    const choiceRole = getEventChoiceRouteRole(event.id, choice);
+    event.data = {
+      ...(event.data || {}),
+      lastChoiceId: choice,
+      choiceRole,
+      outcomeKind: choiceRole ?? 'neutral',
+    };
+    event.lastChoiceId = choice;
+    event.choiceRole = choiceRole ?? null;
+    event.outcomeKind = choiceRole ?? 'neutral';
     if (routeSignal && routeCommitWeight !== null) {
       const commitTags = getEventChoiceCommitTags(event.id, choice);
-      const choiceRole = getEventChoiceRouteRole(event.id, choice);
       const committedTag = getPreferredRouteTagFromState(
         state.player.deck,
         commitTags.length ? commitTags : routeSignal.routeTags,
@@ -580,11 +599,7 @@ export class EventManager {
     const floor = this.deps.getCurrentFloorNumber();
     const routeProfile = analyzeRouteSignals(state.player.deck);
     const routeTagsForCharacter = characterId ? getKnownRouteTagsForCharacter(characterId) : [];
-    const dominantTag = getPreferredRouteTagFromState(
-      state.player.deck,
-      routeTagsForCharacter,
-      state.routeState ?? null,
-    );
+    const dominantTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
 
     const cardPool = (cardsData as CardWithCharacter[]).filter((card) =>
       ((card.character ?? 'All') === 'All' || card.character === characterId)
@@ -660,16 +675,32 @@ export class EventManager {
     const pickEarlyShopCards = (): CardWithCharacter[] => {
       const result: CardWithCharacter[] = [];
       const earlyShopTag = dominantTag ?? routeTagsForCharacter[0] ?? null;
-      const alignedPool = cardPool.filter((card) => {
-        const signal = getCardRouteSignal(card);
-        return !!(signal && earlyShopTag && signal.routeTags.includes(earlyShopTag));
+      const alignedPool = cardPool.filter((card) => !!(earlyShopTag && getCardRouteAffinityTags(card).includes(earlyShopTag)));
+      const alignedPayoffPool = alignedPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_payoff');
+      const alignedConfirmPool = alignedPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_confirm');
+      const pivotTemptationPool = cardPool.filter((card) => {
+        const tags = getCardRouteAffinityTags(card);
+        return tags.length > 0 && !!earlyShopTag && !tags.includes(earlyShopTag);
       });
-      const genericPool = cardPool.filter((card) => genericPowerIds.has(card.id));
+      const genericPool = cardPool.filter((card) => genericPowerIds.has(card.id) && getCardRouteAffinityTags(card).length === 0);
 
-      const first = chooseUniqueSeeded(alignedPool, 'shop-first-aligned') ?? chooseUniqueSeeded(genericPool, 'shop-first-generic');
+      const first =
+        chooseUniqueSeeded(alignedPayoffPool, 'shop-first-payoff') ??
+        chooseUniqueSeeded(alignedConfirmPool, 'shop-first-confirm') ??
+        chooseUniqueSeeded(alignedPool, 'shop-first-aligned') ??
+        chooseUniqueSeeded(genericPool, 'shop-first-generic');
       const second = chooseUniqueSeeded(genericPool, 'shop-second-generic') ?? chooseUniqueSeeded(alignedPool, 'shop-second-aligned');
+      const third =
+        chooseUniqueSeeded(alignedConfirmPool, 'shop-third-confirm') ??
+        chooseUniqueSeeded(alignedPayoffPool, 'shop-third-payoff') ??
+        chooseUniqueSeeded(alignedPool, 'shop-third-aligned');
+      const fourth =
+        chooseUniqueSeeded(pivotTemptationPool, 'shop-fourth-pivot') ??
+        chooseUniqueSeeded(genericPool, 'shop-fourth-generic');
       if (first) result.push(first);
       if (second) result.push(second);
+      if (third) result.push(third);
+      if (fourth) result.push(fourth);
 
       while (result.length < count) {
         const fallback = chooseUniqueSeeded(cardPool, `shop-fallback-${result.length}`);
@@ -718,6 +749,8 @@ export class EventManager {
       if (!dominantTag) return result;
 
       const alignedAffinityPool = cardPool.filter((card) => getCardRouteAffinityTags(card).includes(dominantTag));
+      const alignedPayoffPool = alignedAffinityPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_payoff');
+      const alignedConfirmPool = alignedAffinityPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_confirm');
       const pivotTemptationPool = cardPool.filter((card) => {
         const tags = getCardRouteAffinityTags(card);
         return tags.length > 0 && !tags.includes(dominantTag);
@@ -725,19 +758,29 @@ export class EventManager {
       const neutralCounterweightPool = cardPool.filter((card) => getCardRouteAffinityTags(card).length === 0);
 
       const first =
+        chooseUniqueSeeded(alignedPayoffPool, 'mid-shop-first-payoff') ??
+        chooseUniqueSeeded(alignedConfirmPool, 'mid-shop-first-confirm') ??
         chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-first-aligned') ??
         chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-first-pivot');
       const second =
-        chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-second-neutral') ??
-        chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-second-aligned');
+        chooseUniqueSeeded(alignedConfirmPool, 'mid-shop-second-confirm') ??
+        chooseUniqueSeeded(alignedPayoffPool, 'mid-shop-second-payoff') ??
+        chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-second-aligned') ??
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-second-neutral');
       const third =
-        chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-third-pivot') ??
         chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-third-neutral') ??
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-third-pivot') ??
         chooseUniqueSeeded(cardPool, 'mid-shop-third-fallback');
+      const fourth =
+        chooseUniqueSeeded(alignedAffinityPool, 'mid-shop-fourth-aligned') ??
+        chooseUniqueSeeded(pivotTemptationPool, 'mid-shop-fourth-pivot') ??
+        chooseUniqueSeeded(neutralCounterweightPool, 'mid-shop-fourth-neutral') ??
+        chooseUniqueSeeded(cardPool, 'mid-shop-fourth-fallback');
 
       if (first) result.push(first);
       if (second) result.push(second);
       if (third) result.push(third);
+      if (fourth) result.push(fourth);
 
       while (result.length < count) {
         const fallback = chooseUniqueSeeded(cardPool, `mid-shop-fallback-${result.length}`);

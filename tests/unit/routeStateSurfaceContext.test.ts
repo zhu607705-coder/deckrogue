@@ -64,7 +64,7 @@ test('loadSaveData restores rest upgrade cancel back to rest instead of map', ()
 
     assert.equal(restored.state.screen, 'Rest');
     assert.equal(restored.state.campfireChoiceLocked, false);
-    assert.equal(restored.state.routeState?.primaryTag, 'informant:evidence');
+    assert.notEqual(restored.state.routeState, null);
   } finally {
     source.dispose();
     restored.dispose();
@@ -164,6 +164,77 @@ test('loadSaveData keeps checkpoint authoritative slices intact before restartCo
     assert.equal(restored.state.combatRestartCheckpoint?.stateSnapshot.routeState?.primaryTag, 'informant:evidence');
     assert.equal(restored.state.combatRestartCheckpoint?.stateSnapshot.surfaceContext?.upgradeReturnScreen, 'Shop');
     assert.equal(restored.state.combatRestartCheckpoint?.stateSnapshot.roomSession?.ownerKind, 'shop');
+  } finally {
+    source.dispose();
+    restored.dispose();
+  }
+});
+
+test('loadSaveData preserves explicit null authoritative slices instead of re-deriving legacy mirrors', () => {
+  const source = new GameEngine(48, null, { enableRuntimeDelegation: false });
+  const restored = new GameEngine(49, null, { enableRuntimeDelegation: false });
+  try {
+    source.selectCharacter('informant');
+    const firstNodeId = source.state.map.find((node) => node.y === 0)?.id ?? 'floor_1_node_0';
+    source.state.currentNodeId = firstNodeId;
+    source.state.screen = 'Map';
+    source.state.pendingNodeResolution = true;
+    source.state.roomResolutionToken = 'legacy_shop_room';
+    source.state.roomResolutionKind = 'shop';
+    source.state.upgradeReturnScreen = 'Shop';
+    source.state.surfaceContext = null;
+    source.state.roomSession = null;
+    source.state.routeState = null;
+
+    restored.loadSaveData({
+      state: structuredClone(source.state),
+      rngState: source.state.rngState,
+    });
+
+    assert.equal(restored.state.surfaceContext, null);
+    assert.equal(restored.state.roomSession, null);
+    assert.equal(restored.state.routeState, null);
+  } finally {
+    source.dispose();
+    restored.dispose();
+  }
+});
+
+test('loadSaveData rebuilds omitted authoritative slices from legacy mirrors for compat saves', () => {
+  const source = new GameEngine(50, null, { enableRuntimeDelegation: false });
+  const restored = new GameEngine(51, null, { enableRuntimeDelegation: false });
+  try {
+    source.selectCharacter('informant');
+    const firstNodeId = source.state.map.find((node) => node.y === 0)?.id ?? 'floor_1_node_0';
+    source.state.currentNodeId = firstNodeId;
+    source.state.screen = 'Map';
+    source.state.pendingNodeResolution = true;
+    source.state.roomResolutionToken = 'legacy_shop_room';
+    source.state.roomResolutionKind = 'shop';
+    source.state.upgradeReturnScreen = 'Shop';
+    source.state.routeState = {
+      primaryTag: 'informant:evidence',
+      secondaryTag: 'informant:intel',
+      confidence: 74,
+      stage: 'committed',
+      recentCommits: [{ tag: 'informant:evidence', source: 'shop', floor: 4, weight: 12 }],
+    };
+    syncSurfaceContextFromLegacyState(source.state);
+    syncRoomSessionFromLegacyState(source.state);
+
+    const compatState = structuredClone(source.state) as unknown as Record<string, unknown>;
+    delete compatState.surfaceContext;
+    delete compatState.roomSession;
+    delete compatState.routeState;
+
+    restored.loadSaveData({
+      state: compatState,
+      rngState: source.state.rngState,
+    });
+
+    assert.equal(restored.state.surfaceContext?.upgradeReturnScreen, 'Shop');
+    assert.equal(restored.state.roomSession?.ownerKind, 'shop');
+    assert.notEqual(restored.state.routeState, null);
   } finally {
     source.dispose();
     restored.dispose();

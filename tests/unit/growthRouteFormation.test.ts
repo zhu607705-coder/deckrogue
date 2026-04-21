@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { GameEngine } from '@/core/events/gameEngine';
 import { cardsData, getCardRouteSignal, getEventRouteSignal, getKnownRouteTagsForCharacter } from '@/content/narrative/numericSystem';
 import type { RunCardInstance } from '@/core/types';
+import { summarizeRouteDistribution, type SampleResult } from '../../scripts/validation/check_growth_route_formation';
 
 function setFloor(engine: GameEngine, floorIndex: number) {
   const node = engine.state.map.find((entry) => entry.y === floorIndex);
@@ -95,14 +96,14 @@ test('early shop offers at least one card aligned with the current route', () =>
     setFloor(engine, 1);
     engine.enterShop();
 
-    const alignedShopCard = engine.state.shopCards.some((card) => getCardRouteSignal(card)?.routeTags.includes(routeTag!));
-    assert.equal(alignedShopCard, true);
+    const alignedShopCards = engine.state.shopCards.filter((card) => getCardRouteSignal(card)?.routeTags.includes(routeTag!));
+    assert.ok(alignedShopCards.length >= 2, `expected at least two early shop cards aligned with ${routeTag}, got ${alignedShopCards.length}`);
   } finally {
     engine.dispose();
   }
 });
 
-test('recently chosen route overrides stale deck dominant route for reward, shop, and event reinforcement', () => {
+test('committed recent route overrides stale deck dominant route for reward, shop, and event reinforcement', () => {
   const engine = new GameEngine(11, null, { enableRuntimeDelegation: false });
   try {
     engine.selectCharacter('informant');
@@ -117,6 +118,13 @@ test('recently chosen route overrides stale deck dominant route for reward, shop
     engine.state.player.deck.push(makeRuntimeCard(oldCardId, 'stale-1'));
     engine.state.player.deck.push(makeRuntimeCard(oldCardId, 'stale-2'));
     engine.state.player.deck.push(makeRuntimeCard(recentCardId, 'recent-1'));
+    engine.state.routeState = {
+      primaryTag: recentTag,
+      secondaryTag: oldTag,
+      confidence: 72,
+      stage: 'committed',
+      recentCommits: [{ tag: recentTag, source: 'reward', floor: 2, weight: 16 }],
+    };
 
     setFloor(engine, 1);
 
@@ -133,8 +141,8 @@ test('recently chosen route overrides stale deck dominant route for reward, shop
     assert.equal(staleDominantReward, false);
 
     engine.enterShop();
-    const alignedShopCard = engine.state.shopCards.some((card) => getCardRouteSignal(card)?.routeTags.includes(recentTag!));
-    assert.equal(alignedShopCard, true);
+    const alignedShopCards = engine.state.shopCards.filter((card) => getCardRouteSignal(card)?.routeTags.includes(recentTag!));
+    assert.ok(alignedShopCards.length >= 2, `expected committed route shop to include two ${recentTag} cards, got ${alignedShopCards.length}`);
 
     const eventNode = engine.state.map.find((node) => node.type === 'Event' && node.y === 1);
     assert.ok(eventNode, 'expected early event node');
@@ -147,4 +155,24 @@ test('recently chosen route overrides stale deck dominant route for reward, shop
   } finally {
     engine.dispose();
   }
+});
+
+test('growth route distribution summary flags collapsed per-character route tags without failing formation pass', () => {
+  const samples: SampleResult[] = [
+    { characterId: 'informant', seed: 1, dominantTag: 'informant:intel', reward1: [], reward2: [], formed: true },
+    { characterId: 'informant', seed: 2, dominantTag: 'informant:intel', reward1: [], reward2: [], formed: true },
+    { characterId: 'brute', seed: 1, dominantTag: 'brute:rage', reward1: [], reward2: [], formed: true },
+    { characterId: 'brute', seed: 2, dominantTag: 'brute:armor', reward1: [], reward2: [], formed: false },
+  ];
+
+  const summary = summarizeRouteDistribution(samples);
+  const informant = summary.byCharacter.find((entry) => entry.characterId === 'informant');
+  const brute = summary.byCharacter.find((entry) => entry.characterId === 'brute');
+
+  assert.equal(summary.reportOnly, true);
+  assert.equal(informant?.uniqueTagCount, 1);
+  assert.equal(informant?.maxTagShare, 1);
+  assert.ok(informant?.warnings.some((warning) => warning.includes('uniqueTagCount')));
+  assert.equal(brute?.uniqueTagCount, 2);
+  assert.equal(brute?.maxTagShare, 0.5);
 });

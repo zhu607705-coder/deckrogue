@@ -1,5 +1,6 @@
 import { GameState, MapNode } from '@/core/types';
 import { safeArrayAccess } from '@/core/utils/safeArray';
+import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 
 export interface ChapterConfig {
   chapterIndex: number;
@@ -95,13 +96,14 @@ export class RunGenerator {
   generateRun(): MapNode[][] {
     this.resetGenerationState();
     this.generatedNodes = [];
-    
+
     for (let floor = 1; floor <= this.config.totalFloors; floor++) {
       const floorNodes = this.generateFloor(floor);
       this.generatedNodes.push(floorNodes);
     }
 
     this.connectNodes();
+    this.constrainOpeningRouteExpectations();
     return this.generatedNodes;
   }
 
@@ -133,6 +135,7 @@ export class RunGenerator {
       nodes.push(node);
     }
 
+    this.applyFloorConstraints(nodes, floor);
     return nodes;
   }
 
@@ -212,7 +215,7 @@ export class RunGenerator {
 
   private createNode(floor: number, index: number, total: number): MapNode {
     const type = this.determineNodeType(floor);
-    
+
     return {
       id: `floor_${floor}_node_${index}`,
       type,
@@ -221,6 +224,198 @@ export class RunGenerator {
       x: (index + 1) / (total + 1),
       y: floor - 1
     };
+  }
+
+  private applyFloorConstraints(nodes: MapNode[], floor: number): void {
+    if (this.isFixedChapterGateFloor(floor)) return;
+    this.enforcePerFloorCaps(nodes, floor);
+    this.enforceOpeningRouteContrast(nodes, floor);
+  }
+
+  private isFixedChapterGateFloor(floor: number): boolean {
+    const lastFloor = this.getChapterLastFloor(floor);
+    return floor === lastFloor || floor === lastFloor - 1;
+  }
+
+  private enforcePerFloorCaps(nodes: MapNode[], floor: number): void {
+    const config = getMapRuntimeConfig();
+    for (const [type, cap] of Object.entries(config.floorTypeCaps) as Array<[MapNode['type'], number]>) {
+      const indexes = nodes
+        .map((node, index) => ({ node, index }))
+        .filter(({ node }) => node.type === type)
+        .map(({ index }) => index);
+
+      while (indexes.length > cap) {
+        const replaceIndex = indexes.pop();
+        if (replaceIndex === undefined) break;
+        nodes[replaceIndex].type = this.pickReplacementType(floor, nodes, type);
+      }
+    }
+
+  }
+
+  private constrainOpeningRouteExpectations(): void {
+    const openingFloor = this.generatedNodes[0] || [];
+    if (openingFloor.length < 2) return;
+    const config = getMapRuntimeConfig();
+
+    for (let pass = 0; pass < 8; pass += 1) {
+      const scored = openingFloor
+        .filter((node) => node.next.length > 0)
+        .map((node) => ({ node, score: this.calculateRouteExpectation(node.id, config.openingRouteExpectation.traversalDepth) }));
+      if (scored.length < 2) return;
+
+      const scores = scored.map((entry) => entry.score);
+      if (Math.max(...scores) - Math.min(...scores) <= config.openingRouteExpectation.maxSpread) {
+        return;
+      }
+
+      const highest = scored.reduce((best, entry) => entry.score > best.score ? entry : best, scored[0]);
+      const lowest = scored.reduce((best, entry) => entry.score < best.score ? entry : best, scored[0]);
+      if (!this.trimHighestOpeningRouteBranch(highest.node) && !this.boostLowestOpeningRouteBranch(lowest.node)) {
+        return;
+      }
+    }
+  }
+
+  private trimHighestOpeningRouteBranch(node: MapNode): boolean {
+    if (node.next.length <= 1) return false;
+    const config = getMapRuntimeConfig();
+
+    const floorTwo = this.generatedNodes[1] || [];
+    const inboundCounts = new Map<string, number>(floorTwo.map((entry) => [entry.id, 0]));
+    for (const start of this.generatedNodes[0] || []) {
+      for (const nextId of start.next) {
+        inboundCounts.set(nextId, (inboundCounts.get(nextId) || 0) + 1);
+      }
+    }
+
+    const removable = node.next
+      .filter((nextId) => (inboundCounts.get(nextId) || 0) > 1)
+      .map((nextId) => ({ nextId, score: this.calculateRouteExpectation(nextId, config.openingRouteExpectation.traversalDepth) }))
+      .sort((a, b) => b.score - a.score);
+
+    const target = removable[0];
+    if (!target) return false;
+
+    node.next = node.next.filter((nextId) => nextId !== target.nextId);
+    return true;
+  }
+
+  private boostLowestOpeningRouteBranch(node: MapNode): boolean {
+    const floorTwo = this.generatedNodes[1] || [];
+    const config = getMapRuntimeConfig();
+    const candidates = floorTwo
+      .filter((nextNode) => !node.next.includes(nextNode.id) && Math.abs(nextNode.x - node.x) <= 0.66)
+      .map((nextNode) => ({ nextId: nextNode.id, score: this.calculateRouteExpectation(nextNode.id, config.openingRouteExpectation.traversalDepth) }))
+      .sort((a, b) => b.score - a.score);
+
+    const target = candidates[0];
+    if (!target) return false;
+
+    node.next.push(target.nextId);
+    return true;
+  }
+
+  private calculateRouteExpectation(startNodeId: string, depth = 3): number {
+    const allNodes = this.generatedNodes.flat();
+    const start = allNodes.find((node) => node.id === startNodeId);
+    if (!start) return 0;
+    const weights = getMapRuntimeConfig().openingRouteExpectation.weights;
+
+    let total = weights[start.type] ?? 0;
+    const visited = new Set<string>();
+    const queue: Array<{ id: string; depth: number }> = [{ id: startNodeId, depth: 0 }];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current || current.depth >= depth) continue;
+      const node = allNodes.find((entry) => entry.id === current.id);
+      if (!node) continue;
+
+      for (const nextId of node.next) {
+        if (visited.has(nextId)) continue;
+        visited.add(nextId);
+        const next = allNodes.find((entry) => entry.id === nextId);
+        if (!next) continue;
+        total += weights[next.type] ?? 0;
+        queue.push({ id: nextId, depth: current.depth + 1 });
+      }
+    }
+
+    return total;
+  }
+
+  private enforceOpeningRouteContrast(nodes: MapNode[], floor: number): void {
+    const config = getMapRuntimeConfig();
+    if (floor > config.openingRouteContrast.maxFloor || nodes.length < 2) return;
+
+    const ensureType = (preferred: MapNode['type'], fallbackIndex: number) => {
+      if (nodes.some((node) => node.type === preferred)) return;
+      const replaceTarget = nodes.findIndex((node, index) => index !== fallbackIndex && node.type === 'Combat');
+      const targetIndex = replaceTarget >= 0 ? replaceTarget : fallbackIndex;
+      nodes[targetIndex].type = preferred;
+    };
+
+    // Opening floors should always expose at least one pressure lane and one utility/unknown lane.
+    ensureType('Combat', 0);
+    const utilityTypes = config.openingRouteContrast.utilityTypes as MapNode['type'][];
+    if (!nodes.some((node) => utilityTypes.includes(node.type))) {
+      const fallbackType = floor === 1 ? utilityTypes[0] : this.rng() < 0.5 ? utilityTypes[1] || utilityTypes[0] : utilityTypes[2] || utilityTypes[0];
+      ensureType(fallbackType, nodes.length - 1);
+    }
+
+    // First floor should offer a third route flavour when width allows it.
+    const uniqueTypes = new Set(nodes.map((node) => node.type));
+    if (floor === 1 && config.openingRouteContrast.requireThirdFlavorOnFloor1 && nodes.length >= 4 && uniqueTypes.size < 3) {
+      const targetIndex = nodes.findIndex((node) => node.type === 'Combat');
+      if (targetIndex >= 0) {
+        const candidate: MapNode['type'] = uniqueTypes.has(utilityTypes[0])
+          ? (uniqueTypes.has(utilityTypes[1]) ? (utilityTypes[2] || utilityTypes[0]) : (utilityTypes[1] || utilityTypes[0]))
+          : utilityTypes[0];
+        nodes[targetIndex].type = candidate;
+      }
+    }
+  }
+
+  private pickReplacementType(
+    floor: number,
+    nodes: MapNode[],
+    removedType: MapNode['type'],
+  ): MapNode['type'] {
+    const chapterWeights = this.getChapterWeights(floor);
+    const config = getMapRuntimeConfig();
+    const weightedCandidates: Array<{ type: MapNode['type']; weight: number }> = ([
+      { type: 'Combat', weight: Math.max(0.2, 1 - (chapterWeights.elite + chapterWeights.event + chapterWeights.shop + chapterWeights.rest)) },
+      { type: 'Event', weight: chapterWeights.event },
+      { type: 'Shop', weight: chapterWeights.shop },
+      { type: 'Rest', weight: chapterWeights.rest },
+      { type: 'Elite', weight: chapterWeights.elite },
+    ] as Array<{ type: MapNode['type']; weight: number }>).filter(({ type }) => type !== removedType);
+
+    if (floor <= 3) {
+      for (const candidate of weightedCandidates) {
+        if (candidate.type === 'Elite') candidate.weight = 0;
+      }
+    }
+
+    const specialCount = (type: MapNode['type']) => nodes.filter((node) => node.type === type).length;
+    for (const candidate of weightedCandidates) {
+      const cap = config.floorTypeCaps[candidate.type as 'Event' | 'Shop' | 'Rest' | 'Elite'];
+      if (cap !== undefined && specialCount(candidate.type) >= cap) {
+        candidate.weight = 0;
+      }
+    }
+
+    const totalWeight = weightedCandidates.reduce((sum, candidate) => sum + Math.max(0, candidate.weight), 0);
+    if (totalWeight <= 0) return 'Combat';
+
+    let roll = this.rng() * totalWeight;
+    for (const candidate of weightedCandidates) {
+      roll -= Math.max(0, candidate.weight);
+      if (roll <= 0) return candidate.type;
+    }
+    return 'Combat';
   }
 
   private determineNodeType(floor: number): MapNode['type'] {
@@ -274,7 +469,7 @@ export class RunGenerator {
 
     if (this.consecutiveSameTypeCount > this.MAX_CONSECUTIVE_SAME) {
       const availableTypes: MapNode['type'][] = [];
-      
+
       if (!this.SPECIAL_ROOMS.has(this.lastNodeType)) {
         availableTypes.push('Event', 'Shop', 'Rest', 'Combat');
       } else if (this.lastNodeType === 'Event' || this.lastNodeType === 'Shop' || this.lastNodeType === 'Rest') {
@@ -299,7 +494,7 @@ export class RunGenerator {
         if (selectedType !== 'Event') fallbackTypes.push('Event');
         if (selectedType !== 'Shop') fallbackTypes.push('Shop');
         if (selectedType !== 'Rest') fallbackTypes.push('Rest');
-        
+
         const combatChance = 0.6;
         if (fallbackTypes.length > 0 && this.rng() < combatChance) {
           selectedType = 'Combat';
@@ -345,9 +540,10 @@ export class RunGenerator {
 
         const pool = reachableNodes.length > 0 ? reachableNodes : nextFloor;
         const shuffled = this.legacyRandomSort(pool);
+        const maxBranchesForFloor = floor <= 1 ? 2 : this.config.branchFactor;
         const desired = Math.min(
           shuffled.length,
-          Math.max(1, 1 + Math.floor(this.rng() * this.config.branchFactor))
+          Math.max(1, 1 + Math.floor(this.rng() * maxBranchesForFloor))
         );
         const chosen = shuffled.slice(0, desired);
         const uniqueIds = [...new Set(chosen.map(n => n.id))];

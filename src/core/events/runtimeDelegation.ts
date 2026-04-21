@@ -258,6 +258,31 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
     return structuredClone(this.snapshot);
   }
 
+  private returnToMapSnapshot(overrides: Partial<RuleSnapshot> = {}): RuleSnapshot {
+    if (!this.snapshot) {
+      throw new Error('Delegated runtime has not been started');
+    }
+
+    this.snapshot = {
+      ...this.snapshot,
+      ...overrides,
+      roomSession: null,
+      surfaceContext: null,
+      lifecycle: {
+        screen: 'Map',
+        phase: 'map',
+        pendingNodeResolution: false,
+      },
+      meta: {
+        ...this.snapshot.meta,
+        replayLength: this.snapshot.meta.replayLength + 1,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+
+    return structuredClone(this.snapshot);
+  }
+
   takeReward(cardId?: string): RuleSnapshot {
     if (!this.snapshot) {
       throw new Error('Delegated runtime has not been started');
@@ -276,25 +301,13 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
       throw new Error(`Delegated reward card is not offered: ${selectedCardId}`);
     }
 
-    this.snapshot = {
-      ...this.snapshot,
+    return this.returnToMapSnapshot({
       player: {
         ...this.snapshot.player,
         deck: selectedCardId ? [...this.snapshot.player.deck, selectedCardId] : [...this.snapshot.player.deck],
       },
       reward: null,
-      lifecycle: {
-        screen: 'Map',
-        phase: 'map',
-        pendingNodeResolution: false,
-      },
-      meta: {
-        ...this.snapshot.meta,
-        replayLength: this.snapshot.meta.replayLength + 1,
-        generatedAt: new Date().toISOString(),
-      },
-    };
-    return structuredClone(this.snapshot);
+    });
   }
 
   skipReward(): RuleSnapshot {
@@ -305,21 +318,9 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
       throw new Error(`Delegated skipReward is not supported from phase: ${this.snapshot.lifecycle.phase}`);
     }
 
-    this.snapshot = {
-      ...this.snapshot,
+    return this.returnToMapSnapshot({
       reward: null,
-      lifecycle: {
-        screen: 'Map',
-        phase: 'map',
-        pendingNodeResolution: false,
-      },
-      meta: {
-        ...this.snapshot.meta,
-        replayLength: this.snapshot.meta.replayLength + 1,
-        generatedAt: new Date().toISOString(),
-      },
-    };
-    return structuredClone(this.snapshot);
+    });
   }
 
   chooseEventOption(choiceId: string): RuleSnapshot {
@@ -420,21 +421,9 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
       throw new Error(`Delegated leaveRoom is not supported from phase: ${this.snapshot.lifecycle.phase}`);
     }
 
-    this.snapshot = {
-      ...this.snapshot,
-      lifecycle: {
-        screen: 'Map',
-        phase: 'map',
-        pendingNodeResolution: false,
-      },
+    return this.returnToMapSnapshot({
       activeEvent: null,
-      meta: {
-        ...this.snapshot.meta,
-        replayLength: this.snapshot.meta.replayLength + 1,
-        generatedAt: new Date().toISOString(),
-      },
-    };
-    return structuredClone(this.snapshot);
+    });
   }
 
   loadSnapshot(snapshot: RuleSnapshot): void {

@@ -1,4 +1,4 @@
-import type { GameState } from '@/core/types';
+import type { GameState, RoomResolutionKind } from '@/core/types';
 
 export type AppLifecycleState = 'booting' | 'ready' | 'shutting_down';
 export type RunLifecycleState = 'idle' | 'in_run' | 'paused' | 'ended';
@@ -10,7 +10,9 @@ export type RunPhaseState =
   | 'shop'
   | 'rest'
   | 'reward'
+  | 'enchant'
   | 'upgrade'
+  | 'relic_upgrade'
   | 'remove_card'
   | 'game_over'
   | 'victory';
@@ -20,19 +22,21 @@ export type RunAction =
   | { type: 'RUN_LOADED' }
   | { type: 'RUN_PAUSED' }
   | { type: 'RUN_RESUMED' }
-  | { type: 'NODE_ENTERED'; phase: Extract<RunPhaseState, 'combat' | 'event' | 'shop' | 'rest'> }
-  | { type: 'COMBAT_WON' }
+  | { type: 'NODE_ENTERED'; phase: Extract<RunPhaseState, 'combat' | 'event' | 'shop' | 'rest'>; roomResolutionToken?: string | null }
+  | { type: 'COMBAT_WON'; roomResolutionToken?: string | null }
   | { type: 'PLAYER_DIED' }
-  | { type: 'EVENT_RESOLVED' }
-  | { type: 'SHOP_LEFT' }
-  | { type: 'REST_COMPLETED' }
-  | { type: 'REWARD_TAKEN' | 'REWARD_SKIPPED' }
+  | { type: 'EVENT_RESOLVED'; roomResolutionToken?: string | null }
+  | { type: 'SHOP_LEFT'; roomResolutionToken?: string | null }
+  | { type: 'REST_COMPLETED'; roomResolutionToken?: string | null }
+  | { type: 'REWARD_TAKEN' | 'REWARD_SKIPPED'; roomResolutionToken?: string | null }
   | { type: 'RUN_ENDED'; phase: Extract<RunPhaseState, 'game_over' | 'victory'> };
 
 export interface RunTransitionState {
   lifecycle: RunLifecycleState;
   phase: RunPhaseState;
   pendingNodeResolution: boolean;
+  roomResolutionToken?: string | null;
+  roomResolutionKind?: RoomResolutionKind | null;
 }
 
 export function screenToRunPhase(screen: GameState['screen']): RunPhaseState {
@@ -45,6 +49,8 @@ export function screenToRunPhase(screen: GameState['screen']): RunPhaseState {
       return 'combat';
     case 'Reward':
       return 'reward';
+    case 'Enchant':
+      return 'enchant';
     case 'Event':
       return 'event';
     case 'Shop':
@@ -53,6 +59,8 @@ export function screenToRunPhase(screen: GameState['screen']): RunPhaseState {
       return 'rest';
     case 'Upgrade':
       return 'upgrade';
+    case 'RelicUpgrade':
+      return 'relic_upgrade';
     case 'RemoveCard':
       return 'remove_card';
     case 'GameOver':
@@ -72,6 +80,8 @@ export function runPhaseToScreen(phase: RunPhaseState): GameState['screen'] {
       return 'Combat';
     case 'reward':
       return 'Reward';
+    case 'enchant':
+      return 'Enchant';
     case 'event':
       return 'Event';
     case 'shop':
@@ -80,6 +90,8 @@ export function runPhaseToScreen(phase: RunPhaseState): GameState['screen'] {
       return 'Rest';
     case 'upgrade':
       return 'Upgrade';
+    case 'relic_upgrade':
+      return 'RelicUpgrade';
     case 'remove_card':
       return 'RemoveCard';
     case 'game_over':
@@ -90,18 +102,47 @@ export function runPhaseToScreen(phase: RunPhaseState): GameState['screen'] {
 }
 
 export function deriveRunTransitionState(state: GameState, lifecycle: RunLifecycleState = 'in_run'): RunTransitionState {
+  const phase = screenToRunPhase(state.screen);
+  const roomSession = state.roomSession ?? null;
+  const inferredRoomKind =
+    phase === 'combat' ||
+    phase === 'reward' ||
+    phase === 'event' ||
+    phase === 'shop' ||
+    phase === 'rest'
+      ? phase
+      : null;
+  const canImplicitlyResolveRoom =
+    phase === 'combat' ||
+    phase === 'event' ||
+    phase === 'shop' ||
+    phase === 'rest' ||
+    phase === 'reward' ||
+    phase === 'enchant' ||
+    phase === 'upgrade' ||
+    phase === 'relic_upgrade' ||
+    phase === 'remove_card';
+  const roomResolutionToken =
+    roomSession?.token ??
+    state.roomResolutionToken ??
+    (state.pendingNodeResolution || canImplicitlyResolveRoom ? `legacy:${state.currentNodeId ?? phase}` : null);
   return {
     lifecycle,
-    phase: screenToRunPhase(state.screen),
-    pendingNodeResolution: Boolean(state.pendingNodeResolution)
+    phase,
+    pendingNodeResolution: Boolean(roomResolutionToken),
+    roomResolutionToken,
+    roomResolutionKind: roomSession?.resolverKind ?? state.roomResolutionKind ?? inferredRoomKind
   };
 }
 
 export function transitionRunState(current: RunTransitionState, action: RunAction): RunTransitionState {
+  const activeRoomResolutionToken =
+    current.roomResolutionToken ??
+    (current.pendingNodeResolution ? '__legacy_pending__' : null);
   switch (action.type) {
     case 'RUN_STARTED':
     case 'RUN_LOADED':
-      return { lifecycle: 'in_run', phase: 'map', pendingNodeResolution: false };
+      return { lifecycle: 'in_run', phase: 'map', pendingNodeResolution: false, roomResolutionToken: null };
     case 'RUN_PAUSED':
       if (current.lifecycle !== 'in_run') {
         throw new Error(`Illegal run transition: cannot pause from ${current.lifecycle}`);
@@ -116,28 +157,42 @@ export function transitionRunState(current: RunTransitionState, action: RunActio
       if (current.lifecycle !== 'in_run' || current.phase !== 'map') {
         throw new Error(`Illegal run transition: cannot enter node from ${current.lifecycle}/${current.phase}`);
       }
-      return { ...current, phase: action.phase, pendingNodeResolution: true };
+      return {
+        ...current,
+        phase: action.phase,
+        pendingNodeResolution: true,
+        roomResolutionToken: action.roomResolutionToken ?? activeRoomResolutionToken ?? '__pending__',
+        roomResolutionKind: action.phase
+      };
     case 'COMBAT_WON':
       if (current.phase !== 'combat') {
         throw new Error(`Illegal run transition: cannot resolve combat victory from ${current.phase}`);
       }
-      return { ...current, phase: 'reward', pendingNodeResolution: true };
+      return {
+        ...current,
+        phase: 'reward',
+        pendingNodeResolution: true,
+        roomResolutionToken: action.roomResolutionToken ?? activeRoomResolutionToken ?? '__combat__',
+        roomResolutionKind: 'reward'
+      };
     case 'PLAYER_DIED':
       if (current.lifecycle !== 'in_run' && current.lifecycle !== 'paused') {
         throw new Error(`Illegal run transition: cannot die from ${current.lifecycle}`);
       }
-      return { lifecycle: 'ended', phase: 'game_over', pendingNodeResolution: false };
+      return { lifecycle: 'ended', phase: 'game_over', pendingNodeResolution: false, roomResolutionToken: null, roomResolutionKind: null };
     case 'EVENT_RESOLVED':
     case 'SHOP_LEFT':
     case 'REST_COMPLETED':
     case 'REWARD_TAKEN':
     case 'REWARD_SKIPPED':
-      if (!current.pendingNodeResolution) {
+      if (!activeRoomResolutionToken) {
         throw new Error(`Illegal run transition: cannot leave room when no node is pending`);
       }
-      return { lifecycle: 'in_run', phase: 'map', pendingNodeResolution: false };
+      if (action.roomResolutionToken && activeRoomResolutionToken !== action.roomResolutionToken) {
+        throw new Error('Illegal run transition: room resolution token mismatch');
+      }
+      return { lifecycle: 'in_run', phase: 'map', pendingNodeResolution: false, roomResolutionToken: null, roomResolutionKind: null };
     case 'RUN_ENDED':
-      return { lifecycle: 'ended', phase: action.phase, pendingNodeResolution: false };
+      return { lifecycle: 'ended', phase: action.phase, pendingNodeResolution: false, roomResolutionToken: null, roomResolutionKind: null };
   }
 }
-

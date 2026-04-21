@@ -146,6 +146,11 @@ export function hydrateRoomSessionFromLegacyState(
   >,
   options: { isEventFreeCardRemovalMode?: boolean } = {}
 ): RoomSession | null {
+  const surface = inferRoomSurfaceFromScreen(state.screen);
+  if (!state.pendingNodeResolution && !surface) {
+    return null;
+  }
+
   const resolverKind =
     state.roomResolutionKind ??
     inferRoomResolutionKindFromLegacyState(state, options);
@@ -162,7 +167,6 @@ export function hydrateRoomSessionFromLegacyState(
     state.roomSession?.token ??
     state.roomResolutionToken ??
     `legacy:${state.currentNodeId ?? resolverKind}`;
-  const surface = inferRoomSurfaceFromScreen(state.screen);
 
   return {
     token,

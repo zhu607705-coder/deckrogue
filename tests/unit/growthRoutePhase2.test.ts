@@ -7,6 +7,7 @@ import rawRelicsData from '@/content/data/relics.json';
 import {
   getCardRouteAffinityTags,
   getCardRouteSignal,
+  getGenericPowerIdsForCharacter,
   getKnownRouteTagsForCharacter,
   getRelicRouteTags,
   getRouteSupportRelicIds,
@@ -81,7 +82,19 @@ test('route taxonomy guardrail keeps every route connected to confirm, payoff, a
   }
 });
 
-test('midgame shop relics reinforce the recent route instead of stale deck history', () => {
+test('generic power pools stay neutral relative to route affinity taxonomy', () => {
+  const characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+
+  for (const characterId of characters) {
+    for (const cardId of getGenericPowerIdsForCharacter(characterId)) {
+      const card = cardsData.find((entry) => entry.id === cardId);
+      assert.ok(card, `missing generic power card ${cardId}`);
+      assert.equal(getCardRouteAffinityTags(card!).length, 0, `${cardId} should stay neutral`);
+    }
+  }
+});
+
+test('midgame shop relics reinforce the committed recent route instead of stale deck history', () => {
   const engine = new GameEngine(19, null, { enableRuntimeDelegation: false });
   try {
     engine.selectCharacter('informant');
@@ -91,6 +104,13 @@ test('midgame shop relics reinforce the recent route instead of stale deck histo
     engine.state.player.deck.push(makeRuntimeCard(oldRouteCard, 'old-2'));
     engine.state.player.deck.push(makeRuntimeCard(recentRouteCard, 'recent-1'));
     setFloor(engine, 3);
+    engine.state.routeState = {
+      primaryTag: 'informant:evidence',
+      secondaryTag: 'informant:intel',
+      confidence: 72,
+      stage: 'committed',
+      recentCommits: [{ tag: 'informant:evidence', source: 'reward', floor: 3, weight: 16 }],
+    };
 
     engine.enterShop();
 

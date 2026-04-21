@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import math
 from random import Random
 from typing import Any
@@ -35,12 +36,36 @@ class RuleRuntime:
             self._apply_enter_node(str(command["node_id"]))
         elif command_type == "leave_room":
             self._apply_leave_room()
+        elif command_type == "cancel_surface":
+            self._apply_cancel_surface()
+        elif command_type == "buy_shop_card":
+            self._apply_buy_shop_card(str(command["card_id"]))
+        elif command_type == "buy_shop_relic":
+            self._apply_buy_shop_relic(str(command["relic_id"]))
+        elif command_type == "buy_shop_potion":
+            self._apply_buy_shop_potion(str(command["potion_id"]))
         elif command_type == "complete_combat":
             self._apply_complete_combat()
         elif command_type == "take_reward":
             self._apply_take_reward(command.get("card_id"))
         elif command_type == "skip_reward":
             self._apply_skip_reward()
+        elif command_type == "choose_event_option":
+            self._apply_choose_event_option(str(command.get("choice_id", "continue")))
+        elif command_type == "rest":
+            self._apply_rest()
+        elif command_type == "enter_enchant":
+            self._apply_enter_enchant()
+        elif command_type == "apply_enchantment":
+            self._apply_apply_enchantment(command.get("card_instance_id"))
+        elif command_type == "enter_relic_upgrade":
+            self._apply_enter_relic_upgrade()
+        elif command_type == "upgrade_relic":
+            self._apply_upgrade_relic(str(command["relic_id"]))
+        elif command_type == "upgrade_card":
+            self._apply_upgrade_card(command.get("card_instance_id"))
+        elif command_type == "remove_card":
+            self._apply_remove_card(command.get("card_instance_id"))
         elif command_type == "load_snapshot":
             self.load(command["snapshot"])
             return {"snapshot": self.snapshot(), "events": [{"type": "runtime.load_snapshot"}]}
@@ -55,12 +80,14 @@ class RuleRuntime:
         }
 
     def snapshot(self) -> dict[str, Any]:
+        self._snapshot.setdefault("meta", {})["runtime_rng_state"] = int(self._runtime_rng_state)
         return deepcopy(self._snapshot)
 
     def load(self, snapshot: dict[str, Any]) -> dict[str, Any]:
         self._snapshot = deepcopy(snapshot)
         self._seed = int(self._snapshot["seed"])
-        self._runtime_rng_state = 0
+        self._runtime_rng_state = int(self._snapshot.get("meta", {}).get("runtime_rng_state", 0))
+        self._snapshot.setdefault("meta", {})["runtime_rng_state"] = int(self._runtime_rng_state)
         return self.snapshot()
 
     def _apply_select_character(self, character_id: str) -> None:
@@ -76,7 +103,13 @@ class RuleRuntime:
             "hp": int(character["max_hp"]),
             "max_hp": int(character["max_hp"]),
             "gold": int(character.get("starting_gold", 99)),
+            "intel": 0,
+            "devotion": 0,
+            "corruption": 0,
             "deck": list(character.get("starting_deck", [])),
+            "relic_ids": [],
+            "potion_ids": [],
+            "relic_states": {},
         }
         for _ in self._snapshot["player"]["deck"]:
             self._consume_runtime_id()
@@ -91,6 +124,10 @@ class RuleRuntime:
         }
         self._snapshot["combat"] = None
         self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._snapshot["room_session"] = None
 
     def _apply_enter_node(self, node_id: str) -> None:
         if self._snapshot["lifecycle"]["phase"] != "map":
@@ -125,11 +162,572 @@ class RuleRuntime:
         screen = "Rest" if node_type == "Rest" else node_type
         self._snapshot["combat"] = None
         self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._snapshot["room_session"] = None
         self._snapshot["lifecycle"] = {
             "screen": screen,
             "phase": phase,
             "pending_node_resolution": True,
         }
+
+        if node_type == "Event":
+            self._start_event()
+        elif node_type == "Shop":
+            self._start_shop()
+        elif node_type == "Rest":
+            self._set_room_session("rest", "rest", ["rest"])
+
+    def _start_event(self) -> None:
+        events = self._content_bundle.get("events", [])
+        if not events:
+            events = [{"id": "mysterious_shrine"}, {"id": "heretic_altar"}]
+        selected_event = events[int(self._next_runtime_random() * len(events))]
+        self._snapshot["active_event"] = {
+            "id": str(selected_event["id"]),
+            "stage": None,
+            "data": {},
+        }
+        self._set_room_session("event", "event", ["event"])
+
+    def _apply_choose_event_option(self, choice_id: str) -> None:
+        if self._snapshot["lifecycle"]["phase"] != "event":
+            raise ValueError("choose_event_option is only valid during event phase")
+
+        event = self._snapshot.get("active_event")
+        if event:
+            event["data"] = {**(event.get("data") or {}), "last_choice_id": choice_id}
+
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._clear_room_session()
+        self._snapshot["lifecycle"] = {
+            "screen": "Map",
+            "phase": "map",
+            "pending_node_resolution": False,
+        }
+
+    def _apply_rest(self) -> None:
+        if self._snapshot["lifecycle"]["phase"] != "rest":
+            raise ValueError("rest is only valid during rest phase")
+        max_hp = int(self._snapshot["player"]["max_hp"])
+        heal_amount = max(1, int(max_hp * 0.3))
+        self._snapshot["player"]["hp"] = min(max_hp, int(self._snapshot["player"]["hp"]) + heal_amount)
+        self._snapshot["combat"] = None
+        self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._clear_room_session()
+        self._snapshot["lifecycle"] = {
+            "screen": "Map",
+            "phase": "map",
+            "pending_node_resolution": False,
+        }
+
+    def _parse_card_selector(self, selector: Any) -> tuple[int, str] | None:
+        if selector is None:
+            return None
+        raw_selector = str(selector)
+        if ":" not in raw_selector:
+            return None
+        index_part, card_id = raw_selector.split(":", 1)
+        try:
+            index = int(index_part)
+        except ValueError:
+            return None
+        return index, card_id
+
+    def _current_floor(self) -> int:
+        current_node = self._get_current_node()
+        return int(current_node["y"]) + 1 if current_node is not None else 1
+
+    def _record_route_commit(self, source: str, weight: int) -> None:
+        route_state = self._snapshot.get("route_state")
+        if not route_state:
+            return
+        tag = route_state.get("primary_tag")
+        if not tag:
+            return
+        recent_commits = list(route_state.get("recent_commits") or [])
+        recent_commits.append({
+            "tag": tag,
+            "source": source,
+            "floor": self._current_floor(),
+            "weight": weight,
+        })
+        route_state["recent_commits"] = recent_commits[-5:]
+
+    def _set_room_session(self, owner_kind: str, resolver_kind: str, surface_stack: list[str] | None = None, status: str = "active") -> None:
+        current_node = self._get_current_node()
+        node_id = current_node.get("id") if current_node else self._snapshot.get("map", {}).get("current_node_id")
+        token = f'legacy:{node_id or resolver_kind}'
+        self._snapshot["room_session"] = {
+            "token": token,
+            "node_id": node_id,
+            "owner_kind": owner_kind,
+            "resolver_kind": resolver_kind,
+            "surface_stack": surface_stack or [owner_kind],
+            "status": status,
+        }
+
+    def _clear_room_session(self) -> None:
+        self._snapshot["room_session"] = None
+
+    def _clean_surface_context(self) -> None:
+        surface_context = self._snapshot.get("surface_context")
+        if not surface_context:
+            self._snapshot["surface_context"] = None
+            return
+        compact = {key: value for key, value in surface_context.items() if value not in (None, False)}
+        self._snapshot["surface_context"] = compact or None
+
+    def _get_relic_upgrade_cost(self, relic_id: str, current_level: int) -> int:
+        upgrade_costs = {
+            "burning_blood": {1: 120, 2: 180},
+            "bag_of_prep": {1: 150, 2: 220},
+            "vajra": {1: 140, 2: 200},
+            "anchor": {1: 130, 2: 190},
+            "lantern": {1: 145, 2: 210},
+            "ruined_reactor": {1: 180, 2: 250},
+            "martyrs_censer": {1: 150, 2: 220},
+            "thorns_armor": {1: 130, 2: 190},
+            "chaos_sanctum_relic": {1: 200, 2: 280},
+        }
+        return int(upgrade_costs.get(relic_id, {}).get(current_level, 0))
+
+    def _start_shop(self) -> None:
+        character_id = self._snapshot["player"]["character_id"]
+        card_pool = [
+            entry for entry in self._content_bundle.get("cards", [])
+            if entry.get("character") in {character_id, "All"}
+        ]
+        if not card_pool:
+            card_pool = list(self._content_bundle.get("cards", []))
+        relic_pool = list(self._content_bundle.get("relics", []))
+        potion_pool = list(self._content_bundle.get("potions", []))
+        affordable_potion_pool = [
+            entry for entry in potion_pool
+            if int(entry.get("price", 65)) <= int(self._snapshot["player"]["gold"])
+        ]
+
+        cards: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        while len(cards) < 3 and card_pool:
+            selected = card_pool[int(self._next_runtime_random() * len(card_pool))]
+            card_id = str(selected["id"])
+            if card_id in seen_ids:
+                continue
+            seen_ids.add(card_id)
+            rarity = str(selected.get("rarity", "Common"))
+            price = 150 if rarity == "Rare" else 75 if rarity == "Uncommon" else 50
+            cards.append({"id": card_id, "price": price})
+
+        relics: list[dict[str, Any]] = []
+        seen_relic_ids: set[str] = set()
+        while len(relics) < 2 and relic_pool:
+            selected = relic_pool[int(self._next_runtime_random() * len(relic_pool))]
+            relic_id = str(selected["id"])
+            if relic_id in seen_relic_ids:
+                continue
+            seen_relic_ids.add(relic_id)
+            relics.append({
+                "id": relic_id,
+                "price": max(1, int(selected.get("price", 150))),
+            })
+
+        potions: list[dict[str, Any]] = []
+        seen_potion_ids: set[str] = set()
+        prioritized_potion_pool = affordable_potion_pool if affordable_potion_pool else potion_pool
+        while len(potions) < min(3, len(prioritized_potion_pool)) and prioritized_potion_pool:
+            selected = prioritized_potion_pool[int(self._next_runtime_random() * len(prioritized_potion_pool))]
+            potion_id = str(selected["id"])
+            if potion_id in seen_potion_ids:
+                continue
+            seen_potion_ids.add(potion_id)
+            potions.append({
+                "id": potion_id,
+                "price": max(1, int(selected.get("price", 65))),
+            })
+        while len(potions) < 3 and potion_pool:
+            selected = potion_pool[int(self._next_runtime_random() * len(potion_pool))]
+            potion_id = str(selected["id"])
+            if potion_id in seen_potion_ids:
+                continue
+            seen_potion_ids.add(potion_id)
+            potions.append({
+                "id": potion_id,
+                "price": max(1, int(selected.get("price", 65))),
+            })
+
+        self._snapshot["shop"] = {
+            "cards": cards,
+            "relics": relics,
+            "potions": potions,
+            "card_removal_cost": 75,
+        }
+        self._set_room_session("shop", "shop", ["shop"])
+
+    def _apply_buy_shop_card(self, card_id: str) -> None:
+        if self._snapshot["lifecycle"]["phase"] != "shop":
+            raise ValueError("buy_shop_card is only valid during shop phase")
+
+        shop = self._snapshot.get("shop")
+        if shop is None:
+            raise ValueError("No shop payload is available")
+
+        offers = shop.get("cards") or []
+        selected_offer = next((entry for entry in offers if str(entry.get("id")) == card_id), None)
+        if selected_offer is None:
+            raise ValueError(f"Shop card is not offered: {card_id}")
+
+        price = int(selected_offer.get("price", 50))
+        if int(self._snapshot["player"]["gold"]) < price:
+            raise ValueError(f"Not enough gold for shop card: {card_id}")
+
+        self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - price
+        self._snapshot["player"]["deck"].append(card_id)
+        shop["cards"] = [entry for entry in offers if str(entry.get("id")) != card_id]
+        self._record_route_commit("shop", 12)
+
+    def _apply_buy_shop_relic(self, relic_id: str) -> None:
+        if self._snapshot["lifecycle"]["phase"] != "shop":
+            raise ValueError("buy_shop_relic is only valid during shop phase")
+
+        shop = self._snapshot.get("shop")
+        if shop is None:
+            raise ValueError("No shop payload is available")
+
+        offers = shop.get("relics") or []
+        selected_offer = next((entry for entry in offers if str(entry.get("id")) == relic_id), None)
+        if selected_offer is None:
+            raise ValueError(f"Shop relic is not offered: {relic_id}")
+
+        price = int(selected_offer.get("price", 150))
+        if int(self._snapshot["player"]["gold"]) < price:
+            raise ValueError(f"Not enough gold for shop relic: {relic_id}")
+
+        if relic_id in self._snapshot["player"]["relic_ids"]:
+            raise ValueError(f"Relic already owned: {relic_id}")
+
+        self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - price
+        self._snapshot["player"]["relic_ids"].append(relic_id)
+        relic_def = next((entry for entry in self._content_bundle.get("relics", []) if str(entry.get("id")) == relic_id), {})
+        self._snapshot["player"].setdefault("relic_states", {})[relic_id] = {
+            "level": 1,
+            "progress": 0,
+            "corrupted": bool(relic_def.get("corrupted", False)),
+        }
+        shop["relics"] = [entry for entry in offers if str(entry.get("id")) != relic_id]
+
+    def _apply_buy_shop_potion(self, potion_id: str) -> None:
+        if self._snapshot["lifecycle"]["phase"] != "shop":
+            raise ValueError("buy_shop_potion is only valid during shop phase")
+
+        shop = self._snapshot.get("shop")
+        if shop is None:
+            raise ValueError("No shop payload is available")
+
+        offers = shop.get("potions") or []
+        selected_offer = next((entry for entry in offers if str(entry.get("id")) == potion_id), None)
+        if selected_offer is None:
+            raise ValueError(f"Shop potion is not offered: {potion_id}")
+
+        price = int(selected_offer.get("price", 65))
+        if int(self._snapshot["player"]["gold"]) < price:
+            raise ValueError(f"Not enough gold for shop potion: {potion_id}")
+
+        if len(self._snapshot["player"]["potion_ids"]) >= 3:
+            raise ValueError("Potion slots are full")
+
+        self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - price
+        self._snapshot["player"]["potion_ids"].append(potion_id)
+        shop["potions"] = [entry for entry in offers if str(entry.get("id")) != potion_id]
+
+    def _apply_enter_enchant(self) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if phase not in {"rest", "shop"}:
+            raise ValueError("enter_enchant is only valid during rest or shop phase")
+        surface_context = self._snapshot.get("surface_context") or {}
+        if phase == "shop":
+            surface_context["enchant_context"] = {
+                "source": "Shop",
+                "enchantment_id": "swift_sigil",
+                "title": "黑市附魔",
+                "description": "支付信用筹码，为一张攻击或技能牌烙下永久附魔。",
+                "price": 75,
+                "return_screen": "Shop",
+            }
+        else:
+            surface_context["enchant_context"] = {
+                "source": "Rest",
+                "enchantment_id": "blood_rune",
+                "title": "营火刻印",
+                "description": "从一张攻击或技能牌上刻下稳定的永久附魔。",
+                "return_screen": "Rest",
+            }
+            surface_context["campfire_choice_locked"] = True
+        surface_context["enchant_return_screen"] = surface_context["enchant_context"]["return_screen"]
+        self._snapshot["surface_context"] = surface_context
+        self._set_room_session(phase, phase, [phase, "enchant"])
+        self._snapshot["lifecycle"] = {
+            "screen": "Enchant",
+            "phase": "enchant",
+            "pending_node_resolution": True,
+        }
+
+    def _apply_apply_enchantment(self, card_instance_id: Any) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if phase != "enchant":
+            raise ValueError("apply_enchantment is only valid during enchant phase")
+        parsed_selector = self._parse_card_selector(card_instance_id)
+        if parsed_selector is None:
+            raise ValueError("apply_enchantment requires an index-prefixed card selector")
+        index, card_id = parsed_selector
+        deck = self._snapshot["player"]["deck"]
+        if index < 0 or index >= len(deck):
+            raise ValueError("apply_enchantment selector index is out of range")
+        if str(deck[index]) != card_id:
+            raise ValueError("apply_enchantment selector does not match the current deck entry")
+        surface_context = self._snapshot.get("surface_context") or {}
+        enchant_context = surface_context.get("enchant_context") or {}
+        if str(enchant_context.get("source", "Rest")) == "Shop":
+            price = int(enchant_context.get("price", 75))
+            if int(self._snapshot["player"]["gold"]) < price:
+                raise ValueError("Not enough gold to apply shop enchantment")
+            self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - price
+        if not str(deck[index]).endswith("*"):
+            deck[index] = f"{deck[index]}*"
+        return_screen = str(enchant_context.get("return_screen") or enchant_context.get("source") or "Map")
+        surface_context["enchant_context"] = None
+        surface_context.pop("enchant_return_screen", None)
+        if return_screen == "Rest":
+            surface_context["campfire_choice_locked"] = False
+        self._snapshot["surface_context"] = surface_context
+        self._clean_surface_context()
+        self._snapshot["lifecycle"] = {
+            "screen": "Map" if return_screen == "Rest" else return_screen,
+            "phase": "map" if return_screen == "Rest" else return_screen.lower(),
+            "pending_node_resolution": False if return_screen == "Rest" else return_screen != "Map",
+        }
+        if return_screen == "Rest":
+            self._clear_room_session()
+        elif return_screen in {"Event", "Shop"}:
+            self._set_room_session(return_screen.lower(), return_screen.lower(), [return_screen.lower()])
+
+    def _apply_enter_relic_upgrade(self) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if phase != "rest":
+            raise ValueError("enter_relic_upgrade is only valid during rest phase")
+        relic_states = self._snapshot["player"].get("relic_states") or {}
+        has_corrupted_relic = any(
+            str(relic_id) in self._snapshot["player"]["relic_ids"] and bool(state.get("corrupted", False))
+            for relic_id, state in relic_states.items()
+        )
+        if not has_corrupted_relic:
+            raise ValueError("No corrupted relic is available for relic upgrade")
+        surface_context = self._snapshot.get("surface_context") or {}
+        surface_context["relic_upgrade_return_screen"] = "Rest"
+        surface_context["campfire_choice_locked"] = True
+        self._snapshot["surface_context"] = surface_context
+        self._set_room_session("rest", "rest", ["rest", "relic_upgrade"])
+        self._snapshot["lifecycle"] = {
+            "screen": "RelicUpgrade",
+            "phase": "relic_upgrade",
+            "pending_node_resolution": True,
+        }
+
+    def _apply_upgrade_relic(self, relic_id: str) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if phase != "relic_upgrade":
+            raise ValueError("upgrade_relic is only valid during relic_upgrade phase")
+        relic_states = self._snapshot["player"].setdefault("relic_states", {})
+        relic_state = relic_states.get(relic_id)
+        if relic_state is None:
+            raise ValueError(f"Relic is not available for upgrade: {relic_id}")
+        if not bool(relic_state.get("corrupted", False)):
+            raise ValueError(f"Relic is not corrupted and cannot use the runtime-v2 relic upgrade flow: {relic_id}")
+        current_level = int(relic_state.get("level", 1))
+        upgrade_cost = self._get_relic_upgrade_cost(relic_id, current_level)
+        if int(self._snapshot["player"]["gold"]) < upgrade_cost:
+            raise ValueError("Not enough gold to upgrade relic")
+        self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - upgrade_cost
+        relic_state["level"] = current_level + 1
+        relic_state["corrupted"] = False
+        self._snapshot["surface_context"] = self._snapshot.get("surface_context") or {}
+        self._set_room_session("rest", "rest", ["rest", "relic_upgrade"])
+        self._snapshot["lifecycle"] = {
+            "screen": "RelicUpgrade",
+            "phase": "relic_upgrade",
+            "pending_node_resolution": True,
+        }
+
+    def _apply_upgrade_card(self, card_instance_id: Any) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if card_instance_id is None:
+            if phase not in {"rest", "shop"}:
+                raise ValueError("upgrade_card without card selector is only valid during rest or shop phase")
+            return_screen = "Shop" if phase == "shop" else "Rest"
+            surface_context = self._snapshot.get("surface_context") or {}
+            surface_context["upgrade_return_screen"] = return_screen
+            if return_screen == "Rest":
+                surface_context["campfire_choice_locked"] = True
+            if phase == "shop":
+                if int(self._snapshot["player"]["gold"]) < 50:
+                    raise ValueError("Not enough gold to enter upgrade from shop")
+                self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - 50
+                surface_context["pending_upgrade_refund"] = True
+            self._snapshot["surface_context"] = surface_context
+            self._set_room_session(phase, phase, [phase, "upgrade"])
+            self._snapshot["lifecycle"] = {
+                "screen": "Upgrade",
+                "phase": "upgrade",
+                "pending_node_resolution": True,
+            }
+            return
+
+        if phase != "upgrade":
+            raise ValueError("upgrade_card with card selector is only valid during upgrade phase")
+        parsed_selector = self._parse_card_selector(card_instance_id)
+        if parsed_selector is None:
+            raise ValueError("upgrade_card requires an index-prefixed card selector")
+        index, card_id = parsed_selector
+        deck = self._snapshot["player"]["deck"]
+        if index < 0 or index >= len(deck):
+            raise ValueError("upgrade_card selector index is out of range")
+        if str(deck[index]) != card_id:
+            raise ValueError("upgrade_card selector does not match the current deck entry")
+        if not str(deck[index]).endswith("+"):
+            deck[index] = f"{deck[index]}+"
+
+        surface_context = self._snapshot.get("surface_context") or {}
+        return_screen = str(surface_context.get("upgrade_return_screen", "Map"))
+        if "pending_upgrade_refund" in surface_context:
+            surface_context["pending_upgrade_refund"] = False
+        self._snapshot["surface_context"] = surface_context
+        if return_screen == "Rest":
+            surface_context["campfire_choice_locked"] = False
+        self._clean_surface_context()
+        self._snapshot["lifecycle"] = {
+            "screen": "Map" if return_screen == "Rest" else return_screen,
+            "phase": "map" if return_screen == "Rest" else return_screen.lower(),
+            "pending_node_resolution": False if return_screen == "Rest" else return_screen != "Map",
+        }
+        if return_screen == "Rest":
+            self._clear_room_session()
+        elif return_screen == "Shop":
+            self._set_room_session("shop", "shop", ["shop"])
+
+    def _apply_remove_card(self, card_instance_id: Any) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if card_instance_id is None:
+            if phase not in {"rest", "shop", "event"}:
+                raise ValueError("remove_card without card selector is only valid during rest, shop, or event phase")
+            surface_context = self._snapshot.get("surface_context") or {}
+            if phase in {"rest", "shop"}:
+                surface_context["upgrade_return_screen"] = "Shop" if phase == "shop" else "Rest"
+                if phase == "rest":
+                    surface_context["campfire_choice_locked"] = True
+            if phase == "event":
+                surface_context["is_event_free_card_removal_mode"] = True
+            self._snapshot["surface_context"] = surface_context
+            self._set_room_session(phase if phase != "event" else "event", phase if phase != "event" else "event", [phase if phase != "event" else "event", "remove_card"])
+            self._snapshot["lifecycle"] = {
+                "screen": "RemoveCard",
+                "phase": "remove_card",
+                "pending_node_resolution": True,
+            }
+            return
+
+        if phase != "remove_card":
+            raise ValueError("remove_card with card selector is only valid during remove_card phase")
+        parsed_selector = self._parse_card_selector(card_instance_id)
+        if parsed_selector is None:
+            raise ValueError("remove_card requires an index-prefixed card selector")
+        index, card_id = parsed_selector
+        surface_context = self._snapshot.get("surface_context") or {}
+        deck = self._snapshot["player"]["deck"]
+        if index < 0 or index >= len(deck):
+            raise ValueError("remove_card selector index is out of range")
+        if str(deck[index]) != card_id:
+            raise ValueError("remove_card selector does not match the current deck entry")
+        if (not surface_context.get("is_event_free_card_removal_mode")) and str(surface_context.get("upgrade_return_screen", "Map")) == "Shop":
+            removal_cost = int((self._snapshot.get("shop") or {}).get("card_removal_cost", 75))
+            if int(self._snapshot["player"]["gold"]) < removal_cost:
+                raise ValueError("Not enough gold for shop remove_card")
+            self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - removal_cost
+        deck.pop(index)
+
+        if surface_context.get("is_event_free_card_removal_mode"):
+            return_screen = "Map"
+            self._snapshot["active_event"] = None
+        else:
+            return_screen = str(surface_context.get("upgrade_return_screen", "Map"))
+        surface_context["is_event_free_card_removal_mode"] = False
+        if return_screen == "Rest":
+            surface_context["campfire_choice_locked"] = False
+        if return_screen == "Map":
+            surface_context.pop("upgrade_return_screen", None)
+        self._snapshot["lifecycle"] = {
+            "screen": return_screen,
+            "phase": return_screen.lower(),
+            "pending_node_resolution": return_screen != "Map",
+        }
+        self._snapshot["surface_context"] = surface_context
+        self._clean_surface_context()
+        if return_screen == "Event":
+            self._set_room_session("event", "event", ["event"])
+        elif return_screen == "Rest":
+            self._set_room_session("rest", "rest", ["rest"])
+        elif return_screen == "Shop":
+            self._set_room_session("shop", "shop", ["shop"])
+        else:
+            self._clear_room_session()
+
+    def _apply_cancel_surface(self) -> None:
+        phase = str(self._snapshot["lifecycle"]["phase"])
+        if phase not in {"upgrade", "remove_card", "enchant", "relic_upgrade"}:
+            raise ValueError("cancel_surface is only valid during upgrade, remove_card, enchant, or relic_upgrade phase")
+        surface_context = self._snapshot.get("surface_context") or {}
+        if phase == "remove_card" and surface_context.get("is_event_free_card_removal_mode"):
+            return_screen = "Event"
+        elif phase == "enchant":
+            enchant_context = surface_context.get("enchant_context") or {}
+            return_screen = str(enchant_context.get("return_screen") or enchant_context.get("source") or "Map")
+            surface_context["enchant_context"] = None
+        elif phase == "relic_upgrade":
+            return_screen = str(surface_context.get("relic_upgrade_return_screen", "Rest"))
+            if return_screen == "Rest":
+                surface_context.pop("relic_upgrade_return_screen", None)
+        else:
+            return_screen = str(surface_context.get("upgrade_return_screen", "Map"))
+            if return_screen in {"Map", "Rest"}:
+                surface_context.pop("upgrade_return_screen", None)
+        if phase == "upgrade" and surface_context.get("pending_upgrade_refund"):
+            self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) + 50
+            surface_context["pending_upgrade_refund"] = False
+        if phase == "remove_card":
+            surface_context["is_event_free_card_removal_mode"] = False
+            if return_screen == "Map":
+                surface_context.pop("upgrade_return_screen", None)
+        if return_screen == "Rest":
+            surface_context["campfire_choice_locked"] = False
+        self._snapshot["surface_context"] = surface_context
+        self._clean_surface_context()
+        self._snapshot["lifecycle"] = {
+            "screen": return_screen,
+            "phase": return_screen.lower(),
+            "pending_node_resolution": return_screen != "Map",
+        }
+        if return_screen == "Event":
+            self._set_room_session("event", "event", ["event"])
+        elif return_screen == "Rest":
+            self._set_room_session("rest", "rest", ["rest"])
+        elif return_screen == "Shop":
+            self._set_room_session("shop", "shop", ["shop"])
+        else:
+            self._clear_room_session()
 
     def _start_combat(self, node_type: str) -> None:
         floor = int(self._get_current_node()["y"]) + 1 if self._get_current_node() is not None else 1
@@ -150,6 +748,7 @@ class RuleRuntime:
             for entry in self._content_bundle.get("enemies", [])
             if "id" in entry
         }
+        encounter_pool = self._prioritize_encounter_pool(encounter_pool, enemies_by_id, floor, node_type)
         enemy_ids: list[str] = []
         enemy_states: list[dict[str, Any]] = []
         for _ in range(enemy_count):
@@ -206,6 +805,10 @@ class RuleRuntime:
             "pending_node_resolution": True,
         }
         self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._set_room_session("combat", "combat", ["combat"])
 
     def _apply_leave_room(self) -> None:
         phase = str(self._snapshot["lifecycle"]["phase"])
@@ -215,6 +818,11 @@ class RuleRuntime:
             raise ValueError("leave_room cannot exit combat directly")
 
         self._snapshot["combat"] = None
+        self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._clear_room_session()
         self._snapshot["lifecycle"] = {
             "screen": "Map",
             "phase": "map",
@@ -237,6 +845,10 @@ class RuleRuntime:
             "card_ids": self._generate_reward_cards(),
             "source": "combat",
         }
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._set_room_session("combat", "reward", ["combat", "reward"], "resolving")
         self._snapshot["lifecycle"] = {
             "screen": "Reward",
             "phase": "reward",
@@ -260,6 +872,10 @@ class RuleRuntime:
             self._snapshot["player"]["deck"].append(selected_card_id)
 
         self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._clear_room_session()
         self._snapshot["lifecycle"] = {
             "screen": "Map",
             "phase": "map",
@@ -270,6 +886,10 @@ class RuleRuntime:
         if str(self._snapshot["lifecycle"]["phase"]) != "reward":
             raise ValueError("skip_reward is only valid during reward phase")
         self._snapshot["reward"] = None
+        self._snapshot["shop"] = None
+        self._snapshot["active_event"] = None
+        self._snapshot["surface_context"] = None
+        self._clear_room_session()
         self._snapshot["lifecycle"] = {
             "screen": "Map",
             "phase": "map",
@@ -323,18 +943,82 @@ class RuleRuntime:
         return rewards
 
     def _calculate_gold_reward(self, floor: int, node_type: str) -> int:
-        base_gold = 16 + max(0, floor - 1) * 3
+        base_gold = 30 + max(0, floor - 1) * 5
         if node_type == "Boss":
-            return base_gold * 3
+            return int(base_gold * 3.5)
         if node_type == "Elite":
-            return base_gold * 2
-        return base_gold
+            return int(base_gold * 2.5)
+        return int(base_gold)
 
     def _get_current_node(self) -> dict[str, Any] | None:
         current_node_id = self._snapshot["map"]["current_node_id"]
         if current_node_id is None:
             return None
         return next((entry for entry in self._snapshot["map"]["nodes"] if entry["id"] == current_node_id), None)
+
+    def _is_enemy_eligible_for_floor(self, enemy_def: dict[str, Any] | None, floor: int, node_type: str) -> bool:
+        if not enemy_def:
+            return False
+
+        hp_range = enemy_def.get("hp_range", [enemy_def.get("minHp", 0), enemy_def.get("maxHp", 0)])
+        max_hp = int(hp_range[1] if len(hp_range) > 1 else hp_range[0] if hp_range else 0)
+        keywords = list(enemy_def.get("keywords", []))
+
+        if node_type == "Boss":
+            return True
+
+        if node_type == "Elite":
+            if floor <= 3:
+                return max_hp <= 95
+            if floor <= 6:
+                return max_hp <= 115
+            return True
+
+        if str(enemy_def.get("id")) == "fission_small" and floor < 5:
+            return False
+        if "symbiote" in keywords and floor < 7:
+            return False
+
+        if floor <= 2:
+            return max_hp <= 32 and not ("splits" in keywords and floor < 3)
+        if floor <= 4:
+            return max_hp <= 42
+        if floor <= 6:
+            return max_hp <= 50
+        return True
+
+    def _prioritize_encounter_pool(
+        self,
+        encounter_pool: list[str],
+        enemies_by_id: dict[str, dict[str, Any]],
+        floor: int,
+        node_type: str,
+    ) -> list[str]:
+        eligible = [
+            enemy_id
+            for enemy_id in encounter_pool
+            if self._is_enemy_eligible_for_floor(enemies_by_id.get(str(enemy_id)), floor, node_type)
+        ]
+        pool = eligible if eligible else list(encounter_pool)
+        if node_type != "Combat" or floor > 3:
+            return pool
+
+        showcase_tag = f"showcase_floor_{floor}"
+        exact = [
+            enemy_id
+            for enemy_id in pool
+            if showcase_tag in list(enemies_by_id.get(str(enemy_id), {}).get("keywords", []))
+        ]
+        if exact:
+            return exact
+
+        early_variants = [
+            enemy_id
+            for enemy_id in pool
+            if "variant" in list(enemies_by_id.get(str(enemy_id), {}).get("keywords", []))
+            and "early_variant" in list(enemies_by_id.get(str(enemy_id), {}).get("keywords", []))
+        ]
+        return early_variants if early_variants else pool
 
     def _next_runtime_random(self) -> float:
         state = _int32(self._runtime_rng_state)
@@ -379,9 +1063,9 @@ class RuleRuntime:
             return raw
 
         if node_type == "Elite":
-            soft_cap = 88 if floor <= 3 else 112 if floor <= 6 else math.inf
+            soft_cap = 88 if floor <= 3 else 112 if floor <= 6 else float('inf')
         else:
-            soft_cap = 30 if floor <= 2 else 40 if floor <= 4 else 52 if floor <= 6 else math.inf
+            soft_cap = 30 if floor <= 2 else 40 if floor <= 4 else 52 if floor <= 6 else float('inf')
         return max(1, min(raw, int(soft_cap) if math.isfinite(soft_cap) else raw))
 
     def _apply_single_slime_room_boost(self, node_type: str, floor: int) -> None:
@@ -457,30 +1141,22 @@ class RuleRuntime:
         branch_factor = max(1, int(map_config.get("branching", 3)))
         rng = self._create_map_rng(seed)
         generated_nodes: list[list[dict[str, Any]]] = []
-        last_node_type = ""
-        consecutive_same_type_count = 0
 
         for floor in range(1, total_floors + 1):
             node_count = self._get_legacy_node_count_for_floor(floor, total_floors, nodes_per_floor, rng)
             floor_nodes: list[dict[str, Any]] = []
             for index in range(node_count):
-                node_type, last_node_type, consecutive_same_type_count = self._determine_legacy_node_type(
-                    floor=floor,
-                    total_floors=total_floors,
-                    rng=rng,
-                    last_node_type=last_node_type,
-                    consecutive_same_type_count=consecutive_same_type_count,
-                )
                 floor_nodes.append(
                     {
                         "id": f"floor_{floor}_node_{index}",
-                        "type": node_type,
+                        "type": self._determine_legacy_node_type(floor, total_floors, rng),
                         "revealed": floor == 1,
                         "next": [],
                         "x": (index + 1) / (node_count + 1),
                         "y": floor - 1,
                     }
                 )
+            self._apply_floor_constraints(floor_nodes, floor, total_floors, rng)
             generated_nodes.append(floor_nodes)
 
         for floor_index in range(len(generated_nodes) - 1):
@@ -492,7 +1168,9 @@ class RuleRuntime:
                 reachable_nodes = [next_node for next_node in next_floor if abs(float(next_node["x"]) - float(node["x"])) <= 0.66]
                 pool = reachable_nodes if reachable_nodes else next_floor
                 shuffled = self._legacy_random_sort(pool, rng)
-                desired = min(len(shuffled), max(1, 1 + int(rng() * branch_factor)))
+                max_branches_cfg = dict(self._get_map_runtime_strategy().get("opening_route_expectation", {}).get("max_branches_per_floor", {}))
+                max_branches_for_floor = int(max_branches_cfg.get(f"floor_{floor_index + 1}", branch_factor if floor_index > 1 else 2))
+                desired = min(len(shuffled), max(1, 1 + int(rng() * max_branches_for_floor)))
                 chosen = shuffled[:desired]
                 unique_ids = list(dict.fromkeys(str(next_node["id"]) for next_node in chosen))
                 node["next"].extend(unique_ids)
@@ -506,6 +1184,7 @@ class RuleRuntime:
                 if str(next_node["id"]) not in closest["next"]:
                     closest["next"].append(str(next_node["id"]))
 
+        self._constrain_opening_route_expectations(generated_nodes)
         return [node for floor in generated_nodes for node in floor]
 
     def _create_map_rng(self, seed: int):
@@ -517,6 +1196,9 @@ class RuleRuntime:
             return state / 0x7FFFFFFF
 
         return next_random
+
+    def _get_map_runtime_strategy(self) -> dict[str, Any]:
+        return dict(self._content_bundle.get("map", {}).get("runtime_strategy", {}))
 
     def _legacy_random_sort(self, items: list[dict[str, Any]], rng) -> list[dict[str, Any]]:
         sorted_items = list(items)
@@ -555,6 +1237,189 @@ class RuleRuntime:
             sorted_items[low] = current_item
         return sorted_items
 
+    def _apply_floor_constraints(self, nodes: list[dict[str, Any]], floor: int, total_floors: int, rng) -> None:
+        self._enforce_per_floor_caps(nodes, floor, total_floors, rng)
+        self._enforce_opening_route_contrast(nodes, floor)
+
+    def _enforce_per_floor_caps(self, nodes: list[dict[str, Any]], floor: int, total_floors: int, rng) -> None:
+        strategy = self._get_map_runtime_strategy()
+        type_caps = dict(strategy.get("floor_type_caps", {"Event": 1, "Shop": 1, "Rest": 1, "Elite": 1}))
+        for room_type, cap in type_caps.items():
+            indexes = [index for index, node in enumerate(nodes) if str(node["type"]) == room_type]
+            while len(indexes) > cap:
+                replace_index = indexes.pop()
+                if replace_index is None:
+                    break
+                nodes[replace_index]["type"] = self._pick_replacement_type(floor, total_floors, nodes, room_type, rng)
+
+    def _enforce_opening_route_contrast(self, nodes: list[dict[str, Any]], floor: int) -> None:
+        strategy = self._get_map_runtime_strategy()
+        contrast = dict(strategy.get("opening_route_contrast", {}))
+        max_floor = int(contrast.get("max_floor", 3))
+        utility_types = [str(entry) for entry in contrast.get("utility_types", ["Event", "Shop", "Rest"])]
+        require_third_flavor = bool(contrast.get("require_third_flavor_on_floor_1", True))
+
+        if floor > max_floor or len(nodes) < 2:
+            return
+
+        def ensure_type(preferred: str, fallback_index: int) -> None:
+            if any(str(node["type"]) == preferred for node in nodes):
+                return
+            replace_index = next((index for index, node in enumerate(nodes) if index != fallback_index and str(node["type"]) == "Combat"), fallback_index)
+            nodes[replace_index]["type"] = preferred
+
+        ensure_type("Combat", 0)
+        if not any(str(node["type"]) in set(utility_types) for node in nodes):
+            fallback_type = utility_types[0] if floor == 1 else (utility_types[1] if floor % 2 == 0 and len(utility_types) > 1 else utility_types[min(2, len(utility_types) - 1)])
+            ensure_type(fallback_type, len(nodes) - 1)
+
+        unique_types = {str(node["type"]) for node in nodes}
+        if floor == 1 and require_third_flavor and len(nodes) >= 4 and len(unique_types) < 3:
+            target_index = next((index for index, node in enumerate(nodes) if str(node["type"]) == "Combat"), -1)
+            if target_index >= 0:
+                candidate = utility_types[1] if utility_types[0] in unique_types and len(utility_types) > 1 else utility_types[0]
+                if candidate in unique_types:
+                    candidate = utility_types[min(2, len(utility_types) - 1)]
+                nodes[target_index]["type"] = candidate
+
+    def _pick_replacement_type(
+        self,
+        floor: int,
+        total_floors: int,
+        nodes: list[dict[str, Any]],
+        removed_type: str,
+        rng,
+    ) -> str:
+        chapter_weights = self._get_chapter_weights(self._get_chapter_index(floor), self._get_depth_in_chapter(floor, total_floors))
+        weighted_candidates = [
+            {"type": "Combat", "weight": max(0.2, 1 - (chapter_weights["elite"] + chapter_weights["event"] + chapter_weights["shop"] + chapter_weights["rest"]))},
+            {"type": "Event", "weight": chapter_weights["event"]},
+            {"type": "Shop", "weight": chapter_weights["shop"]},
+            {"type": "Rest", "weight": chapter_weights["rest"]},
+            {"type": "Elite", "weight": chapter_weights["elite"]},
+        ]
+        weighted_candidates = [candidate for candidate in weighted_candidates if candidate["type"] != removed_type]
+
+        if floor <= 3:
+            for candidate in weighted_candidates:
+                if candidate["type"] == "Elite":
+                    candidate["weight"] = 0
+
+        strategy = self._get_map_runtime_strategy()
+        type_caps = dict(strategy.get("floor_type_caps", {"Event": 1, "Shop": 1, "Rest": 1, "Elite": 1}))
+        for candidate in weighted_candidates:
+            cap = type_caps.get(candidate["type"])
+            if cap is not None:
+                current_count = sum(1 for node in nodes if str(node["type"]) == candidate["type"])
+                if current_count >= cap:
+                    candidate["weight"] = 0
+
+        total_weight = sum(max(0.0, float(candidate["weight"])) for candidate in weighted_candidates)
+        if total_weight <= 0:
+            return "Combat"
+
+        roll = rng() * total_weight
+        for candidate in weighted_candidates:
+            roll -= max(0.0, float(candidate["weight"]))
+            if roll <= 0:
+                return str(candidate["type"])
+        return "Combat"
+
+    def _constrain_opening_route_expectations(self, generated_nodes: list[list[dict[str, Any]]]) -> None:
+        opening_floor = generated_nodes[0] if generated_nodes else []
+        if len(opening_floor) < 2:
+            return
+        strategy = self._get_map_runtime_strategy()
+        expectation = dict(strategy.get("opening_route_expectation", {}))
+        max_spread = int(expectation.get("max_spread", 15))
+        traversal_depth = int(expectation.get("traversal_depth", 3))
+
+        for _ in range(8):
+            scored = [
+                {"node": node, "score": self._calculate_route_expectation(generated_nodes, str(node["id"]), traversal_depth)}
+                for node in opening_floor
+                if node.get("next")
+            ]
+            if len(scored) < 2:
+                return
+            scores = [entry["score"] for entry in scored]
+            if max(scores) - min(scores) <= max_spread:
+                return
+            highest = max(scored, key=lambda entry: entry["score"])
+            lowest = min(scored, key=lambda entry: entry["score"])
+            if not self._trim_highest_opening_route_branch(generated_nodes, highest["node"]) and not self._boost_lowest_opening_route_branch(generated_nodes, lowest["node"]):
+                return
+
+    def _trim_highest_opening_route_branch(self, generated_nodes: list[list[dict[str, Any]]], node: dict[str, Any]) -> bool:
+        next_ids = list(node.get("next", []))
+        if len(next_ids) <= 1:
+            return False
+
+        floor_two = generated_nodes[1] if len(generated_nodes) > 1 else []
+        inbound_count = {str(entry["id"]): 0 for entry in floor_two}
+        for start in generated_nodes[0] if generated_nodes else []:
+            for next_id in start.get("next", []):
+                inbound_count[str(next_id)] = inbound_count.get(str(next_id), 0) + 1
+
+        removable = [
+            {"nextId": str(next_id), "score": self._calculate_route_expectation(generated_nodes, str(next_id), int(self._get_map_runtime_strategy().get("opening_route_expectation", {}).get("traversal_depth", 3)))}
+            for next_id in next_ids
+            if inbound_count.get(str(next_id), 0) > 1
+        ]
+        removable.sort(key=lambda entry: entry["score"], reverse=True)
+        if not removable:
+            return False
+
+        target = removable[0]["nextId"]
+        node["next"] = [next_id for next_id in next_ids if str(next_id) != target]
+        return True
+
+    def _boost_lowest_opening_route_branch(self, generated_nodes: list[list[dict[str, Any]]], node: dict[str, Any]) -> bool:
+        next_ids = {str(next_id) for next_id in node.get("next", [])}
+        floor_two = generated_nodes[1] if len(generated_nodes) > 1 else []
+        candidates = [
+            {"nextId": str(next_node["id"]), "score": self._calculate_route_expectation(generated_nodes, str(next_node["id"]), int(self._get_map_runtime_strategy().get("opening_route_expectation", {}).get("traversal_depth", 3)))}
+            for next_node in floor_two
+            if str(next_node["id"]) not in next_ids and abs(float(next_node["x"]) - float(node["x"])) <= 0.66
+        ]
+        candidates.sort(key=lambda entry: entry["score"], reverse=True)
+        if not candidates:
+            return False
+
+        node.setdefault("next", []).append(candidates[0]["nextId"])
+        return True
+
+    def _calculate_route_expectation(self, generated_nodes: list[list[dict[str, Any]]], start_node_id: str, depth: int = 3) -> int:
+        weights = dict(self._get_map_runtime_strategy().get("opening_route_expectation", {}).get("weights", {"Combat": 2, "Elite": 5, "Boss": 0, "Event": 2, "Shop": 1, "Rest": 1}))
+        all_nodes = [node for floor in generated_nodes for node in floor]
+        start = next((node for node in all_nodes if str(node["id"]) == start_node_id), None)
+        if start is None:
+            return 0
+
+        total = weights.get(str(start["type"]), 0)
+        visited: set[str] = set()
+        queue: list[tuple[str, int]] = [(start_node_id, 0)]
+
+        while queue:
+            current_id, current_depth = queue.pop(0)
+            if current_depth >= depth:
+                continue
+            current_node = next((node for node in all_nodes if str(node["id"]) == current_id), None)
+            if current_node is None:
+                continue
+            for next_id in current_node.get("next", []):
+                next_id_str = str(next_id)
+                if next_id_str in visited:
+                    continue
+                visited.add(next_id_str)
+                next_node = next((node for node in all_nodes if str(node["id"]) == next_id_str), None)
+                if next_node is None:
+                    continue
+                total += weights.get(str(next_node["type"]), 0)
+                queue.append((next_id_str, current_depth + 1))
+
+        return total
+
     def _get_legacy_node_count_for_floor(
         self,
         floor: int,
@@ -562,12 +1427,9 @@ class RuleRuntime:
         nodes_per_floor: int,
         rng,
     ) -> int:
-        chapter_boss_floors = self._get_chapter_boss_floors(total_floors)
-        chapter_rest_floors = [f - 1 for f in chapter_boss_floors]
-        
-        if floor in chapter_boss_floors:
+        if floor == total_floors:
             return 1
-        if floor in chapter_rest_floors:
+        if floor == total_floors - 1:
             return 2
         if floor == 1:
             return 3 + (1 if rng() < 0.5 else 0)
@@ -577,14 +1439,6 @@ class RuleRuntime:
         variance_roll = rng()
         variance = -1 if variance_roll < 0.25 else 1 if variance_roll > 0.8 else 0
         return max(3, min(5, nodes_per_floor + variance))
-
-    def _get_chapter_boss_floors(self, total_floors: int) -> list[int]:
-        if total_floors <= 10:
-            return [total_floors]
-        elif total_floors <= 18:
-            return [10, total_floors]
-        else:
-            return [10, 18, total_floors]
 
     def _get_chapter_index(self, floor: int) -> int:
         if floor <= 10:
@@ -601,7 +1455,7 @@ class RuleRuntime:
         elif chapter_index == 2:
             return (floor - 10) / 8
         else:
-            return (floor - 18) / (total_floors - 18)
+            return (floor - 18) / max(1, total_floors - 18)
 
     def _get_chapter_weights(self, chapter_index: int, depth: float) -> dict[str, float]:
         if chapter_index == 1:
@@ -611,38 +1465,25 @@ class RuleRuntime:
                 "elite": 0.14 + 0.03 * (1 - 1 / 8),
                 "event": 0.18 - 0.02 * (1 - 1 / 8),
                 "shop": 0.08,
-                "rest": 0.08
+                "rest": 0.08,
             }
-        else:
-            return {
-                "elite": 0.16 + 0.08 * depth,
-                "event": 0.20 - 0.02 * depth,
-                "shop": 0.08,
-                "rest": 0.08 - 0.04 * depth
-            }
+        return {
+            "elite": 0.16 + 0.08 * depth,
+            "event": 0.20 - 0.02 * depth,
+            "shop": 0.08,
+            "rest": 0.08 - 0.04 * depth,
+        }
 
-    def _determine_legacy_node_type(
-        self,
-        floor: int,
-        total_floors: int,
-        rng,
-        last_node_type: str,
-        consecutive_same_type_count: int,
-    ) -> tuple[str, str, int]:
+    def _determine_legacy_node_type(self, floor: int, total_floors: int, rng) -> str:
         roll = rng()
-        
-        chapter_boss_floors = self._get_chapter_boss_floors(total_floors)
-        chapter_rest_floors = [f - 1 for f in chapter_boss_floors]
-        
-        if floor in chapter_boss_floors:
-            return ("Boss", "Boss", 1)
-        if floor in chapter_rest_floors:
-            return ("Rest", "Rest", 1)
+        if floor == total_floors:
+            return "Boss"
+        if floor == total_floors - 1:
+            return "Rest"
 
         chapter_index = self._get_chapter_index(floor)
         depth = self._get_depth_in_chapter(floor, total_floors)
         weights = self._get_chapter_weights(chapter_index, depth)
-        
         elite_threshold = weights.get("elite", 0.06 + depth * 0.18)
         event_threshold = elite_threshold + weights.get("event", 0.18)
         shop_threshold = event_threshold + weights.get("shop", 0.14)
@@ -659,33 +1500,21 @@ class RuleRuntime:
         else:
             selected_type = "Combat"
 
+        if not hasattr(self, '_last_node_type'):
+            self._last_node_type = ''
+            self._consecutive_same_count = 0
+
         special_rooms = {"Event", "Shop", "Rest"}
-        elite_rooms = {"Elite", "Boss"}
-        max_consecutive_same = 2
 
-        if selected_type == last_node_type:
-            consecutive_same_type_count += 1
+        if selected_type == self._last_node_type:
+            self._consecutive_same_count += 1
         else:
-            consecutive_same_type_count = 1
-            last_node_type = selected_type
+            self._consecutive_same_count = 1
+            self._last_node_type = selected_type
 
-        if consecutive_same_type_count > max_consecutive_same:
-            available_types: list[str] = []
-            if last_node_type not in special_rooms:
-                available_types.extend(["Event", "Shop", "Rest", "Combat"])
-            elif last_node_type in {"Event", "Shop", "Rest"}:
-                available_types.extend(["Combat", "Elite"])
-            elif last_node_type == "Elite":
-                available_types.extend(["Combat", "Event", "Shop", "Rest"])
-
-            if available_types and floor < total_floors - 1:
-                selected_type = available_types[int(rng() * len(available_types))]
-                consecutive_same_type_count = 1
-                last_node_type = selected_type
-
-        if selected_type in special_rooms and consecutive_same_type_count >= max_consecutive_same:
-            if floor < total_floors - 1:
-                fallback_types: list[str] = []
+        if self._consecutive_same_count > 2:
+            if selected_type in special_rooms and floor < total_floors - 1:
+                fallback_types = []
                 if selected_type != "Event":
                     fallback_types.append("Event")
                 if selected_type != "Shop":
@@ -693,19 +1522,20 @@ class RuleRuntime:
                 if selected_type != "Rest":
                     fallback_types.append("Rest")
 
-                if fallback_types and rng() < 0.6:
-                    selected_type = "Combat"
-                elif fallback_types:
-                    selected_type = fallback_types[int(rng() * len(fallback_types))]
-                consecutive_same_type_count = 1
-                last_node_type = selected_type
+                if fallback_types:
+                    if rng() < 0.6:
+                        selected_type = "Combat"
+                    else:
+                        selected_type = fallback_types[int(rng() * len(fallback_types))]
+                    self._consecutive_same_count = 1
+                    self._last_node_type = selected_type
 
         if selected_type == "Elite" and floor <= 2:
             selected_type = "Combat"
-            consecutive_same_type_count = 1
-            last_node_type = selected_type
+            self._consecutive_same_count = 1
+            self._last_node_type = selected_type
 
-        return (selected_type, last_node_type, consecutive_same_type_count)
+        return selected_type
 
     def _create_initial_snapshot(self, seed: int) -> dict[str, Any]:
         return {
@@ -722,7 +1552,13 @@ class RuleRuntime:
                 "hp": 0,
                 "max_hp": 0,
                 "gold": 0,
+                "intel": 0,
+                "devotion": 0,
+                "corruption": 0,
                 "deck": [],
+                "relic_ids": [],
+                "potion_ids": [],
+                "relic_states": {},
             },
             "map": {
                 "current_node_id": None,
@@ -730,10 +1566,34 @@ class RuleRuntime:
             },
             "combat": None,
             "reward": None,
+            "shop": None,
+            "active_event": None,
             "meta": {
                 "replay_length": 0,
+                "runtime_rng_state": 0,
             },
         }
+
+
+_runtime_instance: RuleRuntime | None = None
+
+def init_runtime(content_bundle: dict[str, Any], seed: int = 0) -> dict[str, Any]:
+    global _runtime_instance
+    _runtime_instance = RuleRuntime(content_bundle, seed)
+    return _runtime_instance.snapshot()
+
+def dispatch_command(command: dict[str, Any]) -> dict[str, Any]:
+    global _runtime_instance
+    if _runtime_instance is None:
+        raise RuntimeError("Runtime not initialized")
+    result = _runtime_instance.dispatch(command)
+    return result
+
+def get_snapshot() -> dict[str, Any] | None:
+    global _runtime_instance
+    if _runtime_instance is None:
+        return None
+    return _runtime_instance.snapshot()
 
 
 def boot(content_bundle: dict[str, Any], seed: int = 0) -> RuleRuntime:

@@ -4,6 +4,8 @@ import { deriveSurfaceContextFromLegacyState } from '@/core/events/surfaceContex
 import type { RuleSnapshot } from './contracts';
 import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
 import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
+import { getPotionDefById, getRelicDefById, resolveShopOfferPrice } from '@/content/narrative/numericSystem';
+import { readLegacyActiveEventOutcome } from './activeEventOutcome';
 
 function cloneRouteState(routeState: GameState['routeState']): RuleSnapshot['routeState'] {
   if (!routeState) return null;
@@ -29,7 +31,27 @@ function cloneSurfaceContext(surfaceContext: GameState['surfaceContext']): RuleS
   };
 }
 
+function deriveLegacyShopSnapshot(state: GameState): RuleSnapshot['shop'] {
+  if (state.screen !== 'Shop') return null;
+  const adjustShopPrice = (basePrice: number) => {
+    let multiplier = 1;
+    if (state.player.relics.includes('lantern')) multiplier *= 0.95;
+    return Math.max(1, Math.round(basePrice * multiplier));
+  };
+
+  return {
+    cards: state.shopCards.map((card) => ({
+      id: card.id,
+      price: adjustShopPrice(resolveShopOfferPrice('card', card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50)),
+    })),
+    relics: state.shopRelics.map((id) => ({ id, price: adjustShopPrice(resolveShopOfferPrice('relic', getRelicDefById(id)?.price)) })),
+    potions: state.shopPotions.map((id) => ({ id, price: adjustShopPrice(resolveShopOfferPrice('potion', getPotionDefById(id)?.price)) })),
+    cardRemovalCost: state.cardRemovalCost ?? 75,
+  };
+}
+
 export function normalizeLegacyGameState(state: GameState, legacySaveData?: object): RuleSnapshot {
+  const lifecyclePhase = screenToRunPhase(state.screen);
   const knownRouteTags = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
   const routeState = state.routeState ?? (
     knownRouteTags.length > 0 ? deriveRouteStateFromDeck(state.player.deck, knownRouteTags, null) : null
@@ -41,14 +63,18 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
       state.activeEvent.stage === 'free_remove' &&
       Number(state.activeEvent.data?.freeRemovalsRemaining || 0) > 0,
   });
+  const hasActiveRoomSession =
+    !!state.roomSession &&
+    (state.pendingNodeResolution || lifecyclePhase !== 'map');
+  const activeEventOutcome = readLegacyActiveEventOutcome(state.activeEvent);
   return {
     schemaVersion: 2,
     engineVersion: 'runtime-v2-draft',
     seed: state.seed,
     lifecycle: {
       screen: state.screen,
-      phase: screenToRunPhase(state.screen),
-      pendingNodeResolution: !!(state.roomSession ?? state.pendingNodeResolution)
+      phase: lifecyclePhase,
+      pendingNodeResolution: !!(state.pendingNodeResolution || hasActiveRoomSession)
     },
     player: {
       characterId: state.character?.id || null,
@@ -60,7 +86,17 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
       corruption: state.player.corruption || 0,
       deck: state.player.deck.map((card) => card.id),
       relicIds: [...state.player.relics],
-      potionIds: [...state.player.potions]
+      potionIds: [...state.player.potions],
+      relicStates: Object.fromEntries(
+        Object.entries(state.player.relicStates || {}).map(([relicId, relicState]) => [
+          relicId,
+          {
+            level: relicState.level ?? 1,
+            progress: relicState.progress ?? 0,
+            corrupted: relicState.corrupted,
+          },
+        ])
+      ),
     },
     map: {
       currentNodeId: state.currentNodeId || null,
@@ -75,7 +111,7 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
     },
     routeState: cloneRouteState(routeState),
     surfaceContext: cloneSurfaceContext(surfaceContext),
-    roomSession: state.roomSession
+    roomSession: hasActiveRoomSession && state.roomSession
       ? {
           token: state.roomSession.token,
           nodeId: state.roomSession.nodeId,
@@ -111,10 +147,14 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
           source: 'combat'
         }
       : null,
+    shop: deriveLegacyShopSnapshot(state),
     activeEvent: state.activeEvent
       ? {
           id: state.activeEvent.id,
           stage: state.activeEvent.stage,
+          lastChoiceId: activeEventOutcome.lastChoiceId,
+          choiceRole: activeEventOutcome.choiceRole,
+          outcomeKind: activeEventOutcome.outcomeKind,
           data: state.activeEvent.data
         }
       : null,
@@ -122,7 +162,8 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
       runId: state.runId || null,
       replayLength: 0,
       generatedAt: new Date().toISOString(),
-      adapter: 'legacy-oracle'
+      adapter: 'legacy-oracle',
+      runtimeRngState: state.rngState ?? 0,
     },
     compat: legacySaveData
       ? {

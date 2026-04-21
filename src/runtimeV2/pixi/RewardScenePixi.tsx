@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { RewardSceneProps } from '../sceneProps';
-import { createTextStyle, drawRoundedRect, COLORS } from './pixiUtils';
+import {
+  createDedupedPointerHandler,
+  createTextStyle,
+  dispatchPixiCanvasHit,
+  drawRoundedRect,
+  COLORS,
+  publishPixiHitTargets,
+  type PixiHitHandler,
+} from './pixiUtils';
 
 export interface RewardScenePixiProps {
   scene: RewardSceneProps;
@@ -15,7 +23,7 @@ const REWARD_CARD_WIDTH = 100;
 const REWARD_CARD_HEIGHT = 140;
 
 function getRarityColor(rarity: string): number {
-  switch (rarity.toLowerCase()) {
+  switch (rarity?.toLowerCase()) {
     case 'common':
       return COLORS.cardCommon;
     case 'uncommon':
@@ -36,6 +44,7 @@ export function RewardScenePixi({
 }: RewardScenePixiProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
+  const hitHandlersRef = useRef<PixiHitHandler[]>([]);
 
   useEffect(() => {
     if (!containerRef.current || appRef.current) {
@@ -43,7 +52,7 @@ export function RewardScenePixi({
     }
 
     const app = new Application();
-    
+
     app.init({
       width,
       height,
@@ -52,11 +61,16 @@ export function RewardScenePixi({
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
     }).then(() => {
+      app.stage.eventMode = 'static';
+      app.stage.hitArea = app.screen;
       if (containerRef.current && app.canvas) {
         containerRef.current.appendChild(app.canvas);
+        app.canvas.addEventListener('click', (event) => dispatchPixiCanvasHit(event, hitHandlersRef.current));
         appRef.current = app;
         renderReward(app);
       }
+    }).catch((error) => {
+      console.error('[RewardScenePixi] Pixi Application init failed:', error);
     });
 
     return () => {
@@ -76,9 +90,20 @@ export function RewardScenePixi({
 
   const renderReward = useCallback((app: Application) => {
     const stage = app.stage;
+
+    const existingChildren = stage.children.slice();
     stage.removeChildren();
+    existingChildren.forEach(child => {
+      if (child instanceof Container) {
+        child.removeAllListeners();
+      }
+      if ('destroy' in child && typeof child.destroy === 'function') {
+        child.destroy({ children: true });
+      }
+    });
 
     const { player, reward, room } = scene;
+    const targets: PixiHitHandler[] = [];
 
     const hudContainer = new Container();
     stage.addChild(hudContainer);
@@ -103,6 +128,17 @@ export function RewardScenePixi({
       hudContainer.addChild(bodyText);
     }
 
+    if (room.guidance) {
+      const guidanceText = new Text({
+        text: `${room.guidance.headline}: ${room.guidance.routeLabel ? `${room.guidance.routeLabel} · ` : ''}${room.guidance.reason}`,
+        style: createTextStyle({ fontSize: 12, fill: COLORS.highlight, wordWrap: true, wordWrapWidth: width - 120 }),
+      });
+      guidanceText.x = width / 2;
+      guidanceText.y = 88;
+      guidanceText.anchor.set(0.5, 0);
+      hudContainer.addChild(guidanceText);
+    }
+
     const hpText = new Text({
       text: `HP: ${player.hp}/${player.maxHp}`,
       style: createTextStyle({ fontSize: 14, fill: COLORS.health }),
@@ -122,20 +158,27 @@ export function RewardScenePixi({
     const cardsContainer = new Container();
     stage.addChild(cardsContainer);
 
+    const rewardCards = reward.cards ?? [];
     const cardSpacing = REWARD_CARD_WIDTH + 30;
-    const totalCardsWidth = reward.cards.length * cardSpacing - 30;
-    const cardsStartX = (width - totalCardsWidth) / 2 + REWARD_CARD_WIDTH / 2;
+    const totalCardsWidth = rewardCards.length * cardSpacing - 30;
+    const cardsStartX = totalCardsWidth > 0 ? (width - totalCardsWidth) / 2 + REWARD_CARD_WIDTH / 2 : width / 2;
     const cardsY = 180;
 
-    for (let i = 0; i < reward.cards.length; i++) {
-      const card = reward.cards[i];
+    for (let i = 0; i < rewardCards.length; i++) {
+      const card = rewardCards[i];
       const cardContainer = new Container();
       cardContainer.x = cardsStartX + i * cardSpacing;
       cardContainer.y = cardsY;
       cardContainer.eventMode = 'static';
       cardContainer.cursor = 'pointer';
+      cardContainer.hitArea = new Rectangle(
+        -REWARD_CARD_WIDTH / 2,
+        -REWARD_CARD_HEIGHT / 2,
+        REWARD_CARD_WIDTH,
+        REWARD_CARD_HEIGHT,
+      );
 
-      const rarityColor = getRarityColor(card.rarity);
+      const rarityColor = getRarityColor(card.rarity ?? 'common');
       const cardGraphics = new Graphics();
       drawRoundedRect(
         cardGraphics,
@@ -151,7 +194,7 @@ export function RewardScenePixi({
       cardContainer.addChild(cardGraphics);
 
       const costText = new Text({
-        text: String(card.cost),
+        text: String(card.cost ?? 0),
         style: createTextStyle({ fontSize: 16, fill: COLORS.energy, fontWeight: 'bold' }),
       });
       costText.x = -REWARD_CARD_WIDTH / 2 + 15;
@@ -159,7 +202,7 @@ export function RewardScenePixi({
       cardContainer.addChild(costText);
 
       const nameText = new Text({
-        text: card.name.substring(0, 15),
+        text: (card.name ?? '').substring(0, 15),
         style: createTextStyle({ fontSize: 11, fill: COLORS.text, fontWeight: 'bold' }),
       });
       nameText.anchor.set(0.5);
@@ -167,7 +210,7 @@ export function RewardScenePixi({
       cardContainer.addChild(nameText);
 
       const typeText = new Text({
-        text: card.type,
+        text: card.type ?? '',
         style: createTextStyle({ fontSize: 10, fill: COLORS.textMuted }),
       });
       typeText.anchor.set(0.5);
@@ -175,12 +218,22 @@ export function RewardScenePixi({
       cardContainer.addChild(typeText);
 
       const rarityText = new Text({
-        text: card.rarity,
+        text: card.rarity ?? 'common',
         style: createTextStyle({ fontSize: 10, fill: rarityColor }),
       });
       rarityText.anchor.set(0.5);
       rarityText.y = REWARD_CARD_HEIGHT / 2 - 20;
       cardContainer.addChild(rarityText);
+
+      if (card.routeReason) {
+        const routeText = new Text({
+          text: card.routeReason.substring(0, 34),
+          style: createTextStyle({ fontSize: 8, fill: COLORS.highlight, wordWrap: true, wordWrapWidth: REWARD_CARD_WIDTH - 10 }),
+        });
+        routeText.anchor.set(0.5, 0);
+        routeText.y = 8;
+        cardContainer.addChild(routeText);
+      }
 
       const cardId = card.id;
       cardContainer.on('pointerover', () => {
@@ -213,8 +266,19 @@ export function RewardScenePixi({
           3
         );
       });
-      cardContainer.on('click', () => onTake(cardId));
-      cardContainer.on('tap', () => onTake(cardId));
+      const activateTake = createDedupedPointerHandler(() => onTake(cardId));
+      cardContainer.on('click', activateTake);
+      cardContainer.on('tap', activateTake);
+      cardContainer.on('pointertap', activateTake);
+      targets.push({
+        action: 'take_reward',
+        id: cardId,
+        x: cardContainer.x,
+        y: cardContainer.y,
+        width: REWARD_CARD_WIDTH,
+        height: REWARD_CARD_HEIGHT,
+        handler: activateTake,
+      });
 
       cardsContainer.addChild(cardContainer);
     }
@@ -224,6 +288,7 @@ export function RewardScenePixi({
     skipBtn.y = height - 60;
     skipBtn.eventMode = 'static';
     skipBtn.cursor = 'pointer';
+    skipBtn.hitArea = new Rectangle(-60, -20, 120, 40);
 
     const skipGraphics = new Graphics();
     drawRoundedRect(skipGraphics, -50, -15, 100, 30, 6, COLORS.panelLight);
@@ -246,10 +311,22 @@ export function RewardScenePixi({
       drawRoundedRect(skipGraphics, -50, -15, 100, 30, 6, COLORS.panelLight);
       skipText.style.fill = COLORS.textMuted;
     });
-    skipBtn.on('click', onSkip);
-    skipBtn.on('tap', onSkip);
+    const activateSkip = createDedupedPointerHandler(onSkip);
+    skipBtn.on('click', activateSkip);
+    skipBtn.on('tap', activateSkip);
+    skipBtn.on('pointertap', activateSkip);
+    targets.push({
+      action: 'skip_reward',
+      x: skipBtn.x,
+      y: skipBtn.y,
+      width: 120,
+      height: 40,
+      handler: activateSkip,
+    });
 
     stage.addChild(skipBtn);
+    hitHandlersRef.current = targets;
+    publishPixiHitTargets('Reward', width, height, targets);
   }, [scene, width, height, onTake, onSkip]);
 
   return <div ref={containerRef} className="reward-scene-pixi" style={{ width, height }} />;

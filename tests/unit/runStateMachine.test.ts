@@ -25,6 +25,10 @@ test('screenToRunPhase should map Reward to reward', () => {
   assert.strictEqual(screenToRunPhase('Reward'), 'reward');
 });
 
+test('screenToRunPhase should map Enchant to enchant', () => {
+  assert.strictEqual(screenToRunPhase('Enchant'), 'enchant');
+});
+
 test('screenToRunPhase should map Event to event', () => {
   assert.strictEqual(screenToRunPhase('Event'), 'event');
 });
@@ -41,6 +45,10 @@ test('screenToRunPhase should map Upgrade to upgrade', () => {
   assert.strictEqual(screenToRunPhase('Upgrade'), 'upgrade');
 });
 
+test('screenToRunPhase should map RelicUpgrade to relic_upgrade', () => {
+  assert.strictEqual(screenToRunPhase('RelicUpgrade'), 'relic_upgrade');
+});
+
 test('screenToRunPhase should map RemoveCard to remove_card', () => {
   assert.strictEqual(screenToRunPhase('RemoveCard'), 'remove_card');
 });
@@ -54,8 +62,8 @@ test('screenToRunPhase should map Victory to victory', () => {
 });
 
 test('runPhaseToScreen should be inverse of screenToRunPhase', () => {
-  const screens: Array<'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'GameOver' | 'Victory'> = [
-    'CharacterSelect', 'Map', 'Combat', 'Reward', 'Event', 'Shop', 'Rest', 'Upgrade', 'RemoveCard', 'GameOver', 'Victory'
+  const screens: Array<'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Enchant' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RelicUpgrade' | 'RemoveCard' | 'GameOver' | 'Victory'> = [
+    'CharacterSelect', 'Map', 'Combat', 'Reward', 'Enchant', 'Event', 'Shop', 'Rest', 'Upgrade', 'RelicUpgrade', 'RemoveCard', 'GameOver', 'Victory'
   ];
   for (const screen of screens) {
     assert.strictEqual(runPhaseToScreen(screenToRunPhase(screen)), screen);
@@ -80,6 +88,50 @@ test('deriveRunTransitionState should derive pendingNodeResolution from state', 
   const gameState = { screen: 'Combat' as const, pendingNodeResolution: true } as any;
   const result = deriveRunTransitionState(gameState);
   assert.strictEqual(result.pendingNodeResolution, true);
+});
+
+test('deriveRunTransitionState preserves explicit roomResolutionKind for nested room screens', () => {
+  const gameState = { screen: 'Upgrade' as const, pendingNodeResolution: false, roomResolutionKind: 'shop' } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionKind, 'shop');
+});
+
+test('deriveRunTransitionState preserves explicit roomResolutionKind for Enchant screen', () => {
+  const gameState = { screen: 'Enchant' as const, pendingNodeResolution: false, roomResolutionKind: 'event' } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.phase, 'enchant');
+  assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionKind, 'event');
+});
+
+test('deriveRunTransitionState preserves explicit roomResolutionKind for RelicUpgrade screen', () => {
+  const gameState = { screen: 'RelicUpgrade' as const, pendingNodeResolution: false, roomResolutionKind: 'rest' } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.phase, 'relic_upgrade');
+  assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionKind, 'rest');
+});
+
+test('deriveRunTransitionState prefers roomSession over stale mirrored roomResolution fields', () => {
+  const gameState = {
+    screen: 'Reward' as const,
+    pendingNodeResolution: false,
+    roomResolutionToken: 'stale_token',
+    roomResolutionKind: 'combat',
+    roomSession: {
+      token: 'session_token',
+      nodeId: 'combat_node',
+      ownerKind: 'combat',
+      resolverKind: 'reward',
+      surfaceStack: ['combat', 'reward'],
+      status: 'resolving',
+    },
+  } as any;
+  const result = deriveRunTransitionState(gameState);
+  assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionToken, 'session_token');
+  assert.strictEqual(result.roomResolutionKind, 'reward');
 });
 
 test('transitionRunState RUN_STARTED should transition to in_run/map', () => {
@@ -153,6 +205,7 @@ test('transitionRunState NODE_ENTERED should transition to specified phase from 
   const result = transitionRunState(defaultState, { type: 'NODE_ENTERED', phase: 'combat' });
   assert.strictEqual(result.phase, 'combat');
   assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionKind, 'combat');
 });
 
 test('transitionRunState NODE_ENTERED should allow entering event', () => {
@@ -192,6 +245,7 @@ test('transitionRunState COMBAT_WON should transition to reward from combat', ()
   const result = transitionRunState(combatState, { type: 'COMBAT_WON' });
   assert.strictEqual(result.phase, 'reward');
   assert.strictEqual(result.pendingNodeResolution, true);
+  assert.strictEqual(result.roomResolutionKind, 'reward');
 });
 
 test('transitionRunState COMBAT_WON should throw when not in combat', () => {
@@ -232,6 +286,7 @@ test('transitionRunState EVENT_RESOLVED should transition to map when pending', 
   const result = transitionRunState(eventState, { type: 'EVENT_RESOLVED' });
   assert.strictEqual(result.phase, 'map');
   assert.strictEqual(result.pendingNodeResolution, false);
+  assert.strictEqual(result.roomResolutionKind, null);
 });
 
 test('transitionRunState EVENT_RESOLVED should throw when no pending resolution', () => {

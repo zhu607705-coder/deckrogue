@@ -1,4 +1,5 @@
 import type { GameEngine } from '@/core/events/gameEngine';
+import { getPotionDefById, getRelicDefById } from '@/content/narrative/numericSystem';
 
 import type { RenderModel } from './contracts';
 import { normalizeLegacyGameState } from './normalizeLegacyGameState';
@@ -24,6 +25,36 @@ export function createLegacyRenderModel(engine: GameEngine): RenderModel {
         canRemove: player.gold >= engine.state.cardRemovalCost && player.deck.length > 0,
         canMix: player.potions.length >= 2,
         canEnchant,
+        cards: engine.state.shopCards.map((card) => ({
+          id: card.id,
+          name: card.name,
+          price: engine.getAdjustedShopPrice(card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50),
+          rarity: card.rarity,
+          type: card.type,
+          description: card.text,
+        })),
+        relics: engine.state.shopRelics.map((id) => {
+          const relic = getRelicDefById(id);
+          return {
+            id,
+            name: relic?.name || id,
+            price: engine.getAdjustedShopPrice(relic?.price ?? 150),
+            rarity: undefined,
+            type: 'Relic',
+            description: relic?.description,
+          };
+        }),
+        potions: engine.state.shopPotions.map((id) => {
+          const potion = getPotionDefById(id);
+          return {
+            id,
+            name: potion?.name || id,
+            price: engine.getAdjustedShopPrice(potion?.price ?? 65),
+            rarity: undefined,
+            type: 'Potion',
+            description: potion?.description,
+          };
+        }),
       },
     };
   }

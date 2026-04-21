@@ -15,6 +15,7 @@ import {
   type RuntimeV2CharacterOption,
   type ReplayLogV1,
   type RuleCommand,
+  type RuleSnapshot,
   type EngineHostStartOptions,
   type RuleRuntimeAdapter,
   type RendererType,
@@ -30,7 +31,7 @@ import {
 import { resolveCurrentDesktopEnvironment } from '@/desktop/hostPlatform';
 
 export const DEFAULT_RUNTIME_V2_ADAPTER = 'python-wasm' as const;
-export const DEFAULT_RUNTIME_V2_RENDERER = 'pixi' as const;
+export const DEFAULT_RUNTIME_V2_RENDERER = 'dom' as const;
 
 export interface RuntimeV2AppProps {
   seed?: number;
@@ -80,12 +81,12 @@ export function RuntimeV2App({
     return resolveAdapterFromSearch(window.location.search, adapterProp);
   });
 
-  const [rendererType, setRendererType] = useState<RendererType>(() => {
+  const rendererType = useMemo<RendererType>(() => {
     if (typeof window === 'undefined') {
       return rendererProp;
     }
     return resolveRendererFromSearch(window.location.search, rendererProp);
-  });
+  }, [rendererProp]);
 
   const host = useMemo(() => {
     const adapter: RuleRuntimeAdapter = adapterType === 'python-wasm'
@@ -116,6 +117,19 @@ export function RuntimeV2App({
   );
 }
 
+declare global {
+  interface Window {
+    __deckrogueRuntimeV2?: {
+      getSnapshot: () => RuleSnapshot | null;
+      getRenderModel: () => ReturnType<typeof useRenderModel>;
+      startRun: (seed: number) => Promise<void>;
+      dispatch: (command: RuleCommand, options?: { recordReplay?: boolean }) => Promise<void>;
+      setSaveGame: (saveGame: ReturnType<typeof createSaveGameV2>) => void;
+      setReplayLog: (replayLog: ReplayLogV1) => void;
+    };
+  }
+}
+
 function RuntimeV2AppContent({
   seed,
   adapterType,
@@ -127,7 +141,7 @@ function RuntimeV2AppContent({
   rendererType: RendererType;
   onAdapterChange: (adapter: 'legacy' | 'python-wasm') => void;
 }) {
-  const { status, error, start, reset, dispatch } = useEngineHost();
+  const { host, status, error, start, reset, dispatch } = useEngineHost();
   const renderModel = useRenderModel();
   const snapshot = useSnapshot();
   const [launchSeed, setLaunchSeed] = useState(() => {
@@ -231,14 +245,62 @@ function RuntimeV2AppContent({
     recordReplayCommand(command);
   }, [dispatch, recordReplayCommand]);
 
-  const handleUpgrade = useCallback(async () => {
-    const command: RuleCommand = { type: 'upgrade_card' };
+  const handleBuyShopCard = useCallback(async (cardId: string) => {
+    const command: RuleCommand = { type: 'buy_shop_card', cardId };
     await dispatch(command);
     recordReplayCommand(command);
   }, [dispatch, recordReplayCommand]);
 
-  const handleRemoveCard = useCallback(async () => {
-    const command: RuleCommand = { type: 'remove_card' };
+  const handleBuyShopRelic = useCallback(async (relicId: string) => {
+    const command: RuleCommand = { type: 'buy_shop_relic', relicId };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleBuyShopPotion = useCallback(async (potionId: string) => {
+    const command: RuleCommand = { type: 'buy_shop_potion', potionId };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleEnterEnchant = useCallback(async () => {
+    const command: RuleCommand = { type: 'enter_enchant' };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleApplyEnchantment = useCallback(async (cardToken: string) => {
+    const command: RuleCommand = { type: 'apply_enchantment', cardInstanceId: cardToken };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleEnterRelicUpgrade = useCallback(async () => {
+    const command: RuleCommand = { type: 'enter_relic_upgrade' };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleUpgradeRelic = useCallback(async (relicId: string) => {
+    const command: RuleCommand = { type: 'upgrade_relic', relicId };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleUpgrade = useCallback(async (cardToken?: string) => {
+    const command: RuleCommand = cardToken ? { type: 'upgrade_card', cardInstanceId: cardToken } : { type: 'upgrade_card' };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleRemoveCard = useCallback(async (cardToken?: string) => {
+    const command: RuleCommand = cardToken ? { type: 'remove_card', cardInstanceId: cardToken } : { type: 'remove_card' };
+    await dispatch(command);
+    recordReplayCommand(command);
+  }, [dispatch, recordReplayCommand]);
+
+  const handleCancelSurface = useCallback(async () => {
+    const command: RuleCommand = { type: 'cancel_surface' };
     await dispatch(command);
     recordReplayCommand(command);
   }, [dispatch, recordReplayCommand]);
@@ -290,6 +352,44 @@ function RuntimeV2AppContent({
     setHasStoredReplay(true);
   }, [dispatch, start]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+    const bridge = {
+      getSnapshot: () => structuredClone(snapshot),
+      getRenderModel: () => structuredClone(renderModel),
+      startRun: async (seedOverride: number) => {
+        const options: EngineHostStartOptions = { seed: seedOverride };
+        await start(options);
+      },
+      dispatch: async (command: RuleCommand, options?: { recordReplay?: boolean }) => {
+        if (!host) {
+          throw new Error('runtime-v2 host is unavailable');
+        }
+        await host.dispatch(command);
+        if (options?.recordReplay !== false) {
+          recordReplayCommand(command);
+        }
+      },
+      setSaveGame: (saveGame: ReturnType<typeof createSaveGameV2>) => {
+        saveRuntimeV2SaveGame(saveGame);
+        setHasStoredSave(true);
+      },
+      setReplayLog: (nextReplayLog: ReplayLogV1) => {
+        saveRuntimeV2ReplayLog(nextReplayLog);
+        setReplayLog(nextReplayLog);
+        setHasStoredReplay(true);
+      },
+    };
+    window.__deckrogueRuntimeV2 = bridge;
+    return () => {
+      if (window.__deckrogueRuntimeV2 === bridge) {
+        delete window.__deckrogueRuntimeV2;
+      }
+    };
+  }, [host, recordReplayCommand, renderModel, snapshot]);
+
   return (
     <RuntimeV2AppShell
       status={status}
@@ -315,8 +415,16 @@ function RuntimeV2AppContent({
       onSkipReward={handleSkipReward}
       onChooseEventOption={handleChooseEventOption}
       onRest={handleRest}
+      onBuyShopCard={handleBuyShopCard}
+      onBuyShopRelic={handleBuyShopRelic}
+      onBuyShopPotion={handleBuyShopPotion}
+      onEnterEnchant={handleEnterEnchant}
+      onApplyEnchantment={handleApplyEnchantment}
+      onEnterRelicUpgrade={handleEnterRelicUpgrade}
+      onUpgradeRelic={handleUpgradeRelic}
       onUpgrade={handleUpgrade}
       onRemoveCard={handleRemoveCard}
+      onCancelSurface={handleCancelSurface}
     />
   );
 }

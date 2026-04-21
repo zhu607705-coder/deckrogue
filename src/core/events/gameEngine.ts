@@ -13,6 +13,7 @@ import {
   potionsData,
   getPotionRuntimeConfig,
   getCardEnchantmentDefById,
+  resolveShopOfferPrice,
   syncRouteStateFromLegacyState,
 } from '@/content/narrative/numericSystem';
 import type { IActionContext } from '@/core/actions/actionQueue';
@@ -44,6 +45,7 @@ import {
   syncRoomSessionFromLegacyState,
 } from '@/core/events/roomSession';
 import { applySurfaceContext, syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
+import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 
 export type {
   GameEngineRuntimeDelegate,
@@ -227,21 +229,38 @@ export class GameEngine {
       if (amount <= 0) return;
       const targetType = String(event?.targetType || '');
       this.appendVoxLog(targetType === 'player'
-        ? `装甲告警：肉体承载力下降 ${amount}。`
+        ? `装甲告警：生命值下降 ${amount}。`
         : `命中确认：目标遭受 ${amount} 点打击。`);
     });
 
     this.subscribeToGlobalEvent<{ amount?: number }>('BlockGained', (event) => {
       const amount = Math.max(0, Math.floor(Number(event?.amount) || 0));
       if (amount <= 0) return;
-      this.appendVoxLog(`防护层重构：护甲读数 +${amount}。`);
+      this.appendVoxLog(`护盾重构：护盾值 +${amount}。`);
     });
 
     this.subscribeToGlobalEvent<{ status?: string; amount?: number; targetType?: string }>('StatusApplied', (event) => {
       const status = String(event?.status || 'Unknown');
       const amount = Math.max(0, Math.floor(Number(event?.amount) || 0));
       const targetType = event?.targetType === 'player' ? '本机' : '目标';
-      this.appendVoxLog(`状态注入：${targetType} ${status}${amount > 0 ? ` +${amount}` : ''}。`);
+      const statusZh: Record<string, string> = {
+        'Strength': '力量',
+        'Weak': '虚弱',
+        'Vulnerable': '易伤',
+        'Poison': '中毒',
+        'Block': '护盾',
+        'Fear': '恐惧',
+        'MartyrsVigor': '殉道者之力',
+        'PlatedArmor': '板甲',
+        'NextAttackDiscount': '下击折扣',
+        'DoubleCastNextCard': '下牌双发',
+        'DoubleDamageNextAttack': '下击双倍',
+        'Electrified': '带电',
+        'Devotion': '虔敬',
+        'Corruption': '腐化'
+      };
+      const statusName = statusZh[status] || status;
+      this.appendVoxLog(`状态注入：${targetType} ${statusName}${amount > 0 ? ` +${amount}` : ''}。`);
     });
 
     this.subscribeToGlobalEvent('DeckShuffled', () => {
@@ -329,9 +348,9 @@ export class GameEngine {
   }
 
   private restoreAuthoritativeStateSlice(snapshot: Partial<GameState>): void {
-    const hasExplicitRouteState = snapshot.routeState != null;
-    const hasExplicitSurfaceContext = snapshot.surfaceContext != null;
-    const hasExplicitRoomSession = snapshot.roomSession != null;
+    const hasExplicitRouteState = 'routeState' in snapshot;
+    const hasExplicitSurfaceContext = 'surfaceContext' in snapshot;
+    const hasExplicitRoomSession = 'roomSession' in snapshot;
     const isEventFreeCardRemovalMode =
       this.eventManager.isEventFreeCardRemovalMode()
       || (
@@ -811,6 +830,17 @@ export class GameEngine {
         this.recordDelegationFallback(error);
       }
     }
+    const requiresPaidRemoval =
+      this.state.screen === 'RemoveCard'
+      && this.state.upgradeReturnScreen === 'Shop'
+      && !this.eventManager.isEventFreeCardRemovalMode();
+    if (requiresPaidRemoval) {
+      const removalCost = this.state.cardRemovalCost ?? 75;
+      if (this.state.player.gold < removalCost) {
+        return;
+      }
+      this.state.player.gold -= removalCost;
+    }
     this.state.player.deck = this.state.player.deck.filter(c => c.instanceId !== cardInstanceId);
     syncRouteStateFromLegacyState(this.state);
     this.state.screen = this.state.upgradeReturnScreen || 'Map';
@@ -863,11 +893,46 @@ export class GameEngine {
   }
 
   upgradeRelic(relicId: string): boolean {
-    return false;
+    if (this.state.screen !== 'RelicUpgrade') {
+      return false;
+    }
+    const upgradeInfo = this.getRelicUpgradeInfo(relicId);
+    if (!upgradeInfo?.canUpgrade || !upgradeInfo.canAfford) {
+      return false;
+    }
+    this.state.player.gold -= upgradeInfo.nextLevelCost;
+    this.state.player.relicStates[relicId] = {
+      level: upgradeInfo.currentLevel + 1,
+      progress: this.state.player.relicStates[relicId]?.progress ?? 0,
+      corrupted: false,
+    };
+    syncRoomSessionFromLegacyState(this.state);
+    syncSurfaceContextFromLegacyState(this.state);
+    this.notify();
+    return true;
   }
 
   getRelicUpgradeInfo(relicId: string): any {
-    return null;
+    const config = RELIC_UPGRADE_CONFIGS.find((entry) => entry.relicId === relicId);
+    const relicState = this.state.player.relicStates[relicId];
+    if (!config || !relicState) {
+      return null;
+    }
+    const currentLevel = relicState.level ?? 1;
+    const maxLevel = config.levels.at(-1)?.level ?? currentLevel;
+    const nextLevel = config.levels.find((level) => level.level === currentLevel + 1) ?? null;
+    return {
+      currentLevel,
+      maxLevel,
+      canUpgrade: nextLevel !== null,
+      canAfford: nextLevel !== null ? this.state.player.gold >= nextLevel.cost : false,
+      nextLevelCost: nextLevel?.cost ?? 0,
+      effectDescription: nextLevel
+        ? Object.entries(nextLevel.effect.statBoost ?? {})
+            .map(([stat, value]) => `${stat}: +${value}`)
+            .join(', ') || nextLevel.effect.newAbility || '强化效果'
+        : '已达满级',
+    };
   }
 
   shopPurify(relicId: string): boolean {
@@ -1071,9 +1136,6 @@ export class GameEngine {
   loadSaveData(data: any): void {
     if (data.state) {
       this.state = data.state;
-      this.state.roomSession ??= null;
-      this.state.routeState ??= null;
-      this.state.surfaceContext ??= null;
       this.state.runId ||= `run_${this.state.seed}_${Date.now()}`;
       this.state.runStartedAt ||= Date.now();
       this.state.metaRuntime ||= { unlockedPoolIds: [], appliedUpgradeIds: [], appliedPactIds: [] };
@@ -1142,6 +1204,13 @@ export class GameEngine {
   }
 
   enterCardRemoval(): void {
+    if (!this.eventManager.isEventFreeCardRemovalMode()) {
+      if (this.state.screen === 'Shop') {
+        this.state.upgradeReturnScreen = 'Shop';
+      } else if (this.state.screen === 'Rest') {
+        this.state.upgradeReturnScreen = 'Rest';
+      }
+    }
     this.state.screen = 'RemoveCard';
     syncRoomSessionFromLegacyState(this.state, {
       isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
@@ -1224,11 +1293,22 @@ export class GameEngine {
   }
 
   buyShopCard(cardInstanceId: string, basePrice?: number): void {
-    if (typeof basePrice !== 'number') {
-      this.buyCard(cardInstanceId);
+    const shopCard = this.state.shopCards.find((card) => card.instanceId === cardInstanceId);
+    if (!shopCard) {
       return;
     }
-    const price = this.getAdjustedShopPrice(basePrice);
+
+    const resolvedBasePrice = resolveShopOfferPrice(
+      'card',
+      typeof basePrice === 'number'
+        ? basePrice
+        : shopCard.rarity === 'Rare'
+          ? 150
+          : shopCard.rarity === 'Uncommon'
+            ? 75
+            : 50,
+    );
+    const price = this.getAdjustedShopPrice(resolvedBasePrice);
     this.runFlowManager.buyCard(cardInstanceId, price);
     this.syncRuntimeDelegateAfterShopMutation('buy_shop_card');
   }
@@ -1236,7 +1316,7 @@ export class GameEngine {
   buyShopRelic(relicId: string, basePrice?: number): void {
     const relic = (relicsData as any[]).find(r => r.id === relicId);
     if (!relic || this.state.player.relics.includes(relicId)) return;
-    const price = this.getAdjustedShopPrice(basePrice ?? relic.price);
+    const price = this.getAdjustedShopPrice(resolveShopOfferPrice('relic', basePrice ?? relic.price));
     this.runFlowManager.buyRelic(relicId, price);
     this.syncRuntimeDelegateAfterShopMutation('buy_shop_relic');
   }
@@ -1246,7 +1326,7 @@ export class GameEngine {
     const potion = (potionsData as any[]).find(p => p.id === potionId);
     if (!potion) return;
     unlockCodexEntry('potions', potionId);
-    const price = this.getAdjustedShopPrice(basePrice ?? potion.price);
+    const price = this.getAdjustedShopPrice(resolveShopOfferPrice('potion', basePrice ?? potion.price));
     this.runFlowManager.buyPotion(potionId, price);
     this.syncRuntimeDelegateAfterShopMutation('buy_shop_potion');
   }

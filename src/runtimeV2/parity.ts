@@ -1,4 +1,5 @@
 import type { RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
+import { projectRuleActiveEventForParity } from './activeEventOutcome';
 
 export interface ParityDiff {
   field: string;
@@ -24,6 +25,7 @@ export interface RunParityScenarioOptions {
   candidateAdapter: RuleRuntimeAdapter;
   seed: number;
   commands: RuleCommand[];
+  strictStableFields?: boolean;
 }
 
 export interface ResolvedParityStepInput {
@@ -37,9 +39,49 @@ export interface RunResolvedParityScenarioOptions {
   candidateAdapter: RuleRuntimeAdapter;
   seed: number;
   steps: ResolvedParityStepInput[];
+  strictStableFields?: boolean;
 }
 
-function projectStableFields(snapshot: RuleSnapshot) {
+function projectStableFields(snapshot: RuleSnapshot, options: { strictStableFields?: boolean } = {}) {
+  const strictStableFields = !!options.strictStableFields;
+  const sortValueCounts = (values: string[]) => {
+    const counts = new Map<string, number>();
+    for (const value of values) {
+      const stableValue = value.endsWith('*') ? value.slice(0, -1) : value;
+      counts.set(stableValue, (counts.get(stableValue) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([value, count]) => `${value}:${count}`).sort();
+  };
+
+  const routeCommits = snapshot.routeState?.recentCommits ?? [];
+  const activeEvent = projectRuleActiveEventForParity(snapshot.activeEvent, { strictPayload: strictStableFields });
+  const surfaceContext = (() => {
+    if (snapshot.lifecycle.phase === 'map' && !snapshot.lifecycle.pendingNodeResolution && !snapshot.roomSession) {
+      return null;
+    }
+    const context = snapshot.surfaceContext ?? null;
+    if (!context) {
+      return null;
+    }
+    const projected = {
+      upgradeReturnScreen: context.upgradeReturnScreen ?? null,
+      relicUpgradeReturnScreen: context.relicUpgradeReturnScreen ?? null,
+      enchantReturnScreen: context.enchantReturnScreen ?? null,
+      campfireChoiceLocked: context.campfireChoiceLocked ?? false,
+      isEventFreeCardRemovalMode: context.isEventFreeCardRemovalMode ?? false,
+      pendingUpgradeRefund: context.pendingUpgradeRefund ?? false,
+      enchantContext: context.enchantContext
+        ? {
+            source: context.enchantContext.source,
+            enchantmentId: context.enchantContext.enchantmentId,
+            returnScreen: context.enchantContext.returnScreen ?? null,
+            price: context.enchantContext.price ?? null,
+          }
+        : null,
+    };
+    return Object.values(projected).every((value) => value === null || value === false) ? null : projected;
+  })();
+
   return {
     seed: snapshot.seed,
     lifecycle: {
@@ -58,10 +100,49 @@ function projectStableFields(snapshot: RuleSnapshot) {
       deckCount: snapshot.player.deck.length,
       relicCount: snapshot.player.relicIds.length,
       potionCount: snapshot.player.potionIds.length,
+      ...(strictStableFields ? {
+        deck: sortValueCounts(snapshot.player.deck),
+        relicIds: sortValueCounts(snapshot.player.relicIds),
+        potionIds: sortValueCounts(snapshot.player.potionIds),
+      } : {}),
+      relicStateKeys: Object.keys(snapshot.player.relicStates ?? {}).sort(),
+      relicStates: snapshot.player.relicStates ?? {},
     },
     map: {
       currentNodeId: snapshot.map.currentNodeId,
     },
+    activeEvent,
+    shop: snapshot.shop && snapshot.lifecycle.phase === 'shop'
+      ? {
+          cards: snapshot.shop.cards.map((entry) => `${entry.id}:${entry.price}`).sort(),
+          relics: snapshot.shop.relics.map((entry) => `${entry.id}:${entry.price}`).sort(),
+          potions: snapshot.shop.potions.map((entry) => `${entry.id}:${entry.price}`).sort(),
+          cardRemovalCost: snapshot.shop.cardRemovalCost,
+        }
+      : null,
+    routeState: snapshot.routeState
+      ? {
+          primaryTag: snapshot.routeState.primaryTag ?? null,
+          secondaryTag: snapshot.routeState.secondaryTag ?? null,
+          confidence: snapshot.routeState.confidence ?? 0,
+          stage: snapshot.routeState.stage ?? 'forming',
+          ...(strictStableFields ? {
+            recentCommits: routeCommits
+              .slice(-5)
+              .map((entry) => `${entry.source}:${entry.tag}:${entry.floor}:${entry.weight}`),
+          } : {}),
+        }
+      : null,
+    surfaceContext,
+    roomSession: snapshot.roomSession
+      ? {
+          nodeId: snapshot.roomSession.nodeId,
+          ownerKind: snapshot.roomSession.ownerKind,
+          resolverKind: snapshot.roomSession.resolverKind,
+          surfaceStack: snapshot.roomSession.surfaceStack,
+          status: snapshot.roomSession.status,
+        }
+      : null,
     combat: snapshot.combat
       ? {
           enemyCount: snapshot.combat.enemyIds.length,
@@ -73,6 +154,7 @@ function projectStableFields(snapshot: RuleSnapshot) {
     reward: snapshot.reward
       ? {
           cardCount: snapshot.reward.cardIds.length,
+          ...(strictStableFields ? { cardIds: [...snapshot.reward.cardIds].sort() } : {}),
           source: snapshot.reward.source,
         }
       : null,
@@ -123,17 +205,17 @@ function diffProjectedSnapshots(
 }
 
 export async function runParityScenario(options: RunParityScenarioOptions): Promise<ParityScenarioResult> {
-  const { legacyAdapter, candidateAdapter, seed, commands } = options;
+  const { legacyAdapter, candidateAdapter, seed, commands, strictStableFields } = options;
 
   const steps: ParityStep[] = [];
   let legacySnapshot = await legacyAdapter.start({ seed });
   let candidateSnapshot = await candidateAdapter.start({ seed });
 
   steps.push({
-    label: '$boot',
-    diffs: diffProjectedSnapshots(
-      projectStableFields(legacySnapshot) as Record<string, unknown>,
-      projectStableFields(candidateSnapshot) as Record<string, unknown>,
+      label: '$boot',
+      diffs: diffProjectedSnapshots(
+      projectStableFields(legacySnapshot, { strictStableFields }) as Record<string, unknown>,
+      projectStableFields(candidateSnapshot, { strictStableFields }) as Record<string, unknown>,
     ),
     legacySnapshot,
     candidateSnapshot,
@@ -145,8 +227,8 @@ export async function runParityScenario(options: RunParityScenarioOptions): Prom
     steps.push({
       label: command.type,
       diffs: diffProjectedSnapshots(
-        projectStableFields(legacySnapshot) as Record<string, unknown>,
-        projectStableFields(candidateSnapshot) as Record<string, unknown>,
+        projectStableFields(legacySnapshot, { strictStableFields }) as Record<string, unknown>,
+        projectStableFields(candidateSnapshot, { strictStableFields }) as Record<string, unknown>,
       ),
       legacySnapshot,
       candidateSnapshot,
@@ -161,7 +243,7 @@ export async function runParityScenario(options: RunParityScenarioOptions): Prom
 }
 
 export async function runResolvedParityScenario(options: RunResolvedParityScenarioOptions): Promise<ParityScenarioResult> {
-  const { legacyAdapter, candidateAdapter, seed, steps: stepInputs } = options;
+  const { legacyAdapter, candidateAdapter, seed, steps: stepInputs, strictStableFields } = options;
 
   const steps: ParityStep[] = [];
   const commands: RuleCommand[] = [];
@@ -169,10 +251,10 @@ export async function runResolvedParityScenario(options: RunResolvedParityScenar
   let candidateSnapshot = await candidateAdapter.start({ seed });
 
   steps.push({
-    label: '$boot',
-    diffs: diffProjectedSnapshots(
-      projectStableFields(legacySnapshot) as Record<string, unknown>,
-      projectStableFields(candidateSnapshot) as Record<string, unknown>,
+      label: '$boot',
+      diffs: diffProjectedSnapshots(
+      projectStableFields(legacySnapshot, { strictStableFields }) as Record<string, unknown>,
+      projectStableFields(candidateSnapshot, { strictStableFields }) as Record<string, unknown>,
     ),
     legacySnapshot,
     candidateSnapshot,
@@ -189,8 +271,8 @@ export async function runResolvedParityScenario(options: RunResolvedParityScenar
     steps.push({
       label: input.label,
       diffs: diffProjectedSnapshots(
-        projectStableFields(legacySnapshot) as Record<string, unknown>,
-        projectStableFields(candidateSnapshot) as Record<string, unknown>,
+        projectStableFields(legacySnapshot, { strictStableFields }) as Record<string, unknown>,
+        projectStableFields(candidateSnapshot, { strictStableFields }) as Record<string, unknown>,
       ),
       legacySnapshot,
       candidateSnapshot,

@@ -1,6 +1,9 @@
 export { globalEventBus, EventBus } from '@/core/events/eventBus';
 export type { GameEvent } from '@/core/events/eventBus';
 export { GameEngine } from '@/core/events/gameEngine';
+export { EventManager } from '@/core/events/EventManager';
+export { CombatManager } from '@/core/events/CombatManager';
+export { RunFlowManager } from '@/core/events/RunFlowManager';
 export { metricsTracker, MetricsTracker } from '@/core/events/metricsTracker';
 export * from '@/core/events/bossPhaseSystem';
 export * from '@/core/events/runGenerator';

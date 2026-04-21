@@ -83,8 +83,16 @@ const noopHandlers = {
   onSkipReward: () => {},
   onChooseEventOption: () => {},
   onRest: () => {},
+  onBuyShopCard: () => {},
+  onBuyShopRelic: () => {},
+  onBuyShopPotion: () => {},
+  onEnterEnchant: () => {},
+  onApplyEnchantment: () => {},
+  onEnterRelicUpgrade: () => {},
+  onUpgradeRelic: () => {},
   onUpgrade: () => {},
   onRemoveCard: () => {},
+  onCancelSurface: () => {},
 };
 
 test('resolveAppEntryMode keeps legacy as the default entry and only enables runtime-v2 explicitly', () => {
@@ -301,6 +309,8 @@ test('RuntimeV2AppShell renders rest site actions from room payload', () => {
           canUpgrade: true,
           canRemove: true,
           cardRemovalCost: 75,
+          canEnchant: true,
+          canRelicUpgrade: true,
         },
       })}
       seed={12345}
@@ -314,6 +324,69 @@ test('RuntimeV2AppShell renders rest site actions from room payload', () => {
   assert.match(html, /恢复 25 点生命/);
   assert.match(html, /强化牌库中的一张牌/);
   assert.match(html, /移除卡牌/);
+  assert.match(html, /附魔/);
+  assert.match(html, /遗物升级/);
+});
+
+test('RuntimeV2AppShell renders shop purchase actions from room payload', () => {
+  const html = renderToStaticMarkup(
+    <RuntimeV2AppShell
+      status="ready"
+      renderModel={createRenderModel({
+        screen: 'Shop',
+        lifecycle: {
+          screen: 'Shop',
+          phase: 'shop',
+          pendingNodeResolution: true,
+        },
+        player: {
+          characterId: 'informant',
+          hp: 85,
+          maxHp: 85,
+          gold: 99,
+          intel: 0,
+          devotion: 0,
+          corruption: 0,
+          deck: ['strike', 'defend'],
+          deckCount: 2,
+          relicCount: 0,
+          potionCount: 0,
+          healthRatio: 1,
+        },
+        room: {
+          kind: 'shop',
+          title: '黑市据点',
+          body: '购买卡牌、遗物或药水。',
+          cardCount: 2,
+          canRemove: true,
+          cardRemovalCost: 75,
+          canEnchant: true,
+          cards: [
+            { id: 'surveillance', name: 'Surveillance', price: 50, rarity: 'Common', type: 'Skill' },
+            { id: 'false_identity', name: 'False Identity', price: 75, rarity: 'Uncommon', type: 'Skill' },
+          ],
+          relics: [
+            { id: 'anchor', name: 'Anchor', price: 145, rarity: 'Rare', type: 'Relic' },
+          ],
+          potions: [
+            { id: 'healing_potion', name: 'Healing Potion', price: 65, rarity: 'Common', type: 'Potion' },
+          ],
+        } as RenderModel['room'],
+      })}
+      seed={12345}
+      errorMessage={null}
+      characters={characters}
+      {...noopHandlers}
+    />
+  );
+
+  assert.match(html, /data-card-id="surveillance"/);
+  assert.match(html, /data-card-id="false_identity"/);
+  assert.match(html, /data-relic-id="anchor"/);
+  assert.match(html, /data-potion-id="healing_potion"/);
+  assert.match(html, /Buy 50g/);
+  assert.match(html, /Buy 65g/);
+  assert.match(html, /附魔服务/);
 });
 
 test('RuntimeV2AppShell surfaces an engine error on the launcher', () => {

@@ -1,4 +1,4 @@
-import { GameState } from '@/core/types';
+import { GameState, RunSummary } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 
 export interface SaveSlot {
@@ -10,6 +10,33 @@ export interface SaveSlot {
   chapterIndex: number;
   characterId: string;
   checksum: string;
+}
+
+export interface PlayerPerformanceStats {
+  recentWinRate: number;
+  averageCombatTurns: number;
+  avgDamageTakenPerTurn: number;
+  avgEffectiveDamage: number;
+  relicCount: number;
+  healthPercentRemaining: number;
+}
+
+export interface DifficultyProfile {
+  baseDifficulty: number;
+  currentDifficulty: number;
+  adjustmentFactor: number;
+  playerPerformance?: PlayerPerformanceStats;
+  nextAdjustment: 'increase' | 'decrease' | 'maintain';
+  adjustmentMagnitude: number;
+}
+
+export interface SavedRunRecord {
+  outcome: string;
+  avgCombatTurns: number;
+  floorsCleared: number;
+  relics: string[];
+  seed: number;
+  timestamp: number;
 }
 
 export interface SaveData {
@@ -24,6 +51,16 @@ export interface SaveData {
     seed: number;
     runStartTime: number;
   };
+  difficultyProfile?: {
+    baseDifficulty: number;
+    currentDifficulty: number;
+    adjustmentFactor: number;
+    nextAdjustment: 'increase' | 'decrease' | 'maintain';
+    adjustmentMagnitude: number;
+    lastAdjustedRun?: number;
+    runsTracked: number;
+  };
+  recentRuns?: SavedRunRecord[];
 }
 
 export class SaveManager {
@@ -375,6 +412,105 @@ export class SaveManager {
     this.saveStats(stats);
   }
 
+  // ==================== Difficulty Persistence ====================
+
+  private difficultyProfileData: SaveData['difficultyProfile'] | null = null;
+
+  saveDifficultyProfile(profile: DifficultyProfile): void {
+    this.difficultyProfileData = {
+      baseDifficulty: profile.baseDifficulty,
+      currentDifficulty: profile.currentDifficulty,
+      adjustmentFactor: profile.adjustmentFactor,
+      nextAdjustment: profile.nextAdjustment,
+      adjustmentMagnitude: profile.adjustmentMagnitude,
+      lastAdjustedRun: profile.playerPerformance ? undefined : undefined,
+      runsTracked: profile.playerPerformance ? 1 : 0
+    };
+    this.persistDifficultyProfile();
+  }
+
+  loadDifficultyProfile(): DifficultyProfile | null {
+    try {
+      const key = 'deckrogue_difficulty_profile';
+      const data = localStorage.getItem(key);
+      if (!data) return null;
+
+      const saved = JSON.parse(data);
+      return {
+        baseDifficulty: saved.baseDifficulty,
+        currentDifficulty: saved.currentDifficulty,
+        adjustmentFactor: saved.adjustmentFactor,
+        playerPerformance: {
+          recentWinRate: 0.5,
+          averageCombatTurns: 10,
+          avgDamageTakenPerTurn: 5,
+          avgEffectiveDamage: 8,
+          relicCount: 0,
+          healthPercentRemaining: 1
+        },
+        nextAdjustment: saved.nextAdjustment,
+        adjustmentMagnitude: saved.adjustmentMagnitude
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private persistDifficultyProfile(): void {
+    if (!this.difficultyProfileData) return;
+    try {
+      const key = 'deckrogue_difficulty_profile';
+      localStorage.setItem(key, JSON.stringify(this.difficultyProfileData));
+    } catch (error) {
+      console.error('Failed to persist difficulty profile:', error);
+    }
+  }
+
+  private recentRunsData: SavedRunRecord[] | null = null;
+
+  addRunRecord(record: RunSummary): void {
+    const runRecord: SavedRunRecord = {
+      outcome: record.isVictory ? 'Victory' : record.causeOfDeath,
+      avgCombatTurns: 0,
+      floorsCleared: record.reachedFloor,
+      relics: record.runPreset?.startingRelicId ? [record.runPreset.startingRelicId] : [],
+      seed: record.runId ? this.hashCode(record.runId) : Date.now(),
+      timestamp: Date.now()
+    };
+
+    if (!this.recentRunsData) {
+      this.recentRunsData = [];
+    }
+
+    this.recentRunsData.push(runRecord);
+
+    if (this.recentRunsData.length > 10) {
+      this.recentRunsData = this.recentRunsData.slice(-10);
+    }
+
+    this.persistRecentRuns();
+  }
+
+  private persistRecentRuns(): void {
+    if (!this.recentRunsData) return;
+    try {
+      const key = 'deckrogue_recent_runs';
+      localStorage.setItem(key, JSON.stringify(this.recentRunsData));
+    } catch (error) {
+      console.error('Failed to persist recent runs:', error);
+    }
+  }
+
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  }
+
   // ==================== Utility ====================
 
   private serializeState(state: GameState): GameState {
@@ -415,7 +551,7 @@ export class SaveManager {
     const versionParts = oldData.version.split('.').map(Number);
     const currentParts = SaveManager.SAVE_VERSION.split('.').map(Number);
 
-    if (versionParts[0] < currentParts[0]) {
+    if (versionParts.length > 0 && currentParts.length > 0 && versionParts[0] < currentParts[0]) {
       globalEventBus.publish({ type: 'LoadFailed', error: 'Major version mismatch, cannot migrate' });
       return null;
     }

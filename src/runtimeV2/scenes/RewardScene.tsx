@@ -14,6 +14,12 @@ export function RewardScene({ scene, onTake, onSkip }: RewardSceneComponentProps
     <div className="reward-scene" data-scene="reward">
       <h2>{room.title ?? 'Reward Draft'}</h2>
       {room.body && <p className="room-description">{room.body}</p>}
+      {room.guidance && (
+        <div className="reward-guidance" data-guidance="reward">
+          <strong>{room.guidance.headline}</strong>
+          <p>{room.guidance.routeLabel ? `${room.guidance.routeLabel} · ` : ''}{room.guidance.reason}</p>
+        </div>
+      )}
       <div className="player-hud">
         <span>HP: {player.hp}/{player.maxHp}</span>
         <span>Gold: {player.gold}</span>
@@ -35,6 +41,7 @@ export function RewardScene({ scene, onTake, onSkip }: RewardSceneComponentProps
             <div className="card-name">{card.name}</div>
             <div className="card-type">{card.type}</div>
             {card.description && <div className="card-description">{card.description}</div>}
+            {card.routeReason && <div className="card-route-reason">{card.routeReason}</div>}
           </button>
         ))}
       </div>

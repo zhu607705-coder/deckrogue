@@ -2,6 +2,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { GameEngine } from '@/core/events/gameEngine';
 import { analyzeRouteSignals, getCardRouteSignal } from '@/content/narrative/numericSystem';
@@ -10,13 +11,43 @@ const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomance
 const SEEDS = Array.from({ length: 20 }, (_, index) => index + 1);
 const THRESHOLD = 0.7;
 
-interface SampleResult {
+export interface SampleResult {
   characterId: string;
   seed: number;
   dominantTag: string | null;
   reward1: string[];
   reward2: string[];
   formed: boolean;
+}
+
+export interface RouteTagDistributionEntry {
+  tag: string;
+  count: number;
+  share: number;
+  formedCount: number;
+  formationRate: number;
+}
+
+export interface CharacterRouteDistribution {
+  characterId: string;
+  totalSamples: number;
+  formedCount: number;
+  formationRate: number;
+  uniqueTagCount: number;
+  maxTagShare: number;
+  minNonzeroTagShare: number;
+  dominantTags: RouteTagDistributionEntry[];
+  warnings: string[];
+}
+
+export interface RouteDistributionSummary {
+  reportOnly: true;
+  warningCount: number;
+  warningRules: {
+    minUniqueTagCount: number;
+    maxTagShare: number;
+  };
+  byCharacter: CharacterRouteDistribution[];
 }
 
 function chooseRouteCard(engine: GameEngine) {
@@ -29,6 +60,65 @@ function chooseRouteCard(engine: GameEngine) {
     return weightB - weightA;
   });
   return { reward, chosen: sorted[0] };
+}
+
+export function summarizeRouteDistribution(samples: SampleResult[]): RouteDistributionSummary {
+  const minUniqueTagCount = 2;
+  const maxTagShareLimit = 0.85;
+  const byCharacter = [...new Set(samples.map((sample) => sample.characterId))].sort().map((characterId) => {
+    const characterSamples = samples.filter((sample) => sample.characterId === characterId);
+    const formedCount = characterSamples.filter((sample) => sample.formed).length;
+    const tagCounts = new Map<string, { count: number; formedCount: number }>();
+    for (const sample of characterSamples) {
+      const tag = sample.dominantTag ?? 'unknown';
+      const current = tagCounts.get(tag) ?? { count: 0, formedCount: 0 };
+      current.count += 1;
+      if (sample.formed) {
+        current.formedCount += 1;
+      }
+      tagCounts.set(tag, current);
+    }
+    const dominantTags = [...tagCounts.entries()]
+      .map(([tag, value]) => ({
+        tag,
+        count: value.count,
+        share: value.count / Math.max(1, characterSamples.length),
+        formedCount: value.formedCount,
+        formationRate: value.formedCount / Math.max(1, value.count),
+      }))
+      .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag));
+    const nonzeroShares = dominantTags.map((entry) => entry.share).filter((share) => share > 0);
+    const maxTagShare = nonzeroShares.length ? Math.max(...nonzeroShares) : 0;
+    const minNonzeroTagShare = nonzeroShares.length ? Math.min(...nonzeroShares) : 0;
+    const warnings: string[] = [];
+    if (dominantTags.length < minUniqueTagCount) {
+      warnings.push(`uniqueTagCount ${dominantTags.length} < ${minUniqueTagCount}`);
+    }
+    if (maxTagShare > maxTagShareLimit) {
+      warnings.push(`maxTagShare ${maxTagShare.toFixed(2)} > ${maxTagShareLimit}`);
+    }
+    return {
+      characterId,
+      totalSamples: characterSamples.length,
+      formedCount,
+      formationRate: formedCount / Math.max(1, characterSamples.length),
+      uniqueTagCount: dominantTags.length,
+      maxTagShare,
+      minNonzeroTagShare,
+      dominantTags,
+      warnings,
+    };
+  });
+
+  return {
+    reportOnly: true,
+    warningCount: byCharacter.reduce((total, entry) => total + entry.warnings.length, 0),
+    warningRules: {
+      minUniqueTagCount,
+      maxTagShare: maxTagShareLimit,
+    },
+    byCharacter,
+  };
 }
 
 function main() {
@@ -75,6 +165,7 @@ function main() {
     formedCount,
     formationRate,
     pass: formationRate >= THRESHOLD,
+    distribution: summarizeRouteDistribution(samples),
     samples,
   };
 
@@ -88,4 +179,6 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

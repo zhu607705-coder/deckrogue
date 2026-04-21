@@ -1,5 +1,17 @@
-import type { RenderModel, RuleSnapshot, RenderModelRoom, RenderModelRewardCard } from './contracts';
-import { getStoryEventDef } from '@/content/narrative/numericSystem';
+import type {
+  RenderModel,
+  RenderModelDecisionGuidance,
+  RuleSnapshot,
+  RenderModelRoom,
+  RenderModelRewardCard,
+} from './contracts';
+import {
+  getEventChoiceCommitTags,
+  getEventChoiceRouteRole,
+  getRouteTaxonomy,
+  getStoryEventDef,
+} from '@/content/narrative/numericSystem';
+import { getContentService } from './content/contentService';
 
 function deriveAvailableNodeIds(snapshot: RuleSnapshot): string[] {
   if (!snapshot.map.currentNodeId) {
@@ -18,6 +30,44 @@ function deriveAvailableNodeIds(snapshot: RuleSnapshot): string[] {
 
 function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   const screen = snapshot.lifecycle.screen;
+  const contentService = getContentService();
+  const makeRouteGuidance = (
+    headline: string,
+    reason: string,
+    recommendedActionId?: string | null,
+    recommendedTargetId?: string | null,
+  ): RenderModelDecisionGuidance | null => {
+    const routeTag = snapshot.routeState?.primaryTag ?? null;
+    const routeLabel = routeTag ? getRouteTaxonomy(routeTag)?.label ?? routeTag : null;
+    if (!routeTag && !reason) return null;
+    return {
+      routeTag,
+      routeLabel,
+      headline,
+      reason,
+      recommendedActionId,
+      recommendedTargetId,
+    };
+  };
+  const toCamelRelicKey = (relicId: string) => relicId.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
+  const getRelicState = (relicId: string) => snapshot.player.relicStates?.[relicId] ?? snapshot.player.relicStates?.[toCamelRelicKey(relicId)];
+  const isCorruptedRelic = (relicId: string) => {
+    const state = getRelicState(relicId);
+    if (typeof state?.corrupted === 'boolean') {
+      return state.corrupted;
+    }
+    return !!(contentService.getRelic(relicId) as { corrupted?: boolean } | undefined)?.corrupted;
+  };
+  const deriveDeckSurfaceChoices = () => snapshot.player.deck.map((cardId, index) => {
+    const normalizedCardId = cardId.endsWith('+') ? cardId.slice(0, -1) : cardId;
+    const cardData = contentService.getCard(normalizedCardId);
+    return {
+      id: `${index}:${cardId}`,
+      label: cardData?.name ? `${cardData.name}${cardId.endsWith('+') ? ' +' : ''}` : cardId.replace(/_/g, ' '),
+      description: cardData?.text,
+      disabled: false,
+    };
+  });
 
   if (snapshot.reward) {
     return {
@@ -27,8 +77,58 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   }
 
   if (screen === 'Shop') {
+    const shopCards = (snapshot.shop?.cards ?? []).map((offer) => {
+      const cardData = contentService.getCard(offer.id);
+      return {
+        id: offer.id,
+        name: cardData?.name || offer.id.replace(/_/g, ' '),
+        price: offer.price,
+        rarity: cardData?.rarity,
+        type: cardData?.type,
+        description: cardData?.text,
+      };
+    });
+    const shopRelics = (snapshot.shop?.relics ?? []).map((offer) => {
+      const relicData = contentService.getRelic(offer.id);
+      return {
+        id: offer.id,
+        name: relicData?.name || offer.id.replace(/_/g, ' '),
+        price: offer.price,
+        rarity: relicData?.rarity,
+        type: 'Relic',
+        description: relicData?.description,
+      };
+    });
+    const shopPotions = (snapshot.shop?.potions ?? []).map((offer) => {
+      const potionData = contentService.getPotion(offer.id);
+      return {
+        id: offer.id,
+        name: potionData?.name || offer.id.replace(/_/g, ' '),
+        price: offer.price,
+        rarity: potionData?.rarity,
+        type: 'Potion',
+        description: potionData?.description,
+      };
+    });
     return {
       kind: 'shop',
+      title: '黑市据点',
+      body: '浏览补给、移除卡牌，或整理这轮路线资源。',
+      guidance: makeRouteGuidance(
+        snapshot.routeState?.primaryTag ? '按当前路线优先买关键补强' : '先寻找能定义路线的补强',
+        snapshot.routeState?.primaryTag
+          ? '优先选择能强化当前路线的卡牌、遗物或服务；预算不足时保留金币给后续关键节点。'
+          : '路线尚未稳定，优先选择泛用强牌或能打开新路线的低风险补给。',
+      ),
+      cardCount: snapshot.shop?.cards.length ?? 0,
+      relicCount: snapshot.shop?.relics.length ?? 0,
+      potionStockCount: snapshot.shop?.potions.length ?? 0,
+      canRemove: snapshot.player.gold >= (snapshot.shop?.cardRemovalCost ?? 75),
+      canEnchant: true,
+      cardRemovalCost: snapshot.shop?.cardRemovalCost ?? 75,
+      cards: shopCards,
+      relics: shopRelics,
+      potions: shopPotions,
     };
   }
 
@@ -38,10 +138,16 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       kind: 'rest',
       title: '休整据点',
       body: '选择一项行动，恢复状态或整编你的牌库。',
+      guidance: makeRouteGuidance(
+        snapshot.player.hp / Math.max(1, snapshot.player.maxHp) < 0.45 ? '生命偏低，优先保住推进节奏' : '用休整点强化路线核心',
+        '如果已有路线核心牌，优先强化或附魔；生命低于安全线时先恢复。',
+      ),
       canHeal: snapshot.player.hp < snapshot.player.maxHp,
       healAmount,
       canUpgrade: true,
       canRemove: snapshot.player.gold >= 75,
+      canEnchant: true,
+      canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isCorruptedRelic(relicId)),
       cardRemovalCost: 75,
     };
   }
@@ -51,17 +157,29 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
     if (event) {
       const eventDef = getStoryEventDef(event.id);
       if (eventDef) {
-        const choices = eventDef.options.map((opt) => ({
-          id: opt.id,
-          label: opt.text,
-          description: opt.description,
-          disabled: false,
-        }));
+        const choices = eventDef.options.map((opt) => {
+          const routeRole = getEventChoiceRouteRole(event.id, opt.id) ?? undefined;
+          const routeTags = getEventChoiceCommitTags(event.id, opt.id);
+          const routeLabel = routeTags[0] ? getRouteTaxonomy(routeTags[0])?.label ?? routeTags[0] : undefined;
+          return {
+            id: opt.id,
+            label: opt.text,
+            description: opt.description,
+            disabled: false,
+            routeRole,
+            routeLabel,
+            routeReason: routeRole && routeLabel ? `${routeLabel} · ${routeRole}` : undefined,
+          };
+        });
         const body = eventDef.loreText.join('\n\n');
         return {
           kind: 'event',
           title: eventDef.title,
           body,
+          guidance: makeRouteGuidance(
+            '按事件收益与当前路线匹配度选择',
+            '事件选项会改变资源、路线承诺或后续风险；优先看路线标签与成本。',
+          ),
           choices,
         };
       }
@@ -76,6 +194,7 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       kind: 'event',
       title: '未知事件',
       body: '一场未记录的遭遇挡住了你的去路。',
+      guidance: makeRouteGuidance('事件信息不足，选择低风险推进', '缺少事件定义时不要把它当作路线承诺点。'),
       choices: [
         { id: 'continue', label: '继续', disabled: false },
       ],
@@ -96,20 +215,91 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
     };
   }
 
+  if (screen === 'Upgrade') {
+    return {
+      kind: 'upgrade',
+      title: '牌库强化',
+      body: '选择一张牌完成强化，或取消返回上一层。',
+      choices: deriveDeckSurfaceChoices(),
+    };
+  }
+
+  if (screen === 'RemoveCard') {
+    return {
+      kind: 'remove_card',
+      title: snapshot.surfaceContext?.isEventFreeCardRemovalMode ? '事件献祭' : '移除卡牌',
+      body: snapshot.surfaceContext?.isEventFreeCardRemovalMode
+        ? '当前移除来自事件效果，不会消耗金币。'
+        : '选择一张牌移除，或取消返回上一层。',
+      cardRemovalCost: snapshot.surfaceContext?.isEventFreeCardRemovalMode ? 0 : 75,
+      choices: deriveDeckSurfaceChoices(),
+    };
+  }
+
+  if (screen === 'Enchant') {
+    return {
+      kind: 'enchant',
+      title: snapshot.surfaceContext?.enchantContext?.title ?? '附魔',
+      body: snapshot.surfaceContext?.enchantContext?.description ?? '选择一张牌施加永久附魔。',
+      choices: deriveDeckSurfaceChoices(),
+    };
+  }
+
+  if (screen === 'RelicUpgrade') {
+    const relicChoices = snapshot.player.relicIds
+      .filter((relicId) => isCorruptedRelic(relicId))
+      .map((relicId) => {
+        const relicData = contentService.getRelic(relicId);
+        const relicLevel = getRelicState(relicId)?.level ?? 1;
+        return {
+          id: relicId,
+          label: relicData?.name ? `${relicData.name} Lv.${relicLevel}` : relicId,
+          description: relicData?.description,
+          disabled: false,
+        };
+      });
+    return {
+      kind: 'relic_upgrade',
+      title: '遗物升级',
+      body: '选择一件受污染遗物进行净化强化。',
+      choices: relicChoices,
+    };
+  }
+
+  if (screen === 'Victory') {
+    return {
+      kind: 'victory',
+      title: '胜利',
+      body: '本次远征已经完成，可以从这里开始新的运行。',
+    };
+  }
+
+  if (screen === 'GameOver') {
+    return {
+      kind: 'game_over',
+      title: '远征失败',
+      body: '当前运行已结束，可以重开或切回其他入口。',
+    };
+  }
+
   return null;
 }
 
 function deriveRewardCards(snapshot: RuleSnapshot): RenderModelRewardCard[] {
   if (!snapshot.reward) return [];
+  const contentService = getContentService();
 
-  return snapshot.reward.cardIds.map((cardId) => ({
-    id: cardId,
-    name: cardId.replace(/_/g, ' '),
-    cost: 1,
-    rarity: 'Common',
-    type: 'Attack',
-    description: `Card: ${cardId}`,
-  }));
+  return snapshot.reward.cardIds.map((cardId) => {
+    const cardData = contentService.getCard(cardId);
+    return {
+      id: cardId,
+      name: cardData?.name || cardId.replace(/_/g, ' '),
+      cost: cardData?.cost ?? 1,
+      rarity: cardData?.rarity || 'Common',
+      type: cardData?.type || 'Attack',
+      description: cardData?.text || `Card: ${cardId}`,
+    };
+  });
 }
 
 export function createRenderModel(snapshot: RuleSnapshot): RenderModel {
@@ -157,7 +347,9 @@ export function createRenderModel(snapshot: RuleSnapshot): RenderModel {
           cards: rewardCards,
         }
       : null,
+    shop: snapshot.shop ?? null,
     activeEvent: snapshot.activeEvent,
+    routeState: snapshot.routeState ?? null,
     room,
   };
 }

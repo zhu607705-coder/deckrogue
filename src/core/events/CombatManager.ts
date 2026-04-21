@@ -9,17 +9,19 @@ import { relicSystem } from '@/features/relics/relicSystem';
 import { globalEventBus } from '@/core/events/eventBus';
 import { metricsTracker } from '@/core/events/metricsTracker';
 import { getBossPhaseEncounter, getBossPhaseForHpPct } from '@/core/events/bossPhaseSystem';
+import { BossPhaseManager } from '@/core/combat/BossPhaseManager';
+import { cooldownsReducer, intentTagger, selectEnemyIntentForCombat } from '@/core/ai';
 import {
   enemiesData,
   getSingleSlimeRoomBoostConfig,
   getCardEnchantmentDefById,
   applyEnemyHpTuningByNumericRules,
-  isEnemyEligibleForFloorByNumericRules,
   rollEnemyBaseHp,
 } from '@/content/narrative/numericSystem';
 import { unlockCodexEntry } from '@/core/persistence/codexStore';
 import { safeArrayAccess } from '@/core/utils/safeArray';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
+import { prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
 import type { IActionContext } from '@/core/actions/actionQueue';
 import type { ActionManager } from '@/core/actions/actionManager';
 
@@ -36,7 +38,7 @@ export interface CombatManagerDeps {
   applyRunTransition: (action: { type: string; phase?: string }) => void;
   syncPlayerStateFromCombat: () => void;
   clearCombatAfflictionsForRunCards: () => void;
-  generateCardRewards: (count: number) => RunCardInstance[];
+  generateCardRewards: (count: number, options?: { source?: 'combat' | 'shop' }) => RunCardInstance[];
   tryDelegatedCompleteCombat: () => boolean;
   ensureRunEffects: () => Record<string, unknown>;
 }
@@ -45,8 +47,22 @@ export class CombatManager {
   private combatVictoryInProgress = false;
   private playerDeathInProgress = false;
   private readonly disposables: Array<() => void> = [];
+  private readonly bossPhaseManager: BossPhaseManager;
 
   constructor(private deps: CombatManagerDeps, private actionManager: ActionManager) {
+    this.bossPhaseManager = new BossPhaseManager({
+      getState: () => this.deps.getState(),
+      rng: () => this.deps.rng(),
+      generateId: () => this.deps.generateId(),
+      appendVoxLog: (message) => this.deps.appendVoxLog(message),
+      notify: () => this.deps.notify(),
+      applyEnemyHpTuning: (baseHp, floor, nodeType) => {
+        const state = this.deps.getState();
+        const hpMultiplier = economySystem.calculateHpMultiplier(floor) * Math.max(1, Number(state.metaRuntime?.ascensionEnemyHpMultiplier || 1));
+        return applyEnemyHpTuningByNumericRules(baseHp, floor, nodeType as 'Combat' | 'Elite' | 'Boss', hpMultiplier);
+      },
+      getCurrentFloorNumber: () => this.deps.getCurrentFloorNumber(),
+    });
     this.disposables.push(
       globalEventBus.subscribe('EnemyDeath', (event: any) => {
         if (!event?.enemyId) return;
@@ -193,6 +209,21 @@ export class CombatManager {
         tone: 'danger'
       };
     }
+
+    const nodeType = state.combatRestartCheckpoint?.nodeType;
+    if (nodeType === 'Elite') {
+      const eliteTrapWeakStacks = Math.max(0, Number(runEffects.eliteTrapWeakStacks || 0));
+      if (eliteTrapWeakStacks > 0) {
+        for (const enemy of combat.enemies) {
+          enemy.statuses['Weak'] = (enemy.statuses['Weak'] || 0) + eliteTrapWeakStacks;
+        }
+        combat.warpPulse = {
+          text: `陷阱伏击：敌人获得 ${eliteTrapWeakStacks} 层虚弱`,
+          tone: 'neutral'
+        };
+        runEffects.eliteTrapWeakStacks = 0;
+      }
+    }
   }
 
   private getCorruptionDamageBonusMultiplier(): number {
@@ -205,33 +236,7 @@ export class CombatManager {
   }
 
   private initializeBossPhaseRuntime(): void {
-    const state = this.deps.getState();
-    const combat = state.combat;
-    if (!combat) return;
-    const bossEnemy = combat.enemies.find((e) => {
-      const def = enemiesData.find((d) => d.id === e.defId);
-      return !!def?.keywords?.includes('boss');
-    });
-    if (!bossEnemy) return;
-    const encounter = getBossPhaseEncounter(bossEnemy.defId);
-    if (!encounter) return;
-    const initial = getBossPhaseForHpPct(bossEnemy.defId, bossEnemy.maxHp > 0 ? bossEnemy.hp / bossEnemy.maxHp : 1);
-    if (!initial) return;
-    combat.bossPhase = {
-      enemyId: bossEnemy.id,
-      bossDefId: bossEnemy.defId,
-      phaseIndex: initial.phaseIndex,
-      phaseId: initial.phase.id,
-      phaseName: initial.phase.name,
-      phaseHint: initial.phase.hint,
-      enteredTurn: combat.turn || 1,
-      currentPlayerTurnCards: [],
-      previousPlayerTurnCards: [],
-      flags: {}
-    };
-    if (initial.phase.onEnter?.warpPulse) {
-      combat.warpPulse = { text: initial.phase.onEnter.warpPulse, tone: 'warp' };
-    }
+    this.bossPhaseManager.initializeBossPhaseRuntime();
   }
 
   private generateEnemies(
@@ -240,13 +245,8 @@ export class CombatManager {
     floor: number,
     hpMultiplier: number
   ): any[] {
-    const validEnemies = enemiesData.filter(e => {
-      if (nodeType === 'Boss') return e.keywords?.includes('boss');
-      if (nodeType === 'Elite') return e.keywords?.includes('elite');
-      return !e.keywords?.includes('boss') && !e.keywords?.includes('elite');
-    });
-    const stagedEnemies = validEnemies.filter(e => isEnemyEligibleForFloorByNumericRules(e as any, floor, nodeType));
-    const enemyPool = stagedEnemies.length > 0 ? stagedEnemies : validEnemies;
+    const state = this.deps.getState();
+    const enemyPool = prioritizeEnemyPoolForEncounter(enemiesData as any[], floor, nodeType);
 
     return Array.from({ length: count }, (_, i) => {
       const def = safeArrayAccess(enemyPool, Math.floor(this.deps.rng() * enemyPool.length));
@@ -268,10 +268,27 @@ export class CombatManager {
         maxHp: scaledHp,
         block: 0,
         statuses: {},
-        nextIntent: this.selectIntent(def),
+        nextIntent: selectEnemyIntentForCombat(
+          state,
+          def,
+        {
+          id: `enemy_${i}_preview`,
+          hp: scaledHp,
+          maxHp: scaledHp,
+          block: 0,
+          statuses: {},
+          lastUsedIntent: null,
+          nonAttackIntentStreak: 0,
+        },
+          1,
+          this.deps.rng,
+          {},
+        ),
         devotion: 0,
         corruptionAxis: 0,
         axisDisposition: 'balanced'
+        ,
+        nonAttackIntentStreak: 0
       };
     }).filter((enemy): enemy is NonNullable<typeof enemy> => enemy !== null).map((enemy) => {
       const slimeBoost = getSingleSlimeRoomBoostConfig();
@@ -298,38 +315,6 @@ export class CombatManager {
       }
       return enemy;
     });
-  }
-
-  private selectIntent(enemyDef: any): string {
-    const state = this.deps.getState();
-    const baseWeights = Array.isArray(enemyDef.intent_policy)
-      ? enemyDef.intent_policy.map((p: any) => Math.max(0, Number(p.weight) || 0))
-      : [];
-    const totalWeight = baseWeights.reduce((sum, w) => sum + w, 0);
-    if (totalWeight <= 0) {
-      return enemyDef.intent_policy?.[0]?.intent || 'Attack';
-    }
-
-    const aggroBias = Math.max(0, Number(state.metaRuntime?.ascensionIntentAggroBias || 0));
-    let weights = [...baseWeights];
-    if (aggroBias > 0 && Array.isArray(enemyDef.intent_policy)) {
-      for (let i = 0; i < enemyDef.intent_policy.length; i++) {
-        const intent = enemyDef.intent_policy[i]?.intent || '';
-        const isAggressive = /attack|strike|damage|slam|punch|kick|gore|claw|bite|curse|doom/.test(intent.toLowerCase());
-        if (isAggressive) {
-          weights[i] = weights[i] * (1 + aggroBias);
-        }
-      }
-    }
-
-    const totalAdjustedWeight = weights.reduce((sum, w) => sum + w, 0);
-    const roll = this.deps.rng() * totalAdjustedWeight;
-    let cumulative = 0;
-    for (let i = 0; i < weights.length; i++) {
-      cumulative += weights[i];
-      if (roll <= cumulative) return enemyDef.intent_policy[i]?.intent || 'Attack';
-    }
-    return enemyDef.intent_policy[0]?.intent || 'Attack';
   }
 
   startPlayerTurn(): void {
@@ -369,7 +354,8 @@ export class CombatManager {
     }
 
     this.actionManager.updateState(state);
-    this.actionManager.executeAll().then(() => this.deps.notify());
+    this.actionManager.executeAll();
+    this.deps.notify();
   }
 
   private executeConstructAttacks(): void {
@@ -444,48 +430,24 @@ export class CombatManager {
   }
 
   async playCard(cardInstanceId: string, targetId?: string): Promise<void> {
-    console.log('[CombatManager.playCard] START', { cardInstanceId, targetId });
-    
     const state = this.deps.getState();
     const combat = state.combat;
-    
-    console.log('[CombatManager.playCard] State check:', {
-      hasCombat: !!combat,
-      isPlayerTurn: combat?.isPlayerTurn,
-      playerEnergy: combat?.player?.energy,
-      enemyCount: combat?.enemies?.length,
-      enemyIds: combat?.enemies?.map(e => ({ id: e.id, hp: e.hp, block: e.block }))
-    });
-    
+
     if (!combat || !combat.isPlayerTurn) {
-      console.warn('[CombatManager.playCard] Early return: no combat or not player turn');
       return;
     }
 
     const cardIndex = combat.hand.findIndex(c => c.instanceId === cardInstanceId);
-    console.log('[CombatManager.playCard] Card search:', { cardInstanceId, found: cardIndex !== -1 });
-    
+
     if (cardIndex === -1) {
-      console.warn('[CombatManager.playCard] Card not found in hand:', cardInstanceId);
       return;
     }
 
     const card = combat.hand[cardIndex];
-    console.log('[CombatManager.playCard] Card found:', {
-      id: card.id,
-      name: card.name,
-      cost: card.cost,
-      targeting: card.targeting,
-      actions: card.actions
-    });
-    
+
     unlockCodexEntry('cards', card.id);
 
     if (combat.player.energy < card.cost) {
-      console.warn('[CombatManager.playCard] Not enough energy:', {
-        current: combat.player.energy,
-        required: card.cost
-      });
       return;
     }
 
@@ -494,15 +456,8 @@ export class CombatManager {
     combat.discardPile.push(card);
     combat.player.cardsPlayedThisTurn++;
     combat.player.lastPlayedCard = card;
-    
-    console.log('[CombatManager.playCard] Energy spent, remaining:', combat.player.energy);
 
-    if (combat.bossPhase) {
-      combat.bossPhase.currentPlayerTurnCards.push(card);
-      if (combat.bossPhase.currentPlayerTurnCards.length > 12) {
-        combat.bossPhase.currentPlayerTurnCards = combat.bossPhase.currentPlayerTurnCards.slice(-12);
-      }
-    }
+    this.bossPhaseManager.recordBossPhasePlayedCard(card);
 
     const context = {
       source: 'player' as const,
@@ -512,15 +467,9 @@ export class CombatManager {
       cardInstanceId: card.instanceId,
       card
     };
-    
-    console.log('[CombatManager.playCard] Executing actions with context:', context);
 
     this.actionManager.enqueueAll(card.actions, context, 0, 'card');
-    const execResult = await this.actionManager.executeAll();
-    
-    console.log('[CombatManager.playCard] Actions executed, result:', execResult);
-    console.log('[CombatManager.playCard] Enemy HP after actions:', 
-      combat.enemies.map(e => ({ id: e.id, hp: e.hp, block: e.block })));
+    await this.actionManager.executeAll();
 
     globalEventBus.publish({
       type: 'CardPlayed',
@@ -531,7 +480,6 @@ export class CombatManager {
     } as any);
 
     this.deps.notify();
-    console.log('[CombatManager.playCard] END');
   }
 
   async endTurn(): Promise<void> {
@@ -542,10 +490,7 @@ export class CombatManager {
     combat.isPlayerTurn = false;
     this.deps.appendVoxLog('玩家结束阶段。敌方即将行动。');
 
-    if (combat.bossPhase) {
-      combat.bossPhase.previousPlayerTurnCards = [...(combat.bossPhase.currentPlayerTurnCards || [])];
-      combat.bossPhase.currentPlayerTurnCards = [];
-    }
+    this.bossPhaseManager.snapshotPlayerTurnForBossPhase();
 
     combat.discardPile.push(...combat.hand);
     combat.hand = [];
@@ -565,7 +510,118 @@ export class CombatManager {
     combat.hand = [];
   }
 
-  private async executeEnemyTurn(): Promise<void> {
+  private evaluateEnemyActionCondition(condition: Record<string, any> | undefined): boolean {
+    if (!condition) return false;
+
+    switch (condition.type) {
+      case 'PlayerHasDebuffConsecutiveTurns': {
+        const state = this.deps.getState();
+        const combat = state.combat;
+        if (!combat) return false;
+        const requiredStatuses = Array.isArray(condition.statuses) ? condition.statuses : [];
+        if (requiredStatuses.length === 0) return false;
+        return requiredStatuses.every((status) => Number(combat.player.statuses?.[status] || 0) > 0);
+      }
+      default:
+        return false;
+    }
+  }
+
+  private executeEnemyActionSpec(enemy: any, actionSpec: Record<string, any>): boolean {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return false;
+
+    switch (actionSpec.type) {
+      case 'DealDamage': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        const actualDamage = combatSystem.applyDamage(state, {
+          amount,
+          sourceType: 'enemy',
+          sourceId: enemy.id,
+          targetType: 'player',
+          targetId: 'player',
+          modifiers: [],
+          isTrueDamage: false,
+          ignoreBlock: false,
+        });
+        this.deps.appendVoxLog(`${enemy.name} 对玩家造成 ${actualDamage} 点伤害。`);
+        return actualDamage > 0;
+      }
+      case 'ConditionalDamage': {
+        const passed = this.evaluateEnemyActionCondition(actionSpec.condition);
+        const amount = Number(passed ? actionSpec.trueDamage : actionSpec.falseDamage);
+        if (amount <= 0) return false;
+        const actualDamage = combatSystem.applyDamage(state, {
+          amount,
+          sourceType: 'enemy',
+          sourceId: enemy.id,
+          targetType: 'player',
+          targetId: 'player',
+          modifiers: [],
+          isTrueDamage: Boolean(actionSpec.isTrueDamage),
+          ignoreBlock: false,
+        });
+        this.deps.appendVoxLog(
+          passed
+            ? `${enemy.name} 抓住破绽，对玩家造成 ${actualDamage} 点伤害。`
+            : `${enemy.name} 的条件攻击未完全成形，仍造成 ${actualDamage} 点伤害。`
+        );
+        return actualDamage > 0;
+      }
+      case 'GainBlock': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        combatSystem.gainBlock(state, 'enemy', enemy.id, amount);
+        this.deps.appendVoxLog(`${enemy.name} 获得 ${amount} 点护盾。`);
+        return true;
+      }
+      case 'ApplyStatus': {
+        const status = String(actionSpec.status || '');
+        const amount = Number(actionSpec.amount || 0);
+        if (!status || amount <= 0) return false;
+        const targetType = actionSpec.target === 'Self' ? 'enemy' : 'player';
+        const targetId = targetType === 'enemy' ? enemy.id : 'player';
+        combatSystem.applyStatus(state, targetType, targetId, status, amount);
+        this.deps.appendVoxLog(
+          targetType === 'enemy'
+            ? `${enemy.name} 获得 ${amount} 层 ${status}。`
+            : `${enemy.name} 对玩家施加 ${amount} 层 ${status}。`
+        );
+        return true;
+      }
+      case 'ConditionalApply': {
+        const passed = this.evaluateEnemyActionCondition(actionSpec.condition);
+        const status = String(actionSpec.applyStatus || actionSpec.status || '');
+        const amount = Number(actionSpec.amount || 0);
+        if (!passed || !status || amount <= 0) return false;
+        const targetType = actionSpec.target === 'Self' ? 'enemy' : 'player';
+        const targetId = targetType === 'enemy' ? enemy.id : 'player';
+        combatSystem.applyStatus(state, targetType, targetId, status, amount);
+        this.deps.appendVoxLog(
+          targetType === 'enemy'
+            ? `${enemy.name} 在条件成立时获得 ${amount} 层 ${status}。`
+            : `${enemy.name} 在条件成立时对玩家施加 ${amount} 层 ${status}。`
+        );
+        return true;
+      }
+      case 'BuffAllEnemies': {
+        const status = String(actionSpec.status || '');
+        const amount = Number(actionSpec.amount || 0);
+        if (!status || amount <= 0) return false;
+        for (const ally of combat.enemies.filter((entry) => entry.hp > 0)) {
+          combatSystem.applyStatus(state, 'enemy', ally.id, status, amount);
+        }
+        this.deps.appendVoxLog(`${enemy.name} 为敌方全体施加 ${amount} 层 ${status}。`);
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  async executeEnemyTurn(): Promise<void> {
     const state = this.deps.getState();
     const combat = state.combat;
     if (!combat) return;
@@ -574,6 +630,10 @@ export class CombatManager {
 
     for (const enemy of aliveEnemies) {
       if (enemy.hp <= 0) continue;
+      enemy.block = 0;
+      this.bossPhaseManager.refreshBossPhaseState();
+      await this.bossPhaseManager.applyBossPhaseEnemyPrelude(enemy as any);
+      if (!state.combat || state.screen !== 'Combat') return;
       if (this.processTurnStartDots('enemy', enemy.id)) {
         if (!state.combat || state.screen !== 'Combat') return;
         continue;
@@ -592,22 +652,28 @@ export class CombatManager {
 
       if (move && Array.isArray(move)) {
         for (const actionSpec of move) {
-          if (actionSpec.type === 'DealDamage' && actionSpec.amount) {
-            const actualDamage = combatSystem.calculateEffectiveDamage(state, actionSpec.amount, enemy.statuses || {}, combat.player.statuses, 'enemy');
-            combat.player.hp = Math.max(0, combat.player.hp - actualDamage);
-            this.deps.appendVoxLog(`${enemy.name} 对玩家造成 ${actualDamage} 点伤害。`);
-
-            if (combat.player.hp <= 0) {
-              this.handleCombatDefeat();
-              return;
-            }
+          this.executeEnemyActionSpec(enemy, actionSpec);
+          if (!state.combat || state.screen !== 'Combat') return;
+          if (state.combat.player.hp <= 0) {
+            this.handleCombatDefeat();
+            return;
           }
         }
       }
 
       enemy.lastUsedIntent = intent;
-      enemy.block = 0;
-      enemy.nextIntent = this.selectIntent(enemyDef);
+      enemy.intentCooldowns = cooldownsReducer(enemy.intentCooldowns || {}, intent);
+      enemy.nonAttackIntentStreak = intentTagger.isCategory(intent, 'attack')
+        ? 0
+        : Math.max(0, (enemy.nonAttackIntentStreak || 0) + 1);
+      enemy.nextIntent = selectEnemyIntentForCombat(
+        state,
+        enemyDef,
+        enemy,
+        combat.turn,
+        this.deps.rng,
+        enemy.intentCooldowns,
+      );
     }
 
     relicSystem.trigger('EndTurn', state, (actionOrSpec: any, ctx: IActionContext) => {

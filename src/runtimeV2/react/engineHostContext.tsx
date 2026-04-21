@@ -63,7 +63,6 @@ export function EngineHostProvider({ host, children }: EngineHostProviderProps) 
   }, [host]);
 
   const reset = useCallback(() => {
-    host.dispose();
     setSnapshot(null);
     setRenderModel(null);
     setStatus('idle');

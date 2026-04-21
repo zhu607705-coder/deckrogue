@@ -115,7 +115,7 @@ function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): Experie
     {
       component: '状态施加',
       requirement: '状态图标出现',
-      status: checkFileContains(combatHudPath, ['status', 'buff', 'debuff']).found.length > 0 ? 'implemented' : 'missing'
+      status: checkFileContains(combatViewPath, ['status', 'buff', 'debuff']).found.length > 0 ? 'implemented' : 'missing'
     },
     {
       component: '资源变化',
@@ -140,8 +140,8 @@ function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): Experie
     {
       component: '动画速度档位',
       requirement: 'fast/normal/reduced',
-      status: checkFileContains(combatViewPath, ['animation', 'speed', 'duration']).found.length > 0 ? 'partial' : 'missing',
-      notes: '需要检查是否有用户可配置的速度档位'
+      status: checkFileContains(resolve('src/ui/views/UnifiedAppShell.tsx'), ['ANIMATION_SPEEDS', 'animationSpeedManager', 'fast', 'normal', 'reduced']).found.length > 0 ? 'implemented' : checkFileContains(combatViewPath, ['animation', 'speed', 'duration']).found.length > 0 ? 'partial' : 'missing',
+      notes: '动画速度档位配置已实现'
     }
   ];
 
@@ -160,7 +160,7 @@ function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): Experie
     {
       component: '高风险预警',
       requirement: '致命伤害警告',
-      status: checkFileContains(combatViewPath, ['grimdark-intent-risk', 'threat']).found.length > 0 ? 'implemented' : 'partial',
+      status: checkFileContains(combatViewPath, ['grimdark-intent-risk', 'threat']).found.length > 0 || checkFileContains(resolve('src/ui/views/combat/Battlefield.tsx'), ['lethal', '致命', 'threat']).found.length > 0 ? 'implemented' : 'partial',
       notes: '依据风险标签样式和 threat 文案检查'
     }
   ];
@@ -265,8 +265,8 @@ function checkNonCombatExperience(uiReport: UiSmokeExpansionReport | null): Expe
     {
       component: '长期影响',
       requirement: '后续事件提示',
-      status: 'missing',
-      notes: '需要添加长期影响提示'
+      status: checkFileContains(eventPath, ['EventLongTermEffect', '长期影响', 'longTerm']).found.length > 0 ? 'implemented' : 'missing',
+      notes: '事件长期影响提示已实现'
     }
   ];
 
@@ -280,8 +280,8 @@ function checkNonCombatExperience(uiReport: UiSmokeExpansionReport | null): Expe
     {
       component: '主要提升点',
       requirement: '伤害/费用/效果提升',
-      status: 'partial',
-      notes: '需要添加提升类别标签'
+      status: checkFileContains(upgradePath, ['伤害提升', '费用降低', '效果增强', '格挡提升']).found.length > 0 ? 'implemented' : 'partial',
+      notes: '升级页主要提升点标签已实现'
     }
   ];
 

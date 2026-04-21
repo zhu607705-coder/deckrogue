@@ -156,7 +156,7 @@ class GameSetup {
     this.state.isPaused = false;
 
     const metaProfile = this.getMetaProfile();
-    this.engine = new GameEngine(this.state.currentSeed, metaProfile);
+    this.engine = new GameEngine(this.state.currentSeed, metaProfile, { enableRuntimeDelegation: false });
 
     saveManager.startRun();
 
@@ -364,7 +364,7 @@ class GameSetup {
       return { ok: false, error: '战斗已结束，无法重开' };
     }
 
-    const restarted = this.engine.restartCombatFromCheckpoint(checkpoint);
+    const restarted = this.engine.restartCombatFromCheckpoint();
     if (!restarted) {
       return { ok: false, error: '战斗重开失败' };
     }
@@ -479,10 +479,11 @@ class GameSetup {
       return this.state.currentSaveSlot;
     }
 
-    const latestRegularSlot = saveManager
+    const regularSlots = saveManager
       .getSaveSlots()
       .filter((slot) => slot.id !== 'quicksave')
-      .sort((left, right) => right.timestamp - left.timestamp)[0];
+      .sort((left, right) => right.timestamp - left.timestamp);
+    const latestRegularSlot = regularSlots.length > 0 ? regularSlots[0] : undefined;
 
     if (latestRegularSlot) {
       return latestRegularSlot.id;

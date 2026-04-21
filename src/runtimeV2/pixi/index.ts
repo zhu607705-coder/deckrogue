@@ -11,3 +11,5 @@ export { EventScenePixi } from './EventScenePixi';
 export type { EventScenePixiProps } from './EventScenePixi';
 export { ShopScenePixi } from './ShopScenePixi';
 export type { ShopScenePixiProps } from './ShopScenePixi';
+export { SurfaceScenePixi } from './SurfaceScenePixi';
+export type { SurfaceScenePixiProps } from './SurfaceScenePixi';
