@@ -404,3 +404,77 @@ test('legacy oracle combat rewards still expose follow-up map nodes after return
 
   host.dispose();
 });
+
+test('load_snapshot preserves follow-up map nodes after legacy event room return', async () => {
+  const host = createEngineHost(createLegacyOracleAdapter());
+  let selectedEventNodeId: string | null = null;
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const renderModel = host.getRenderModel();
+    const candidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Event' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    if (candidate) {
+      selectedEventNodeId = candidate.id;
+      break;
+    }
+  }
+
+  assert.ok(selectedEventNodeId, 'expected at least one seed with an available first-floor event node');
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedEventNodeId });
+  const left = await host.dispatch({ type: 'leave_room' });
+  const availableBeforeSave = host.getRenderModel()?.map.availableNodeIds ?? [];
+
+  const restoredHost = createEngineHost(createLegacyOracleAdapter());
+  await restoredHost.start({ seed: 999 });
+  await restoredHost.dispatch({ type: 'load_snapshot', snapshot: left.snapshot });
+
+  const restoredRenderModel = restoredHost.getRenderModel();
+  assert.ok(restoredRenderModel);
+  assert.equal(restoredRenderModel.map.currentNodeId, left.snapshot.map.currentNodeId);
+  assert.deepEqual(restoredRenderModel.map.availableNodeIds, availableBeforeSave);
+
+  host.dispose();
+  restoredHost.dispose();
+});
+
+test('load_snapshot preserves follow-up map nodes after legacy reward return', async () => {
+  const host = createEngineHost(createLegacyOracleAdapter());
+  let selectedCombatNodeId: string | null = null;
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    await host.start({ seed });
+    await host.dispatch({ type: 'select_character', characterId: 'informant' });
+    const renderModel = host.getRenderModel();
+    const candidate = renderModel?.map.nodes.find(
+      (node) => node.type === 'Combat' && renderModel.map.availableNodeIds.includes(node.id)
+    );
+    if (candidate) {
+      selectedCombatNodeId = candidate.id;
+      break;
+    }
+  }
+
+  assert.ok(selectedCombatNodeId, 'expected at least one seed with an available first-floor combat node');
+
+  await host.dispatch({ type: 'enter_node', nodeId: selectedCombatNodeId });
+  await host.dispatch({ type: 'complete_combat' });
+  const returnedToMap = await host.dispatch({ type: 'take_reward' });
+  const availableBeforeSave = host.getRenderModel()?.map.availableNodeIds ?? [];
+
+  const restoredHost = createEngineHost(createLegacyOracleAdapter());
+  await restoredHost.start({ seed: 999 });
+  await restoredHost.dispatch({ type: 'load_snapshot', snapshot: returnedToMap.snapshot });
+
+  const restoredRenderModel = restoredHost.getRenderModel();
+  assert.ok(restoredRenderModel);
+  assert.equal(restoredRenderModel.map.currentNodeId, returnedToMap.snapshot.map.currentNodeId);
+  assert.deepEqual(restoredRenderModel.map.availableNodeIds, availableBeforeSave);
+  assert.equal(restoredRenderModel.player.deckCount, host.getRenderModel()?.player.deckCount);
+
+  host.dispose();
+  restoredHost.dispose();
+});
