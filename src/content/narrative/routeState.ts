@@ -28,12 +28,54 @@ export function getPreferredRouteTagFromState(
   routeState?: RouteState | null,
   maxRecentCards = 3,
 ): string | null {
+  const recentCommitTags =
+    routeState?.recentCommits
+      ?.map((entry) => entry.tag)
+      .filter((tag): tag is string => knownRouteTags.includes(tag)) ?? [];
+  const latestCommittedTag = recentCommitTags.at(-1) ?? null;
+  const authoritativePrimaryTag =
+    recentCommitTags.length > 0 &&
+    routeState?.primaryTag &&
+    knownRouteTags.includes(routeState.primaryTag) && (
+      latestCommittedTag === routeState.primaryTag ||
+      routeState.confidence >= 60 ||
+      routeState.stage === 'committed' ||
+      routeState.stage === 'pivoting'
+    )
+      ? routeState.primaryTag
+      : null;
   const recentPreferredTag = resolvePreferredRouteTag(deck, knownRouteTags, maxRecentCards);
+  if (
+    routeState?.stage === 'pivoting' &&
+    authoritativePrimaryTag &&
+    recentPreferredTag &&
+    recentPreferredTag !== authoritativePrimaryTag
+  ) {
+    let trailingPivotCommits = 0;
+    for (let index = recentCommitTags.length - 1; index >= 0; index -= 1) {
+      if (recentCommitTags[index] !== recentPreferredTag) {
+        break;
+      }
+      trailingPivotCommits += 1;
+    }
+    if (trailingPivotCommits >= 2) {
+      return recentPreferredTag;
+    }
+  }
+  if (authoritativePrimaryTag) {
+    return authoritativePrimaryTag;
+  }
   if (recentPreferredTag) {
     return recentPreferredTag;
   }
   if (routeState?.primaryTag && knownRouteTags.includes(routeState.primaryTag)) {
     return routeState.primaryTag;
+  }
+  const recentCards = deck.slice(-maxRecentCards).reverse();
+  for (const card of recentCards) {
+    const affinity = getCardRouteAffinity(card);
+    const matchedTag = affinity?.routeTags.find((tag) => knownRouteTags.includes(tag)) ?? null;
+    if (matchedTag) return matchedTag;
   }
   return null;
 }
@@ -77,14 +119,47 @@ export function deriveRouteStateFromDeck(
     const decay = RECENT_COMMIT_DECAY[index] ?? RECENT_COMMIT_DECAY[RECENT_COMMIT_DECAY.length - 1]!;
     scoreByTag[commit.tag] = (scoreByTag[commit.tag] || 0) + Math.max(1, Math.round(commit.weight * decay));
   });
+  const latestCommitTag = recentCommits.at(-1)?.tag ?? null;
+  let consecutiveLatestCommitCount = 0;
+  if (latestCommitTag && knownRouteTags.includes(latestCommitTag)) {
+    for (let index = recentCommits.length - 1; index >= 0; index -= 1) {
+      if (recentCommits[index]?.tag !== latestCommitTag) break;
+      consecutiveLatestCommitCount += 1;
+    }
+    scoreByTag[latestCommitTag] =
+      (scoreByTag[latestCommitTag] || 0) + 18 + consecutiveLatestCommitCount * 12;
+  }
+
+  if (existingRouteState?.primaryTag && knownRouteTags.includes(existingRouteState.primaryTag)) {
+    scoreByTag[existingRouteState.primaryTag] =
+      (scoreByTag[existingRouteState.primaryTag] || 0) + Math.max(10, Math.round(existingRouteState.confidence * 0.55));
+  }
+  if (existingRouteState?.secondaryTag && knownRouteTags.includes(existingRouteState.secondaryTag)) {
+    scoreByTag[existingRouteState.secondaryTag] =
+      (scoreByTag[existingRouteState.secondaryTag] || 0) + Math.max(4, Math.round(existingRouteState.confidence * 0.22));
+  }
 
   const sorted = Object.entries(scoreByTag)
     .filter(([tag]) => knownRouteTags.includes(tag))
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const primaryTag = sorted[0]?.[0] ?? null;
-  const secondaryTag = sorted[1]?.[0] ?? null;
-  const topScore = sorted[0]?.[1] ?? 0;
-  const secondScore = sorted[1]?.[1] ?? 0;
+  const existingPrimaryHasAuthority =
+    !!existingRouteState?.primaryTag &&
+    knownRouteTags.includes(existingRouteState.primaryTag) &&
+    latestCommitTag === existingRouteState.primaryTag;
+  const repeatedCommitPrimaryTag =
+    latestCommitTag && knownRouteTags.includes(latestCommitTag) && consecutiveLatestCommitCount >= 2
+      ? latestCommitTag
+      : null;
+  const primaryTag =
+    repeatedCommitPrimaryTag ??
+    (existingPrimaryHasAuthority
+      ? existingRouteState!.primaryTag
+      : (sorted[0]?.[0] ?? null));
+  const secondaryTag = sorted
+    .map(([tag]) => tag)
+    .find((tag) => tag !== primaryTag) ?? null;
+  const topScore = primaryTag ? (scoreByTag[primaryTag] ?? 0) : 0;
+  const secondScore = secondaryTag ? (scoreByTag[secondaryTag] ?? 0) : 0;
   const confidence = primaryTag
     ? Math.max(0, Math.min(100, Math.round(Math.min(70, topScore) + Math.min(30, Math.max(0, topScore - secondScore) * 2))))
     : 0;

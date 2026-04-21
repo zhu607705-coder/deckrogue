@@ -19,7 +19,6 @@ import {
   getPreferredRouteTagFromState,
   getRelicRouteTags,
   maybeRecordRouteCommit,
-  resolvePreferredRouteTag,
   relicsData,
   potionsData,
   getPotionRuntimeConfig,
@@ -29,6 +28,8 @@ import {
 import { unlockCodexEntry, unlockManyCodexEntries } from '@/core/persistence/codexStore';
 import { getMetaUnlockedWeightBonus } from '@/core/balance/metaBalance';
 import { syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
+import { getEventChoiceRouteCommitWeight } from '@/content/narrative/routeSignals';
+import { getEventChoiceCommitTags, getEventChoiceRouteRole } from '@/content/narrative/routeSignals';
 
 interface CardWithCharacter extends CardDef {
   character?: string;
@@ -98,17 +99,25 @@ export class EventManager {
         const signal = dominantTag ? getEventRouteSignal(eventDef.id) : null;
         const matchesRoute = !!(signal && dominantTag && signal.routeTags.includes(dominantTag));
         const confidence = state.routeState?.confidence ?? 0;
+        const preferredChoiceRoles = signal?.preferredChoiceRoles ? Object.values(signal.preferredChoiceRoles) : [];
+        const desiredChoiceMultiplier =
+          state.routeState?.stage === 'pivoting'
+            ? (preferredChoiceRoles.includes('pivot') ? 2.15 : 1.2)
+            : confidence < 55
+              ? (preferredChoiceRoles.includes('confirm') ? 2.35 : 1.2)
+              : (preferredChoiceRoles.includes('payoff') ? 2.2 : 1.2);
         const reinforcementMultiplier =
           signal?.reinforcement === 'confirm'
             ? confidence < 55 ? 2.35 : 1.25
             : signal?.reinforcement === 'payoff'
               ? confidence >= 55 ? 2.2 : 1.15
               : 1.55;
+        const routeChoiceMultiplier = signal?.preferredChoiceRoles ? Math.max(reinforcementMultiplier, desiredChoiceMultiplier) : reinforcementMultiplier;
         const supportMultiplier = matchesRoute
           ? floor <= 3
             ? 2.5
             : floor <= 6
-              ? reinforcementMultiplier
+              ? routeChoiceMultiplier
               : 1.35
           : 1;
         return {
@@ -213,18 +222,26 @@ export class EventManager {
     if (!event) return;
     event.data = { ...(event.data || {}), lastChoiceId: choice };
     const routeSignal = getEventRouteSignal(event.id);
-    if (routeSignal?.preferredChoiceIds?.includes(choice)) {
-      const committedTag =
-        routeSignal.routeTags.find((tag) => tag === state.routeState?.primaryTag)
-        ?? routeSignal.routeTags.find((tag) => tag === state.routeState?.secondaryTag)
-        ?? routeSignal.routeTags[0]
-        ?? null;
+    const routeCommitWeight = getEventChoiceRouteCommitWeight(event.id, choice);
+    if (routeSignal && routeCommitWeight !== null) {
+      const commitTags = getEventChoiceCommitTags(event.id, choice);
+      const choiceRole = getEventChoiceRouteRole(event.id, choice);
+      const committedTag = getPreferredRouteTagFromState(
+        state.player.deck,
+        commitTags.length ? commitTags : routeSignal.routeTags,
+        state.routeState ?? null,
+        3,
+      ) ?? (
+        choiceRole === 'pivot'
+          ? commitTags.find((tag) => tag !== state.routeState?.primaryTag)
+          : null
+      ) ?? commitTags[0] ?? routeSignal.routeTags[0] ?? null;
       maybeRecordRouteCommit(
         state,
         committedTag,
         'event',
         this.deps.getCurrentFloorNumber(),
-        routeSignal.reinforcement === 'payoff' ? 40 : 32,
+        routeCommitWeight,
       );
     }
     const runEffects = this.deps.ensureRunEffects();
