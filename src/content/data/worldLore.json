@@ -26,7 +26,7 @@
   },
   "termGlossary": {
     "Gold": "信用筹码",
-    "HP": "肉体承载力",
+    "HP": "生命值",
     "Deck": "记忆印痕库",
     "DrawPile": "战术缓存",
     "DiscardPile": "已执行指令"
@@ -52,7 +52,7 @@
   "terminologyMap": {
     "currencyPrimary": "信用筹码",
     "currencyAlt": "牙齿",
-    "hpLabel": "肉体承载力",
+    "hpLabel": "生命值",
     "deckLabel": "记忆印痕库",
     "drawPileLabel": "战术缓存",
     "discardPileLabel": "已执行指令"

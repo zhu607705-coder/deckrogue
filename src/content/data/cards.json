@@ -41,7 +41,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得 4 点格挡。",
+    "text": "获得 4 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -52,7 +52,7 @@
     "art_prompt": "A sturdy metallic shield glowing with blue magical energy, blocking a shadowy attack, fantasy art style",
     "upgrade": {
       "name": "防御+",
-      "text": "获得 7 点格挡。",
+      "text": "获得 7 点护盾。",
       "actions": [
         {
           "type": "GainBlock",
@@ -454,7 +454,7 @@
     "tags": [
       "strike"
     ],
-    "text": "造成等同于你当前格挡值的伤害。",
+    "text": "造成等同于你当前护盾值的伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -479,7 +479,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得 8 点格挡。 抽 1 张牌。",
+    "text": "获得 8 点护盾。 抽 1 张牌。",
     "actions": [
       {
         "type": "GainBlock",
@@ -495,7 +495,7 @@
     "art_prompt": "A warrior casually brushing off arrows bouncing off their thick metallic armor, resilient fantasy art style",
     "upgrade": {
       "name": "甩开+",
-      "text": "获得 11 点格挡。抽 1 张牌。",
+      "text": "获得 11 点护盾。抽 1 张牌。",
       "actions": [
         {
           "type": "GainBlock",
@@ -808,7 +808,7 @@
       "warp",
       "psyker"
     ],
-    "text": "在你的回合开始时，若你有至少 2 张延迟牌，则获得 5 点格挡。",
+    "text": "在你的回合开始时，若你有至少 2 张延迟牌，则获得 5 点护盾。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -873,7 +873,29 @@
       }
     ],
     "art_prompt": "A tear in reality showing a past and future strike, fantasy art style",
-    "character": "chronomancer"
+    "character": "chronomancer",
+    "upgrade": {
+      "name": "时序裂隙+",
+      "text": "造成 10 点伤害。 延迟 2 回合： 造成 10 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "Delay",
+          "turns": 2,
+          "actions": [
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     "id": "grandfather_paradox",
@@ -957,7 +979,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "获得 6 点格挡。 若你拥有构造体，则额外获得 4 点格挡。",
+    "text": "获得 6 点护盾。 若你拥有构造体，则额外获得 4 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -1074,7 +1096,29 @@
       }
     ],
     "art_prompt": "A puppet performing a nimble flip on magical strings, fantasy art style",
-    "character": "puppeteer"
+    "character": "puppeteer",
+    "upgrade": {
+      "name": "钢索翻腾+",
+      "text": "抽 2 张牌。若你拥有构造体，则额外抽 1 张牌。",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 2
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConstruct"
+          },
+          "trueActions": [
+            {
+              "type": "Draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     "id": "gear_storm",
@@ -1097,7 +1141,22 @@
       }
     ],
     "art_prompt": "A whirlwind of sharp gears and metal scraps, fantasy art style",
-    "character": "puppeteer"
+    "character": "puppeteer",
+    "upgrade": {
+      "name": "齿轮风暴+",
+      "text": "对全体异端造成 8 点伤害。每有 1 个构造体，额外造成 3 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "AllEnemies",
+          "scaling": {
+            "type": "Constructs",
+            "multiplier": 3
+          }
+        }
+      ]
+    }
   },
   {
     "id": "core_rebuild",
@@ -1116,7 +1175,18 @@
       }
     ],
     "art_prompt": "A glowing mechanical heart being inserted into a golem, fantasy art style",
-    "character": "puppeteer"
+    "character": "puppeteer",
+    "upgrade": {
+      "name": "核心重构+",
+      "text": "吞耗 1 个其他构造体。将一个构造体完全修复，并使其获得 +4 攻击力。",
+      "actions": [
+        {
+          "type": "HealConstruct",
+          "consumeOtherConstructs": 1,
+          "constructAtkBonus": 4
+        }
+      ]
+    }
   },
   {
     "id": "proxied_war",
@@ -1170,7 +1240,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "向你的元素池加入 1 个随机元素。 抽 1 张牌。 获得 4 点格挡。",
+    "text": "向你的元素池加入 1 个随机元素。 抽 1 张牌。 获得 4 点护盾。",
     "actions": [
       {
         "type": "AddRandomElement",
@@ -1225,7 +1295,7 @@
     "tags": [
       "frost"
     ],
-    "text": "获得 8 点格挡。向元素池加入 1 个霜元素。",
+    "text": "获得 8 点护盾。向元素池加入 1 个霜元素。",
     "actions": [
       {
         "type": "GainBlock",
@@ -1256,7 +1326,17 @@
       }
     ],
     "art_prompt": "Magical energy being drawn from the environment into a vial, fantasy art style",
-    "character": "alchemist"
+    "character": "alchemist",
+    "upgrade": {
+      "name": "元素虹吸+",
+      "text": "获得 2 个随机元素。",
+      "actions": [
+        {
+          "type": "AddRandomElement",
+          "amount": 2
+        }
+      ]
+    }
   },
   {
     "id": "fire_bomb",
@@ -1287,7 +1367,28 @@
       }
     ],
     "art_prompt": "A glass flask exploding with intense fire, fantasy art style",
-    "character": "alchemist"
+    "character": "alchemist",
+    "upgrade": {
+      "name": "燃火弹+",
+      "text": "造成 6 点伤害。施加 5 层灼烧。向元素池加入 1 个火元素。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Burn",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "AddElement",
+          "element": "Fire"
+        }
+      ]
+    }
   },
   {
     "id": "acid_spray",
@@ -1312,7 +1413,22 @@
       }
     ],
     "art_prompt": "Corrosive green liquid spraying from a nozzle, fantasy art style",
-    "character": "alchemist"
+    "character": "alchemist",
+    "upgrade": {
+      "name": "酸雾喷射+",
+      "text": "造成 6 点伤害。向元素池加入 1 个酸元素。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        },
+        {
+          "type": "AddElement",
+          "element": "Acid"
+        }
+      ]
+    }
   },
   {
     "id": "chain_reaction",
@@ -1380,7 +1496,7 @@
     "tags": [
       "acid"
     ],
-    "text": "对全体异端造成 3 点伤害。目标每有 1 点格挡，此牌额外造成 2 点伤害。向元素池加入 1 个酸元素。",
+    "text": "对全体异端造成 3 点伤害。目标每有 1 点护盾，此牌额外造成 2 点伤害。向元素池加入 1 个酸元素。",
     "actions": [
       {
         "type": "SolventDamage",
@@ -1440,7 +1556,7 @@
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "造成 6 点伤害。 若目标拥有格挡，则改为造成 9 点伤害。",
+    "text": "造成 6 点伤害。 若目标拥有护盾，则改为造成 9 点伤害。",
     "actions": [
       {
         "type": "PrecisionThrowDamage",
@@ -1450,7 +1566,19 @@
       }
     ],
     "art_prompt": "A throwing knife perfectly hitting a gap in armor, fantasy art style",
-    "character": "All"
+    "character": "All",
+    "upgrade": {
+      "name": "精准投掷+",
+      "text": "造成 8 点伤害。若目标拥有护盾，则改为造成 12 点伤害。",
+      "actions": [
+        {
+          "type": "PrecisionThrowDamage",
+          "amount": 8,
+          "bonus": 12,
+          "target": "Enemy"
+        }
+      ]
+    }
   },
   {
     "id": "adrenaline",
@@ -1495,7 +1623,19 @@
       }
     ],
     "art_prompt": "A magical radar sweeping over a dark battlefield, fantasy art style",
-    "character": "All"
+    "character": "All",
+    "upgrade": {
+      "name": "全面扫描+",
+      "text": "在 2 回合内揭示所有敌人的意图。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Revealed",
+          "amount": 2,
+          "target": "AllEnemies"
+        }
+      ]
+    }
   },
   {
     "id": "emergency_measure",
@@ -1505,7 +1645,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "获得 4 点格挡。 若生命值低于 30%，则改为获得 12 点格挡。",
+    "text": "获得 4 点护盾。 若生命值低于 30%，则改为获得 12 点护盾。",
     "actions": [
       {
         "type": "EmergencyBlock",
@@ -1546,7 +1686,7 @@
     "type": "Skill",
     "targeting": "AllEnemies",
     "tags": [],
-    "text": "敌人直到其下个回合结束前都无法获得格挡。",
+    "text": "敌人直到其下个回合结束前都无法获得护盾。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -1718,7 +1858,7 @@
       "faith",
       "support"
     ],
-    "text": "使亚空间潮汐降低 20 点。 获得 6 点格挡。 获得 8 点虔敬。",
+    "text": "使亚空间潮汐降低 20 点。 获得 6 点护盾。 获得 8 点虔敬。",
     "actions": [
       {
         "type": "ModifyWarpTide",
@@ -1997,7 +2137,7 @@
       "unplayable",
       "tech"
     ],
-    "text": "无法打出。回合结束时，受到 2 点伤害。若你拥有格挡，则失去 5 点格挡。",
+    "text": "无法打出。回合结束时，受到 2 点伤害。若你拥有护盾，则失去 5 点护盾。",
     "actions": [],
     "art_prompt": "A mechanical component glowing red hot with steam venting, warhammer mechanicus style",
     "character": "All"
@@ -2484,7 +2624,7 @@
     "tags": [
       "intel"
     ],
-    "text": "获得 1 点情报。获得 2 点格挡。",
+    "text": "获得 1 点情报。获得 2 点护盾。",
     "actions": [
       {
         "type": "GainIntel",
@@ -2499,7 +2639,7 @@
     ],
     "upgrade": {
       "name": "监视+",
-      "text": "获得 2 点情报。获得 4 点格挡。",
+      "text": "获得 2 点情报。获得 4 点护盾。",
       "actions": [
         {
           "type": "GainIntel",
@@ -2699,7 +2839,7 @@
     "tags": [
       "strike"
     ],
-    "text": "造成 14 点伤害。若目标有格挡，额外造成 8 点伤害并移除其格挡。",
+    "text": "造成 14 点伤害。若目标有护盾，额外造成 8 点伤害并移除其护盾。",
     "actions": [
       {
         "type": "DealDamage",
@@ -2709,7 +2849,7 @@
     ],
     "upgrade": {
       "name": "破甲重击+",
-      "text": "造成 18 点伤害。若目标有格挡，额外造成 12 点伤害并移除其格挡。",
+      "text": "造成 18 点伤害。若目标有护盾，额外造成 12 点伤害并移除其护盾。",
       "actions": [
         {
           "type": "DealDamage",
@@ -2861,7 +3001,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得 12 点格挡。若你的生命值低于 50%，额外获得 6 点格挡。",
+    "text": "获得 12 点护盾。若你的生命值低于 50%，额外获得 6 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -2871,7 +3011,7 @@
     ],
     "upgrade": {
       "name": "铁壁+",
-      "text": "获得 16 点格挡。若你的生命值低于 50%，额外获得 8 点格挡。",
+      "text": "获得 16 点护盾。若你的生命值低于 50%，额外获得 8 点护盾。",
       "actions": [
         {
           "type": "GainBlock",
@@ -2892,7 +3032,7 @@
     "tags": [
       "strike"
     ],
-    "text": "造成等同于你格挡值的伤害。获得 4 点格挡。",
+    "text": "造成等同于你护盾值的伤害。获得 4 点护盾。",
     "actions": [
       {
         "type": "DealDamage",
@@ -2907,7 +3047,7 @@
     ],
     "upgrade": {
       "name": "盾牌猛击+",
-      "text": "造成等同于你格挡值的伤害。获得 7 点格挡。",
+      "text": "造成等同于你护盾值的伤害。获得 7 点护盾。",
       "actions": [
         {
           "type": "DealDamage",
@@ -3349,7 +3489,7 @@
       "warp",
       "psyker"
     ],
-    "text": "获得 2 层时间层。获得 6 点格挡。",
+    "text": "获得 2 层时间层。获得 6 点护盾。",
     "actions": [
       {
         "type": "GainTimeLayer",
@@ -3363,7 +3503,7 @@
     ],
     "upgrade": {
       "name": "时间层+",
-      "text": "获得 3 层时间层。获得 6 点格挡。",
+      "text": "获得 3 层时间层。获得 6 点护盾。",
       "actions": [
         {
           "type": "GainTimeLayer",
@@ -3663,7 +3803,7 @@
       "warp",
       "psyker"
     ],
-    "text": "消耗 1 层时间层：获得 15 点格挡。否则获得 6 点格挡。",
+    "text": "消耗 1 层时间层：获得 15 点护盾。否则获得 6 点护盾。",
     "actions": [
       {
         "type": "Conditional",
@@ -3693,7 +3833,7 @@
     ],
     "upgrade": {
       "name": "时间护盾+",
-      "text": "消耗 1 层时间层：获得 20 点格挡。否则获得 9 点格挡。",
+      "text": "消耗 1 层时间层：获得 20 点护盾。否则获得 9 点护盾。",
       "actions": [
         {
           "type": "Conditional",
@@ -3780,7 +3920,7 @@
     "tags": [
       "summon"
     ],
-    "text": "获得 2 条线程。获得 5 点格挡。",
+    "text": "获得 2 条线程。获得 5 点护盾。",
     "actions": [
       {
         "type": "GainThread",
@@ -3794,7 +3934,7 @@
     ],
     "upgrade": {
       "name": "线程编织+",
-      "text": "获得 3 条线程。获得 5 点格挡。",
+      "text": "获得 3 条线程。获得 5 点护盾。",
       "actions": [
         {
           "type": "GainThread",
@@ -4288,7 +4428,7 @@
     "type": "Attack",
     "targeting": "Enemy",
     "tags": [],
-    "text": "造成 7 点伤害。消耗 1 点调和剂：触发全部元素反应，并获得 3 点格挡。",
+    "text": "造成 7 点伤害。消耗 1 点调和剂：触发全部元素反应，并获得 3 点护盾。",
     "actions": [
       {
         "type": "DealDamage",
@@ -4601,7 +4741,7 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "消耗 1 点调配：获得 12 点格挡并添加 1 个随机元素。否则获得 5 点格挡。",
+    "text": "消耗 1 点调配：获得 12 点护盾并添加 1 个随机元素。否则获得 5 点护盾。",
     "actions": [
       {
         "type": "Conditional",
@@ -4635,7 +4775,7 @@
     ],
     "upgrade": {
       "name": "元素护盾+",
-      "text": "消耗 1 点调配：获得 16 点格挡并添加 2 个随机元素。否则获得 8 点格挡。",
+      "text": "消耗 1 点调配：获得 16 点护盾并添加 2 个随机元素。否则获得 8 点护盾。",
       "actions": [
         {
           "type": "Conditional",
@@ -4815,7 +4955,44 @@
         ]
       }
     ],
-    "art_prompt": "A glowing blue prediction line showing exactly where a blade will strike, precognitive combat, fantasy art style"
+    "art_prompt": "A glowing blue prediction line showing exactly where a blade will strike, precognitive combat, fantasy art style",
+    "upgrade": {
+      "name": "预测打击+",
+      "text": "消耗 1 点情报：造成 18 点伤害并抽 1 张牌。否则造成 10 点伤害。",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasIntel",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendIntel",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 18,
+              "target": "Enemy"
+            },
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     "id": "shadow_meld",
@@ -4962,7 +5139,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得 10 点格挡。 若你上一回合受过伤，则获得 2 点力量。",
+    "text": "获得 10 点护盾。 若你上一回合受过伤，则获得 2 点力量。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5058,7 +5235,7 @@
     "type": "Power",
     "targeting": "Self",
     "tags": [],
-    "text": "每当你受到伤害时，获得 1 点格挡。",
+    "text": "每当你受到伤害时，获得 1 点护盾。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -5079,7 +5256,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得 12 点格挡。 你本回合不能打出攻击牌。",
+    "text": "获得 12 点护盾。 你本回合不能打出攻击牌。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5137,7 +5314,7 @@
     "tags": [
       "strike"
     ],
-    "text": "造成 8 点伤害。 若你的格挡值高于目标当前生命值，则改为造成 20 点伤害。",
+    "text": "造成 8 点伤害。 若你的护盾值高于目标当前生命值，则改为造成 20 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -5172,7 +5349,7 @@
     "tags": [
       "defend"
     ],
-    "text": "获得等同于你当前格挡值外加 8 点的格挡。本回合保留格挡。",
+    "text": "获得等同于你当前护盾值外加 8 点的护盾。本回合保留护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -5202,7 +5379,7 @@
     "tags": [
       "strike"
     ],
-    "text": "造成 10 点伤害。 若目标拥有 0 点格挡，则改为造成 30 点伤害。",
+    "text": "造成 10 点伤害。 若目标拥有 0 点护盾，则改为造成 30 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -5719,7 +5896,7 @@
       "intel",
       "control"
     ],
-    "text": "获得 6 点格挡。 施加 2 层虚弱。 若目标意图为攻击，则获得 1 点情报。",
+    "text": "获得 6 点护盾。 施加 2 层虚弱。 若目标意图为攻击，则获得 1 点情报。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6116,7 +6293,7 @@
       "concoction",
       "defense"
     ],
-    "text": "获得 1 点调和剂。施加 4 层中毒。若目标带有虚弱，则获得 4 点格挡。",
+    "text": "获得 1 点调和剂。施加 4 层中毒。若目标带有虚弱，则获得 4 点护盾。",
     "actions": [
       {
         "type": "GainConcoction",
@@ -6158,7 +6335,7 @@
       "frost",
       "defense"
     ],
-    "text": "获得 7 点格挡。 加入霜元素。 若任一目标带有中毒，则获得 1 点调和剂。",
+    "text": "获得 7 点护盾。 加入霜元素。 若任一目标带有中毒，则获得 1 点调和剂。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6282,7 +6459,7 @@
       "defense",
       "poison"
     ],
-    "text": "获得 12 点格挡。 获得 2 点调和剂。回合结束时，对全体异端各触发一次中毒。",
+    "text": "获得 12 点护盾。 获得 2 点调和剂。回合结束时，对全体异端各触发一次中毒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6317,7 +6494,7 @@
       "chapter2",
       "armor_piercing"
     ],
-    "text": "造成 8 伤害，无视 8 格挡。",
+    "text": "造成 8 伤害，无视 8 护盾。",
     "actions": [
       {
         "type": "DealDamagePiercing",
@@ -6380,7 +6557,7 @@
       "defense",
       "energy"
     ],
-    "text": "获得 9 格挡；若你本回合已受到伤害，再获得 1 能量。",
+    "text": "获得 9 护盾；若你本回合已受到伤害，再获得 1 能量。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6477,7 +6654,7 @@
       "damage",
       "armor_piercing"
     ],
-    "text": "造成 14 伤害；若目标拥有 12+ 格挡，额外造成 10。",
+    "text": "造成 14 伤害；若目标拥有 12+ 护盾，额外造成 10。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6513,7 +6690,7 @@
       "control",
       "defense"
     ],
-    "text": "施加 1 虚弱，获得 7 格挡。",
+    "text": "施加 1 虚弱，获得 7 护盾。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -6614,7 +6791,7 @@
       "defense",
       "poison_removal"
     ],
-    "text": "获得 10 格挡；移除自身 1 中毒。",
+    "text": "获得 10 护盾；移除自身 1 中毒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6677,7 +6854,7 @@
       "armor_piercing",
       "poison"
     ],
-    "text": "造成 15 伤害；若目标拥有 12+ 格挡或 8+ 中毒，改为 23。",
+    "text": "造成 15 伤害；若目标拥有 12+ 护盾或 8+ 中毒，改为 23。",
     "actions": [
       {
         "type": "DealDamage",
@@ -6750,7 +6927,7 @@
       "defense",
       "card_draw"
     ],
-    "text": "获得 7 格挡并抽 1 张牌；若有 减益状态，再获得 5 格挡。",
+    "text": "获得 7 护盾并抽 1 张牌；若有 减益状态，再获得 5 护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6887,7 +7064,7 @@
       "defense",
       "debuff"
     ],
-    "text": "获得 6 格挡；本回合你施加的第一个 减益状态 额外 +1 层。",
+    "text": "获得 6 护盾；本回合你施加的第一个 减益状态 额外 +1 层。",
     "actions": [
       {
         "type": "GainBlock",
@@ -6936,7 +7113,7 @@
       "mirror",
       "defense"
     ],
-    "text": "获得 9 点格挡。 若你本回合消耗过资源，则额外获得 3 点格挡。",
+    "text": "获得 9 点护盾。 若你本回合消耗过资源，则额外获得 3 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7114,7 +7291,7 @@
       "mirror",
       "attack"
     ],
-    "text": "造成 14 点伤害。 若目标拥有格挡，额外造成 8 点伤害。",
+    "text": "造成 14 点伤害。 若目标拥有护盾，额外造成 8 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7163,7 +7340,7 @@
       "mirror",
       "defense"
     ],
-    "text": "每回合第一次抽到费用为 0 的牌时，获得 3 点格挡。",
+    "text": "每回合第一次抽到费用为 0 的牌时，获得 3 点护盾。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -7246,7 +7423,7 @@
       "informant",
       "defense"
     ],
-    "text": "获得 7 点格挡。 施加 2 层虚弱。 若目标本回合将要攻击，则获得 1 点证据。",
+    "text": "获得 7 点护盾。 施加 2 层虚弱。 若目标本回合将要攻击，则获得 1 点证据。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7281,7 +7458,7 @@
       "informant",
       "attack"
     ],
-    "text": "造成 7 点伤害。 若你拥有证据，则消耗 1 点，无视目标 8 点格挡。",
+    "text": "造成 7 点伤害。 若你拥有证据，则消耗 1 点，无视目标 8 点护盾。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7532,7 +7709,7 @@
       "brute",
       "defense"
     ],
-    "text": "获得 9 点格挡。 若你本回合受过伤，则获得 1 点狂怒。",
+    "text": "获得 9 点护盾。 若你本回合受过伤，则获得 1 点狂怒。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7621,7 +7798,7 @@
       "brute",
       "defense"
     ],
-    "text": "获得 6 点格挡。 你本回合打出的下一张攻击牌费用减少 1。",
+    "text": "获得 6 点护盾。 你本回合打出的下一张攻击牌费用减少 1。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7685,7 +7862,7 @@
       "brute",
       "attack"
     ],
-    "text": "消耗全部狂怒。基础造成 12 点伤害，每点狂怒额外 +7。获得等同于所耗狂怒一半的格挡。",
+    "text": "消耗全部狂怒。基础造成 12 点伤害，每点狂怒额外 +7。获得等同于所耗狂怒一半的护盾。",
     "actions": [
       {
         "type": "SpendAllResourceEffect",
@@ -7747,7 +7924,7 @@
       "tactician",
       "defense"
     ],
-    "text": "获得 10 点格挡。 若你拥有指挥，则额外获得 2 点格挡。",
+    "text": "获得 10 点护盾。 若你拥有指挥，则额外获得 2 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -7805,7 +7982,7 @@
       "tactician",
       "attack"
     ],
-    "text": "造成 8 点伤害。 若你本回合获得过格挡，额外造成 5 点伤害。",
+    "text": "造成 8 点伤害。 若你本回合获得过护盾，额外造成 5 点伤害。",
     "actions": [
       {
         "type": "DealDamage",
@@ -7861,7 +8038,7 @@
       "tactician",
       "defense"
     ],
-    "text": "获得 14 点格挡。 保留 1 张牌 at 回合结束时.",
+    "text": "获得 14 点护盾。 保留 1 张牌 at 回合结束时.",
     "actions": [
       {
         "type": "GainBlock",
@@ -7917,7 +8094,7 @@
       "tactician",
       "power"
     ],
-    "text": "每回合第一次获得至少 12 点格挡时，获得 1 点指挥。每回合第一次消耗指挥时，抽 1 张牌。",
+    "text": "每回合第一次获得至少 12 点护盾时，获得 1 点指挥。每回合第一次消耗指挥时，抽 1 张牌。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -8062,7 +8239,7 @@
       "puppeteer",
       "defense"
     ],
-    "text": "所有傀儡获得 4 点格挡并额外造成 2 点攻击伤害。",
+    "text": "所有傀儡获得 4 点护盾并额外造成 2 点攻击伤害。",
     "actions": [
       {
         "type": "PuppetBuff",
@@ -8192,7 +8369,7 @@
       "chronomancer",
       "defense"
     ],
-    "text": "获得 7 点格挡。 你本回合打出的下一张牌会在下一回合以 50% 效果再次触发。",
+    "text": "获得 7 点护盾。 你本回合打出的下一张牌会在下一回合以 50% 效果再次触发。",
     "actions": [
       {
         "type": "GainBlock",
@@ -8330,7 +8507,7 @@
       "chronomancer",
       "power"
     ],
-    "text": "每回合第一次有延迟效果触发时，获得 3 点格挡。",
+    "text": "每回合第一次有延迟效果触发时，获得 3 点护盾。",
     "actions": [
       {
         "type": "StartOfTurnEffect",
@@ -8437,7 +8614,7 @@
       "alchemist",
       "defense"
     ],
-    "text": "获得 8 点格挡。 若你拥有 2 种不同元素，则恢复 3 点生命值。",
+    "text": "获得 8 点护盾。 若你拥有 2 种不同元素，则恢复 3 点生命值。",
     "actions": [
       {
         "type": "GainBlock",
@@ -8492,7 +8669,7 @@
       "alchemist",
       "attack"
     ],
-    "text": "消耗 1 点调和剂。对全体异端施加 2 层中毒，并获得 10 点格挡。",
+    "text": "消耗 1 点调和剂。对全体异端施加 2 层中毒，并获得 10 点护盾。",
     "actions": [
       {
         "type": "SpendResourceEffect",
@@ -8610,7 +8787,7 @@
       "defend",
       "ascensionExclusive"
     ],
-    "text": "获得 12 点格挡。 若你本回合未受伤，下一回合少抽 1 张牌。",
+    "text": "获得 12 点护盾。 若你本回合未受伤，下一回合少抽 1 张牌。",
     "difficultyRequired": 3,
     "achievementUnlockId": "clear_lv3",
     "actions": [
@@ -8797,7 +8974,7 @@
       "purify",
       "ascensionExclusive"
     ],
-    "text": "获得 20 点格挡。 净除 1 减益状态. 下一回合, 失去 1 能量.",
+    "text": "获得 20 点护盾。 净除 1 减益状态. 下一回合, 失去 1 能量.",
     "difficultyRequired": 9,
     "achievementUnlockId": "clear_lv9",
     "actions": [

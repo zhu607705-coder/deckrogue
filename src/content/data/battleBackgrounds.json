@@ -109,7 +109,13 @@
     "intelligence_officer": "mech_factory",
     "time_guardian": "time_rift",
     "puppet_queen": "puppet_theater",
-    "alchemy_master": "alchemy_lab"
+    "alchemy_master": "alchemy_lab",
+    "slime_small_glass": "slime_swamp",
+    "slime_small_rot": "slime_swamp",
+    "goblin_trapper": "goblin_mine",
+    "barrier_redeemer": "mech_factory",
+    "cultist_herald": "cultist_altar",
+    "jaw_worm_burrower": "worm_nest"
   },
   "keywordFallbackToTheme": {
     "boss": "ancient_ruins",

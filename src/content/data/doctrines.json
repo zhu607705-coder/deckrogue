@@ -24,7 +24,7 @@
   {
     "id": "doctrine_attrition",
     "name": "消耗教义",
-    "description": "前 3 场战斗每场第一次施加 debuff 后获得 4 格挡；毒素/拖回合相关 reward 权重 +18%",
+    "description": "前 3 场战斗每场第一次施加 debuff 后获得 4 护盾；毒素/拖回合相关 reward 权重 +18%",
     "unlockCondition": {
       "type": "chapterClear",
       "chapter": 2

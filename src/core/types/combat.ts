@@ -1,11 +1,13 @@
 import type { ActiveEventState, MapNode } from '@/core/types/events';
 import type { CardDef, CharacterDef, RunCardInstance } from '@/core/types/actions';
+import type { AdaptationProfile } from '@/core/ai';
 
 export interface PlayerState {
   hp: number;
   maxHp: number;
   energy: number;
   maxEnergy: number;
+  block?: number;
   gold: number;
   intel: number;
   deck: RunCardInstance[];
@@ -18,6 +20,8 @@ export interface PlayerState {
     warpDebuffCombatsRemaining?: number;
     enemyHuntBonusPct?: number;
     pendingWarpTideBonus?: number;
+    skipNextNode?: boolean;
+    eliteTrapWeakStacks?: number;
   };
   portraitUrl?: string;
 }
@@ -66,6 +70,9 @@ export interface CombatState {
     block: number;
     statuses: Record<string, number>;
     nextIntent: string | null;
+    lastUsedIntent: string | null;
+    intentCooldowns: Record<string, number>;
+    nonAttackIntentStreak?: number;
     summoned?: boolean;
     deathProcessed?: boolean;
     devotion: number;
@@ -99,6 +106,8 @@ export interface CombatState {
     currentPlayerTurnCards: RunCardInstance[];
     previousPlayerTurnCards: RunCardInstance[];
     flags?: Record<string, number | boolean | string>;
+    adaptationProfile?: AdaptationProfile;
+    adaptationEnabled?: boolean;
   };
 }
 
@@ -112,6 +121,46 @@ export interface EnchantContext {
   returnScreen?: 'Event' | 'Rest' | 'Shop';
 }
 
+export type RouteCommitSource = 'reward' | 'shop' | 'event' | 'rest' | 'upgrade' | 'enchant' | 'relic_upgrade';
+
+export interface RouteCommit {
+  tag: string;
+  source: RouteCommitSource;
+  floor: number;
+  weight: number;
+}
+
+export interface RouteState {
+  primaryTag: string | null;
+  secondaryTag: string | null;
+  confidence: number;
+  stage: 'forming' | 'committed' | 'pivoting';
+  recentCommits: RouteCommit[];
+}
+
+export interface SurfaceContext {
+  upgradeReturnScreen?: 'Rest' | 'Shop';
+  relicUpgradeReturnScreen?: 'Rest' | 'Shop';
+  enchantReturnScreen?: 'Event' | 'Rest' | 'Shop';
+  enchantContext?: EnchantContext | null;
+  campfireChoiceLocked?: boolean;
+  isEventFreeCardRemovalMode?: boolean;
+  pendingUpgradeRefund?: boolean;
+}
+
+export type RoomOwnerKind = 'combat' | 'event' | 'shop' | 'rest';
+export type RoomResolutionKind = 'combat' | 'reward' | 'event' | 'shop' | 'rest';
+export type RoomSurface = RoomResolutionKind | 'upgrade' | 'remove_card' | 'enchant' | 'relic_upgrade';
+
+export interface RoomSession {
+  token: string;
+  nodeId: string | null;
+  ownerKind: RoomOwnerKind;
+  resolverKind: RoomResolutionKind;
+  surfaceStack: RoomSurface[];
+  status: 'active' | 'resolving';
+}
+
 export interface GameState {
   seed: number;
   rngState: number;
@@ -122,14 +171,20 @@ export interface GameState {
   combat: CombatState | null;
   map: MapNode[];
   currentNodeId: string | null;
+  routeState?: RouteState | null;
+  surfaceContext?: SurfaceContext | null;
+  roomSession?: RoomSession | null;
+  roomResolutionToken?: string | null;
+  roomResolutionKind?: RoomResolutionKind | null;
   activeEvent?: ActiveEventState | null;
   rewardCards: RunCardInstance[];
   shopCards: RunCardInstance[];
   shopRelics: string[];
   shopPotions: string[];
   cardRemovalCost: number;
-  screen: 'Launcher' | 'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'Enchant' | 'GameOver' | 'Victory';
+  screen: 'Launcher' | 'CharacterSelect' | 'Map' | 'Combat' | 'Reward' | 'Event' | 'Shop' | 'Rest' | 'Upgrade' | 'RemoveCard' | 'Enchant' | 'RelicUpgrade' | 'GameOver' | 'Victory';
   upgradeReturnScreen?: 'Rest' | 'Shop';
+  relicUpgradeReturnScreen?: 'Rest' | 'Shop';
   pendingNodeResolution?: boolean;
   campfireChoiceLocked?: boolean;
   enchantContext?: EnchantContext | null;

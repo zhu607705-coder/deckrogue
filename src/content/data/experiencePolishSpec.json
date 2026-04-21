@@ -15,9 +15,9 @@
         },
         {
           "id": "hit_block_break",
-          "name": "命中/格挡/破防",
+          "name": "命中/护盾/破防",
           "description": "伤害结算时的反馈",
-          "requiredElements": ["伤害数字弹出", "格挡闪光", "破防震动"],
+          "requiredElements": ["伤害数字弹出", "护盾闪光", "破防震动"],
           "timing": "after_play",
           "priority": 2
         },
@@ -152,7 +152,7 @@
           "id": "turn_decision",
           "name": "当前回合决策必需信息",
           "priority": 1,
-          "elements": ["HP", "能量", "格挡", "手牌", "敌人意图"]
+          "elements": ["HP", "能量", "护盾", "手牌", "敌人意图"]
         },
         {
           "id": "build_longterm",

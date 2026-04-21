@@ -11,6 +11,8 @@ import {
   getCardRouteAffinityTags,
   enrichCardRouteSignals,
   getCardRouteSignal,
+  getEventChoiceCommitTags,
+  getEventChoiceRouteRole,
   getEventRouteSignal,
   getGenericPowerIdsForCharacter,
   getKnownRouteTagsForCharacter,
@@ -235,6 +237,22 @@ const relicMap = new Map(relicsData.map((r) => [r.id, r]));
 const storyEventMap = new Map(STORY_EVENTS.map((e) => [e.id, e]));
 const cardEnchantmentMap = new Map(cardEnchantmentsData.map((entry) => [entry.id, entry]));
 
+export type ShopOfferKind = 'card' | 'relic' | 'potion';
+
+export const SHOP_OFFER_PRICE_FALLBACKS: Record<ShopOfferKind, number> = {
+  card: 50,
+  relic: 150,
+  potion: 65,
+};
+
+export function resolveShopOfferPrice(kind: ShopOfferKind, rawPrice: unknown): number {
+  const fallback = SHOP_OFFER_PRICE_FALLBACKS[kind];
+  const numeric = typeof rawPrice === 'number' && Number.isFinite(rawPrice)
+    ? rawPrice
+    : fallback;
+  return Math.max(1, Math.round(numeric));
+}
+
 export function getNumericConfig(): NumericConfig {
   return numericConfig;
 }
@@ -248,6 +266,8 @@ export {
   getCardRouteAffinity,
   getCardRouteAffinityTags,
   getCardRouteSignal,
+  getEventChoiceCommitTags,
+  getEventChoiceRouteRole,
   getEventRouteSignal,
   getGenericPowerIdsForCharacter,
   getKnownRouteTagsForCharacter,
@@ -529,7 +549,7 @@ export function getStoryEventOptionPresentation(
         };
       case 'legacy_take_rosary':
         return {
-          gains: ['获得奇物《审判官玫瑰》（战斗开始获得格挡）'],
+          gains: ['获得奇物《审判官玫瑰》（战斗开始获得护盾）'],
           costs: [`受到 ${n.takeRosarySelfDamage ?? 10} 点伤害`]
         };
       case 'legacy_inscribe_sigil':

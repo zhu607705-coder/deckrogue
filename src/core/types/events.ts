@@ -37,6 +37,9 @@ export interface ActiveEventState {
   offeredRelicId?: string;
   seedRoll?: number;
   stage?: string;
+  lastChoiceId?: string | null;
+  choiceRole?: 'confirm' | 'payoff' | 'pivot' | 'support' | null;
+  outcomeKind?: 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | null;
   data?: Record<string, any>;
 }
 

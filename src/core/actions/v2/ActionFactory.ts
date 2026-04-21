@@ -2,26 +2,27 @@ import { ActionSpec, GameState } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { ActionManager } from '@/core/actions/actionManager';
 
-import { 
-  DealDamageAction, 
-  ApplyStatusAction, 
-  DrawCardsAction, 
-  DiscardCardsAction, 
-  GainBlockAction, 
-  GainEnergyAction, 
-  HealAction, 
-  ModifyEnergyAction 
+import {
+  DealDamageAction,
+  ApplyStatusAction,
+  DrawCardsAction,
+  DiscardCardsAction,
+  GainBlockAction,
+  GainEnergyAction,
+  HealAction,
+  ModifyEnergyAction,
+  LoseHpAction
 } from '@/core/actions/v2/DamageActions';
 
-import { 
-  DelayAction, 
+import {
+  DelayAction,
   ConditionalAction,
   ConditionalKillAction,
-  TriggerDelayAction, 
-  SummonConstructAction, 
+  TriggerDelayAction,
+  SummonConstructAction,
   SummonMegaConstructAction,
-  BuffConstructsAction, 
-  ConstructOverdriveAction, 
+  BuffConstructsAction,
+  ConstructOverdriveAction,
   HealConstructAction,
   AddRandomElementAction,
   AddElementAction,
@@ -62,11 +63,11 @@ import {
   TriggerPoisonOnTargetAction
 } from '@/core/actions/v2/SpecialActions';
 
-import { 
-  DealWarpDamageAction, 
-  ModifyWarpTideAction, 
-  CheckWarpPerilAction, 
-  CreateWarpRiftAction 
+import {
+  DealWarpDamageAction,
+  ModifyWarpTideAction,
+  CheckWarpPerilAction,
+  CreateWarpRiftAction
 } from '@/core/actions/v2/WarpActions';
 
 export class ActionFactoryV2 {
@@ -129,6 +130,7 @@ export class ActionFactoryV2 {
     ['TriggerAllReactions', TriggerAllReactionsAction],
     ['TransformHandToRare', TransformHandToRareAction],
     ['TriggerPoisonOnTarget', TriggerPoisonOnTargetAction],
+    ['LoseHp', LoseHpAction],
   ];
 
   private static actionMap: Map<string, new (spec: ActionSpec) => IAction> = new Map(this.actionMapEntries);
@@ -157,9 +159,9 @@ export class ActionFactoryV2 {
 
 class NullAction implements IAction {
   readonly type = 'Null';
-  
+
   constructor(private spec: ActionSpec) {}
-  
+
   execute(): void {
     console.warn(`NullAction executed for unknown type: ${this.spec.type}`);
   }

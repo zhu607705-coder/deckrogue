@@ -1,8 +1,8 @@
 [
   {
     "id": "informant",
-    "name": "The Informant",
-    "description": "A master of secrets. Uses Intel to predict and outmaneuver enemies.",
+    "name": "情报员",
+    "description": "秘密之主。利用情报预判并智取敌人。",
     "maxHp": 70,
     "maxEnergy": 3,
     "secondaryResource": "evidence",
@@ -39,8 +39,8 @@
   },
   {
     "id": "brute",
-    "name": "The Brute",
-    "description": "A resilient warrior. Relies on high health and raw strength.",
+    "name": "蛮战士",
+    "description": "坚韧的战士。依靠高生命值和纯粹的力量。",
     "maxHp": 70,
     "maxEnergy": 3,
     "secondaryResource": "rage",
@@ -78,8 +78,8 @@
   },
   {
     "id": "tactician",
-    "name": "The Tactician",
-    "description": "A strategic mastermind. Uses block and precision to control the battlefield.",
+    "name": "战术家",
+    "description": "战略大师。利用护盾与精准控制战场。",
     "maxHp": 75,
     "maxEnergy": 3,
     "secondaryResource": "command",
@@ -115,8 +115,8 @@
   },
   {
     "id": "puppeteer",
-    "name": "The Puppeteer",
-    "description": "A dark artist manipulating strings, sealing souls into mechanical bodies to create loyal constructs.",
+    "name": "操控师",
+    "description": "操纵丝线的暗黑艺术家，将灵魂封入机械躯体以创造忠诚的构造体。",
     "maxHp": 70,
     "maxEnergy": 3,
     "startingDeck": [
@@ -153,8 +153,8 @@
   },
   {
     "id": "chronomancer",
-    "name": "The Chronomancer",
-    "description": "A traveler from twisted realities, manipulating the flow of time itself.",
+    "name": "织时者",
+    "description": "来自扭曲现实的旅者，操纵时间本身的流动。",
     "maxHp": 65,
     "maxEnergy": 3,
     "startingDeck": [
@@ -190,8 +190,8 @@
   },
   {
     "id": "alchemist",
-    "name": "The Alchemist",
-    "description": "A scholar pursuing the essence of transformation, viewing chemical reactions as the ultimate truth.",
+    "name": "炼金术士",
+    "description": "追求转化本质的学者，将化学反应视为终极真理。",
     "maxHp": 65,
     "maxEnergy": 3,
     "startingDeck": [

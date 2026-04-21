@@ -14,7 +14,7 @@
     "name": "护印封蜡",
     "scope": "persistent",
     "effect": { "type": "block", "amount": 2 },
-    "description": "该牌的格挡提高 2。",
+    "description": "该牌的护盾提高 2。",
     "tone": "ward",
     "icon": "shield",
     "applicableTo": ["Skill"]
@@ -54,7 +54,7 @@
     "name": "碎护咒蚀",
     "scope": "combat",
     "effect": { "type": "block", "amount": -2 },
-    "description": "本场战斗中，该牌格挡 -2。",
+    "description": "本场战斗中，该牌护盾 -2。",
     "tone": "hex",
     "icon": "sunder",
     "applicableTo": ["Skill"]

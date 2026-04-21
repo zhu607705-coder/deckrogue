@@ -74,8 +74,16 @@ export interface MechanicAuditSnapshot {
 }
 
 export class MechanicRegistry {
+  private static readonly MAX_AUDIT_LOG_SIZE = 1000;
+
   private mechanics: Map<string, MechanicDescriptor> = new Map();
   private auditLog: MechanicAuditSnapshot[] = [];
+
+  private trimAuditLog(): void {
+    if (this.auditLog.length > MechanicRegistry.MAX_AUDIT_LOG_SIZE) {
+      this.auditLog = this.auditLog.slice(-MechanicRegistry.MAX_AUDIT_LOG_SIZE);
+    }
+  }
 
   register(mechanic: MechanicDescriptor): void {
     this.mechanics.set(mechanic.id, mechanic);
@@ -99,10 +107,10 @@ export class MechanicRegistry {
 
     for (const mechanic of activeMechanics) {
       const relevantTriggers = mechanic.triggers.filter(t => t.window === window);
-      
+
       for (const trigger of relevantTriggers) {
         const conditionMet = !trigger.condition || trigger.condition(context);
-        
+
         const audit: MechanicAuditSnapshot = {
           mechanicId: mechanic.id,
           mechanicType: mechanic.type,
@@ -116,12 +124,13 @@ export class MechanicRegistry {
         if (conditionMet) {
           const result = trigger.effect(context);
           results.push(result);
-          
+
           audit.mutationsApplied = result.mutations || [];
           audit.sideEffectsTriggered = result.sideEffects?.length || 0;
         }
 
         this.auditLog.push(audit);
+        this.trimAuditLog();
       }
     }
 
@@ -137,7 +146,7 @@ export class MechanicRegistry {
   private applyMutation(state: GameState, mutation: ResourceMutation): void {
     const player = state.player;
     const combatPlayer = state.combat?.player;
-    
+
     switch (mutation.resource) {
       case 'intel':
         player.intel = this.applyOperation(player.intel, mutation);

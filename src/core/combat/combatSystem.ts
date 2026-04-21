@@ -67,13 +67,13 @@ export class CombatSystem {
   }
 
   private applyStatusModifiers(state: GameState, damage: number, context: DamageContext): number {
-    const sourceEntity = context.sourceType === 'player' 
-      ? state.combat?.player 
+    const sourceEntity = context.sourceType === 'player'
+      ? state.combat?.player
       : state.combat?.enemies.find(e => e.id === context.sourceId);
     const targetEntity = context.targetType === 'player'
       ? state.combat?.player
       : state.combat?.enemies.find(e => e.id === context.targetId);
-    
+
     if (!sourceEntity || !targetEntity) return damage;
 
     let result = normalizeDamageBase(damage);
@@ -186,6 +186,14 @@ export class CombatSystem {
       const blocked = Math.min(target.block, finalDamage);
       target.block -= blocked;
       finalDamage -= blocked;
+      if (blocked > 0) {
+        globalEventBus.publish({
+          type: 'BlockReduced',
+          amount: blocked,
+          targetType: context.targetType,
+          targetId: context.targetId
+        });
+      }
     }
 
     if (finalDamage > 0) {

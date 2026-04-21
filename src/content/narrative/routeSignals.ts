@@ -189,12 +189,12 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
 };
 
 const GENERIC_POWER_BY_CHARACTER: Record<string, string[]> = {
-  informant: ['surveillance', 'false_identity', 'mirror_tail'],
-  brute: ['shrug_it_off', 'iron_wall', 'intimidating_roar'],
-  tactician: ['acrobatics', 'precise_rotation', 'shield_signal'],
-  puppeteer: ['wire_acrobatics', 'thread_mastery', 'reposition'],
-  chronomancer: ['future_sight', 'temporal_acceleration', 'temporal_shield'],
-  alchemist: ['element_siphon', 'elemental_shield', 'transmute_life'],
+  informant: ['warp_tap', 'mirror_tail', 'sudden_confession'],
+  brute: ['bash', 'cleave', 'intimidating_roar'],
+  tactician: ['quick_slash', 'acrobatics', 'quick_cycle'],
+  puppeteer: ['wire_guard', 'wire_acrobatics', 'reposition'],
+  chronomancer: ['afterimage_tick', 'borrow_tomorrow', 'fractured_hour'],
+  alchemist: ['frost_armor', 'transmute_life', 'elemental_shield'],
 };
 
 const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {

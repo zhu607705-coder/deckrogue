@@ -57,12 +57,12 @@ export function calculateRewardRuntime(
   const isBoss = !!options?.isBoss;
   const hpScale = floorScalingMultiplier(floor, { linearGrowth: 0.08, logDivisor: 10 });
   const baseGold = ECONOMY_DEFAULTS.config.baseGoldReward + (floor - 1) * ECONOMY_DEFAULTS.config.goldPerFloor;
-  const gold = Math.floor(baseGold * (isBoss ? 3 : isElite ? 2 : 1));
-  const cardChoices = Math.max(1, Math.round((isBoss ? 2 : isElite ? 1.5 : 1) + (options?.cardChoiceBonus || 0)));
+  const gold = Math.floor(baseGold * (isBoss ? ECONOMY_DEFAULTS.rewards.bossGoldMultiplier : isElite ? ECONOMY_DEFAULTS.rewards.eliteGoldMultiplier : 1));
+  const cardChoices = Math.max(1, Math.round((isBoss ? ECONOMY_DEFAULTS.rewards.bossCardRewards : isElite ? ECONOMY_DEFAULTS.rewards.eliteCardRewards : 1) + (options?.cardChoiceBonus || 0)));
   return {
     gold,
     cardChoices,
-    potionChance: Math.min(0.5, 0.25 + floor * 0.02),
-    relicChance: isBoss ? 1 : Math.min(1, 0.1 * hpScale * (isElite ? 2 : 1))
+    potionChance: Math.min(ECONOMY_DEFAULTS.rewards.maxPotionDropChance, 0.35 + floor * ECONOMY_DEFAULTS.rewards.potionDropPerFloor),
+    relicChance: isBoss ? 1 : Math.min(1, 0.18 * hpScale * (isElite ? 2.5 : 1))
   };
 }

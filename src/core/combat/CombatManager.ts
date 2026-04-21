@@ -1,3 +1,4 @@
+/** @deprecated experimental legacy combat manager; active gameplay orchestration lives in src/core/events/CombatManager.ts */
 import type { GameState, RunCardInstance, CardDef } from '@/core/types';
 import type { ActionManager } from '@/core/actions/actionManager';
 import type { IActionContext } from '@/core/actions/actionQueue';
@@ -11,8 +12,9 @@ import {
   getSingleSlimeRoomBoostConfig
 } from '@/content/narrative/numericSystem';
 import { unlockCodexEntry } from '@/core/persistence/codexStore';
-import { intentSelector, type IntentCooldownState } from '@/core/ai/intentSelector';
+import { intentSelector, type IntentCooldownState } from '@/core/ai';
 import { memoryManager } from '@/core/performance/MemoryManager';
+import { prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
 
 export interface CombatManagerDeps {
   getState: () => GameState;
@@ -118,13 +120,7 @@ export class CombatManager {
     damageMultiplier: number
   ): any[] {
     const state = this.deps.getState();
-    const validEnemies = enemiesData.filter((e: any) => {
-      if (nodeType === 'Boss') return e.keywords?.includes('boss');
-      if (nodeType === 'Elite') return e.keywords?.includes('elite');
-      return !e.keywords?.includes('boss') && !e.keywords?.includes('elite');
-    });
-    const stagedEnemies = validEnemies.filter((e: any) => this.deps.isEnemyEligibleForFloor(e, floor, nodeType));
-    const enemyPool = stagedEnemies.length > 0 ? stagedEnemies : validEnemies;
+    const enemyPool = prioritizeEnemyPoolForEncounter(enemiesData as any[], floor, nodeType);
 
     return Array.from({ length: count }, (_, i) => {
       const def = enemyPool[Math.floor(this.deps.rng() * enemyPool.length)];
@@ -160,18 +156,6 @@ export class CombatManager {
           block: 0,
           energy: state.player.maxEnergy,
           statuses: {},
-          delayedCards: [],
-          constructs: [],
-          elements: [],
-          potionToxicity: 0,
-          potionsUsedThisTurn: 0,
-          cardsPlayedThisTurn: 0,
-          damageTakenThisTurn: 0,
-          damageTakenLastTurn: 0,
-          intel: state.player.intel,
-          devotion: 0,
-          corruptionAxis: 0,
-          axisDisposition: 'balanced' as const
         },
         1,
         this.deps.rng
@@ -278,7 +262,8 @@ export class CombatManager {
       }
     });
 
-    this.deps.actionManager.executeAll().then(() => this.deps.notify());
+    this.deps.actionManager.executeAll();
+    this.deps.notify();
   }
 
   private executeConstructAttacks(): void {
@@ -408,28 +393,23 @@ export class CombatManager {
   }
 
   private handleEnemyDefeated(enemyId: string): void {
-    console.log('[CombatManager.handleEnemyDefeated] Called with enemyId:', enemyId);
     const state = this.deps.getState();
     const combat = state.combat;
     if (!combat) {
-      console.log('[CombatManager.handleEnemyDefeated] No combat state');
       return;
     }
 
     const enemyIndex = combat.enemies.findIndex(e => e.id === enemyId);
     if (enemyIndex === -1) {
-      console.log('[CombatManager.handleEnemyDefeated] Enemy not found:', enemyId);
       return;
     }
 
     const enemy = combat.enemies[enemyIndex];
     combat.enemies.splice(enemyIndex, 1);
-    console.log('[CombatManager.handleEnemyDefeated] Removed enemy, remaining enemies:', combat.enemies.length);
 
     this.deps.appendVoxLog(`${enemy.name} 被击败！`);
 
     if (combat.enemies.length === 0) {
-      console.log('[CombatManager.handleEnemyDefeated] All enemies defeated, calling handleCombatVictory');
       this.handleCombatVictory();
     }
   }
@@ -467,18 +447,15 @@ export class CombatManager {
     const state = this.deps.getState();
     const combat = state.combat;
     if (!combat || !combat.isPlayerTurn) {
-      console.log('[CombatManager.playCard] Early return: combat=', !!combat, 'isPlayerTurn=', combat?.isPlayerTurn);
       return;
     }
 
     const cardIndex = combat.hand.findIndex(c => c.instanceId === cardInstanceId);
     if (cardIndex === -1) {
-      console.warn('[CombatManager] Card not in hand:', cardInstanceId);
       return;
     }
 
     const card = combat.hand[cardIndex];
-    console.log('[CombatManager.playCard] Playing card:', { instanceId: card.instanceId, name: card.name, id: card.id, cost: card.cost, actions: card.actions, targetId });
 
     if (combat.player.energy < (card.cost || 0)) {
       this.deps.appendVoxLog('能量不足，无法使用此指令。');
@@ -492,7 +469,6 @@ export class CombatManager {
     const cardName = card.name || card.id;
 
     for (const actionSpec of card.actions || []) {
-      console.log('[CombatManager.playCard] Executing action:', actionSpec);
       await this.executeActionSpec(actionSpec, targetId, combat, cardName);
     }
 
@@ -564,7 +540,7 @@ export class CombatManager {
         break;
       }
       default:
-        console.log('[CombatManager] Unknown action type:', actionSpec.type);
+        break;
     }
   }
 
@@ -602,7 +578,7 @@ export class CombatManager {
       const intent = enemy.nextIntent || 'Attack';
       const def = enemiesData.find((e: any) => e.id === enemy.defId) as any;
       const move = def?.moves?.[intent];
-      
+
       if (move && Array.isArray(move)) {
         for (const actionSpec of move) {
           if (actionSpec.type === 'DealDamage' && actionSpec.amount) {
@@ -621,7 +597,7 @@ export class CombatManager {
       const usedIntent = enemy.nextIntent || 'Attack';
       enemy.lastUsedIntent = usedIntent;
       enemy.intentCooldowns = intentSelector.updateCooldowns(enemy.intentCooldowns || {}, usedIntent);
-      
+
       enemy.nextIntent = this.selectIntent(
         def,
         enemy,

@@ -28,12 +28,12 @@ export const COMBAT_NUMBERS = {
 
 export const ECONOMY_DEFAULTS = {
   config: {
-    baseGoldReward: 16,
-    goldPerFloor: 3,
-    baseCardReward: 0.75,
-    cardsPerFloor: 0.05,
-    relicRewardChance: 0.12,
-    potionRewardChance: 0.30
+    baseGoldReward: 30,
+    goldPerFloor: 5,
+    baseCardReward: 1,
+    cardsPerFloor: 0.1,
+    relicRewardChance: 0.18,
+    potionRewardChance: 0.40
   },
   floors: {
     precomputeMaxFloor: 10,
@@ -46,22 +46,22 @@ export const ECONOMY_DEFAULTS = {
     damageLogDivisor: 10
   },
   rewards: {
-    bossGoldMultiplier: 3,
-    eliteGoldMultiplier: 2,
+    bossGoldMultiplier: 3.5,
+    eliteGoldMultiplier: 2.5,
     combatsPerFloor: 3,
     eliteChanceBase: 0.1,
     eliteChancePerFloor: 0.02,
-    eliteExpectedGoldBonusFactor: 0.5,
-    bossExpectedGoldBonusFactor: 2,
-    bossCardRewards: 2,
-    eliteCardRewards: 1.5,
+    eliteExpectedGoldBonusFactor: 0.6,
+    bossExpectedGoldBonusFactor: 2.5,
+    bossCardRewards: 3,
+    eliteCardRewards: 2,
     maxRegularCardReward: 2,
     cardRewardPrecisionScale: 100,
     minCardChoices: 1,
-    maxCardChoicesWithBagOfPrep: 3,
+    maxCardChoicesWithBagOfPrep: 4,
     bagOfPrepBonusChoices: 1,
-    maxPotionDropChance: 0.5,
-    potionDropPerFloor: 0.03,
+    maxPotionDropChance: 0.65,
+    potionDropPerFloor: 0.04,
     maxRelicDropChance: 1
   },
   shop: {
@@ -163,14 +163,14 @@ export const BALANCE_CONSTANTS = {
     minScalingFactor: 0.5
   },
   rewardScaling: {
-    baseGoldReward: 10,
-    goldPerFloor: 3,
-    bossGoldMultiplier: 3,
-    eliteGoldMultiplier: 2,
-    bossCardRewards: 2,
-    eliteCardRewards: 1.5,
-    baseCardRewards: 0.75,
-    cardsPerFloor: 0.05
+    baseGoldReward: 30,
+    goldPerFloor: 5,
+    bossGoldMultiplier: 3.5,
+    eliteGoldMultiplier: 2.5,
+    bossCardRewards: 3,
+    eliteCardRewards: 2,
+    baseCardRewards: 1,
+    cardsPerFloor: 0.1
   },
   enemyScaling: {
     hpPerFloor: 0.15,
