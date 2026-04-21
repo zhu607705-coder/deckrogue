@@ -46,17 +46,17 @@ const CARD_NAME_FALLBACK_ZH: Record<string, string> = {
 
 const CARD_TEXT_OVERRIDES_BY_ID: Record<string, string> = {
   strike: '造成 5 点伤害。',
-  defend: '获得 4 点格挡。',
+  defend: '获得 4 点护盾。',
   gather_intel: '获得 1 点情报。抽 2 张牌。',
   precision_strike: '若你拥有 1 点情报，则消耗它并造成 9 点伤害；否则造成 6 点伤害。',
   dead_drop: '获得 1 点情报。若这是你本回合打出的第一张牌，则抽 1 张牌。'
 };
 
 const TARGETING_LABELS: Record<string, string> = {
-  Enemy: '单体异端',
+  Enemy: '单体目标',
   Self: '自身',
-  AllEnemies: '全体异端',
-  RandomEnemy: '随机异端',
+  AllEnemies: '全体目标',
+  RandomEnemy: '随机目标',
   None: '无目标'
 };
 
@@ -107,6 +107,7 @@ const UI_LABELS_ZH: Record<string, string> = {
   EndOfEliteCombat: '精英战后',
   EndOfTurn: '回合结束',
   EndOfTurnWithElements: '回合结束（元素充盈）',
+  EnterFloor: '进入新层',
   EnterMirrorZone: '进入镜宫',
   Event: '事件抉择',
   OnApplyDebuff: '施加减益时',
@@ -121,6 +122,7 @@ const UI_LABELS_ZH: Record<string, string> = {
   OnRemoveDebuff: '移除减益时',
   OnSpendResource: '消耗资源时',
   OnTakeDamage: '受到伤害时',
+  PassNode: '穿越节点',
   PoisonTick: '中毒结算时',
   StartOfTurn: '回合开始',
   StartRun: '开局部署',
@@ -148,16 +150,16 @@ const FALLBACK_TERMS: Record<string, Omit<GlossaryEntry, 'aliases' | 'source'>> 
   corruption: { key: 'corruption', label: '腐化', description: '腐化越高，越接近亚空间失控与高风险收益。', category: 'axis' },
   stable: { key: 'stable', label: '稳定', description: '当前轴线尚未明显偏向虔敬或腐化。', category: 'axis' },
   hp: { key: 'hp', label: '生命值', description: '单位当前可承受的伤害额度。', category: 'resource' },
-  block: { key: 'block', label: '格挡', description: '优先抵消即将受到的直接伤害。', category: 'resource' },
+  block: { key: 'block', label: '护盾', description: '优先抵消即将受到的直接伤害。', category: 'resource' },
   energy: { key: 'energy', label: '能量', description: '本回合打出牌张所需的核心资源。', category: 'resource' },
   intel: { key: 'intel', label: '情报', description: '情报资源，可用于触发侦缉与分析类额外效果。', category: 'resource' },
   vulnerable: { key: 'vulnerable', label: '易伤', description: '受到的攻击伤害提高。', category: 'status' },
   weak: { key: 'weak', label: '虚弱', description: '造成的攻击伤害降低。', category: 'status' }
   ,
-  enemy_target: { key: 'enemy_target', label: '单体异端', description: '需要手动指定一名敌对目标。', category: 'targeting' },
+  enemy_target: { key: 'enemy_target', label: '单体目标', description: '需要手动指定一名敌对目标。', category: 'targeting' },
   self_target: { key: 'self_target', label: '自身', description: '效果只作用于你当前控制的执行体。', category: 'targeting' },
-  all_enemies_target: { key: 'all_enemies_target', label: '全体异端', description: '效果会同时覆盖当前存活的全部敌对目标。', category: 'targeting' },
-  random_enemy_target: { key: 'random_enemy_target', label: '随机异端', description: '系统会在当前存活的敌人中随机选定一名目标。', category: 'targeting' }
+  all_enemies_target: { key: 'all_enemies_target', label: '全体目标', description: '效果会同时覆盖当前存活的全部敌对目标。', category: 'targeting' },
+  random_enemy_target: { key: 'random_enemy_target', label: '随机目标', description: '系统会在当前存活的敌人中随机选定一名目标。', category: 'targeting' }
 };
 
 function normalizeTerm(value: string): string {
@@ -274,8 +276,8 @@ function applyGenericCardTextLocalization(text: string): string {
   return text
     .replace(/^Deal (\d+) damage to ALL enemies\.$/i, '对全体异端造成 $1 点伤害。')
     .replace(/^Deal (\d+) damage\.$/i, '造成 $1 点伤害。')
-    .replace(/^Gain (\d+) block\.$/i, '获得 $1 点格挡。')
-    .replace(/^Gain (\d+) Block\.$/i, '获得 $1 点格挡。')
+    .replace(/^Gain (\d+) block\.$/i, '获得 $1 点护盾。')
+    .replace(/^Gain (\d+) Block\.$/i, '获得 $1 点护盾。')
     .replace(/^Draw (\d+) cards?\.$/i, '抽 $1 张牌。')
     .replace(/^Discard (\d+) cards?\.$/i, '弃掉 $1 张牌。')
     .replace(/^Gain (\d+) Intel\.$/i, '获得 $1 点情报。')
@@ -290,12 +292,12 @@ function applyGenericCardTextLocalization(text: string): string {
     .replace(/^Deal (\d+) damage\. Apply (\d+) Vulnerable\.$/i, '造成 $1 点伤害。施加 $2 层易伤。')
     .replace(/^Gain (\d+) Intel\. Draw (\d+) cards\.$/i, '获得 $1 点情报。抽 $2 张牌。')
     .replace(/^Draw (\d+) cards\. Discard (\d+) card\.$/i, '抽 $1 张牌。弃掉 $2 张牌。')
-    .replace(/^Deal damage equal to your Block\.$/i, '造成等同于你当前格挡值的伤害。')
+    .replace(/^Deal damage equal to your Block\.$/i, '造成等同于你当前护盾值的伤害。')
     .replace(/^Delay (\d+): Deal (\d+) damage\.$/i, '延迟 $1 回合：造成 $2 点伤害。')
     .replace(/^Trigger a delayed card immediately\.$/i, '立刻引爆一张延迟牌。')
     .replace(/^Draw (\d+) cards\. The next Attack you play this turn costs (\d+) less\.$/i, '抽 $1 张牌。你本回合打出的下一张攻击牌费用减少 $2。')
     .replace(/^Gain (\d+) Energy\. Draw (\d+) cards\. Skip your next draw phase\.$/i, '获得 $1 点能量。抽 $2 张牌。跳过你的下一次抽牌阶段。')
-    .replace(/^At the start of your turn, if you have (\d+)\+ delayed cards, gain (\d+) Block\.$/i, '在你的回合开始时，若你有至少 $1 张延迟牌，则获得 $2 点格挡。')
+    .replace(/^At the start of your turn, if you have (\d+)\+ delayed cards, gain (\d+) Block\.$/i, '在你的回合开始时，若你有至少 $1 张延迟牌，则获得 $2 点护盾。')
     .replace(/^Restore all HP lost last turn\.$/i, '恢复你上一回合失去的全部生命值。')
     .replace(/^Deal (\d+) damage\. Delay (\d+): Deal (\d+) damage\.$/i, '造成 $1 点伤害。延迟 $2 回合：再造成 $3 点伤害。')
     .replace(/^Deal (\d+) damage to ALL enemies\. Deals (\d+) more damage for each delayed card\.$/i, '对全体异端造成 $1 点伤害。每有一张延迟牌，额外造成 $2 点伤害。')

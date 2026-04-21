@@ -5,10 +5,10 @@ import type { RenderModel } from '@/runtimeV2';
 import { CardView } from '@/ui/views/CardView';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
-import worldLoreData from '@/content/data/worldLore.json';
 import type { RunCardInstance, ActionSpec } from '@/core/types/actions';
 import { GlossaryText } from '@/ui/components/GlossaryText';
 import { getCardNameZh, getUiLabelZh } from '@/ui/content/terminology';
+import { uiWorldLore } from '@/ui/content/worldLore';
 
 interface WorldLore {
   viewAtmosphere?: {
@@ -21,11 +21,11 @@ interface WorldLore {
 
 function getCardDirectionTags(card: RunCardInstance): string[] {
   const tags: string[] = [];
-  
+
   if (card.type === 'Attack') {
     tags.push('输出');
   }
-  
+
   if (card.type === 'Skill') {
     const actions = card.actions || [];
     if (actions.some((a: ActionSpec) => a.type === 'GainBlock')) {
@@ -38,34 +38,36 @@ function getCardDirectionTags(card: RunCardInstance): string[] {
       tags.push('控制');
     }
   }
-  
+
   if (card.type === 'Power') {
     tags.push('构筑转折');
   }
-  
+
   if (card.rarity === 'Rare') {
     if (!tags.includes('构筑转折')) {
       tags.push('构筑转折');
     }
   }
-  
+
   if (tags.length === 0) {
     tags.push('通用');
   }
-  
+
   return tags.slice(0, 2);
 }
 
 export function RewardView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
-  const WORLD_LORE = worldLoreData as WorldLore;
+  const WORLD_LORE = uiWorldLore as WorldLore;
   const cards = engine.state.rewardCards.slice(0, 3);
   const rewardOfferCount = renderModel?.room?.kind === 'reward' ? (renderModel.room.offerCount ?? cards.length) : (renderModel?.reward?.offerCount ?? cards.length);
-  const [backgroundIndex] = useState(() => systemRandomInt(VIEW_BACKGROUNDS.reward.length));
-  const backgroundSrc = VIEW_BACKGROUNDS.reward[backgroundIndex].desktop;
+  const [backgroundIndex] = useState(() =>
+    VIEW_BACKGROUNDS.reward.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.reward.length) : 0
+  );
+  const backgroundSrc = VIEW_BACKGROUNDS.reward[backgroundIndex]?.desktop || '';
 
   return (
-    <BackgroundImage 
-      src={backgroundSrc} 
+    <BackgroundImage
+      src={backgroundSrc}
       className="campaign-shell reward-view flex h-full flex-col items-center justify-center overflow-y-auto px-4 py-8 text-slate-200 md:px-8"
       overlayOpacity={0.68}
     >
@@ -130,7 +132,7 @@ export function RewardView({ engine, renderModel }: { engine: GameEngine; render
                   <div className="campaign-kicker w-full text-center">{getUiLabelZh('Option')} {index + 1}</div>
                   <div className="flex flex-wrap justify-center gap-1">
                     {directionTags.map((tag, i) => (
-                      <span 
+                      <span
                         key={i}
                         className={`px-2 py-0.5 text-xs font-bold rounded border ${
                           tag === '生存' ? 'bg-green-900/60 border-green-500/50 text-green-300' :
@@ -145,8 +147,8 @@ export function RewardView({ engine, renderModel }: { engine: GameEngine; render
                       </span>
                     ))}
                   </div>
-                  <CardView 
-                    card={card} 
+                  <CardView
+                    card={card}
                     size="compact"
                     onClick={() => engine.pickRewardCard(card.instanceId)}
                     rootProps={{
@@ -167,7 +169,7 @@ export function RewardView({ engine, renderModel }: { engine: GameEngine; render
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, delay: 0.22, ease: 'easeOut' }}
         >
-          <button 
+          <button
             onClick={() => engine.skipReward()}
             className="campaign-action px-8 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-stone-100"
             data-keyboard-option="4"

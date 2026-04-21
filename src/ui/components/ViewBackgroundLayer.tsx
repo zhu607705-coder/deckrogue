@@ -12,6 +12,7 @@ export type ScreenId =
   | 'Shop'
   | 'Rest'
   | 'Upgrade'
+  | 'RelicUpgrade'
   | 'RemoveCard'
   | 'Enchant'
   | 'GameOver'

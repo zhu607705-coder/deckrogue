@@ -1,6 +1,7 @@
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import type { RouteState, RunCardInstance } from '@/core/types';
 import {
+  getCardRouteAffinity,
   getCardRouteSignal,
   getKnownRouteTagsForCharacter,
   getPreferredRouteTagFromState,
@@ -49,6 +50,10 @@ const CARD_ROLE_WEIGHT: Record<string, number> = {
   generic_fallback: 0,
 };
 
+function cardMatchesPreferredRoute(card: RunCardInstance, preferredRouteTag: string): boolean {
+  return !!getCardRouteAffinity(card)?.routeTags.includes(preferredRouteTag);
+}
+
 function makeRouteHint(
   action: RestActionId,
   routeTag: string,
@@ -82,8 +87,8 @@ export function buildRestRouteAdvice(input: RestRouteAdvisorInput): RestRouteAdv
     );
     const topUpgradeCard = upgradableCards[0];
     const topUpgradeSignal = topUpgradeCard ? getCardRouteSignal(topUpgradeCard) : null;
-    if (topUpgradeSignal?.routeTags.includes(preferredRouteTag)) {
-      const roleWeight = CARD_ROLE_WEIGHT[topUpgradeSignal.earlyGameRole] ?? 0;
+    if ((topUpgradeSignal?.routeTags.includes(preferredRouteTag)) || (topUpgradeCard && cardMatchesPreferredRoute(topUpgradeCard, preferredRouteTag))) {
+      const roleWeight = CARD_ROLE_WEIGHT[topUpgradeSignal?.earlyGameRole ?? 'generic_fallback'] ?? 0;
       actionHints.upgrade = makeRouteHint('upgrade', preferredRouteTag, 40 + roleWeight, '优先强化当前路线的关键牌');
     }
   }
@@ -100,8 +105,8 @@ export function buildRestRouteAdvice(input: RestRouteAdvisorInput): RestRouteAdv
     );
     const topEnchantCard = enchantableCards[0];
     const topEnchantSignal = topEnchantCard ? getCardRouteSignal(topEnchantCard) : null;
-    if (topEnchantSignal?.routeTags.includes(preferredRouteTag)) {
-      const roleWeight = CARD_ROLE_WEIGHT[topEnchantSignal.earlyGameRole] ?? 0;
+    if ((topEnchantSignal?.routeTags.includes(preferredRouteTag)) || (topEnchantCard && cardMatchesPreferredRoute(topEnchantCard, preferredRouteTag))) {
+      const roleWeight = CARD_ROLE_WEIGHT[topEnchantSignal?.earlyGameRole ?? 'generic_fallback'] ?? 0;
       actionHints.enchant = makeRouteHint('enchant', preferredRouteTag, 30 + roleWeight, '优先给当前路线牌追加局内强化');
     }
   }

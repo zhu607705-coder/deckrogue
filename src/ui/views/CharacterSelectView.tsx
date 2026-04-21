@@ -8,13 +8,13 @@ import {
   loadMetaProfile,
   saveMetaProfile
 } from '@/core';
-import charactersData from '@/content/data/characters.json';
 import { Heart, Zap, Play, BookOpen, Trophy, Sparkles, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Shield } from 'lucide-react';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { getAchievementDefById, getAchievementTotalCount, getAchievementUnlockedCount } from '@/features/achievements/achievementSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { uiCharacters } from '@/ui/content/characters';
 
 const CodexOverlay = lazy(async () => import('../overlays/CodexOverlay').then((m) => ({ default: m.CodexOverlay })));
 const AchievementOverlay = lazy(async () => import('../overlays/AchievementOverlay').then((m) => ({ default: m.AchievementOverlay })));
@@ -95,8 +95,8 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
   };
 
   return (
-    <BackgroundImage 
-      src={backgroundSrc} 
+    <BackgroundImage
+      src={backgroundSrc}
       className="campaign-shell h-full text-slate-200"
       overlayOpacity={0.55}
     >
@@ -242,31 +242,32 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
         </div>
       </div>
       )}
-      
-      <div className="campaign-rail w-full pt-8">
+
+      <div className="campaign-rail w-full pt-5">
       <div className="w-full mb-4">
         <div className="campaign-kicker">{getUiLabelZh('Operative Lineup')}</div>
         <h2 className="campaign-title mt-3 text-2xl md:text-3xl text-stone-100">执行体档案墙</h2>
       </div>
-      <div className="w-full max-w-6xl flex flex-wrap justify-center gap-6 lg:gap-8">
-        {charactersData.map((char, index) => {
+      <div className="w-full max-w-6xl flex flex-wrap justify-center gap-3 lg:gap-3">
+        {uiCharacters.map((char, index) => {
           const isSelected = engine.state.character?.id === char.id;
           const charUnlockedLv = ascensionUnlockedByChar[char.id] || 0;
           return (
-            <div 
+            <div
               key={char.id}
               onClick={() => engine.selectCharacter(char.id)}
-              className={`campaign-choice w-full max-w-[18rem] md:w-[17rem] p-6 flex flex-col items-center cursor-pointer shadow-xl backdrop-blur-sm
+              className={`campaign-choice w-full max-w-[10.75rem] md:w-[10.75rem] p-4 flex flex-col items-center cursor-pointer shadow-xl backdrop-blur-sm
                 ${isSelected ? 'is-selected scale-[1.02]' : 'border-slate-700'}
               `}
               role="button"
               tabIndex={0}
               data-keyboard-option={String(index + 1)}
               data-keyboard-focus="true"
+              data-character-id={char.id}
             >
-              <div className="w-24 h-24 bg-slate-800 rounded-full mb-4 flex items-center justify-center border border-slate-600 overflow-hidden">
-                <img 
-                  src={`/assets/characters/${char.id}.png`} 
+              <div className="w-16 h-16 bg-slate-800 rounded-full mb-2.5 flex items-center justify-center border border-slate-600 overflow-hidden">
+                <img
+                  src={`/assets/characters/${char.id}.png`}
                   alt={char.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -274,15 +275,15 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
                   }}
                 />
               </div>
-              <h2 className="text-xl font-bold mb-2">{char.name}</h2>
-              <div className="flex gap-4 mb-2 text-sm">
-                <span className="flex items-center gap-1 text-red-400"><Heart size={16}/> {char.maxHp}</span>
-                <span className="flex items-center gap-1 text-yellow-400"><Zap size={16}/> {char.maxEnergy}</span>
+              <h2 className="text-base font-bold mb-1.5 text-center leading-tight">{char.name}</h2>
+              <div className="flex gap-3 mb-1.5 text-xs">
+                <span className="flex items-center gap-1 text-red-400"><Heart size={14}/> {char.maxHp}</span>
+                <span className="flex items-center gap-1 text-yellow-400"><Zap size={14}/> {char.maxEnergy}</span>
               </div>
-              <div className="text-xs text-sky-300 bg-slate-800/80 px-2 py-1 rounded-lg border border-sky-700/40">
+              <div className="text-[11px] text-sky-300 bg-slate-800/80 px-2 py-1 rounded-lg border border-sky-700/40">
                 已解锁: Lv{charUnlockedLv}
               </div>
-              <p className="text-sm text-slate-400 text-center mt-2">
+              <p className="mt-2 text-[11px] leading-5 text-slate-400 text-center">
                 {char.description}
               </p>
             </div>
@@ -293,7 +294,7 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
 
       {engine.state.character && (
         <div className="mt-10 mb-6">
-          <button 
+          <button
             onClick={() => engine.startGame()}
             className="campaign-action flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-8 py-3 font-bold text-white transition-colors shadow-lg shadow-emerald-900/50"
             data-keyboard-option="9"

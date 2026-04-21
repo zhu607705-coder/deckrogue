@@ -78,46 +78,46 @@ export function CombatHUD({
     <div className="combat-hud grimdark-hud">
       <div className="scanline-bar" />
       <div className="ambient-layer ambient-combat" aria-hidden="true" />
-      
+
       <div className="combat-hud__left">
-        <button 
+        <button
           onClick={() => setShowDeck(true)}
           className="combat-hud__deckBtn grimdark-btn"
         >
-          <Layers size={16} /> 
+          <Layers size={16} />
           <span className="grimdark-text">{terms.game.deck.name}</span>
           <span className="grimdark-counter">({engine.state.player.deck.length})</span>
         </button>
-        
+
         <div className="combat-hud__resourceBands">
           <div className={`combat-hud__resourceBand ${tutorialHighlightActive ? 'combat-hud__resourceBand--guided' : ''}`}>
             <div className="combat-hud__bandLabel">本回合决策</div>
             <div className="combat-hud__resources grimdark-resources">
           <div className="combat-hud__pill grimdark-pill grimdark-pill--hp is-hp" title={terms.resources.hp.description}>
-            <Heart size={14} className="grimdark-icon grimdark-icon--blood"/> 
+            <Heart size={14} className="grimdark-icon grimdark-icon--blood"/>
             <span className="grimdark-label">{terms.resources.hp.name}</span>
             <span key={`hudhp-${playerHpNow}-${playerMaxHpNow}`} className="grimdark-value">
               {playerHpNow}/{playerMaxHpNow}
             </span>
           </div>
-          
+
           <div className="combat-hud__pill grimdark-pill grimdark-pill--block is-block" title={terms.resources.block.description}>
             <Shield size={14} className="grimdark-icon grimdark-icon--brass"/>
             <span className="grimdark-label">{terms.resources.block.name}</span>
             <span className="grimdark-value grimdark-value--brass">{player.block}</span>
           </div>
-          
+
           <div className="combat-hud__pill grimdark-pill grimdark-pill--energy is-energy" title={terms.resources.energy.description}>
             <Zap size={14} className="grimdark-icon grimdark-icon--energy"/>
             <span className="grimdark-label">{terms.resources.energy.name}</span>
             <span className="grimdark-value grimdark-value--energy">{player.energy}/{engine.state.player.maxEnergy}</span>
           </div>
-          
+
           <div className="combat-hud__pill grimdark-pill grimdark-pill--intel is-intel" title={terms.resources.intel.description}>
             <Eye size={14} className="grimdark-icon grimdark-icon--warp"/>
             <span className="grimdark-label">{terms.resources.intel.name}</span>
             <span className={`grimdark-value ${intelNow > 0 ? 'grimdark-value--active' : 'grimdark-value--dim'}`}>
-              {intelNow} {intelNow > 0 ? '已连接' : '盲视'}
+              {intelNow} {intelNow > 0 ? '情报就绪' : '无情报'}
             </span>
           </div>
 
@@ -139,9 +139,9 @@ export function CombatHUD({
             <span className="grimdark-label">{terms.resources.relics.name}</span>
             <span className="grimdark-value grimdark-value--gold">{relicIds.length}</span>
           </div>
-          
-          <div 
-            className={`combat-hud__pill grimdark-pill grimdark-pill--corruption is-corruption ${engine.state.player.corruption > 0 ? 'grimdark-pill--active is-active' : ''}`} 
+
+          <div
+            className={`combat-hud__pill grimdark-pill grimdark-pill--corruption is-corruption ${engine.state.player.corruption > 0 ? 'grimdark-pill--active is-active' : ''}`}
             title={terms.resources.corruption.description}
           >
             <Skull size={14} className="grimdark-icon grimdark-icon--corruption"/>
@@ -151,9 +151,9 @@ export function CombatHUD({
               {engine.state.player.corruption > 0 ? ` +${corruptionDmgBonusPct}%` : ''}
             </span>
           </div>
-          
-          <div 
-            className={`combat-hud__pill grimdark-pill grimdark-pill--resonance is-resonance ${resonancePeak >= 2 ? 'grimdark-pill--active is-active' : ''}`} 
+
+          <div
+            className={`combat-hud__pill grimdark-pill grimdark-pill--resonance is-resonance ${resonancePeak >= 2 ? 'grimdark-pill--active is-active' : ''}`}
             title="圣遗物共鸣群组 (2+ 同组激活)"
           >
             <Activity size={14} className="grimdark-icon grimdark-icon--warp"/>
@@ -162,15 +162,15 @@ export function CombatHUD({
               {resonancePeak || 0}{resonanceActive > 0 ? ` · ${resonanceActive}组` : ''}
             </span>
           </div>
-          
+
           <div className="combat-hud__pill grimdark-pill grimdark-pill--potions is-potions" title="炼金剂栏位">
             <FlaskConical size={14} className="grimdark-icon grimdark-icon--toxic"/>
             <span className="grimdark-label">炼金剂</span>
             <span className="grimdark-value grimdark-value--toxic">{potionCountNow}/{potionRuntime.slotLimit}</span>
           </div>
-          
-          <div 
-            className={`combat-hud__pill grimdark-pill grimdark-pill--toxicity is-toxicity ${(player.potionToxicity || 0) > potionRuntime.toxicityOverloadThreshold ? 'grimdark-pill--overload is-overload' : ''}`} 
+
+          <div
+            className={`combat-hud__pill grimdark-pill grimdark-pill--toxicity is-toxicity ${(player.potionToxicity || 0) > potionRuntime.toxicityOverloadThreshold ? 'grimdark-pill--overload is-overload' : ''}`}
             title={`${terms.resources.toxicity.description} / 超载阈值 ${potionRuntime.toxicityOverloadThreshold}`}
           >
             <FlaskConical size={14} className="grimdark-icon grimdark-icon--toxic"/>
@@ -179,7 +179,7 @@ export function CombatHUD({
               {player.potionToxicity || 0}/{potionRuntime.toxicityOverloadThreshold}
             </span>
           </div>
-          
+
           {(state.warpRiftTurns || 0) > 0 && (
             <div
               className="combat-hud__pill grimdark-pill grimdark-pill--rift grimdark-pill--pulse is-rift"
@@ -193,7 +193,7 @@ export function CombatHUD({
             </div>
           </div>
         </div>
-        
+
         {/* 炼金剂栏 */}
         <div className="combat-hud__potions grimdark-potions">
           <div className="combat-hud__potionsLabel grimdark-section-label">
@@ -207,8 +207,8 @@ export function CombatHUD({
               ? potionDef.toxicity
               : (potionDef.effect?.type === 'GainEnergy' ? 2 : potionDef.effect?.type === 'Heal' ? 1 : 1)) : 0;
             return (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={`combat-hud__potionSlot grimdark-potion-slot ${potionDef ? 'grimdark-potion-slot--filled' : 'grimdark-potion-slot--empty'}`}
                 title={potionDef ? `${potionDef.name}: ${potionDef.description} (毒性 +${tox})` : '空置炼金剂槽'}
                 onClick={() => potionDef && engine.usePotion(i)}
@@ -228,7 +228,7 @@ export function CombatHUD({
             );
           })}
         </div>
-        
+
         {/* 圣遗物栏 */}
         {equippedRelics.length > 0 && (
           <div className="flex flex-col items-end gap-1 grimdark-relics-section">
@@ -254,7 +254,7 @@ export function CombatHUD({
           </div>
         )}
       </div>
-      
+
       {/* 回合指示器 */}
       <div className={`combat-hud__turn grimdark-turn ${state.isPlayerTurn ? 'grimdark-turn--player' : 'grimdark-turn--enemy'}`}>
         <span className="combat-hud__turnLabel grimdark-turn-label">

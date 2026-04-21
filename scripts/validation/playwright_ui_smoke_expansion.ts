@@ -2,14 +2,13 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { setTimeout as delay } from 'node:timers/promises';
 import { chromium, type BrowserContext, type Page } from 'playwright';
 import { GameEngine, createDefaultMetaProfile } from '@/core';
-
-const require = createRequire(import.meta.url);
-const viteCli = path.join(path.dirname(require.resolve('vite/package.json')), 'bin', 'vite.js');
+import { createRoomSessionForNode, setRoomSession, syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
+import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
+import { syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
+import type { RoomOwnerKind } from '@/core/types';
+import { checkServer, getDefaultSmokeUrl, spawnDevServer, waitForServer } from './flow_smoke_helpers';
 
 interface UiAuditIssue {
   selector: string;
@@ -57,7 +56,7 @@ interface SaveSlotFixture {
 function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
-    url: 'http://127.0.0.1:3000',
+    url: getDefaultSmokeUrl(),
     headed: false
   };
   for (const arg of args) {
@@ -67,36 +66,6 @@ function parseArgs() {
   return options;
 }
 
-function checkServer(url: string): boolean {
-  try {
-    execSync(`curl -s --max-time 2 ${url} > /dev/null 2>&1`, { stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForServer(url: string) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    if (checkServer(url)) {
-      return;
-    }
-    await delay(500);
-  }
-  throw new Error(`UI smoke expansion dev server did not become ready at ${url}`);
-}
-
-function spawnDevServer(url: string): ChildProcess {
-  return spawn(process.execPath, [viteCli, '--port=3000', '--host=127.0.0.1'], {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      VITE_DEV_SERVER_URL: url,
-    },
-  });
-}
-
 async function ensureVisible(locatorCount: Promise<number>, label: string) {
   const count = await locatorCount;
   if (count <= 0) {
@@ -104,15 +73,18 @@ async function ensureVisible(locatorCount: Promise<number>, label: string) {
   }
 }
 
-async function clickCharacterCard(page: Page, characterName: string) {
-  const card = page.locator('div.cursor-pointer').filter({
-    has: page.getByRole('heading', { name: characterName })
-  }).first();
+async function clickCharacterCard(page: Page, characterId: string) {
+  const card = page.locator(`[data-character-id="${characterId}"]`).first();
   await card.scrollIntoViewIfNeeded();
   await card.click({ force: true });
 }
 
 async function auditView(page: Page, label: string, screenshotName: string, layoutSelectors: string[]): Promise<ViewAudit> {
+  await page.evaluate(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+  });
   const screenshotPath = path.join(process.cwd(), 'output', 'playwright', screenshotName);
   await page.screenshot({ path: screenshotPath, fullPage: true });
   const auditScript = new Function('selectors', `
@@ -203,6 +175,47 @@ function buildSaveData(engine: GameEngine, slotId: string, name: string): SaveSl
   };
 }
 
+function inferFixtureRoomOwnerKind(nodeType: string): RoomOwnerKind {
+  switch (nodeType) {
+    case 'Event':
+      return 'event';
+    case 'Shop':
+      return 'shop';
+    case 'Rest':
+      return 'rest';
+    default:
+      return 'combat';
+  }
+}
+
+function primeCurrentRoomSession(engine: GameEngine, token?: string): void {
+  const currentNode = engine.state.currentNodeId
+    ? engine.state.map.find((node) => node.id === engine.state.currentNodeId)
+    : null;
+  if (!currentNode || !engine.state.currentNodeId) {
+    return;
+  }
+
+  setRoomSession(
+    engine.state,
+    createRoomSessionForNode({
+      token: token ?? `fixture_room_${currentNode.id}`,
+      nodeId: currentNode.id,
+      ownerKind: inferFixtureRoomOwnerKind(currentNode.type),
+    })
+  );
+}
+
+function refreshFixtureRoomSession(engine: GameEngine): void {
+  setRoomSession(engine.state, null);
+  syncRoomSessionFromLegacyState(engine.state);
+  syncSurfaceContextFromLegacyState(engine.state);
+  syncRouteStateFromLegacyState(engine.state);
+  if (!engine.state.roomSession && engine.state.pendingNodeResolution) {
+    primeCurrentRoomSession(engine);
+  }
+}
+
 function createEngineAtFirstRoom(seed: number): GameEngine {
   const engine = new GameEngine(seed, createDefaultMetaProfile(), { enableRuntimeDelegation: false });
   engine.selectCharacter('informant');
@@ -213,6 +226,9 @@ function createEngineAtFirstRoom(seed: number): GameEngine {
   firstNode.revealed = true;
   engine.state.currentNodeId = firstNode.id;
   engine.state.pendingNodeResolution = true;
+  primeCurrentRoomSession(engine, `fixture_room_${firstNode.id}`);
+  syncRouteStateFromLegacyState(engine.state);
+  syncSurfaceContextFromLegacyState(engine.state);
   return engine;
 }
 
@@ -229,18 +245,28 @@ function createExpansionSaveFixtures(): SaveSlotFixture[] {
   (combatEngine as any).startCombat('Combat');
 
   const rewardEngine = createEngineAtFirstRoom(4102);
+  const rewardNode = rewardEngine.state.currentNodeId
+    ? rewardEngine.state.map.find((node) => node.id === rewardEngine.state.currentNodeId)
+    : null;
+  if (rewardNode) {
+    rewardNode.type = 'Combat';
+  }
   rewardEngine.state.rewardCards = (rewardEngine as any).generateCardRewards(3);
   rewardEngine.state.screen = 'Reward';
+  refreshFixtureRoomSession(rewardEngine);
 
   const shopEngine = createEngineAtFirstRoom(4103);
   (shopEngine as any).enterShop();
+  refreshFixtureRoomSession(shopEngine);
 
   const eventEngine = createEngineAtFirstRoom(4104);
   (eventEngine as any).startEvent();
+  refreshFixtureRoomSession(eventEngine);
 
   const upgradeEngine = createEngineAtFirstRoom(4105);
   (upgradeEngine as any).enterShop();
   upgradeEngine.enterUpgrade('Shop');
+  refreshFixtureRoomSession(upgradeEngine);
 
   const victoryEngine = createEngineAtFirstRoom(4106);
   victoryEngine.state.player.gold = 133;
@@ -251,6 +277,7 @@ function createExpansionSaveFixtures(): SaveSlotFixture[] {
   victoryEngine.state.combat = null;
   victoryEngine.state.rewardCards = [];
   victoryEngine.state.pendingNodeResolution = false;
+  setRoomSession(victoryEngine.state, null);
 
   return [
     buildSaveData(mapEngine, 'ui_smoke_map', 'UI Smoke Map'),
@@ -311,9 +338,9 @@ async function enterFirstCombat(page: Page) {
   await page.locator('button[data-node-id]').first().waitFor({ timeout: 10_000 });
   const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
   if (await combatNode.count()) {
-    await combatNode.click();
+    await combatNode.click({ force: true });
   } else {
-    await page.locator('button[data-node-id]:not([disabled])').first().click();
+    await page.locator('button[data-node-id]:not([disabled])').first().click({ force: true });
   }
   await Promise.race([
     page.locator('.enemy-standee').first().waitFor({ timeout: 10_000 }),
@@ -355,7 +382,7 @@ async function main() {
   const options = parseArgs();
   const outputDir = path.join(process.cwd(), 'output', 'playwright');
   mkdirSync(outputDir, { recursive: true });
-  let devServer: ChildProcess | null = null;
+  let devServer: ReturnType<typeof spawnDevServer> | null = null;
 
   if (!checkServer(options.url)) {
     devServer = spawnDevServer(options.url);
@@ -397,25 +424,47 @@ async function main() {
   try {
     await page.goto(options.url, { waitUntil: 'networkidle' });
     await page.getByText('战区启动器').waitFor({ timeout: 10_000 });
-    audits.push(await auditView(page, 'launcher', 'expansion_launcher.png', ['button', 'section', 'img']));
+    audits.push(
+      await auditView(page, 'launcher', 'expansion_launcher.png', [
+        '.launcher-shell [data-keyboard-focus="true"]',
+        '.launcher-shell .launcher-panel',
+        '.launcher-shell img',
+      ])
+    );
 
     await page.getByRole('button', { name: /术语、资源与战斗流程/ }).click();
     await page.getByText('新手战区教程').waitFor({ timeout: 10_000 });
     await page.locator('text=术语索引').first().waitFor({ timeout: 10_000 });
-    audits.push(await auditView(page, 'tutorial', 'expansion_tutorial.png', ['button', 'section', '.glossary-term', 'img']));
+    audits.push(
+      await auditView(page, 'tutorial', 'expansion_tutorial.png', [
+        '[data-screen="Tutorial"] button',
+        '[data-screen="Tutorial"] section',
+        '[data-screen="Tutorial"] .glossary-term',
+        '[data-screen="Tutorial"] img',
+      ])
+    );
     tutorialChecked = true;
     await page.getByRole('button', { name: /返回当前界面|关闭教程/ }).first().click();
     await page.getByText('战区启动器').waitFor({ timeout: 10_000 });
-
     await page.setViewportSize({ width: 1024, height: 768 });
-    audits.push(await auditView(page, 'launcher_tablet', 'expansion_launcher_tablet.png', ['button', 'section', 'img']));
+    await page.waitForFunction(() => {
+      const shell = document.querySelector('.launcher-shell') as HTMLElement | null;
+      return !shell || (shell.scrollLeft === 0 && shell.scrollTop === 0);
+    }, { timeout: 2_000 });
+    audits.push(
+      await auditView(page, 'launcher_tablet', 'expansion_launcher_tablet.png', [
+        '.launcher-shell [data-keyboard-focus="true"]',
+        '.launcher-shell .launcher-panel',
+        '.launcher-shell img',
+      ])
+    );
     await page.setViewportSize({ width: 1440, height: 960 });
 
     await page.getByRole('button', { name: /开始新战区/i }).click();
     await page.getByText('选择你的执行体').waitFor({ timeout: 10_000 });
     audits.push(await auditView(page, 'character_select', 'expansion_character_select.png', ['img', 'button', '[class*="max-w-[18rem]"]']));
 
-    await clickCharacterCard(page, 'The Informant');
+    await clickCharacterCard(page, 'informant');
     await page.goto(options.url, { waitUntil: 'networkidle' });
     await page.getByText('战区启动器').waitFor({ timeout: 10_000 });
 

@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from 'react';
-import charactersData from '@/content/data/characters.json';
 import {
   CombatScene,
   createEngineHost,
@@ -16,6 +15,7 @@ import {
   RewardScene,
   RestScene,
   ShopScene,
+  SurfaceScene,
   type EngineHost,
   type RenderModel,
   type RuleCommand,
@@ -23,6 +23,7 @@ import {
   type RuntimeV2CharacterOption,
   type UnifiedEngineAdapter,
 } from '@/runtimeV2';
+import { uiCharacters } from '@/ui/content/characters';
 
 interface UnifiedRuntimeV2AdapterDeps {
   createRuleAdapter?: () => RuleRuntimeAdapter;
@@ -45,7 +46,7 @@ export async function bootUnifiedRuntimeV2Adapter(
 }
 
 export function buildUnifiedRuntimeV2Characters(): RuntimeV2CharacterOption[] {
-  return (charactersData as Array<Record<string, unknown>>).map((character) => ({
+  return (uiCharacters as Array<Record<string, unknown>>).map((character) => ({
     id: String(character.id),
     name: String(character.name ?? character.id),
     description: typeof character.description === 'string' ? character.description : '',
@@ -63,6 +64,19 @@ interface UnifiedRuntimeV2ScreenProps {
   adapter: Pick<UnifiedEngineAdapter, 'dispatch'>;
   characters?: RuntimeV2CharacterOption[];
   onRuntimeError?: (message: string) => void;
+}
+
+function isSurfaceScreen(
+  screen: RenderModel['screen'],
+): screen is Extract<RenderModel['screen'], 'Upgrade' | 'RemoveCard' | 'Enchant' | 'RelicUpgrade' | 'Victory' | 'GameOver'> {
+  return (
+    screen === 'Upgrade'
+    || screen === 'RemoveCard'
+    || screen === 'Enchant'
+    || screen === 'RelicUpgrade'
+    || screen === 'Victory'
+    || screen === 'GameOver'
+  );
 }
 
 export function UnifiedRuntimeV2Screen({
@@ -123,6 +137,8 @@ export function UnifiedRuntimeV2Screen({
         <RestScene
           scene={restScene}
           onRest={() => safeDispatch({ type: 'rest' })}
+          onEnterEnchant={() => safeDispatch({ type: 'enter_enchant' })}
+          onEnterRelicUpgrade={() => safeDispatch({ type: 'enter_relic_upgrade' })}
           onUpgrade={() => safeDispatch({ type: 'upgrade_card' })}
           onRemoveCard={() => safeDispatch({ type: 'remove_card' })}
           onLeave={() => safeDispatch({ type: 'leave_room' })}
@@ -139,7 +155,25 @@ export function UnifiedRuntimeV2Screen({
       {renderModel.screen === 'Shop' && shopScene && (
         <ShopScene
           scene={shopScene}
+          onBuyCard={(cardId) => safeDispatch({ type: 'buy_shop_card', cardId })}
+          onBuyRelic={(relicId) => safeDispatch({ type: 'buy_shop_relic', relicId })}
+          onBuyPotion={(potionId) => safeDispatch({ type: 'buy_shop_potion', potionId })}
+          onEnterEnchant={() => safeDispatch({ type: 'enter_enchant' })}
           onLeave={() => safeDispatch({ type: 'leave_room' })}
+          onRemoveCard={() => safeDispatch({ type: 'remove_card' })}
+        />
+      )}
+
+      {isSurfaceScreen(renderModel.screen) && (
+        <SurfaceScene
+          screen={renderModel.screen}
+          room={renderModel.room}
+          player={renderModel.player}
+          onApplyEnchantment={(cardToken) => safeDispatch({ type: 'apply_enchantment', cardInstanceId: cardToken })}
+          onUpgradeRelic={(relicId) => safeDispatch({ type: 'upgrade_relic', relicId })}
+          onUpgrade={(cardToken) => safeDispatch(cardToken ? { type: 'upgrade_card', cardInstanceId: cardToken } : { type: 'upgrade_card' })}
+          onRemoveCard={(cardToken) => safeDispatch(cardToken ? { type: 'remove_card', cardInstanceId: cardToken } : { type: 'remove_card' })}
+          onCancelSurface={() => safeDispatch({ type: 'cancel_surface' })}
         />
       )}
 
@@ -149,7 +183,13 @@ export function UnifiedRuntimeV2Screen({
         renderModel.screen !== 'Reward' &&
         renderModel.screen !== 'Rest' &&
         renderModel.screen !== 'Event' &&
-        renderModel.screen !== 'Shop' && (
+        renderModel.screen !== 'Shop' &&
+        renderModel.screen !== 'Upgrade' &&
+        renderModel.screen !== 'RemoveCard' &&
+        renderModel.screen !== 'Enchant' &&
+        renderModel.screen !== 'RelicUpgrade' &&
+        renderModel.screen !== 'Victory' &&
+        renderModel.screen !== 'GameOver' && (
           <UnifiedRuntimeV2GenericRoom
             title={roomTitle}
             body={roomBody}

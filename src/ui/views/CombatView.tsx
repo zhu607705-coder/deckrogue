@@ -1,22 +1,28 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Cog, Clock, Crown } from 'lucide-react';
+import StatusAnimation from '@/ui/animations/StatusAnimation';
 import { loadMetaProfile, type GameEngine } from '@/core';
 import type { CardDef } from '@/core';
 import { enemiesData } from '@/content/narrative/numericSystem';
-import battleBackgroundsData from '@/content/data/battleBackgrounds.json';
-import worldLoreData from '@/content/data/worldLore.json';
 import { BackgroundVisualMode, getCombatBackgroundTuning } from '@/ui/components/backgroundVisuals';
 import { VoxLogPanel } from '@/ui/components/VoxLogPanel';
 import { getCardTargetingZh } from '@/ui/content/terminology';
+import { uiBattleBackgrounds } from '@/ui/content/battleBackgrounds';
+import { uiWorldLore } from '@/ui/content/worldLore';
 import { GlossaryText } from '@/ui/components/GlossaryText';
 import { CombatHUD, WarpEye, Battlefield, ActionHand } from './combat';
 import { DeckModal, DrawPileModal, DiscardPileModal } from './combat/modals';
 import { useIntentMasquerade, useCardPreview, useCombatTelemetry } from '@/ui/hooks';
 import type { IntentDisplay } from '@/types';
 import { TutorialView } from '@/ui/views/TutorialView';
+import { ErrorBoundary } from '@/ui/components/ErrorBoundary';
 
-const WORLD_LORE = worldLoreData as Record<string, any>;
+interface WorldLoreData {
+  termGlossary?: Record<string, { zh: string; en?: string; description?: string }>;
+}
+
+const WORLD_LORE = uiWorldLore as unknown as WorldLoreData;
 const GLOSSARY = WORLD_LORE?.termGlossary || {};
 
 const cardBackThemes = {
@@ -129,9 +135,13 @@ export function CombatView({
   engine,
   backgroundVisualMode = 'balanced'
 }: CombatViewProps) {
-  const state = engine.state.combat!;
+  if (!engine || !engine.state.combat) {
+    return null;
+  }
+
+  const state = engine.state.combat;
   const player = state.player;
-  
+
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showDeck, setShowDeck] = useState(false);
   const [showDrawPile, setShowDrawPile] = useState(false);
@@ -149,7 +159,7 @@ export function CombatView({
     }
   });
   const [showTutorialOverlay, setShowTutorialOverlay] = useState(false);
-  
+
   const lastOverdriveMarkerRef = useRef<string>('');
   const previousConstructsRef = useRef<Array<{ name: string; hp: number; maxHp: number; atk: number }>>([]);
 
@@ -158,15 +168,15 @@ export function CombatView({
   const playerHpPct = player.maxHp > 0 ? Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100)) : 0;
   const intelNow = Math.max(0, engine.state.player.intel || 0);
   const hasIntelRead = intelNow > 0;
-  
+
   const playerPortrait = engine.state.player.portraitUrl || engine.loadCharacterPortrait();
   const playerName = engine.state.character?.name || 'Player';
   const shouldHighlightTutorial = showCombatGuide && state.isPlayerTurn && state.turn <= 2;
   const shouldCompactCombatGuide = shouldHighlightTutorial && player.cardsPlayedThisTurn > 0;
 
   const bgTuning = getCombatBackgroundTuning(backgroundVisualMode);
-  const battleBackgrounds = battleBackgroundsData as any;
-  
+  const battleBackgrounds = uiBattleBackgrounds as any;
+
   const enemyDefById = useMemo(
     () => new Map((enemiesData as any[]).map((def: any) => [def.id, def])),
     []
@@ -235,12 +245,20 @@ export function CombatView({
 
     setOverdriveFlash(true);
     setIsOverdriveShake(true);
-    setTimeout(() => setFrontlineWreckage({ label: wreckageLabel, timestamp: Date.now() }), 120);
-    setTimeout(() => setOverdriveFlash(false), 280);
-    setTimeout(() => setIsOverdriveShake(false), 700);
-    setTimeout(() => {
+
+    const timeout1 = setTimeout(() => setFrontlineWreckage({ label: wreckageLabel, timestamp: Date.now() }), 120);
+    const timeout2 = setTimeout(() => setOverdriveFlash(false), 280);
+    const timeout3 = setTimeout(() => setIsOverdriveShake(false), 700);
+    const timeout4 = setTimeout(() => {
       setFrontlineWreckage((curr) => (curr && Date.now() - curr.timestamp >= 900 ? null : curr));
     }, 1400);
+
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
+      clearTimeout(timeout4);
+    };
   }, [player.lastPlayedCard, player.cardsPlayedThisTurn, state.turn]);
 
   useEffect(() => {
@@ -293,12 +311,17 @@ export function CombatView({
     if (enemy.defId === 'cultist' || enemy.defId === 'intelligence_officer') return 'enemy-standee--void';
     if (enemy.defId === 'barrier') return 'enemy-standee--guard';
     if (enemy.defId.startsWith('symbiote')) return 'enemy-standee--void';
+    if (keywords.includes('goblin_family')) return 'enemy-standee--goblin';
+    if (keywords.includes('slime_family')) return 'enemy-standee--slime';
+    if (keywords.includes('worm_family')) return 'enemy-standee--worm';
+    if (keywords.includes('cultist_family')) return 'enemy-standee--void';
+    if (keywords.includes('barrier_family')) return 'enemy-standee--guard';
     if (keywords.includes('boss')) return 'enemy-standee--boss';
     if (keywords.includes('elite')) return 'enemy-standee--elite';
     return 'enemy-standee--guard';
   };
 
-  const renderEnemyStatuses = (statuses: Record<string, number>) => {
+  const renderEnemyStatuses = (statuses: Record<string, number>, _entityId?: string) => {
     const statusMeta: Record<string, { icon: string; color: string; type: 'buff' | 'debuff' | 'neutral'; priority: number; short: string; title: string }> = {
       Vulnerable: { icon: '💀', color: '#c084fc', type: 'debuff', priority: 1, short: '易伤', title: '易伤' },
       Weak: { icon: '🌀', color: '#60a5fa', type: 'debuff', priority: 2, short: '虚弱', title: '虚弱' },
@@ -306,7 +329,7 @@ export function CombatView({
       Poison: { icon: '☣', color: '#4ade80', type: 'debuff', priority: 3, short: '中毒', title: '中毒' },
       Stealth: { icon: '👁', color: '#cbd5e1', type: 'neutral', priority: 5, short: '潜行', title: '潜行' },
       Burn: { icon: '🔥', color: '#fb923c', type: 'debuff', priority: 4, short: '灼烧', title: '灼烧' },
-      BlockBlocked: { icon: '⛓', color: '#fca5a5', type: 'debuff', priority: 5, short: '锁盾', title: '格挡封锁' },
+      BlockBlocked: { icon: '⛓', color: '#fca5a5', type: 'debuff', priority: 5, short: '锁盾', title: '护盾封锁' },
       Fear: { icon: '😱', color: '#f59e0b', type: 'debuff', priority: 6, short: '恐惧', title: '恐惧' },
       HexWard: { icon: '✡', color: '#93c5fd', type: 'buff', priority: 2, short: '护咒', title: '护咒' },
       MartyrsVigor: { icon: '✝', color: '#fbbf24', type: 'buff', priority: 3, short: '圣烈', title: '殉道之烈' },
@@ -320,69 +343,44 @@ export function CombatView({
     const debuffs = active.filter(([status]) => statusMeta[status]?.type === 'debuff').sort((a, b) => (statusMeta[a[0]]?.priority || 99) - (statusMeta[b[0]]?.priority || 99));
     const neutrals = active.filter(([status]) => statusMeta[status]?.type === 'neutral' || !statusMeta[status]);
 
+    const renderStatusIcon = (status: string, amount: number, type: 'buff' | 'debuff' | 'neutral') => {
+      const meta = statusMeta[status] || { icon: '✧', color: type === 'buff' ? '#22c55e' : type === 'debuff' ? '#ef4444' : '#94a3b8', type: 'neutral' as const, priority: 99, short: status, title: status };
+      const borderColor = type === 'buff' ? '#22c55e' : type === 'debuff' ? '#ef4444' : '#94a3b8';
+
+      return (
+        <StatusAnimation key={status}>
+          <div
+            className={`enemy-standee__statusIcon enemy-standee__statusIcon--${type}`}
+            title={`${meta.title} · ${type === 'buff' ? '增益' : type === 'debuff' ? '减益' : '状态'} · ${amount}`}
+            aria-label={`${meta.title} ${type === 'buff' ? '增益' : type === 'debuff' ? '减益' : '状态'} ${amount}`}
+            style={{ color: meta.color, borderColor }}
+          >
+            <span>{meta.icon}</span>
+            <span className="enemy-standee__statusStack">{amount}</span>
+            <span className="enemy-standee__statusLabel">{meta.short}</span>
+          </div>
+        </StatusAnimation>
+      );
+    };
+
     return (
       <div className="enemy-standee__statusContainer">
         {buffs.length > 0 && (
           <div className="enemy-standee__statusGroup enemy-standee__statusGroup--buff">
             <div className="enemy-standee__statusGroupLabel enemy-standee__statusGroupLabel--buff">增益</div>
-            {buffs.map(([status, amount]) => {
-              const meta = statusMeta[status] || { icon: '✧', color: '#22c55e', type: 'neutral' as const, priority: 99, short: status, title: status };
-              return (
-                <div
-                  key={status}
-                  className="enemy-standee__statusIcon enemy-standee__statusIcon--buff"
-                  title={`${meta.title} · 增益 · ${amount}`}
-                  aria-label={`${meta.title} 增益 ${amount}`}
-                  style={{ color: meta.color, borderColor: '#22c55e' }}
-                >
-                  <span>{meta.icon}</span>
-                  <span className="enemy-standee__statusStack">{amount}</span>
-                  <span className="enemy-standee__statusLabel">{meta.short}</span>
-                </div>
-              );
-            })}
+            {buffs.map(([status, amount]) => renderStatusIcon(status, amount, 'buff'))}
           </div>
         )}
         {debuffs.length > 0 && (
           <div className="enemy-standee__statusGroup enemy-standee__statusGroup--debuff">
             <div className="enemy-standee__statusGroupLabel enemy-standee__statusGroupLabel--debuff">减益</div>
-            {debuffs.map(([status, amount]) => {
-              const meta = statusMeta[status] || { icon: '✧', color: '#ef4444', type: 'neutral' as const, priority: 99, short: status, title: status };
-              return (
-                <div
-                  key={status}
-                  className="enemy-standee__statusIcon enemy-standee__statusIcon--debuff"
-                  title={`${meta.title} · 减益 · ${amount}`}
-                  aria-label={`${meta.title} 减益 ${amount}`}
-                  style={{ color: meta.color, borderColor: '#ef4444' }}
-                >
-                  <span>{meta.icon}</span>
-                  <span className="enemy-standee__statusStack">{amount}</span>
-                  <span className="enemy-standee__statusLabel">{meta.short}</span>
-                </div>
-              );
-            })}
+            {debuffs.map(([status, amount]) => renderStatusIcon(status, amount, 'debuff'))}
           </div>
         )}
         {neutrals.length > 0 && (
           <div className="enemy-standee__statusGroup enemy-standee__statusGroup--neutral">
             <div className="enemy-standee__statusGroupLabel enemy-standee__statusGroupLabel--neutral">状态</div>
-            {neutrals.map(([status, amount]) => {
-              const meta = statusMeta[status] || { icon: '✧', color: '#94a3b8', type: 'neutral' as const, priority: 99, short: status, title: status };
-              return (
-                <div
-                  key={status}
-                  className="enemy-standee__statusIcon enemy-standee__statusIcon--neutral"
-                  title={`${meta.title} · 状态 · ${amount}`}
-                  aria-label={`${meta.title} 状态 ${amount}`}
-                  style={{ color: meta.color, borderColor: '#94a3b8' }}
-                >
-                  <span>{meta.icon}</span>
-                  <span className="enemy-standee__statusStack">{amount}</span>
-                  <span className="enemy-standee__statusLabel">{meta.short}</span>
-                </div>
-              );
-            })}
+            {neutrals.map(([status, amount]) => renderStatusIcon(status, amount, 'neutral'))}
           </div>
         )}
       </div>
@@ -438,10 +436,11 @@ export function CombatView({
   };
 
   return (
-    <div
-      className={`campaign-shell flex flex-col h-full text-slate-200 p-4 relative combat-root warp-tier-${warpTier} ${isWarpBoiling ? 'is-warp-boiling' : ''} ${shouldHighlightTutorial ? 'combat-root--guide' : ''}`}
-      style={{ backgroundColor: '#07080b' }}
-    >
+    <ErrorBoundary>
+      <div
+        className={`campaign-shell flex flex-col h-full text-slate-200 p-4 relative combat-root warp-tier-${warpTier} ${isWarpBoiling ? 'is-warp-boiling' : ''} ${shouldHighlightTutorial ? 'combat-root--guide' : ''}`}
+        style={{ backgroundColor: '#07080b' }}
+      >
       {/* Background Layers */}
       <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none"
@@ -482,7 +481,7 @@ export function CombatView({
       />
       <div className={`absolute inset-0 ${bgTuning.blackVeil}`} />
       <div className={`absolute inset-0 pointer-events-none bg-gradient-to-b ${bgTuning.gradientVeil}`} />
-      
+
       {/* Overdrive Flash Effect */}
       <AnimatePresence>
         {overdriveFlash && (
@@ -531,7 +530,7 @@ export function CombatView({
               <div className="combat-guide-panel__kicker">首战术语联动</div>
               <h3 className="combat-guide-panel__title">先看资源、敌方意图，再读手牌正文</h3>
               <div className="combat-guide-panel__copy">
-                <GlossaryText text="优先确认上方[生命值]、[格挡]、[能量]与职业资源，再看敌方动作风险，最后决定哪张牌最值得打出。遇到陌生词条时，可以直接打开术语教程继续查阅。" />
+                <GlossaryText text="优先确认上方[生命值]、[护盾]、[能量]与职业资源，再看敌方动作风险，最后决定哪张牌最值得打出。遇到陌生词条时，可以直接打开术语教程继续查阅。" />
               </div>
               <div className="combat-guide-panel__actions">
                 <button
@@ -631,14 +630,15 @@ export function CombatView({
         {/* Vox Log Panel */}
         <VoxLogPanel logLines={engine.state.combatVoxLog || []} maxVisibleLines={6} />
 
-        <TutorialView
-          open={showTutorialOverlay}
-          onClose={() => {
-            setShowTutorialOverlay(false);
-            setShowCombatGuide(false);
-          }}
-        />
-      </motion.div>
-    </div>
+          <TutorialView
+            open={showTutorialOverlay}
+            onClose={() => {
+              setShowTutorialOverlay(false);
+              setShowCombatGuide(false);
+            }}
+          />
+        </motion.div>
+      </div>
+    </ErrorBoundary>
   );
 }

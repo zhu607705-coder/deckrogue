@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { ResourcePreloader, preloadRouteAssets } from '@/ui/components/ResourcePreloader';
 import { computeRunSummary, GameEngine, gameSetup, globalEventBus, loadMetaProfile } from '@/core';
 import { createLegacyRenderModel, type RenderModel } from '@/runtimeV2';
 import { BACKGROUND_VISUAL_MODE_OPTIONS, BackgroundVisualMode } from '@/ui/components/backgroundVisuals';
@@ -6,9 +7,9 @@ import { ThemeProvider, useTheme } from '@/ui/theme/ThemeContext';
 import { GlobalFilterOverlay } from '@/ui/overlays/GlobalFilterOverlay';
 import { ViewBackgroundLayer, type ScreenId } from '@/ui/components/ViewBackgroundLayer';
 import { SetupLauncher } from '@/ui/launcher/SetupLauncher';
-import { Sun, Moon, Eye, Layers, Zap, Skull } from 'lucide-react';
-import worldLoreData from '@/content/data/worldLore.json';
+import { Eye, Layers, Zap, Skull, Sun, Moon } from 'lucide-react';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { uiWorldLore } from '@/ui/content/worldLore';
 import {
   buildEffectiveKeybinds,
   DEFAULT_KEYBINDS,
@@ -20,7 +21,7 @@ import {
 } from '@/ui/input';
 
 const BG_VISUAL_MODE_KEY = 'deckrogue_bg_visual_mode';
-const WORLD_LORE = worldLoreData as any;
+const WORLD_LORE = uiWorldLore as any;
 const KEYBIND_LABELS: Record<KeyboardActionId, string> = {
   toggleMenu: '打开菜单',
   back: '返回 / 关闭上一级',
@@ -68,6 +69,7 @@ const ShopView = lazy(async () => import('@/ui/views/ShopView').then((m) => ({ d
 const RestView = lazy(async () => import('@/ui/views/RestView').then((m) => ({ default: m.RestView })));
 const EventView = lazy(async () => import('@/ui/views/EventView').then((m) => ({ default: m.EventView })));
 const UpgradeView = lazy(async () => import('@/ui/views/UpgradeView').then((m) => ({ default: m.UpgradeView })));
+const RelicUpgradeView = lazy(async () => import('@/ui/views/RelicUpgradeView').then((m) => ({ default: m.RelicUpgradeView })));
 const EnchantView = lazy(async () => import('@/ui/views/EnchantView').then((m) => ({ default: m.EnchantView })));
 const RemoveCardView = lazy(async () => import('@/ui/views/RemoveCardView').then((m) => ({ default: m.RemoveCardView })));
 const TutorialView = lazy(async () => import('@/ui/views/TutorialView').then((m) => ({ default: m.TutorialView })));
@@ -131,7 +133,6 @@ function AppContent() {
   const [rebindingAction, setRebindingAction] = useState<KeyboardActionId | null>(null);
   const [keybindError, setKeybindError] = useState<string | null>(null);
   const [isThemeTransitioning, setIsThemeTransitioning] = useState(false);
-  const [themeFlashKey, setThemeFlashKey] = useState(0);
   const [, setMetaTick] = useState(0);
   const themeTransitionTimerRef = useRef<number | null>(null);
   const [backgroundVisualMode, setBackgroundVisualMode] = useState<BackgroundVisualMode>(() => {
@@ -352,7 +353,9 @@ function AppContent() {
       const newEngine = gameSetup.startNewRun();
       setEngine(newEngine);
     } catch (error) {
-      setLauncherError(error instanceof Error ? error.message : '无法启动新战区');
+      const errorMessage = error instanceof Error ? error.message : '无法启动新战区';
+      console.error('启动新战区失败:', error);
+      setLauncherError(`启动失败: ${errorMessage}。请检查游戏文件是否完整。`);
     }
   };
 
@@ -362,12 +365,14 @@ function AppContent() {
       setShowTutorial(false);
       const loadedEngine = gameSetup.loadRun(slotId);
       if (!loadedEngine) {
-        setLauncherError(`读取存档失败：${slotId}`);
+        setLauncherError(`读取存档失败：${slotId}。存档文件可能已损坏或不存在。`);
         return;
       }
       setEngine(loadedEngine);
     } catch (error) {
-      setLauncherError(error instanceof Error ? error.message : '读取存档失败');
+      const errorMessage = error instanceof Error ? error.message : '读取存档失败';
+      console.error('读取存档失败:', error);
+      setLauncherError(`读取存档失败: ${errorMessage}。请检查存档文件是否完整。`);
     }
   };
 
@@ -403,14 +408,22 @@ function AppContent() {
   };
 
   const handleSaveAndQuit = () => {
-    const result = gameSetup.saveAndQuit();
-    if (result.ok) {
-      setShowMenu(false);
-      setMenuPage('root');
-      setLauncherError(null);
-      setEngine(null);
-    } else {
-      setLauncherError(result.error || '保存失败');
+    try {
+      const result = gameSetup.saveAndQuit();
+      if (result.ok) {
+        setShowMenu(false);
+        setMenuPage('root');
+        setLauncherError(null);
+        setEngine(null);
+      } else {
+        const errorMessage = result.error || '保存失败';
+        console.error('保存游戏失败:', errorMessage);
+        setLauncherError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '保存失败';
+      console.error('保存游戏失败:', error);
+      setLauncherError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
     }
   };
 
@@ -422,42 +435,67 @@ function AppContent() {
   };
 
   const confirmRestartCombat = () => {
-    setShowRestartCombatConfirm(false);
-    const result = gameSetup.restartCurrentCombat();
-    if (!result.ok) {
-      setLauncherError(result.error || '重开失败');
+    try {
+      setShowRestartCombatConfirm(false);
+      const result = gameSetup.restartCurrentCombat();
+      if (!result.ok) {
+        const errorMessage = result.error || '重开失败';
+        console.error('重开战斗失败:', errorMessage);
+        setLauncherError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
+      }
+      setTick(t => t + 1);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '重开失败';
+      console.error('重开战斗失败:', error);
+      setLauncherError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
     }
-    setTick(t => t + 1);
   };
 
   const handleRestart = () => {
-    setShowMenu(false);
-    setMenuPage('root');
-    gameSetup.clearActiveRun();
-    const newEngine = gameSetup.startNewRun();
-    setEngine(newEngine);
+    try {
+      setShowMenu(false);
+      setMenuPage('root');
+      gameSetup.clearActiveRun();
+      const newEngine = gameSetup.startNewRun();
+      setEngine(newEngine);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '重启失败';
+      console.error('重启游戏失败:', error);
+      setLauncherError(`重启游戏失败: ${errorMessage}。请检查游戏文件是否完整。`);
+    }
   };
 
   const handleQuickSave = () => {
-    gameSetup.quickSave();
-    setTick(t => t + 1);
-    setShowMenu(false);
-    setMenuPage('root');
+    try {
+      gameSetup.quickSave();
+      setTick(t => t + 1);
+      setShowMenu(false);
+      setMenuPage('root');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '快速保存失败';
+      console.error('快速保存失败:', error);
+      setLauncherError(`快速保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+    }
   };
 
   const handleQuickLoad = () => {
-    const loadedEngine = gameSetup.quickLoad();
-    if (loadedEngine) {
-      setEngine(loadedEngine);
-    } else {
-      setLauncherError('快速读取失败：未找到有效快速存档。');
+    try {
+      const loadedEngine = gameSetup.quickLoad();
+      if (loadedEngine) {
+        setEngine(loadedEngine);
+      } else {
+        setLauncherError('快速读取失败：未找到有效快速存档。');
+      }
+      setShowMenu(false);
+      setMenuPage('root');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '快速读取失败';
+      console.error('快速读取失败:', error);
+      setLauncherError(`快速读取失败: ${errorMessage}。请检查存档文件是否完整。`);
     }
-    setShowMenu(false);
-    setMenuPage('root');
   };
 
   const runThemeTransition = () => {
-    setThemeFlashKey((k) => k + 1);
     setIsThemeTransitioning(true);
     if (themeTransitionTimerRef.current != null) {
       window.clearTimeout(themeTransitionTimerRef.current);
@@ -473,6 +511,8 @@ function AppContent() {
     runThemeTransition();
     setThemeMode(nextMode);
   };
+  const topbarThemeLabel = themeMode === 'dark' ? '亮色' : '暗色';
+  const menuThemeLabel = themeMode === 'dark' ? '暗色' : '亮色';
 
   if (!engine) {
     const saveSlots = gameSetup.getSaveManager().getSaveSlots();
@@ -483,6 +523,7 @@ function AppContent() {
           canContinue={gameSetup.hasQuickSave() || saveSlots.length > 0}
           saveSlots={saveSlots}
           metaProfile={metaProfile}
+          tutorialOpen={showTutorial}
           onNewRun={handleStartNewRun}
           onOpenTutorial={() => setShowTutorial(true)}
           onContinue={handleContinueRun}
@@ -540,17 +581,20 @@ function AppContent() {
         themeMode={themeMode}
         backgroundVisualMode={backgroundVisualMode}
       />
-      <div key={`theme-flash-${themeFlashKey}`} className={`theme-swap-flash ${isThemeTransitioning ? 'is-active' : ''}`} aria-hidden="true" />
+      <div className={`theme-swap-flash ${isThemeTransitioning ? 'is-active' : ''}`} aria-hidden="true" />
       <GlobalFilterOverlay />
-      
+
       <div className="fixed top-2 right-2 z-50 flex gap-2">
         <button
           onClick={() => handleSetThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
           className="app-topbar-btn px-3 py-1.5 text-xs rounded-lg border shadow-lg flex items-center gap-1.5 transition-colors"
-          title={`切换到${themeMode === 'dark' ? '亮色' : '暗色'}模式`}
+          title={`切换到${topbarThemeLabel}模式`}
         >
-          {themeMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          {themeMode === 'dark' ? '亮色' : '暗色'}
+          <span className="relative inline-flex h-[14px] w-[14px] items-center justify-center" aria-hidden="true">
+            <Sun size={14} className={themeMode === 'dark' ? 'block' : 'hidden'} />
+            <Moon size={14} className={themeMode === 'dark' ? 'hidden' : 'block'} />
+          </span>
+          {topbarThemeLabel}
         </button>
         <button
           onClick={() => {
@@ -572,7 +616,7 @@ function AppContent() {
             {menuPage === 'root' && (
               <div className="flex flex-col gap-2">
                 <div className="px-2 py-1 text-[11px] tracking-wider uppercase text-slate-400">系统</div>
-                
+
                 <button
                   onClick={() => setMenuPage('theme')}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-between"
@@ -580,10 +624,13 @@ function AppContent() {
                   data-keyboard-focus="true"
                 >
                   <span className="flex items-center gap-2">
-                    {themeMode === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
+                    <span className="relative inline-flex h-[14px] w-[14px] items-center justify-center" aria-hidden="true">
+                      <Moon size={14} className={themeMode === 'dark' ? 'block' : 'hidden'} />
+                      <Sun size={14} className={themeMode === 'dark' ? 'hidden' : 'block'} />
+                    </span>
                     主题与视觉
                   </span>
-                  <span className="text-xs text-slate-400">{themeMode === 'dark' ? '暗色' : '亮色'}</span>
+                  <span className="text-xs text-slate-400">{menuThemeLabel}</span>
                 </button>
 
                 <div className="px-2 py-1 rounded-lg border border-slate-800 bg-slate-900/60">
@@ -935,56 +982,63 @@ function AppContent() {
         />
       </Suspense>
 
-      {activeScreen === 'CharacterSelect' && (
-        <Suspense fallback={<ScreenLoadingFallback label="CharacterSelect" />}>
-          <CharacterSelectView engine={engine} />
-        </Suspense>
-      )}
-      {activeScreen === 'Map' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Map" />}>
-          <MapView engine={engine} renderModel={renderModel} backgroundVisualMode={backgroundVisualMode} />
-        </Suspense>
-      )}
-      {activeScreen === 'Combat' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Combat" />}>
-          <CombatView engine={engine} backgroundVisualMode={backgroundVisualMode} />
-        </Suspense>
-      )}
-      {activeScreen === 'Reward' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Reward" />}>
-          <RewardView engine={engine} renderModel={renderModel} />
-        </Suspense>
-      )}
-      {activeScreen === 'Shop' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Shop" />}>
-          <ShopView engine={engine} renderModel={renderModel} />
-        </Suspense>
-      )}
-      {activeScreen === 'Rest' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Rest" />}>
-          <RestView engine={engine} renderModel={renderModel} />
-        </Suspense>
-      )}
-      {activeScreen === 'Upgrade' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Upgrade" />}>
-          <UpgradeView engine={engine} />
-        </Suspense>
-      )}
-      {activeScreen === 'Enchant' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Enchant" />}>
-          <EnchantView engine={engine} />
-        </Suspense>
-      )}
-      {activeScreen === 'RemoveCard' && (
-        <Suspense fallback={<ScreenLoadingFallback label="RemoveCard" />}>
-          <RemoveCardView engine={engine} />
-        </Suspense>
-      )}
-      {activeScreen === 'Event' && (
-        <Suspense fallback={<ScreenLoadingFallback label="Event" />}>
-          <EventView engine={engine} />
-        </Suspense>
-      )}
+      <ResourcePreloader resources={preloadRouteAssets(activeScreen)}>
+        {activeScreen === 'CharacterSelect' && (
+          <Suspense fallback={<ScreenLoadingFallback label="CharacterSelect" />}>
+            <CharacterSelectView engine={engine} />
+          </Suspense>
+        )}
+        {activeScreen === 'Map' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Map" />}>
+            <MapView engine={engine} renderModel={renderModel} backgroundVisualMode={backgroundVisualMode} />
+          </Suspense>
+        )}
+        {activeScreen === 'Combat' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Combat" />}>
+            <CombatView engine={engine} backgroundVisualMode={backgroundVisualMode} />
+          </Suspense>
+        )}
+        {activeScreen === 'Reward' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Reward" />}>
+            <RewardView engine={engine} renderModel={renderModel} />
+          </Suspense>
+        )}
+        {activeScreen === 'Shop' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Shop" />}>
+            <ShopView engine={engine} renderModel={renderModel} />
+          </Suspense>
+        )}
+        {activeScreen === 'Rest' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Rest" />}>
+            <RestView engine={engine} renderModel={renderModel} />
+          </Suspense>
+        )}
+        {activeScreen === 'Upgrade' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Upgrade" />}>
+            <UpgradeView engine={engine} />
+          </Suspense>
+        )}
+        {activeScreen === 'RelicUpgrade' && (
+          <Suspense fallback={<ScreenLoadingFallback label="RelicUpgrade" />}>
+            <RelicUpgradeView engine={engine} />
+          </Suspense>
+        )}
+        {activeScreen === 'Enchant' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Enchant" />}>
+            <EnchantView engine={engine} />
+          </Suspense>
+        )}
+        {activeScreen === 'RemoveCard' && (
+          <Suspense fallback={<ScreenLoadingFallback label="RemoveCard" />}>
+            <RemoveCardView engine={engine} />
+          </Suspense>
+        )}
+        {activeScreen === 'Event' && (
+          <Suspense fallback={<ScreenLoadingFallback label="Event" />}>
+            <EventView engine={engine} />
+          </Suspense>
+        )}
+      </ResourcePreloader>
       {activeScreen === 'GameOver' && (
         <div className="grimdark-dossier-screen h-full overflow-y-auto font-mono px-4 py-8">
           <div className="absolute inset-0 grimdark-crt-overlay" />
@@ -1075,7 +1129,7 @@ function AppContent() {
               )}
             </div>
           )}
-          <button 
+          <button
             onClick={handleRestart}
             className="grimdark-dossier-action mt-8 px-8 py-4 font-bold"
           >
@@ -1154,7 +1208,7 @@ function AppContent() {
               </div>
             </div>
           )}
-          <button 
+          <button
             onClick={handleRestart}
             className="px-6 py-3 bg-slate-800 rounded-lg border border-slate-600 hover:bg-slate-700"
           >

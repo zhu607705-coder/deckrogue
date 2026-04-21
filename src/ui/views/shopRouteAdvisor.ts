@@ -1,6 +1,7 @@
 import type { RouteState, RunCardInstance } from '@/core/types';
 import rawRelicsData from '@/content/data/relics.json';
 import {
+  getCardRouteAffinity,
   getCardRouteSignal,
   getKnownRouteTagsForCharacter,
   getPreferredRouteTagFromState,
@@ -82,16 +83,21 @@ function makeRouteHint(
 
 function getBaseCardReason(card: RunCardInstance, preferredRouteTag: string): string {
   const signal = getCardRouteSignal(card);
-  if (!signal?.routeTags.includes(preferredRouteTag)) {
+  const affinity = getCardRouteAffinity(card);
+  if (!affinity?.routeTags.includes(preferredRouteTag)) {
     return '优先补入对齐当前路线的记忆印痕';
   }
-  if (signal.earlyGameRole === 'route_payoff') {
+  if (signal?.earlyGameRole === 'route_payoff') {
     return '优先补入当前路线的兑现牌';
   }
-  if (signal.earlyGameRole === 'route_confirm') {
+  if (signal?.earlyGameRole === 'route_confirm') {
     return '优先补入当前路线的确认牌';
   }
   return '优先补入对齐当前路线的记忆印痕';
+}
+
+function cardMatchesPreferredRoute(card: RunCardInstance, preferredRouteTag: string): boolean {
+  return !!getCardRouteAffinity(card)?.routeTags.includes(preferredRouteTag);
 }
 
 export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdvice {
@@ -124,12 +130,11 @@ export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdv
       .filter((offer) => offer.price <= input.gold)
       .map((offer) => offer.card),
     preferredRouteTag,
-  ).filter((card) => getCardRouteSignal(card)?.routeTags.includes(preferredRouteTag));
+  ).filter((card) => cardMatchesPreferredRoute(card, preferredRouteTag));
 
   affordableAlignedCards.forEach((card, index) => {
     const signal = getCardRouteSignal(card);
-    if (!signal) return;
-    const roleWeight = CARD_ROLE_WEIGHT[signal.earlyGameRole] ?? 0;
+    const roleWeight = CARD_ROLE_WEIGHT[signal?.earlyGameRole ?? 'generic_fallback'] ?? 0;
     const score = 60 - index * 3 + roleWeight;
     const hint = makeRouteHint('card', card.instanceId, preferredRouteTag, score, getBaseCardReason(card, preferredRouteTag));
     cardHints[card.instanceId] = hint;
@@ -162,7 +167,7 @@ export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdv
       preferredRouteTag,
     );
     const topUpgradeCard = upgradeCandidates[0];
-    if (topUpgradeCard && getCardRouteSignal(topUpgradeCard)?.routeTags.includes(preferredRouteTag)) {
+    if (topUpgradeCard && cardMatchesPreferredRoute(topUpgradeCard, preferredRouteTag)) {
       const hint = makeRouteHint('service', 'upgrade', preferredRouteTag, 30, '当前商店后可继续锻造当前路线的关键牌');
       serviceHints.upgrade = hint;
       rankedHints.push(hint);
@@ -180,7 +185,7 @@ export function buildShopRouteAdvice(input: ShopRouteAdvisorInput): ShopRouteAdv
       preferredRouteTag,
     );
     const topEnchantCard = enchantCandidates[0];
-    if (topEnchantCard && getCardRouteSignal(topEnchantCard)?.routeTags.includes(preferredRouteTag)) {
+    if (topEnchantCard && cardMatchesPreferredRoute(topEnchantCard, preferredRouteTag)) {
       const hint = makeRouteHint('service', 'enchant', preferredRouteTag, 26, '当前商店后可给路线牌追加附魔强化');
       serviceHints.enchant = hint;
       rankedHints.push(hint);
