@@ -2,11 +2,20 @@
  * @deprecated Compatibility implementation.
  * Prefer importing runtime entrypoints from '@/core/persistence/setup' and domain modules under '@/core/*' and '@/features/*'.
  */
-import { GameState, ActionSpec, CardDef, MapNode, ActiveEventState, MetaProfile, CharacterDef } from '@/core/types';
+import { GameState, ActionSpec, CardDef, RunCardInstance, MapNode, ActiveEventState, MetaProfile, CharacterDef } from '@/core/types';
 import { createRNG } from '@/infrastructure/rng/rng';
 import { globalEventBus } from '@/core/events/eventBus';
 import { relicSystem } from '@/features/relics/relicSystem';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
+import {
+  applyCombatAfflictionToInstance,
+  applyPersistentEnchantmentToInstance,
+  clearCombatAfflictionsFromInstance,
+  createRunCardInstance,
+  deriveRunCardInstance,
+  isRunCardInstance,
+  normalizeRunCardInstance
+} from '@/core/combat/runCardInstance';
 import { balanceSystem } from '@/core/balance/balanceSystem';
 import { evaluationSystem } from '@/core/balance/evaluationSystem';
 import { synergySystem } from '@/features/synergies/synergySystem';
@@ -29,6 +38,7 @@ import {
   cardsData,
   enemiesData,
   getSingleSlimeRoomBoostConfig,
+  getCardEnchantmentDefById,
   getPotionRuntimeConfig,
   getStoryEventDef,
   getStoryEventSelectionWeight,
@@ -43,6 +53,32 @@ const charactersData = charactersDataRaw as CharacterDef[];
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RuntimeEventType } from '@/core/events/eventContract';
 import { deriveRunTransitionState, runPhaseToScreen, transitionRunState, type RunAction } from '@/core/events/runStateMachine';
+import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
+import { projectRuleSnapshotToLegacyState } from '@/runtimeV2/legacyStateProjector';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
+import { GameFlowOrchestrator } from '@/core/runtimeKernel/gameFlowOrchestrator';
+import {
+  CombatRoomBridge,
+  createRoomBridgeRegistry,
+  EventRoomBridge,
+  RestRoomBridge,
+  RewardRoomBridge,
+  ShopRoomBridge,
+  type RoomBridgeContext,
+  type RoomBridgeSelectionContext,
+} from '@/core/runtimeKernel/roomBridge';
+import {
+  createDefaultGameEngineRuntimeDelegate,
+  type GameEngineRuntimeDelegate,
+  type GameEngineRuntimeDelegateDiagnostics,
+  type GameEngineRuntimeDelegateOptions,
+} from '@/core/events/runtimeDelegation';
+
+export type {
+  GameEngineRuntimeDelegate,
+  GameEngineRuntimeDelegateDiagnostics,
+  GameEngineRuntimeDelegateOptions,
+} from '@/core/events/runtimeDelegation';
 
 export class GameEngine {
   state: GameState;
@@ -51,9 +87,19 @@ export class GameEngine {
   private globalDisposables: Array<() => void> = [];
   private actionManager: ActionManager;
   private readonly metaProfileForRun: MetaProfile | null;
+  private runtimeDelegate: GameEngineRuntimeDelegate | null;
+  private readonly runtimeDelegateDiagnostics: GameEngineRuntimeDelegateDiagnostics;
+  private readonly roomBridgeRegistry = createRoomBridgeRegistry([
+    new CombatRoomBridge(),
+    new EventRoomBridge(),
+    new RestRoomBridge(),
+    new ShopRoomBridge(),
+    new RewardRoomBridge(),
+  ]);
+  private readonly gameFlowOrchestrator: GameFlowOrchestrator;
   private disposed = false;
 
-  constructor(seed?: number, metaProfile?: MetaProfile | null) {
+  constructor(seed?: number, metaProfile?: MetaProfile | null, options: GameEngineRuntimeDelegateOptions = {}) {
     this.state = this.createInitialState(seed);
     this.metaProfileForRun = metaProfile || null;
     this.rng = createRNG(this.state.seed, this.state.rngState);
@@ -64,6 +110,36 @@ export class GameEngine {
       enableAnimationDelay: false
     });
     setupActionManager(this.actionManager);
+    const delegatedSlices = options.delegatedSlices ?? ['boot_and_map'];
+    const delegationEnabled = options.enableRuntimeDelegation !== false && delegatedSlices.includes('boot_and_map');
+    this.runtimeDelegate = delegationEnabled ? (options.runtimeDelegate ?? createDefaultGameEngineRuntimeDelegate()) : null;
+    this.runtimeDelegateDiagnostics = {
+      enabled: delegationEnabled,
+      delegatedSlices: delegationEnabled ? [...delegatedSlices] : [],
+      source: this.runtimeDelegate ? 'runtime-v2-sync' : null,
+      lastDelegatedCommand: null,
+      fallbackCount: 0,
+      lastFallbackReason: null,
+    };
+    this.runtimeDelegate?.start(this.state.seed);
+    this.gameFlowOrchestrator = new GameFlowOrchestrator({
+      selectCharacter: (characterId) => this.tryDelegatedSelectCharacter(characterId),
+      selectCharacterLegacy: (characterId) => this.selectCharacterLegacy(characterId),
+      syncRuntimeFromLegacyState: (reason) => this.syncRuntimeDelegateFromLegacyState(reason),
+      moveToNode: (nodeId) => this.tryDelegatedMoveToNode(nodeId),
+      moveToNodeLegacy: (nodeId) => this.moveToNodeLegacy(nodeId),
+      canMoveToNode: (nodeId) => {
+        if (this.state.pendingNodeResolution) return false;
+        const node = this.state.map.find((entry) => entry.id === nodeId);
+        if (!node) return false;
+        if (!this.state.currentNodeId && node.y !== 0) return false;
+        const currentNode = this.state.map.find((entry) => entry.id === this.state.currentNodeId);
+        return !currentNode || currentNode.next.includes(nodeId);
+      },
+      getNode: (nodeId) => this.state.map.find((entry) => entry.id === nodeId) ?? null,
+      resolveNodeEntry: (node) => this.resolveCurrentNodeEntry(node),
+      recordFallback: (reason) => this.recordDelegationFallback(reason),
+    });
     this.setupEventListeners();
   }
 
@@ -180,6 +256,7 @@ export class GameEngine {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.runtimeDelegate?.dispose();
     this.globalDisposables.splice(0).forEach((dispose) => {
       try {
         dispose();
@@ -191,10 +268,333 @@ export class GameEngine {
     this.actionManager.clearQueue();
   }
 
+  private illegalTransitions: Array<{ action: string; fromPhase: string; error: string; timestamp: number }> = [];
+  private combatVictoryInProgress = false;
+  private playerDeathInProgress = false;
+
   private applyRunTransition(action: RunAction): void {
-    const next = transitionRunState(deriveRunTransitionState(this.state), action);
-    this.state.screen = runPhaseToScreen(next.phase);
-    this.state.pendingNodeResolution = next.pendingNodeResolution;
+    try {
+      const next = transitionRunState(deriveRunTransitionState(this.state), action);
+      this.state.screen = runPhaseToScreen(next.phase);
+      this.state.pendingNodeResolution = next.pendingNodeResolution;
+    } catch (error: any) {
+      this.illegalTransitions.push({
+        action: action.type,
+        fromPhase: this.state.screen,
+        error: error.message || String(error),
+        timestamp: Date.now()
+      });
+      console.error('[GameEngine] Illegal run transition:', {
+        action: action.type,
+        fromPhase: this.state.screen,
+        error: error.message
+      });
+    }
+  }
+
+  getIllegalTransitions(): Array<{ action: string; fromPhase: string; error: string; timestamp: number }> {
+    return [...this.illegalTransitions];
+  }
+
+  clearIllegalTransitions(): void {
+    this.illegalTransitions = [];
+  }
+
+  getRuntimeDelegationDiagnostics(): GameEngineRuntimeDelegateDiagnostics {
+    return {
+      ...this.runtimeDelegateDiagnostics,
+      delegatedSlices: [...this.runtimeDelegateDiagnostics.delegatedSlices],
+    };
+  }
+
+  private supportsBootAndMapDelegation(): boolean {
+    return !!this.runtimeDelegate && this.runtimeDelegateDiagnostics.enabled && this.runtimeDelegateDiagnostics.delegatedSlices.includes('boot_and_map');
+  }
+
+  private recordDelegationFallback(reason: unknown): void {
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    this.runtimeDelegateDiagnostics.fallbackCount += 1;
+    this.runtimeDelegateDiagnostics.lastFallbackReason = detail;
+  }
+
+  private getRoomBridgeSelectionContext(): RoomBridgeSelectionContext {
+    return {
+      activeEventId: this.state.activeEvent?.id ?? null,
+      upgradeReturnScreen: this.state.upgradeReturnScreen,
+    };
+  }
+
+  private createRoomBridgeContext(): RoomBridgeContext {
+    return {
+      screen: this.state.screen,
+      ...this.getRoomBridgeSelectionContext(),
+      canDelegate: () => this.supportsBootAndMapDelegation(),
+      loadDelegatedSnapshot: () => {
+        this.runtimeDelegate!.loadSnapshot(normalizeLegacyGameState(this.state));
+      },
+      delegateCompleteCombat: () => this.runtimeDelegate!.completeCombat(),
+      delegateTakeReward: (cardId) => this.runtimeDelegate!.takeReward(cardId),
+      delegateSkipReward: () => this.runtimeDelegate!.skipReward(),
+      delegateChooseEventOption: (choiceId) => this.runtimeDelegate!.chooseEventOption(choiceId),
+      delegateRest: () => this.runtimeDelegate!.rest(),
+      delegateUpgradeCard: (cardInstanceId) => this.runtimeDelegate!.upgradeCard(cardInstanceId),
+      delegateRemoveCard: (cardInstanceId) => this.runtimeDelegate!.removeCard(cardInstanceId),
+      delegateLeaveRoom: () => this.runtimeDelegate!.leaveRoom(),
+      applyCombatVictorySnapshot: (snapshot) => {
+        const projected = projectRuleSnapshotToLegacyState(snapshot);
+        this.state.player.hp = projected.player.hp;
+        this.state.player.maxHp = projected.player.maxHp;
+        this.state.player.gold = projected.player.gold;
+        this.state.player.intel = projected.player.intel;
+        this.state.player.devotion = projected.player.devotion;
+        this.state.player.corruption = projected.player.corruption;
+        this.state.rewardCards = (snapshot.reward?.cardIds ?? []).map((cardId) => {
+          const def = (cardsData as CardDef[]).find((entry) => entry.id === cardId);
+          if (!def) {
+            throw new Error(`Unable to project delegated reward card into legacy state: ${cardId}`);
+          }
+          return this.createRuntimeCard(def);
+        });
+        this.state.combat = null;
+        this.state.screen = projected.screen;
+        this.state.pendingNodeResolution = projected.pendingNodeResolution;
+        this.state.currentNodeId = projected.currentNodeId;
+        this.state.map = projected.map;
+        this.actionManager.updateState(this.state);
+      },
+      applyRewardResolutionSnapshot: (snapshot) => {
+        const projected = projectRuleSnapshotToLegacyState(snapshot);
+        const addedRewardCardId = this.findDelegatedRewardCardDelta(snapshot);
+        if (addedRewardCardId) {
+          const def = (cardsData as CardDef[]).find((entry) => entry.id === addedRewardCardId);
+          if (!def) {
+            throw new Error(`Unable to project delegated selected reward card into legacy state: ${addedRewardCardId}`);
+          }
+          this.state.player.deck.push(this.createRuntimeCard(def));
+          metricsTracker.recordCardAcquired();
+        }
+        this.state.player.hp = projected.player.hp;
+        this.state.player.maxHp = projected.player.maxHp;
+        this.state.player.gold = projected.player.gold;
+        this.state.player.intel = projected.player.intel;
+        this.state.player.devotion = projected.player.devotion;
+        this.state.player.corruption = projected.player.corruption;
+        this.state.rewardCards = [];
+        this.actionManager.updateState(this.state);
+      },
+      applyRestSnapshot: (snapshot) => {
+        const projected = projectRuleSnapshotToLegacyState(snapshot);
+        this.state.player.hp = projected.player.hp;
+        this.state.player.maxHp = projected.player.maxHp;
+        this.actionManager.updateState(this.state);
+      },
+      applyLeaveRoomSnapshot: (snapshot) => {
+        this.state.screen = projectRuleSnapshotToLegacyState(snapshot).screen;
+        this.state.pendingNodeResolution = !!snapshot.lifecycle.pendingNodeResolution;
+        this.state.currentNodeId = snapshot.map.currentNodeId;
+        this.state.map = snapshot.map.nodes.map((node) => ({
+          id: node.id,
+          type: node.type as GameState['map'][number]['type'],
+          x: node.x,
+          y: node.y,
+          revealed: !!node.revealed,
+          next: [...node.next],
+        }));
+        this.state.campfireChoiceLocked = false;
+        this.actionManager.updateState(this.state);
+      },
+      syncFromLegacyState: (reason) => this.syncRuntimeDelegateFromLegacyState(reason),
+      recordFallback: (reason) => this.recordDelegationFallback(reason),
+    };
+  }
+
+  private getActiveRoomBridge() {
+    return this.roomBridgeRegistry.getBridge(this.state.screen, this.getRoomBridgeSelectionContext());
+  }
+
+  private syncActiveRoomBridgeAfterLegacyAction(actionType: 'buy_shop_card' | 'buy_shop_relic' | 'buy_shop_potion' | 'take_reward' | 'skip_reward'): void {
+    const bridge = this.getActiveRoomBridge();
+    bridge?.syncAfterLegacyAction?.(this.createRoomBridgeContext(), actionType);
+  }
+
+  private findDelegatedRewardCardDelta(snapshot: RuleSnapshot): string | null {
+    const previousCounts = new Map<string, number>();
+    for (const card of this.state.player.deck) {
+      previousCounts.set(card.id, (previousCounts.get(card.id) ?? 0) + 1);
+    }
+    for (const cardId of snapshot.player.deck) {
+      const nextCount = (previousCounts.get(cardId) ?? 0) - 1;
+      if (nextCount < 0) {
+        return cardId;
+      }
+      previousCounts.set(cardId, nextCount);
+    }
+    return null;
+  }
+
+  private buildRuntimeDeckFromIds(cardIds: string[]): RunCardInstance[] {
+    return cardIds.map((cardId) => {
+      const def = (cardsData as CardDef[]).find((entry) => entry.id === cardId);
+      if (!def) {
+        throw new Error(`Unable to project delegated card into legacy deck: ${cardId}`);
+      }
+      return this.createRuntimeCard(def);
+    });
+  }
+
+  private applyDelegatedSnapshotToLegacyState(snapshot: RuleSnapshot, mode: 'select_character' | 'move_to_node'): void {
+    const projected = projectRuleSnapshotToLegacyState(snapshot);
+    const character = projected.characterId
+      ? charactersData.find((entry) => entry.id === projected.characterId) ?? null
+      : null;
+
+    if (mode === 'select_character') {
+      if (!character) {
+        throw new Error('Delegated select_character snapshot is missing a valid character');
+      }
+      this.state.character = character;
+      this.state.player.maxHp = projected.player.maxHp;
+      this.state.player.hp = projected.player.hp;
+      this.state.player.maxEnergy = character.maxEnergy;
+      this.state.player.energy = character.maxEnergy;
+      this.state.player.gold = projected.player.gold;
+      this.state.player.intel = projected.player.intel;
+      this.state.player.devotion = projected.player.devotion;
+      this.state.player.corruption = projected.player.corruption;
+      this.state.player.deck = this.buildRuntimeDeckFromIds(projected.player.deckIds);
+      this.state.player.relics = [...projected.player.relicIds];
+      this.state.player.potions = [...projected.player.potionIds];
+      this.state.combat = null;
+      this.state.activeEvent = null;
+      this.state.rewardCards = [];
+      this.state.shopCards = [];
+      this.state.shopRelics = [];
+      this.state.shopPotions = [];
+      this.state.enchantContext = null;
+      this.state.upgradeReturnScreen = undefined;
+      this.state.pendingUpgradeRefund = false;
+      this.state.cardRemovalCost = 75;
+    }
+
+    this.state.map = projected.map;
+    this.state.currentNodeId = projected.currentNodeId;
+    this.state.screen = projected.screen;
+    this.state.pendingNodeResolution = projected.pendingNodeResolution;
+    this.state.campfireChoiceLocked = projected.campfireChoiceLocked;
+    this.actionManager.updateState(this.state);
+  }
+
+  private syncRuntimeDelegateFromLegacyState(command: string): void {
+    if (!this.supportsBootAndMapDelegation()) return;
+    try {
+      this.runtimeDelegate!.loadSnapshot(normalizeLegacyGameState(this.state));
+      this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'load_snapshot';
+    } catch (error) {
+      this.recordDelegationFallback(error);
+      this.runtimeDelegate = null;
+      this.runtimeDelegateDiagnostics.enabled = false;
+      this.runtimeDelegateDiagnostics.source = null;
+      console.warn(`[GameEngine] Disabled runtime delegation after ${command}:`, error);
+    }
+  }
+
+  private tryDelegatedSelectCharacter(characterId: string): boolean {
+    if (!this.supportsBootAndMapDelegation()) return false;
+    try {
+      const snapshot = this.runtimeDelegate!.selectCharacter(characterId);
+      this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'select_character';
+      this.applyDelegatedSnapshotToLegacyState(snapshot, 'select_character');
+      unlockManyCodexEntries('cards', this.state.player.deck.map((card) => card.id));
+      applyMetaProfileToNewRunState(this.state, this.metaProfileForRun, {
+        rng: this.rng,
+        generateId: () => this.generateId(),
+      });
+      this.applyAscensionMapModifiers();
+      metricsTracker.startRun(this.state.seed, characterId);
+      return true;
+    } catch (error) {
+      this.recordDelegationFallback(error);
+      return false;
+    }
+  }
+
+  private tryDelegatedMoveToNode(nodeId: string): boolean {
+    if (!this.supportsBootAndMapDelegation()) return false;
+    try {
+      const snapshot = this.runtimeDelegate!.enterNode(nodeId);
+      this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'enter_node';
+      this.applyDelegatedSnapshotToLegacyState(snapshot, 'move_to_node');
+      return true;
+    } catch (error) {
+      this.recordDelegationFallback(error);
+      return false;
+    }
+  }
+
+  private tryDelegatedCompleteCombat(): boolean {
+    if (this.state.screen !== 'Combat') return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'complete_combat' }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'complete_combat';
+    return handled;
+  }
+
+  private tryDelegatedChooseEventOption(choiceId: string): boolean {
+    if (this.state.screen !== 'Event' || !this.state.activeEvent) return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'choose_event_option', choiceId }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'choose_event_option';
+    return handled;
+  }
+
+  private tryDelegatedRest(): boolean {
+    if (this.state.screen !== 'Rest') return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'rest' }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'rest';
+    return handled;
+  }
+
+  private tryDelegatedUpgradeCard(cardInstanceId?: string): boolean {
+    if (this.state.screen !== 'Upgrade') return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'upgrade_card', cardInstanceId }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'upgrade_card';
+    return handled;
+  }
+
+  private tryDelegatedRemoveCard(cardInstanceId?: string): boolean {
+    if (this.state.screen !== 'RemoveCard') return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'remove_card', cardInstanceId }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'remove_card';
+    return handled;
+  }
+
+  private tryDelegatedLeaveRoom(): boolean {
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.leaveToMap?.(this.createRoomBridgeContext()) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'leave_room';
+    return handled;
+  }
+
+  private tryDelegatedTakeReward(cardInstanceId?: string): boolean {
+    if (this.state.screen !== 'Reward') return false;
+    const selectedCardId = cardInstanceId
+      ? this.state.rewardCards.find((card) => card.instanceId === cardInstanceId)?.id
+      : undefined;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'take_reward', cardId: selectedCardId }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'take_reward';
+    return handled;
+  }
+
+  private tryDelegatedSkipReward(): boolean {
+    if (this.state.screen !== 'Reward') return false;
+    const bridge = this.getActiveRoomBridge();
+    const handled = bridge?.performAction?.(this.createRoomBridgeContext(), { type: 'skip_reward' }) ?? false;
+    if (handled) this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'skip_reward';
+    return handled;
   }
 
   private formatVoxTimestamp(): string {
@@ -244,11 +644,189 @@ export class GameEngine {
     this.listeners.forEach(l => l());
   }
 
+  private createRuntimeCard(card: CardDef, instanceId = this.generateId()) {
+    return normalizeRunCardInstance(card, () => instanceId);
+  }
+
+  private normalizeDeckCards() {
+    this.state.player.deck = this.state.player.deck.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+  }
+
+  private normalizeCombatCards(): void {
+    if (!this.state.combat) return;
+    this.state.combat.drawPile = this.state.combat.drawPile.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+    this.state.combat.hand = this.state.combat.hand.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+    this.state.combat.discardPile = this.state.combat.discardPile.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+    this.state.combat.exhaustPile = this.state.combat.exhaustPile.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+    this.state.combat.player.delayedCards = this.state.combat.player.delayedCards.map((entry) => ({
+      ...entry,
+      card: normalizeRunCardInstance(entry.card, () => this.generateId())
+    }));
+    if (this.state.combat.player.lastPlayedCard) {
+      this.state.combat.player.lastPlayedCard = normalizeRunCardInstance(this.state.combat.player.lastPlayedCard, () => this.generateId());
+    }
+    if (this.state.combat.bossPhase) {
+      this.state.combat.bossPhase.currentPlayerTurnCards = this.state.combat.bossPhase.currentPlayerTurnCards.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+      this.state.combat.bossPhase.previousPlayerTurnCards = this.state.combat.bossPhase.previousPlayerTurnCards.map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+    }
+  }
+
+  private replaceRunCardInstance(updatedCard: CardDef): void {
+    const replace = <T extends CardDef>(cards: T[]): T[] => cards.map((card) => (card.instanceId && card.instanceId === updatedCard.instanceId ? updatedCard as T : card));
+
+    this.state.player.deck = replace(this.state.player.deck);
+    this.state.rewardCards = replace(this.state.rewardCards);
+    this.state.shopCards = replace(this.state.shopCards);
+
+    if (this.state.combat) {
+      this.state.combat.drawPile = replace(this.state.combat.drawPile);
+      this.state.combat.hand = replace(this.state.combat.hand);
+      this.state.combat.discardPile = replace(this.state.combat.discardPile);
+      this.state.combat.exhaustPile = replace(this.state.combat.exhaustPile);
+      this.state.combat.player.delayedCards = this.state.combat.player.delayedCards.map((entry) => (
+        entry.card.instanceId === updatedCard.instanceId ? { ...entry, card: updatedCard as any } : entry
+      ));
+      if (this.state.combat.player.lastPlayedCard?.instanceId === updatedCard.instanceId) {
+        this.state.combat.player.lastPlayedCard = updatedCard as any;
+      }
+      if (this.state.combat.bossPhase) {
+        this.state.combat.bossPhase.currentPlayerTurnCards = replace(this.state.combat.bossPhase.currentPlayerTurnCards);
+        this.state.combat.bossPhase.previousPlayerTurnCards = replace(this.state.combat.bossPhase.previousPlayerTurnCards);
+      }
+    }
+  }
+
+  private getEnchantableCards(): CardDef[] {
+    return this.state.player.deck.filter((card) => {
+      const runCard = normalizeRunCardInstance(card, () => this.generateId());
+      return (runCard.type === 'Attack' || runCard.type === 'Skill') && runCard.persistentEnchantments.length === 0;
+    });
+  }
+
+  private enterEnchant(
+    source: 'Event' | 'Rest' | 'Shop',
+    enchantmentId: string,
+    options: { title?: string; description?: string; price?: number; returnScreen?: 'Event' | 'Rest' | 'Shop' } = {}
+  ): boolean {
+    const enchantment = getCardEnchantmentDefById(enchantmentId);
+    if (!enchantment || enchantment.scope !== 'persistent') return false;
+    const candidates = this.getEnchantableCards();
+    if (candidates.length === 0) return false;
+    this.state.enchantContext = {
+      source,
+      enchantmentId,
+      title: options.title || enchantment.name,
+      description: options.description || enchantment.description,
+      price: options.price,
+      returnScreen: options.returnScreen || source
+    };
+    this.state.screen = 'Enchant';
+    this.notify();
+    return true;
+  }
+
+  restEnchant(): void {
+    if (this.state.screen !== 'Rest' || this.state.campfireChoiceLocked) return;
+    this.state.campfireChoiceLocked = true;
+    if (!this.enterEnchant('Rest', 'blood_rune', {
+      title: '锻台刻印',
+      description: '选择一张攻击或技能牌，刻下血色铭文。',
+      returnScreen: 'Rest'
+    })) {
+      this.state.campfireChoiceLocked = false;
+    }
+  }
+
+  enterShopEnchant(): void {
+    if (this.state.screen !== 'Shop') return;
+    const price = this.getAdjustedShopPrice(65);
+    if (!this.enterEnchant('Shop', 'swift_sigil', {
+      title: '附魔服务',
+      description: '支付信用筹码，为一张牌刻下迅捷刻印。',
+      price,
+      returnScreen: 'Shop'
+    })) return;
+  }
+
+  applyEnchantment(cardInstanceId: string): boolean {
+    const context = this.state.enchantContext;
+    if (!context) return false;
+    const target = this.state.player.deck.find((card) => card.instanceId === cardInstanceId);
+    if (!target) return false;
+    const runCard = normalizeRunCardInstance(target, () => this.generateId());
+    if (runCard.persistentEnchantments.length > 0) return false;
+    const enchantment = getCardEnchantmentDefById(context.enchantmentId);
+    if (!enchantment || enchantment.scope !== 'persistent') return false;
+    if (context.source === 'Shop') {
+      const price = Math.max(0, Number(context.price || 0));
+      if (this.state.player.gold < price) return false;
+      this.state.player.gold -= price;
+      metricsTracker.recordGoldSpent(price);
+    }
+    const updated = applyPersistentEnchantmentToInstance(runCard, enchantment);
+    this.replaceRunCardInstance(updated);
+    const returnScreen = context.returnScreen || context.source;
+    this.state.enchantContext = null;
+    if (returnScreen === 'Rest') {
+      this.leaveCurrentRoomToMap();
+      return true;
+    }
+    this.state.screen = returnScreen;
+    this.notify();
+    return true;
+  }
+
+  cancelEnchant(): void {
+    const context = this.state.enchantContext;
+    if (!context) return;
+    const returnScreen = context.returnScreen || context.source;
+    this.state.enchantContext = null;
+    if (returnScreen === 'Rest') {
+      this.state.campfireChoiceLocked = false;
+    }
+    this.state.screen = returnScreen;
+    this.notify();
+  }
+
+  private applyEnemyCardAffliction(enemyId: string): void {
+    const combat = this.state.combat;
+    if (!combat) return;
+    const enemy = combat.enemies.find((entry) => entry.id === enemyId);
+    if (!enemy || enemy.hp <= 0) return;
+    const targetPool = combat.hand.length > 0 ? combat.hand : combat.drawPile;
+    if (targetPool.length === 0) return;
+    const defId = enemy.defId;
+    const afflictionId = defId === 'hexaghost'
+      ? 'dampened_edge'
+      : defId === 'lagavulin'
+        ? 'sundered_guard'
+        : defId === 'cultist'
+          ? 'hex_tax'
+          : null;
+    if (!afflictionId) return;
+    const affliction = getCardEnchantmentDefById(afflictionId);
+    if (!affliction || affliction.scope !== 'combat') return;
+    const target = targetPool[Math.floor(this.rng() * targetPool.length)];
+    if (!target?.instanceId) return;
+    const updated = applyCombatAfflictionToInstance(normalizeRunCardInstance(target, () => this.generateId()), affliction);
+    this.replaceRunCardInstance(updated);
+    this.appendVoxLog(`${enemy.name} 污染了 ${updated.name}。`);
+  }
+
+  private clearCombatAfflictionsForRunCards(): void {
+    this.state.player.deck = this.state.player.deck.map((card) => clearCombatAfflictionsFromInstance(normalizeRunCardInstance(card, () => this.generateId())));
+    if (!this.state.combat) return;
+    this.state.combat.drawPile = this.state.combat.drawPile.map((card) => clearCombatAfflictionsFromInstance(normalizeRunCardInstance(card, () => this.generateId())));
+    this.state.combat.hand = this.state.combat.hand.map((card) => clearCombatAfflictionsFromInstance(normalizeRunCardInstance(card, () => this.generateId())));
+    this.state.combat.discardPile = this.state.combat.discardPile.map((card) => clearCombatAfflictionsFromInstance(normalizeRunCardInstance(card, () => this.generateId())));
+    this.state.combat.exhaustPile = this.state.combat.exhaustPile.map((card) => clearCombatAfflictionsFromInstance(normalizeRunCardInstance(card, () => this.generateId())));
+  }
+
   // ==================== Character Selection ====================
 
-  selectCharacter(characterId: string): void {
+  private selectCharacterLegacy(characterId: string): boolean {
     const charDef = charactersData.find(c => c.id === characterId);
-    if (!charDef) return;
+    if (!charDef) return false;
 
     this.state.character = charDef;
     this.state.player.maxHp = charDef.maxHp;
@@ -258,8 +836,8 @@ export class GameEngine {
     this.state.player.gold = 99;
     this.state.player.deck = charDef.startingDeck.map(cardId => {
       const def = cardsData.find(c => c.id === cardId);
-      return def ? { ...def, instanceId: this.generateId() } : null;
-    }).filter(Boolean) as CardDef[];
+      return def ? this.createRuntimeCard(def) : null;
+    }).filter(Boolean) as any;
     unlockManyCodexEntries('cards', this.state.player.deck.map(c => c.id));
     applyMetaProfileToNewRunState(this.state, this.metaProfileForRun, {
       rng: this.rng,
@@ -273,6 +851,11 @@ export class GameEngine {
     this.state.screen = 'Map';
 
     metricsTracker.startRun(this.state.seed, characterId);
+    return true;
+  }
+
+  selectCharacter(characterId: string): void {
+    if (!this.gameFlowOrchestrator.selectCharacter(characterId)) return;
     this.notify();
   }
 
@@ -286,20 +869,8 @@ export class GameEngine {
 
   // ==================== Map Navigation ====================
 
-  moveToNode(nodeId: string): void {
-    if (this.state.pendingNodeResolution) return;
-    const node = this.state.map.find(n => n.id === nodeId);
-    if (!node) return;
-
-    if (!this.state.currentNodeId && node.y !== 0) return;
-    const currentNode = this.state.map.find(n => n.id === this.state.currentNodeId);
-    if (currentNode && !currentNode.next.includes(nodeId)) return;
-
-    this.state.currentNodeId = nodeId;
-    node.revealed = true;
-    this.state.pendingNodeResolution = true;
+  private resolveCurrentNodeEntry(node: MapNode): void {
     this.state.campfireChoiceLocked = false;
-
     switch (node.type) {
       case 'Combat':
       case 'Elite':
@@ -317,7 +888,26 @@ export class GameEngine {
         this.state.screen = 'Rest';
         break;
     }
+  }
 
+  private moveToNodeLegacy(nodeId: string): boolean {
+    if (this.state.pendingNodeResolution) return false;
+    const node = this.state.map.find(n => n.id === nodeId);
+    if (!node) return false;
+
+    if (!this.state.currentNodeId && node.y !== 0) return false;
+    const currentNode = this.state.map.find(n => n.id === this.state.currentNodeId);
+    if (currentNode && !currentNode.next.includes(nodeId)) return false;
+
+    this.state.currentNodeId = nodeId;
+    node.revealed = true;
+    this.state.pendingNodeResolution = true;
+    this.resolveCurrentNodeEntry(node);
+    return true;
+  }
+
+  moveToNode(nodeId: string): void {
+    if (!this.gameFlowOrchestrator.moveToNode(nodeId)) return;
     this.notify();
   }
 
@@ -524,7 +1114,7 @@ export class GameEngine {
     combat.bossPhase.currentPlayerTurnCards = [];
   }
 
-  private recordBossPhasePlayedCard(card: CardDef): void {
+  private recordBossPhasePlayedCard(card: RunCardInstance): void {
     const combat = this.state.combat;
     if (!combat?.bossPhase || !card) return;
     combat.bossPhase.currentPlayerTurnCards.push(card);
@@ -533,7 +1123,7 @@ export class GameEngine {
     }
   }
 
-  private estimateEchoDamageFromCard(card: CardDef): number {
+  private estimateEchoDamageFromCard(card: RunCardInstance): number {
     const combat = this.state.combat;
     if (!combat || !card?.actions?.length) return 0;
     let total = 0;
@@ -855,7 +1445,7 @@ export class GameEngine {
     return applyEnemyHpTuningByNumericRules(baseHp, floor, nodeType, hpMultiplier);
   }
 
-  private shuffleDeck(deck: CardDef[]): CardDef[] {
+  private shuffleDeck<T extends CardDef>(deck: T[]): T[] {
     const shuffled = [...deck];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(this.rng() * (i + 1));
@@ -1100,6 +1690,7 @@ export class GameEngine {
 
       await this.actionManager.executeAll();
       if (!this.state.combat || this.state.screen !== 'Combat') return;
+      this.applyEnemyCardAffliction(enemy.id);
       this.refreshBossPhaseState();
 
       enemy.nextIntent = this.selectIntent(enemyDef);
@@ -1128,46 +1719,66 @@ export class GameEngine {
     metricsTracker.recordEnemyDefeated(enemy.defId);
 
     const allEnemiesDefeated = combat.enemies.every(e => e.hp <= 0);
-    if (allEnemiesDefeated) {
+    if (allEnemiesDefeated && this.state.screen !== 'GameOver') {
       globalEventBus.publish({ type: 'CombatVictory' } as any);
     }
   }
 
   private handleCombatVictory(): void {
+    if (this.combatVictoryInProgress) return;
     const combat = this.state.combat;
     if (!combat) return;
-    this.snapshotCombatVoxLog();
 
-    this.syncPlayerStateFromCombat();
+    this.combatVictoryInProgress = true;
+    try {
+      this.snapshotCombatVoxLog();
 
-    const floor = this.getCurrentFloorNumber();
-    const currentNode = this.state.map.find(n => n.id === this.state.currentNodeId);
-    const nodeType = currentNode?.type === 'Elite' || currentNode?.type === 'Boss' ? currentNode.type : 'Combat';
-    const rewards = (economySystem as any).calculateCombatRewards?.(floor, this.state.player.relics, nodeType) ??
-      { gold: economySystem.calculateGoldReward(floor, nodeType === 'Elite', nodeType === 'Boss'), cardCount: 1 };
+      this.syncPlayerStateFromCombat();
 
-    this.state.player.gold += rewards.gold;
-    // Battle card rewards are intentionally fixed to a 3-choice draft.
-    this.state.rewardCards = this.generateCardRewards(3);
+      const floor = this.getCurrentFloorNumber();
+      const currentNode = this.state.map.find(n => n.id === this.state.currentNodeId);
+      const nodeType = currentNode?.type === 'Elite' || currentNode?.type === 'Boss' ? currentNode.type : 'Combat';
+      const rewards = (economySystem as any).calculateCombatRewards?.(floor, this.state.player.relics, nodeType) ??
+        { gold: economySystem.calculateGoldReward(floor, nodeType === 'Elite', nodeType === 'Boss'), cardCount: 1 };
 
-    metricsTracker.recordCombatVictory(floor);
+      metricsTracker.recordCombatVictory(floor);
+      this.clearCombatAfflictionsForRunCards();
 
-    this.state.combat = null;
-    this.applyRunTransition({ type: 'COMBAT_WON' });
-    this.notify();
+      if (this.tryDelegatedCompleteCombat()) {
+        this.notify();
+        return;
+      }
+
+      this.state.player.gold += rewards.gold;
+      this.state.rewardCards = this.generateCardRewards(3);
+      this.state.combat = null;
+      this.applyRunTransition({ type: 'COMBAT_WON' });
+      this.notify();
+    } finally {
+      this.combatVictoryInProgress = false;
+    }
   }
 
   private handlePlayerDefeated(): void {
-    if (!this.state.lastDeathVoxLog?.length) {
-      this.snapshotDeathVoxLog();
+    if (this.playerDeathInProgress) return;
+    if (this.state.screen === 'GameOver') return;
+
+    this.playerDeathInProgress = true;
+    try {
+      if (!this.state.lastDeathVoxLog?.length) {
+        this.snapshotDeathVoxLog();
+      }
+      this.clearCombatAfflictionsForRunCards();
+      metricsTracker.recordRunEnd(false, this.getCurrentFloorNumber());
+      this.applyRunTransition({ type: 'PLAYER_DIED' });
+      globalEventBus.publish({
+        type: RuntimeEventType.PlayerDefeated,
+        timestamp: Date.now()
+      });
+      this.notify();
+    } finally {
+      this.playerDeathInProgress = false;
     }
-    metricsTracker.recordRunEnd(false, this.getCurrentFloorNumber());
-    this.applyRunTransition({ type: 'PLAYER_DIED' });
-    globalEventBus.publish({
-      type: RuntimeEventType.PlayerDefeated,
-      timestamp: Date.now()
-    });
-    this.notify();
   }
 
   private processTurnStartDots(targetType: 'player' | 'enemy', targetId: string): boolean {
@@ -1257,8 +1868,8 @@ export class GameEngine {
     }
   }
 
-  private generateCardRewards(count: number): CardDef[] {
-    const rewards: CardDef[] = [];
+  private generateCardRewards(count: number): RunCardInstance[] {
+    const rewards: RunCardInstance[] = [];
     const characterId = this.state.character?.id;
     const characterDef = charactersData.find(c => c.id === characterId);
     const extendedPool = characterDef?.extendedPool || [];
@@ -1300,7 +1911,7 @@ export class GameEngine {
         card = pickPool[Math.floor(this.rng() * pickPool.length)];
       }
       if (card) {
-        rewards.push({ ...(card as any), instanceId: this.generateId() } as CardDef);
+        rewards.push(this.createRuntimeCard(card as CardDef));
       }
     }
     unlockManyCodexEntries('cards', rewards.map(c => c.id));
@@ -1472,6 +2083,16 @@ export class GameEngine {
           this.leaveCurrentRoomToMap();
           return;
         }
+        if (choice === 'martyr_inscribe_oath') {
+          const hpLoss = Math.max(1, Number(n.inscribeHpLoss ?? 6));
+          this.state.player.hp = Math.max(1, this.state.player.hp - hpLoss);
+          this.enterEnchant('Event', 'blood_rune', {
+            title: '殉道誓印',
+            description: '在圣骨前为一张牌刻下血色铭文。',
+            returnScreen: 'Event'
+          });
+          return;
+        }
         break;
       }
       case 'warp_tear_whispers': {
@@ -1505,6 +2126,14 @@ export class GameEngine {
       }
       case 'inquisitor_legacy': {
         const n = calculateStoryEventNumbers('inquisitor_legacy', this.state) as any;
+        if (choice === 'legacy_inscribe_sigil') {
+          this.enterEnchant('Event', 'swift_sigil', {
+            title: '审判官刻印',
+            description: '为一张牌烙下迅捷印记。',
+            returnScreen: 'Event'
+          });
+          return;
+        }
         if (choice === 'legacy_open_casket') {
           this.state.player.hp = Math.max(1, this.state.player.hp - Math.max(1, Number(n.openCasketCurrentHpLoss ?? 1)));
           runEffects.enemyHuntBonusPct = Math.max(runEffects.enemyHuntBonusPct || 0, Math.max(0, Number(n.openCasketEnemyHuntBonusPct ?? 0.1)));
@@ -1541,7 +2170,7 @@ export class GameEngine {
     const card = (cardsData as any[]).find(c => c.id === cardId);
     if (!card) return;
     unlockCodexEntry('cards', card.id);
-    this.state.player.deck.push({ ...(card as any), instanceId: this.generateId() } as CardDef);
+    this.state.player.deck.push(this.createRuntimeCard(card as CardDef));
   }
 
   private addRelicToPlayerInventory(relicId: string, options: { corruptedOverride?: boolean } = {}): boolean {
@@ -1640,7 +2269,7 @@ export class GameEngine {
       if (!['strike', 'defend'].includes(card.id)) return card;
       const replacement = pool[Math.floor(this.rng() * pool.length)];
       if (!replacement) return card;
-      return { ...(replacement as any), instanceId: card.instanceId || this.generateId() } as CardDef;
+      return this.createRuntimeCard(replacement as CardDef, card.instanceId || this.generateId());
     });
   }
 
@@ -1682,7 +2311,7 @@ export class GameEngine {
     if (this.state.player.gold < price) return;
 
     this.state.player.gold -= price;
-    this.state.player.deck.push({ ...card, instanceId: this.generateId() });
+    this.state.player.deck.push(this.createRuntimeCard(card));
     this.state.shopCards = this.state.shopCards.filter(c => c.instanceId !== cardInstanceId);
     this.notify();
   }
@@ -1716,6 +2345,7 @@ export class GameEngine {
   removeCard(cardInstanceId: string): void {
     const card = this.state.player.deck.find(c => c.instanceId === cardInstanceId);
     if (!card) return;
+    this.tryDelegatedRemoveCard(cardInstanceId);
 
     const freeEventRemoval = this.isEventFreeCardRemovalMode();
     const removeCost = freeEventRemoval ? 0 : this.getCardRemovalCostForCard(card);
@@ -1749,8 +2379,10 @@ export class GameEngine {
   restHeal(): void {
     if (this.state.campfireChoiceLocked) return;
     this.state.campfireChoiceLocked = true;
-    const healAmount = Math.floor(this.state.player.maxHp * 0.3);
-    this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
+    if (!this.tryDelegatedRest()) {
+      const healAmount = Math.floor(this.state.player.maxHp * 0.3);
+      this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
+    }
     this.leaveCurrentRoomToMap();
   }
 
@@ -1763,17 +2395,22 @@ export class GameEngine {
   upgradeCard(cardInstanceId: string): void {
     const cardIndex = this.state.player.deck.findIndex(c => c.instanceId === cardInstanceId);
     if (cardIndex === -1) return;
+    this.tryDelegatedUpgradeCard(cardInstanceId);
 
-    const card = this.state.player.deck[cardIndex];
+    const card = normalizeRunCardInstance(this.state.player.deck[cardIndex], () => this.generateId());
     if (!card.upgrade || card.isUpgraded) return;
 
-    this.state.player.deck[cardIndex] = {
-      ...card,
+    const upgradedBase = {
+      ...card.runtimeBase,
       ...card.upgrade,
-      isUpgraded: true,
       id: card.id,
-      instanceId: card.instanceId
-    };
+      isUpgraded: true
+    } as CardDef;
+    this.state.player.deck[cardIndex] = deriveRunCardInstance({
+      ...card,
+      isUpgraded: true,
+      runtimeBase: upgradedBase
+    });
 
     const fromRest = this.state.upgradeReturnScreen === 'Rest';
     this.state.screen = this.state.upgradeReturnScreen || 'Map';
@@ -1788,20 +2425,32 @@ export class GameEngine {
   // ==================== Reward System ====================
 
   takeReward(cardInstanceId?: string): void {
+    if (this.tryDelegatedTakeReward(cardInstanceId)) {
+      this.leaveCurrentRoomToMap();
+      return;
+    }
+
     if (cardInstanceId) {
       const card = this.state.rewardCards.find(c => c.instanceId === cardInstanceId);
       if (card) {
-        this.state.player.deck.push({ ...(card as any), instanceId: this.generateId() } as CardDef);
+        this.state.player.deck.push(this.createRuntimeCard(card as CardDef));
         metricsTracker.recordCardAcquired();
       }
     }
 
     this.state.rewardCards = [];
+    this.syncActiveRoomBridgeAfterLegacyAction('take_reward');
     this.leaveCurrentRoomToMap();
   }
 
   skipReward(): void {
+    if (this.tryDelegatedSkipReward()) {
+      this.leaveCurrentRoomToMap();
+      return;
+    }
+
     this.state.rewardCards = [];
+    this.syncActiveRoomBridgeAfterLegacyAction('skip_reward');
     this.leaveCurrentRoomToMap();
   }
 
@@ -1839,8 +2488,13 @@ export class GameEngine {
       this.rng = createRNG(this.state.seed, this.state.rngState);
       bindStateRng(this.state, this.rng);
       economySystem.setRandomGenerator(this.rng);
+      this.normalizeDeckCards();
+      this.state.rewardCards = (this.state.rewardCards || []).map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+      this.state.shopCards = (this.state.shopCards || []).map((card) => normalizeRunCardInstance(card, () => this.generateId()));
+      this.normalizeCombatCards();
       this.actionManager.updateState(this.state);
     }
+    this.syncRuntimeDelegateFromLegacyState('load_snapshot');
     this.notify();
   }
 
@@ -1862,6 +2516,7 @@ export class GameEngine {
   resolveEventChoice(choice: string): void {
     const event = this.state.activeEvent;
     if (!event) return;
+    this.tryDelegatedChooseEventOption(choice);
     event.data = { ...(event.data || {}), lastChoiceId: choice };
     if (getStoryEventDef(event.id)) {
       this.resolveStoryEventChoice(choice);
@@ -1981,10 +2636,11 @@ export class GameEngine {
     const price = this.getAdjustedShopPrice(basePrice);
     if (this.state.player.gold < price) return;
     this.state.player.gold -= price;
-    this.state.player.deck.push({ ...card, instanceId: this.generateId() });
+    this.state.player.deck.push(this.createRuntimeCard(card));
     this.state.shopCards = this.state.shopCards.filter(c => c.instanceId !== cardInstanceId);
     metricsTracker.recordGoldSpent(price);
     metricsTracker.recordCardAcquired();
+    this.syncActiveRoomBridgeAfterLegacyAction('buy_shop_card');
     this.notify();
   }
 
@@ -1998,6 +2654,7 @@ export class GameEngine {
     this.state.shopRelics = this.state.shopRelics.filter(id => id !== relicId);
     metricsTracker.recordGoldSpent(price);
     metricsTracker.recordRelicAcquired();
+    this.syncActiveRoomBridgeAfterLegacyAction('buy_shop_relic');
     this.notify();
   }
 
@@ -2016,6 +2673,7 @@ export class GameEngine {
       this.state.shopPotions = this.state.shopPotions.filter(id => id !== potionId);
     }
     metricsTracker.recordGoldSpent(price);
+    this.syncActiveRoomBridgeAfterLegacyAction('buy_shop_potion');
     this.notify();
   }
 
@@ -2036,6 +2694,16 @@ export class GameEngine {
       this.notify();
     }
     return true;
+  }
+
+  getEnchantPreview(cardInstanceId: string): CardDef | null {
+    const context = this.state.enchantContext;
+    if (!context) return null;
+    const card = this.state.player.deck.find((entry) => entry.instanceId === cardInstanceId);
+    if (!card) return null;
+    const enchantment = getCardEnchantmentDefById(context.enchantmentId);
+    if (!enchantment || enchantment.scope !== 'persistent') return null;
+    return applyPersistentEnchantmentToInstance(normalizeRunCardInstance(card, () => this.generateId()), enchantment);
   }
 
   usePotion(index: number): void {
@@ -2191,21 +2859,26 @@ export class GameEngine {
     const isFinalBossNode = currentNode?.type === 'Boss' && (!currentNode.next || currentNode.next.length === 0);
 
     this.state.activeEvent = null;
+    this.state.enchantContext = null;
+    this.clearCombatAfflictionsForRunCards();
     if (isFinalBossNode) {
       metricsTracker.recordRunEnd(true, this.getCurrentFloorNumber());
       this.applyRunTransition({ type: 'RUN_ENDED', phase: 'victory' });
       globalEventBus.publish({ type: RuntimeEventType.RunVictory, timestamp: Date.now() } as any);
     } else {
-      const actionByScreen: Partial<Record<GameState['screen'], RunAction>> = {
-        Reward: { type: 'REWARD_TAKEN' },
-        Event: { type: 'EVENT_RESOLVED' },
-        Shop: { type: 'SHOP_LEFT' },
-        Upgrade: { type: 'SHOP_LEFT' },
-        RemoveCard: { type: 'SHOP_LEFT' },
-        Rest: { type: 'REST_COMPLETED' }
-      };
-      const action = actionByScreen[this.state.screen] ?? { type: 'EVENT_RESOLVED' };
-      this.applyRunTransition(action);
+      const delegated = this.tryDelegatedLeaveRoom();
+      if (!delegated) {
+        const actionByScreen: Partial<Record<GameState['screen'], RunAction>> = {
+          Reward: { type: 'REWARD_TAKEN' },
+          Event: { type: 'EVENT_RESOLVED' },
+          Shop: { type: 'SHOP_LEFT' },
+          Upgrade: { type: 'SHOP_LEFT' },
+          RemoveCard: { type: 'SHOP_LEFT' },
+          Rest: { type: 'REST_COMPLETED' }
+        };
+        const action = actionByScreen[this.state.screen] ?? { type: 'EVENT_RESOLVED' };
+        this.applyRunTransition(action);
+      }
     }
     globalEventBus.publish({
       type: RuntimeEventType.NodeCompleted,
@@ -2213,6 +2886,7 @@ export class GameEngine {
       screen: this.state.screen,
       timestamp: Date.now()
     } as any);
+    this.syncRuntimeDelegateFromLegacyState('leave_room');
     this.notify();
   }
 }
