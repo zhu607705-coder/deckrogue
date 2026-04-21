@@ -33,8 +33,8 @@
   },
   {
     "id": "block_potion",
-    "name": "格挡药剂",
-    "description": "获得 12 点格挡。",
+    "name": "护盾药剂",
+    "description": "获得 12 点护盾。",
     "price": 65,
     "toxicity": 1,
     "tags": [
@@ -156,7 +156,7 @@
   {
     "id": "mutagenic_draft",
     "name": "诱变草案",
-    "description": "获得 2 点能量、8 点格挡与 2 层力量。对自身施加 2 层中毒。",
+    "description": "获得 2 点能量、8 点护盾与 2 层力量。对自身施加 2 层中毒。",
     "price": 160,
     "toxicity": 3,
     "tags": [

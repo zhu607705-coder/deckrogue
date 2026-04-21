@@ -58,7 +58,7 @@
   {
     "id": "anchor",
     "name": "虚空系泊锚",
-    "description": "每场战斗开始时，获得 10 点格挡。",
+    "description": "每场战斗开始时，获得 10 点护盾。",
     "price": 145,
     "tags": [
       "defense",
@@ -318,7 +318,7 @@
   {
     "id": "seal_of_exterminatus",
     "name": "灭绝令封蜡",
-    "description": "可附着于攻击牌的纯洁封印。该攻击无视格挡与护甲；若未击杀目标，则放逐此牌。",
+    "description": "可附着于攻击牌的纯洁封印。该攻击无视护盾与护甲；若未击杀目标，则放逐此牌。",
     "price": 180,
     "tags": [
       "seal",
@@ -426,7 +426,7 @@
   {
     "id": "inquisitor_rosary",
     "name": "审判官玫瑰",
-    "description": "每次战斗开始时获得 12 点格挡。",
+    "description": "每次战斗开始时获得 12 点护盾。",
     "price": 190,
     "trigger": "StartCombat",
     "tags": [
@@ -547,7 +547,7 @@
   {
     "id": "cooling_retort",
     "name": "冷却蒸馏瓶",
-    "description": "若回合结束时拥有 2 个或更多元素，获得 5 点格挡并移除自身 1 个减益。",
+    "description": "若回合结束时拥有 2 个或更多元素，获得 5 点护盾并移除自身 1 个减益。",
     "price": 190,
     "tags": [
       "element",
@@ -642,7 +642,7 @@
   {
     "id": "coolant_spine",
     "name": "冷却脊柱",
-    "description": "每回合第一次受到 8+ 伤害时，获得 6 格挡并移除 1 易伤。",
+    "description": "每回合第一次受到 8+ 伤害时，获得 6 护盾并移除 1 易伤。",
     "price": 150,
     "tags": [
       "chapter2",
@@ -714,7 +714,7 @@
   {
     "id": "penitent_cooling_mask",
     "name": "忏悔冷凝面具",
-    "description": "回合结束时若你拥有 10 点或以上格挡，恢复 2 生命。",
+    "description": "回合结束时若你拥有 10 点或以上护盾，恢复 2 生命。",
     "price": 190,
     "tags": [
       "chapter2",
@@ -731,7 +731,7 @@
       "amount": 2,
       "target": "Self"
     },
-    "inscription": "忏悔者的面具会在格挡充足时滴下冷却液。",
+    "inscription": "忏悔者的面具会在护盾充足时滴下冷却液。",
     "flavorText": "“每一次防御都是一次忏悔。”"
   },
   {
@@ -785,7 +785,7 @@
   {
     "id": "reactive_incense",
     "name": "反应熏香",
-    "description": "若上回合受到 减益，本回合开始获得 4 格挡和 1 力量。",
+    "description": "若上回合受到 减益，本回合开始获得 4 护盾和 1 力量。",
     "price": 170,
     "tags": [
       "chapter2",
@@ -937,7 +937,7 @@
     "name": "菌幕",
     "rarity": "Common",
     "trigger": "EndTurn",
-    "description": "若你本回合施加过状态，获得 4 格挡",
+    "description": "若你本回合施加过状态，获得 4 护盾",
     "condition": {
       "type": "AppliedStatusThisTurn"
     },
@@ -954,7 +954,7 @@
     "name": "墓池共振器",
     "rarity": "Uncommon",
     "trigger": "Passive",
-    "description": "每次异端因 中毒 结算失去生命时，获得 1 格挡，单回合上限 6",
+    "description": "每次异端因 中毒 结算失去生命时，获得 1 护盾，单回合上限 6",
     "condition": {
       "type": "EnemyTakePoisonDamage"
     },
@@ -1079,7 +1079,7 @@
     "name": "泥潭之心",
     "rarity": "Rare",
     "trigger": "Passive",
-    "description": "每回合第一次受到 10+ 伤害时，获得 8 格挡并抽 1 张牌",
+    "description": "每回合第一次受到 10+ 伤害时，获得 8 护盾并抽 1 张牌",
     "condition": {
       "type": "TakeDamageThreshold",
       "threshold": 10
@@ -1201,7 +1201,7 @@
     "name": "冷却剂小瓶",
     "rarity": "Common",
     "trigger": "Passive",
-    "description": "第一章每场战斗第一次受到 10+ 伤害时获得 5 格挡",
+    "description": "第一章每场战斗第一次受到 10+ 伤害时获得 5 护盾",
     "condition": {
       "type": "TakeDamageThreshold",
       "threshold": 10,
@@ -1354,7 +1354,7 @@
     "name": "军令徽针",
     "rarity": "Rare",
     "trigger": "Passive",
-    "description": "每回合首次在回合结束时拥有 12 点或以上格挡时，获得 1 点指挥。",
+    "description": "每回合首次在回合结束时拥有 12 点或以上护盾时，获得 1 点指挥。",
     "effect": {
       "type": "TriggerOnBlockThreshold",
       "threshold": 12,
@@ -1433,7 +1433,7 @@
     "name": "回响扣环",
     "rarity": "Uncommon",
     "trigger": "Passive",
-    "description": "每回合打出第 4 张牌后，获得 4 点格挡。",
+    "description": "每回合打出第 4 张牌后，获得 4 点护盾。",
     "effect": {
       "type": "OnCardPlayed",
       "count": 4,
@@ -1493,7 +1493,7 @@
     "name": "宫廷筹算盘",
     "rarity": "Uncommon",
     "trigger": "Passive",
-    "description": "每回合首次消耗资源时，获得 3 点格挡。",
+    "description": "每回合首次消耗资源时，获得 3 点护盾。",
     "effect": {
       "type": "OnFirstResourceSpend",
       "effect": {
@@ -1668,5 +1668,81 @@
       "mirror"
     ],
     "flavorText": "镜宫中的时间流速从不守同一条律令。"
+  },
+  {
+    "id": "spatial_anchor",
+    "name": "空间锚点",
+    "description": "可以选择回到上一个经过的节点。每场战斗限用一次。",
+    "price": 180,
+    "tags": ["map", "utility"],
+    "resonanceGroup": "utility",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "description": "允许返回上一节点"
+    },
+    "inscription": "这枚锚点能够撕裂亚空间，让你短暂地回到过去的位置。",
+    "flavorText": "\"过去不是枷锁，而是选择。\""
+  },
+  {
+    "id": "prophetic_eye",
+    "name": "先见之眼",
+    "description": "进入新楼层时，自动揭示所有节点类型。",
+    "price": 220,
+    "tags": ["map", "information"],
+    "resonanceGroup": "utility",
+    "trigger": "EnterFloor",
+    "effect": {
+      "type": "RevealAllNodes",
+      "description": "揭示本层所有节点"
+    },
+    "inscription": "这只眼球来自一位被处决的先知，依然能窥见命运的丝线。",
+    "flavorText": "\"看见未来，才能改变未来。\""
+  },
+  {
+    "id": "shortcut_compass",
+    "name": "捷径罗盘",
+    "description": "每层可以选择跳过 1 个普通战斗节点。",
+    "price": 195,
+    "tags": ["map", "tempo"],
+    "resonanceGroup": "tempo",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "description": "每层可跳过 1 个普通战斗"
+    },
+    "inscription": "这具罗盘永远指向最近的出口——无论那是否是你想去的方向。",
+    "flavorText": "\"捷径往往是最长的路。但这次也许不是。\""
+  },
+  {
+    "id": "trap_detector",
+    "name": "陷阱探测仪",
+    "description": "危险节点（精英/首领）会在地图上高亮显示。",
+    "price": 150,
+    "tags": ["map", "defense"],
+    "resonanceGroup": "utility",
+    "trigger": "Passive",
+    "effect": {
+      "type": "Passive",
+      "description": "高亮危险节点"
+    },
+    "inscription": "这台古老的机械会在危险接近时发出嗡鸣——前提是你能区分嗡鸣和故障噪音。",
+    "flavorText": "\"嘀嘀嘀...嘀嘀嘀...这玩意儿到底在探测什么？\""
+  },
+  {
+    "id": "pilgrims_staff",
+    "name": "朝圣者权杖",
+    "description": "每经过 3 个节点，恢复 8 点生命值。",
+    "price": 170,
+    "tags": ["map", "sustain"],
+    "resonanceGroup": "sustain",
+    "trigger": "PassNode",
+    "effect": {
+      "type": "Heal",
+      "amount": 8,
+      "interval": 3
+    },
+    "inscription": "这根权杖曾属于无数朝圣者中的一员——他们中的大多数没能走完朝圣之路。",
+    "flavorText": "\"每一步都是救赎。\""
   }
 ]

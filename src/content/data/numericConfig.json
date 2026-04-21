@@ -82,6 +82,37 @@
       "bossPool": ["pox_cathedral", "the_mire_saint"]
     }
   },
+  "map": {
+    "runtime": {
+      "floorTypeCaps": {
+        "Event": 1,
+        "Shop": 1,
+        "Rest": 1,
+        "Elite": 1
+      },
+      "openingRouteExpectation": {
+        "maxSpread": 15,
+        "traversalDepth": 3,
+        "weights": {
+          "Combat": 2,
+          "Elite": 5,
+          "Boss": 0,
+          "Event": 2,
+          "Shop": 1,
+          "Rest": 1
+        },
+        "maxBranchesPerFloor": {
+          "floor_1": 2,
+          "floor_2": 2
+        }
+      },
+      "openingRouteContrast": {
+        "maxFloor": 3,
+        "requireThirdFlavorOnFloor1": true,
+        "utilityTypes": ["Event", "Shop", "Rest"]
+      }
+    }
+  },
   "cards": {
     "byId": {
       "strike": {

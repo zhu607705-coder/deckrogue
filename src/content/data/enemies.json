@@ -3,12 +3,16 @@
     "id": "slime_small",
     "name": "Small Slime",
     "hp_range": [
-      11,
-      15
+      18,
+      24
     ],
     "intent_policy": [
       {
         "intent": "tackle",
+        "weight": 2
+      },
+      {
+        "intent": "splits",
         "weight": 1
       }
     ],
@@ -16,12 +20,48 @@
       "tackle": [
         {
           "type": "DealDamage",
-          "amount": 5,
+          "amount": 6,
           "target": "Enemy"
+        }
+      ],
+      "splits": [
+        {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "tackle",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "splits",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "tackle",
+          "splits"
+        ]
+      }
+    }
   },
   {
     "id": "goblin",
@@ -90,7 +130,51 @@
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "attack",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "attack",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "block",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "block",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "break_the_line",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "block",
+          "break_the_line"
+        ]
+      }
+    }
   },
   {
     "id": "cultist",
@@ -126,7 +210,40 @@
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "incantation",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "dark_strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "dark_strike",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "incantation"
+        ]
+      }
+    }
   },
   {
     "id": "jaw_worm",
@@ -183,7 +300,51 @@
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "chomp",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "chomp",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "thrash",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "bellow",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "bellow",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "thrash",
+          "bellow"
+        ]
+      }
+    }
   },
   {
     "id": "gremlin_nob",
@@ -236,6 +397,39 @@
         }
       ]
     },
+    "ai_profile": {
+      "perceptionAccuracy": 0.62,
+      "personality": {
+        "aggression": 0.95,
+        "defensiveness": 0.08,
+        "unpredictability": 0.18,
+        "revengefulness": 0.7
+      },
+      "intentBiases": [
+        {
+          "intent": "skull_bash",
+          "attackIntentBand": "high",
+          "multiplier": 2.4
+        },
+        {
+          "intent": "bellow",
+          "defenseIntentBand": "high",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "rush",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2.4,
+        "suppressedIntents": [
+          "bellow"
+        ]
+      }
+    },
     "keywords": [
       "elite"
     ]
@@ -244,8 +438,8 @@
     "id": "lagavulin",
     "name": "Lagavulin",
     "hp_range": [
-      109,
-      111
+      95,
+      100
     ],
     "intent_policy": [
       {
@@ -261,7 +455,7 @@
       "attack": [
         {
           "type": "DealDamage",
-          "amount": 16,
+          "amount": 13,
           "target": "Enemy"
         }
       ],
@@ -279,6 +473,49 @@
           "target": "Enemy"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.78,
+      "personality": {
+        "aggression": 0.35,
+        "defensiveness": 0.82,
+        "unpredictability": 0.12,
+        "revengefulness": 0.55
+      },
+      "intentBiases": [
+        {
+          "intent": "siphon",
+          "attackIntentBand": "high",
+          "multiplier": 2.4
+        },
+        {
+          "intent": "attack",
+          "attackIntentBand": "high",
+          "multiplier": 0.35
+        },
+        {
+          "intent": "siphon",
+          "comboThreatBand": "high",
+          "multiplier": 1.4
+        },
+        {
+          "intent": "attack",
+          "playerHpBand": "kill_range",
+          "multiplier": 2.2
+        },
+        {
+          "intent": "attack",
+          "playerBlockBand": "none",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2.5,
+        "suppressedIntents": [
+          "siphon"
+        ]
+      }
     },
     "keywords": [
       "elite"
@@ -316,6 +553,39 @@
           "target": "Self"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.72,
+      "personality": {
+        "aggression": 0.52,
+        "defensiveness": 0.78,
+        "unpredictability": 0.12,
+        "revengefulness": 0.2
+      },
+      "intentBiases": [
+        {
+          "intent": "prep",
+          "defenseIntentBand": "high",
+          "multiplier": 2.4
+        },
+        {
+          "intent": "prep",
+          "playerBlockBand": "heavy",
+          "multiplier": 2.2
+        },
+        {
+          "intent": "slam",
+          "playerHpBand": "kill_range",
+          "multiplier": 2.2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2.2,
+        "suppressedIntents": [
+          "prep"
+        ]
+      }
     },
     "keywords": [
       "boss"
@@ -395,6 +665,37 @@
         }
       ]
     },
+    "ai_profile": {
+      "perceptionAccuracy": 0.74,
+      "personality": {
+        "aggression": 0.82,
+        "defensiveness": 0.25,
+        "unpredictability": 0.35,
+        "revengefulness": 0.55
+      },
+      "intentBiases": [
+        {
+          "intent": "inferno",
+          "defenseIntentBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "tackle",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        },
+        {
+          "intent": "sear",
+          "attackIntentBand": "high",
+          "multiplier": 1.3
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": []
+      }
+    },
     "keywords": [
       "boss"
     ]
@@ -419,7 +720,30 @@
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "adapt",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "adapt"
+        ]
+      }
+    }
   },
   {
     "id": "fission",
@@ -445,7 +769,33 @@
     },
     "keywords": [
       "splits"
-    ]
+    ],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "pulse",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "pulse",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": []
+      }
+    }
   },
   {
     "id": "fission_small",
@@ -469,7 +819,33 @@
         }
       ]
     },
-    "keywords": []
+    "keywords": [],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "zap",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "zap",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": []
+      }
+    }
   },
   {
     "id": "barrier",
@@ -506,7 +882,46 @@
     },
     "keywords": [
       "starts_with_block"
-    ]
+    ],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "shield_bash",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "shield_bash",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "fortify",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "fortify",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "shield_bash",
+          "fortify"
+        ]
+      }
+    }
   },
   {
     "id": "symbiote_a",
@@ -532,7 +947,33 @@
     },
     "keywords": [
       "symbiote"
-    ]
+    ],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "strike",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": []
+      }
+    }
   },
   {
     "id": "symbiote_b",
@@ -558,7 +999,33 @@
     },
     "keywords": [
       "symbiote"
-    ]
+    ],
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "strike",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": []
+      }
+    }
   },
   {
     "id": "intelligence_officer",
@@ -618,6 +1085,40 @@
           "target": "Self"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.76,
+      "personality": {
+        "aggression": 0.45,
+        "defensiveness": 0.72,
+        "unpredictability": 0.25,
+        "revengefulness": 0.35
+      },
+      "intentBiases": [
+        {
+          "intent": "analyze",
+          "attackIntentBand": "high",
+          "multiplier": 2
+        },
+        {
+          "intent": "counter_surveillance",
+          "defenseIntentBand": "high",
+          "multiplier": 2.1
+        },
+        {
+          "intent": "copy_strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2,
+        "suppressedIntents": [
+          "analyze",
+          "counter_surveillance"
+        ]
+      }
     },
     "keywords": [
       "elite"
@@ -690,6 +1191,41 @@
         }
       ]
     },
+    "ai_profile": {
+      "perceptionAccuracy": 0.8,
+      "personality": {
+        "aggression": 0.45,
+        "defensiveness": 0.62,
+        "unpredictability": 0.4,
+        "revengefulness": 0.35
+      },
+      "intentBiases": [
+        {
+          "intent": "brew_acid",
+          "attackIntentBand": "high",
+          "multiplier": 2
+        },
+        {
+          "intent": "neutralizing_tonic",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "throw_concoction",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2,
+        "suppressedIntents": [
+          "brew_fire",
+          "brew_acid",
+          "neutralizing_tonic"
+        ]
+      }
+    },
     "keywords": [
       "boss"
     ]
@@ -726,6 +1262,39 @@
         }
       ]
     },
+    "ai_profile": {
+      "perceptionAccuracy": 0.85,
+      "personality": {
+        "aggression": 0.55,
+        "defensiveness": 0.85,
+        "unpredictability": 0.2,
+        "revengefulness": 0.4
+      },
+      "intentBiases": [
+        {
+          "intent": "rewind",
+          "attackIntentBand": "high",
+          "multiplier": 2.4
+        },
+        {
+          "intent": "rewind",
+          "comboThreatBand": "high",
+          "multiplier": 2.2
+        },
+        {
+          "intent": "time_strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2,
+        "suppressedIntents": [
+          "rewind"
+        ]
+      }
+    },
     "keywords": [
       "boss"
     ]
@@ -760,6 +1329,39 @@
           "amount": 3
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.78,
+      "personality": {
+        "aggression": 0.42,
+        "defensiveness": 0.66,
+        "unpredictability": 0.48,
+        "revengefulness": 0.3
+      },
+      "intentBiases": [
+        {
+          "intent": "summon_puppet",
+          "attackIntentBand": "high",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "command",
+          "comboThreatBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "command",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2,
+        "suppressedIntents": [
+          "summon_puppet"
+        ]
+      }
     },
     "keywords": [
       "boss"
@@ -826,7 +1428,56 @@
       ]
     },
     "art": "机械猎犬，冷却液管道暴露在外，四足机械追猎者，蒸汽朋克风格",
-    "description": "失控的冷却系统会在追猎中不断喷射低温液体。"
+    "description": "失控的冷却系统会在追猎中不断喷射低温液体。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.58,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.67,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "bite",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "bite",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "spray",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "spray",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "cool_run",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "cool_run",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "spray",
+          "cool_run"
+        ]
+      }
+    }
   },
   {
     "id": "servo_confessor",
@@ -888,7 +1539,56 @@
       ]
     },
     "art": "机械化的告解士，穿着宗教风格铠甲，手持审判之锤，蒸汽朋克风格",
-    "description": "逻辑审判者会根据你的出牌频率来增强自己的力量。"
+    "description": "逻辑审判者会根据你的出牌频率来增强自己的力量。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.58,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.67,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "verdict",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "verdict",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "confess",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "confess",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "absolve",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "absolve",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "confess",
+          "absolve"
+        ]
+      }
+    }
   },
   {
     "id": "reactor_thrall",
@@ -956,7 +1656,47 @@
       ]
     },
     "art": "被反应炉能量辐射奴役的工人，身体因辐射而发光，周围有蒸汽和能量泄漏，末日蒸汽朋克风格",
-    "description": "反应炉奴工会积蓄能量并在达到临界点时爆发，但也会自损。"
+    "description": "反应炉奴工会积蓄能量并在达到临界点时爆发，但也会自损。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "charge",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "charge",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "vent",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "rupture",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "charge",
+          "vent",
+          "rupture"
+        ]
+      }
+    }
   },
   {
     "id": "data_leech",
@@ -1013,7 +1753,52 @@
       ]
     },
     "art": "数据形态的吸蚀生物，半机械结构，从数据流中吸取能量，科幻机械风格",
-    "description": "数据吸蚀者会吸取你的手牌价值并干扰你的资源收益。"
+    "description": "数据吸蚀者会吸取你的手牌价值并干扰你的资源收益。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.4,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "drain",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "drain",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "scramble",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "scramble",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "skim",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "drain",
+          "scramble",
+          "skim"
+        ]
+      }
+    }
   },
   {
     "id": "iron_choir_twin_a",
@@ -1089,7 +1874,46 @@
       ]
     },
     "art": "双生机械歌手的一半，穿着铁制咏唱袍，另一半不在视野中，蒸汽朋克歌剧风格",
-    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。"
+    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "chorus",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "stab",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "stab",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "resonate",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "chorus",
+          "resonate"
+        ]
+      }
+    }
   },
   {
     "id": "iron_choir_twin_b",
@@ -1164,8 +1988,47 @@
         }
       ]
     },
-    "art": "铁唱双生体的另一半，与A形成和声时会获得额外格挡，蒸汽朋克歌剧风格",
-    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。"
+    "art": "铁唱双生体的另一半，与A形成和声时会获得额外护盾，蒸汽朋克歌剧风格",
+    "description": "铁唱双生体必须同时击杀，否则存活的一方会获得强化。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "chorus",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "stab",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "stab",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "resonate",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "chorus",
+          "resonate"
+        ]
+      }
+    }
   },
   {
     "id": "scrap_surgeon",
@@ -1226,7 +2089,47 @@
       ]
     },
     "art": "废钢术士手持巨型手术锯，周围散落着机械零件和工具，疯狂医生风格，蒸汽朋克",
-    "description": "废钢术士会治疗所有敌人并移除自身的负面状态。"
+    "description": "废钢术士会治疗所有敌人并移除自身的负面状态。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.63,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "mend",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "mend",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "saw",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "sterilize",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "mend",
+          "saw",
+          "sterilize"
+        ]
+      }
+    }
   },
   {
     "id": "sanctum_praetor",
@@ -1285,7 +2188,52 @@
       ]
     },
     "art": "圣所禁卫长穿着厚重的机械铠甲，手持巨大的净化之锤，周围有神圣光芒和齿轮结构，蒸汽朋克圣殿武士风格",
-    "description": "圣所禁卫长会用高额格挡和净化来抵挡你的进攻。"
+    "description": "圣所禁卫长会用高额护盾和净化来抵挡你的进攻。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.67,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "fortify",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "fortify",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "judgment",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "purity_drive",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "purity_drive",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "fortify",
+          "judgment",
+          "purity_drive"
+        ]
+      }
+    }
   },
   {
     "id": "overclocked_abbot",
@@ -1345,7 +2293,56 @@
       ]
     },
     "art": "超频修院长身体因过载而发出红光，周围有能量波动的光环，手持仪式鞭，蒸汽朋克狂热修士风格",
-    "description": "超频修院长会不断积蓄仪式层数并在过载时造成巨大伤害，但也会自损。"
+    "description": "超频修院长会不断积蓄仪式层数并在过载时造成巨大伤害，但也会自损。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.45,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "chant",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "chant",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "lash",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "lash",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "overclock",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "overclock",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "chant",
+          "overclock"
+        ]
+      }
+    }
   },
   {
     "id": "fusion_censer",
@@ -1410,7 +2407,46 @@
       ]
     },
     "art": "熔融圣炉是一个巨大的机械香炉，内部燃烧着火焰，周围有蒸汽和烟气，蒸汽朋克宗教仪式风格",
-    "description": "熔融圣炉会召唤冷却猎犬并用灼烧和压力波来压制玩家。"
+    "description": "熔融圣炉会召唤冷却猎犬并用灼烧和压力波来压制玩家。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.85,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "stoke",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "flare",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "flare",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "pressure_wave",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "stoke",
+          "pressure_wave"
+        ]
+      }
+    }
   },
   {
     "id": "cathedral_engine",
@@ -1453,6 +2489,39 @@
           "target": "Self"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.82,
+      "personality": {
+        "aggression": 0.58,
+        "defensiveness": 0.88,
+        "unpredictability": 0.15,
+        "revengefulness": 0.45
+      },
+      "intentBiases": [
+        {
+          "intent": "iron_litany",
+          "defenseIntentBand": "high",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "overheat_mass",
+          "comboThreatBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "cooling_breach",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "iron_litany"
+        ]
+      }
     },
     "art": "巨大的机械引擎，混合了教堂哥特式和蒸汽朋克风格，内部有熔岩般的能量流动，蒸汽和热量从缝隙中喷出，末日机械圣所风格",
     "description": "圣堂引擎会在战斗中进入不同的过热阶段，用护甲循环和冷却破坏来压制玩家。"
@@ -1499,6 +2568,39 @@
           "target": "Enemy"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.88,
+      "personality": {
+        "aggression": 0.48,
+        "defensiveness": 0.72,
+        "unpredictability": 0.18,
+        "revengefulness": 0.5
+      },
+      "intentBiases": [
+        {
+          "intent": "edict_cycle",
+          "attackIntentBand": "high",
+          "multiplier": 1.7
+        },
+        {
+          "intent": "forbidden_proof",
+          "comboThreatBand": "high",
+          "multiplier": 1.9
+        },
+        {
+          "intent": "final_axiom",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.7,
+        "suppressedIntents": [
+          "forbidden_proof"
+        ]
+      }
     },
     "art": "逻辑圣者是一个人形机械，混合了法官和赛博朋克风格，手持发光的几何图形，周围有数据和逻辑流动，高等智慧机械风格",
     "description": "逻辑圣者会用牌序惩罚、复制伤害和强制弃牌来压制玩家。"
@@ -1569,7 +2671,56 @@
       ]
     },
     "art": "毒孢孽物是一个变异的生物，身上覆盖着孢子，会在战斗中释放有毒孢子，病态绿色和紫色混合，生物机械风格",
-    "description": "毒孢孽物会在存活足够长时间后变强。"
+    "description": "毒孢孽物会在存活足够长时间后变强。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.42,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.63,
+        "unpredictability": 0.4,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "spit",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "spit",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "shed",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "shed",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "bloom",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "bloom",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "shed",
+          "bloom"
+        ]
+      }
+    }
   },
   {
     "id": "rot_hound",
@@ -1637,7 +2788,55 @@
       ]
     },
     "art": "腐化猎犬是被瘟疫感染的野兽，身体腐烂但仍然凶猛，周围有腐败气体，末日生物风格",
-    "description": "腐化猎犬会在同伴中毒足够多时变强。"
+    "description": "腐化猎犬会在同伴中毒足够多时变强。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.42,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.45,
+        "unpredictability": 0.4,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "gnaw",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "gnaw",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "septic_bite",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "septic_bite",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "howl",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "howl",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "howl"
+        ]
+      }
+    }
   },
   {
     "id": "plague_choir",
@@ -1692,7 +2891,57 @@
       ]
     },
     "art": "疫病咏者穿着破烂的长袍，周围有瘟疫光环，用歌声散播疾病，黑暗奇幻风格",
-    "description": "疫病咏者会用歌声削弱你的治疗效果。"
+    "description": "疫病咏者会用歌声削弱你的治疗效果。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.63,
+        "unpredictability": 0.4,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "chant",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "chant",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "dirge",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "dirge",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "murmur",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "murmur",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "chant",
+          "dirge",
+          "murmur"
+        ]
+      }
+    }
   },
   {
     "id": "cyst_bearer",
@@ -1754,7 +3003,42 @@
       ]
     },
     "art": "囊肿承载体身体上长满了巨大的囊肿，内部充满液体，死亡时会破裂释放毒素，恐怖风格",
-    "description": "囊肿承载体死亡时会爆炸并对你施加毒液。"
+    "description": "囊肿承载体死亡时会爆炸并对你施加毒液。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.67,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "swell",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "rupture",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "spill",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "swell",
+          "rupture",
+          "spill"
+        ]
+      }
+    }
   },
   {
     "id": "grave_mender",
@@ -1807,7 +3091,56 @@
       ]
     },
     "art": "墓池缝合者手持巨剪，能够治愈同伴并移除毒素，身体由缝合的尸体组成，恐怖外科风格",
-    "description": "墓池缝合者会治疗同伴并移除它们的毒素。"
+    "description": "墓池缝合者会治疗同伴并移除它们的毒素。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.63,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "mend",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "mend",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "cleanse_rot",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "cleanse_rot",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "cut",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "cut",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "mend",
+          "cleanse_rot"
+        ]
+      }
+    }
   },
   {
     "id": "blight_larva",
@@ -1870,7 +3203,51 @@
       ]
     },
     "art": "病斑幼体是小型昆虫生物，会召唤同伴并在死亡时自爆，昆虫群落风格",
-    "description": "病斑幼体会召唤同伴并在死亡时造成伤害。"
+    "description": "病斑幼体会召唤同伴并在死亡时造成伤害。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.42,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.63,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "sting",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "sting",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "nest",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "nest",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "burst",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "nest",
+          "burst"
+        ]
+      }
+    }
   },
   {
     "id": "mire_guard",
@@ -1934,7 +3311,52 @@
       ]
     },
     "art": "泥沼守卫是沉浸在腐败泥沼中的骑士，会拖慢敌人并获得防御，黑暗沼泽风格",
-    "description": "泥沼守卫会用多重 debuff 和高格挡来拖慢你的节奏。"
+    "description": "泥沼守卫会用多重 debuff 和高护盾来拖慢你的节奏。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.67,
+        "unpredictability": 0.4,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "smother",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "drag_down",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "drag_down",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "sink",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "sink",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "smother",
+          "drag_down",
+          "sink"
+        ]
+      }
+    }
   },
   {
     "id": "plague_abbot",
@@ -1995,7 +3417,57 @@
       ]
     },
     "art": "疫病院长穿着腐烂的宗教服饰，手持祝福之杖，周围有疫病光环，黑暗宗教风格",
-    "description": "疫病院长会用仪式和毒素来惩罚你的拖延。"
+    "description": "疫病院长会用仪式和毒素来惩罚你的拖延。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.45,
+        "unpredictability": 0.4,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "blessing",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "blessing",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "brand",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "brand",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "anoint",
+          "defenseIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "anoint",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "blessing",
+          "brand",
+          "anoint"
+        ]
+      }
+    }
   },
   {
     "id": "maggot_reliquary",
@@ -2054,7 +3526,51 @@
       ]
     },
     "art": "蛆虫圣髑匣是一个巨大的金属容器，内部充满了蛆虫，会召唤病斑幼体，恐怖炼金术风格",
-    "description": "蛆虫圣髑匣会召唤大量幼体并用毒素压制你。"
+    "description": "蛆虫圣髑匣会召唤大量幼体并用毒素压制你。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.48,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.85,
+        "unpredictability": 0.4,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "spill",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "crush",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "crush",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "birth",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "birth",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "spill",
+          "birth"
+        ]
+      }
+    }
   },
   {
     "id": "corrupt_titanus",
@@ -2108,7 +3624,51 @@
       ]
     },
     "art": "腐败巨躯是一个巨大的畸形生物，身体由腐烂的肉和金属组成，会用沉重的攻击碾压敌人，巨型怪物风格",
-    "description": "腐败巨躯会用高伤害和厚甲来碾压你的防御。"
+    "description": "腐败巨躯会用高伤害和厚甲来碾压你的防御。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.42,
+      "personality": {
+        "aggression": 0.72,
+        "defensiveness": 0.67,
+        "unpredictability": 0.22,
+        "revengefulness": 0.25
+      },
+      "intentBiases": [
+        {
+          "intent": "slam",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "slam",
+          "playerBlockBand": "none",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "ooze_armor",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "ooze_armor",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "pestilent_roar",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "ooze_armor",
+          "pestilent_roar"
+        ]
+      }
+    }
   },
   {
     "id": "catacomb_matron",
@@ -2168,7 +3728,52 @@
       ]
     },
     "art": "地窖主母是一个巨大的女性形态生物，周围有子嗣环绕，会治疗敌人并对你施加毒素，母巢生物风格",
-    "description": "地窖主母会用召唤和治疗来拖慢战斗节奏，同时对你施加毒素压力。"
+    "description": "地窖主母会用召唤和治疗来拖慢战斗节奏，同时对你施加毒素压力。",
+    "ai_profile": {
+      "perceptionAccuracy": 0.52,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.63,
+        "unpredictability": 0.22,
+        "revengefulness": 0.37
+      },
+      "intentBiases": [
+        {
+          "intent": "brood_call",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "brood_call",
+          "comboThreatBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "lacerate",
+          "comboThreatBand": "high",
+          "multiplier": 1.35
+        },
+        {
+          "intent": "venom_milk",
+          "attackIntentBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "venom_milk",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "brood_call",
+          "lacerate",
+          "venom_milk"
+        ]
+      }
+    }
   },
   {
     "id": "pox_cathedral",
@@ -2212,6 +3817,39 @@
           "target": "Enemy"
         }
       ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.8,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.7,
+        "unpredictability": 0.36,
+        "revengefulness": 0.42
+      },
+      "intentBiases": [
+        {
+          "intent": "festering_hymn",
+          "attackIntentBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "cathedral_bloom",
+          "defenseIntentBand": "high",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "rotting_apotheosis",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.7,
+        "suppressedIntents": [
+          "cathedral_bloom"
+        ]
+      }
     },
     "art": "疫祸圣堂母体是一个巨大的有机结构，混合了教堂哥特式和病变生物风格，内部流淌着毒素，疫病大教堂概念图",
     "description": "疫祸圣堂母体会在战斗中召唤幼体并用持续的毒素压力来压制玩家。"
@@ -2265,7 +3903,685 @@
         }
       ]
     },
+    "ai_profile": {
+      "perceptionAccuracy": 0.83,
+      "personality": {
+        "aggression": 0.46,
+        "defensiveness": 0.74,
+        "unpredictability": 0.28,
+        "revengefulness": 0.5
+      },
+      "intentBiases": [
+        {
+          "intent": "dragging_sermon",
+          "attackIntentBand": "high",
+          "multiplier": 1.7
+        },
+        {
+          "intent": "sinking_mass",
+          "defenseIntentBand": "high",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "final_decay",
+          "playerHpBand": "kill_range",
+          "multiplier": 2.1
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "sinking_mass"
+        ]
+      }
+    },
     "art": "泥潭圣者是一个人形机械，混合了法官和泥沼生物风格，身体由腐烂的泥浆和金属组成，末日沼泽风格",
     "description": "泥潭圣者会用资源拖慢和状态惩罚来压制玩家，在半血后更加危险。"
+  },
+  {
+    "id": "mind_peek",
+    "name": "Mind Peek",
+    "type": "special",
+    "target": "player",
+    "effects": [
+      {
+        "type": "reveal_hand",
+        "value": 2
+      }
+    ],
+    "description": "Reveals 2 cards in your hand to the enemy."
+  },
+  {
+    "id": "card_swap",
+    "name": "Card Swap",
+    "type": "special",
+    "target": "player",
+    "effects": [
+      {
+        "type": "swap_cards",
+        "value": 1
+      }
+    ],
+    "description": "Swaps 2 cards in your hand."
+  },
+  {
+    "id": "psychic_infiltrator",
+    "name": "Psychic Infiltrator",
+    "type": "Elite",
+    "maxHp": 65,
+    "minHp": 65,
+    "damage": 12,
+    "keywords": [
+      "elite",
+      "psychic",
+      "card_manipulation"
+    ],
+    "intent_policy": [
+      {
+        "intent": "mind_peek",
+        "weight": 2
+      },
+      {
+        "intent": "card_swap",
+        "weight": 1.5
+      },
+      {
+        "intent": "attack",
+        "weight": 3
+      },
+      {
+        "intent": "defend",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "mind_peek": [
+        {
+          "type": "RevealHand",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "card_swap": [
+        {
+          "type": "SwapCards",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "attack": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ],
+      "defend": [
+        {
+          "type": "GainBlock",
+          "amount": 8,
+          "target": "Self"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.82,
+      "personality": {
+        "aggression": 0.38,
+        "defensiveness": 0.68,
+        "unpredictability": 0.42,
+        "revengefulness": 0.32
+      },
+      "intentBiases": [
+        {
+          "intent": "mind_peek",
+          "attackIntentBand": "high",
+          "multiplier": 2
+        },
+        {
+          "intent": "card_swap",
+          "comboThreatBand": "high",
+          "multiplier": 2.2
+        },
+        {
+          "intent": "attack",
+          "playerHpBand": "kill_range",
+          "multiplier": 2
+        },
+        {
+          "intent": "defend",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.7
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 2,
+        "suppressedIntents": [
+          "mind_peek",
+          "card_swap",
+          "defend"
+        ]
+      }
+    },
+    "intel_level": 2,
+    "can_manipulate_cards": true,
+    "description": "A sinister psyker who can peer into your mind and manipulate your thoughts."
+  },
+  {
+    "id": "slime_small_glass",
+    "variant_of": "slime_small",
+    "name": "Glass Slime",
+    "description": "A brittle crystal-fed slime that alternates between sharp rams and shimmering shell folds.",
+    "hp_range": [
+      20,
+      26
+    ],
+    "intent_policy": [
+      {
+        "intent": "glass_ram",
+        "weight": 2
+      },
+      {
+        "intent": "prism_shell",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "glass_ram": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        }
+      ],
+      "prism_shell": [
+        {
+          "type": "GainBlock",
+          "amount": 8,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "early_variant",
+      "showcase_floor_1",
+      "slime_family"
+    ],
+    "art_prompt": "A crystalline slime with stained-glass shards, cyan inner glow, grimdark cavern enemy portrait, dramatic fantasy lighting",
+    "ai_profile": {
+      "perceptionAccuracy": 0.62,
+      "personality": {
+        "aggression": 0.42,
+        "defensiveness": 0.76,
+        "unpredictability": 0.34,
+        "revengefulness": 0.2
+      },
+      "intentBiases": [
+        {
+          "intent": "prism_shell",
+          "attackIntentBand": "high",
+          "multiplier": 1.55
+        },
+        {
+          "intent": "glass_ram",
+          "playerBlockBand": "none",
+          "multiplier": 1.2
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.7,
+        "suppressedIntents": [
+          "prism_shell"
+        ]
+      }
+    }
+  },
+  {
+    "id": "slime_small_rot",
+    "variant_of": "slime_small",
+    "name": "Rot-Bloom Slime",
+    "description": "A diseased slime that blooms into toxic spores and punishes careless openings with venomous ooze.",
+    "hp_range": [
+      19,
+      25
+    ],
+    "intent_policy": [
+      {
+        "intent": "ooze_bite",
+        "weight": 2
+      },
+      {
+        "intent": "spore_swell",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "ooze_bite": [
+        {
+          "type": "DealDamage",
+          "amount": 4,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "spore_swell": [
+        {
+          "type": "GainBlock",
+          "amount": 5,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "early_variant",
+      "slime_family"
+    ],
+    "art_prompt": "A diseased slime blooming with toxic spores and bone fragments, sickly green glow, grimdark swamp enemy portrait",
+    "ai_profile": {
+      "perceptionAccuracy": 0.5,
+      "personality": {
+        "aggression": 0.6,
+        "defensiveness": 0.36,
+        "unpredictability": 0.34,
+        "revengefulness": 0.26
+      },
+      "intentBiases": [
+        {
+          "intent": "ooze_bite",
+          "playerBlockBand": "none",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "spore_swell",
+          "enemyHpBand": "pressured",
+          "multiplier": 1.3
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.65,
+        "suppressedIntents": [
+          "spore_swell"
+        ]
+      }
+    }
+  },
+  {
+    "id": "goblin_trapper",
+    "variant_of": "goblin",
+    "name": "Goblin Wirebinder",
+    "description": "A wire-snaring goblin hunter that opens with crippling shots and evasive repositioning.",
+    "hp_range": [
+      23,
+      29
+    ],
+    "intent_policy": [
+      {
+        "intent": "snare_shot",
+        "weight": 2
+      },
+      {
+        "intent": "smoke_shield",
+        "weight": 1
+      },
+      {
+        "intent": "mark_prey",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "snare_shot": [
+        {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "smoke_shield": [
+        {
+          "type": "GainBlock",
+          "amount": 5,
+          "target": "Self"
+        }
+      ],
+      "mark_prey": [
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 4,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "early_variant",
+      "showcase_floor_2",
+      "goblin_family"
+    ],
+    "art_prompt": "A hooded goblin trapper with a snare launcher and taut wire loops, orange torchlight, grimdark mine enemy portrait",
+    "ai_profile": {
+      "perceptionAccuracy": 0.63,
+      "personality": {
+        "aggression": 0.58,
+        "defensiveness": 0.44,
+        "unpredictability": 0.5,
+        "revengefulness": 0.35
+      },
+      "intentBiases": [
+        {
+          "intent": "snare_shot",
+          "playerHpBand": "healthy",
+          "multiplier": 1.15
+        },
+        {
+          "intent": "mark_prey",
+          "playerBlockBand": "none",
+          "multiplier": 1.4
+        },
+        {
+          "intent": "smoke_shield",
+          "attackIntentBand": "high",
+          "multiplier": 1.35
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.8,
+        "suppressedIntents": [
+          "smoke_shield"
+        ]
+      }
+    }
+  },
+  {
+    "id": "barrier_redeemer",
+    "variant_of": "barrier",
+    "name": "Redeemer Bulwark",
+    "description": "A lantern-bearing sentinel that alternates shield hymns with punishing redemption strikes.",
+    "hp_range": [
+      26,
+      30
+    ],
+    "intent_policy": [
+      {
+        "intent": "lantern_smite",
+        "weight": 2
+      },
+      {
+        "intent": "hymnal_guard",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "lantern_smite": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ],
+      "hymnal_guard": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "early_variant",
+      "showcase_floor_3",
+      "barrier_family",
+      "starts_with_block"
+    ],
+    "art_prompt": "A red-cloaked shield sentinel carrying a lantern and redemption sigils, heavy plate armor, grimdark chapel enemy portrait",
+    "ai_profile": {
+      "perceptionAccuracy": 0.57,
+      "personality": {
+        "aggression": 0.46,
+        "defensiveness": 0.8,
+        "unpredictability": 0.16,
+        "revengefulness": 0.32
+      },
+      "intentBiases": [
+        {
+          "intent": "hymnal_guard",
+          "attackIntentBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "lantern_smite",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.55
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.7,
+        "suppressedIntents": [
+          "hymnal_guard"
+        ]
+      }
+    }
+  },
+  {
+    "id": "cultist_herald",
+    "variant_of": "cultist",
+    "name": "Ashen Herald",
+    "description": "A censer-swinging herald who empowers the enemy line before lunging through the smoke.",
+    "hp_range": [
+      46,
+      52
+    ],
+    "intent_policy": [
+      {
+        "intent": "war_psalm",
+        "weight": 1
+      },
+      {
+        "intent": "cinder_strike",
+        "weight": 2
+      },
+      {
+        "intent": "smoke_omen",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "war_psalm": [
+        {
+          "type": "BuffAllEnemies",
+          "status": "Strength",
+          "amount": 1
+        }
+      ],
+      "cinder_strike": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ],
+      "smoke_omen": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "cultist_family"
+    ],
+    "art_prompt": "A masked cult herald swinging a burning censer, purple ash halo, occult grimdark ritual portrait",
+    "ai_profile": {
+      "perceptionAccuracy": 0.58,
+      "personality": {
+        "aggression": 0.52,
+        "defensiveness": 0.34,
+        "unpredictability": 0.42,
+        "revengefulness": 0.48
+      },
+      "intentBiases": [
+        {
+          "intent": "war_psalm",
+          "comboThreatBand": "high",
+          "multiplier": 1.45
+        },
+        {
+          "intent": "smoke_omen",
+          "playerBlockBand": "none",
+          "multiplier": 1.3
+        },
+        {
+          "intent": "cinder_strike",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.4
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.75,
+        "suppressedIntents": [
+          "war_psalm",
+          "smoke_omen"
+        ]
+      }
+    }
+  },
+  {
+    "id": "jaw_worm_burrower",
+    "variant_of": "jaw_worm",
+    "name": "Burrow Maw",
+    "description": "A burrowing worm that braces beneath the earth and erupts with sudden sand-choked bites.",
+    "hp_range": [
+      38,
+      42
+    ],
+    "intent_policy": [
+      {
+        "intent": "sand_bite",
+        "weight": 2
+      },
+      {
+        "intent": "molt_guard",
+        "weight": 1
+      },
+      {
+        "intent": "dust_hiss",
+        "weight": 1
+      }
+    ],
+    "moves": {
+      "sand_bite": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ],
+      "molt_guard": [
+        {
+          "type": "GainBlock",
+          "amount": 7,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ],
+      "dust_hiss": [
+        {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords": [
+      "variant",
+      "worm_family"
+    ],
+    "art_prompt": "A sand-burrowing jaw worm erupting with a bone maw and ridge spines, dusty cavern palette, grimdark beast portrait",
+    "ai_profile": {
+      "perceptionAccuracy": 0.54,
+      "personality": {
+        "aggression": 0.68,
+        "defensiveness": 0.42,
+        "unpredictability": 0.28,
+        "revengefulness": 0.38
+      },
+      "intentBiases": [
+        {
+          "intent": "sand_bite",
+          "playerHpBand": "healthy",
+          "multiplier": 1.1
+        },
+        {
+          "intent": "molt_guard",
+          "attackIntentBand": "high",
+          "multiplier": 1.25
+        },
+        {
+          "intent": "dust_hiss",
+          "playerBlockBand": "none",
+          "multiplier": 1.3
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.85,
+        "suppressedIntents": [
+          "molt_guard",
+          "dust_hiss"
+        ]
+      }
+    }
   }
 ]

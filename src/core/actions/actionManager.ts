@@ -2,6 +2,30 @@ import { GameState, ActionSpec } from '@/core/types';
 import { ActionQueue, IAction, IActionContext } from '@/core/actions/actionQueue';
 import { globalEventBus } from '@/core/events/eventBus';
 
+interface ActionStartEvent {
+  type: 'ActionStart';
+  actionId: string;
+  sequence: number;
+  actionType: string;
+  source: string;
+  sourceId?: string;
+  targetId?: string;
+  cardId?: string;
+  cardInstanceId?: string;
+}
+
+interface ActionEndEvent {
+  type: 'ActionEnd';
+  actionId: string;
+  sequence: number;
+  actionType: string;
+  source: string;
+  sourceId?: string;
+  targetId?: string;
+  cardId?: string;
+  cardInstanceId?: string;
+}
+
 export interface ActionManagerConfig {
   maxQueueSize: number;
   enableLogging: boolean;
@@ -31,14 +55,17 @@ export class ActionManager {
       ...config
     };
     this.actionRegistry = new Map();
-    
+
     this.setupQueueCallbacks();
   }
 
   private setupQueueCallbacks(): void {
     this.queue.setCallbacks({
-      onActionComplete: (action: IAction, _state: GameState) => {
-        this.onActionEnd(action, { source: 'player' });
+      onActionStart: (queuedAction, _state: GameState) => {
+        this.onActionStart(queuedAction.action, queuedAction.context, queuedAction.id, queuedAction.sequence);
+      },
+      onActionComplete: (queuedAction, _state: GameState) => {
+        this.onActionEnd(queuedAction.action, queuedAction.context, queuedAction.id, queuedAction.sequence);
       },
       onQueueEmpty: () => {
         if (this.config.enableLogging) {
@@ -48,7 +75,7 @@ export class ActionManager {
     });
   }
 
-  private onActionStart(action: IAction, context: IActionContext): void {
+  private onActionStart(action: IAction, context: IActionContext, actionId: string, sequence: number): void {
     this.currentContext = context;
 
     if (this.config.enableLogging) {
@@ -57,21 +84,34 @@ export class ActionManager {
 
     globalEventBus.publish({
       type: 'ActionStart',
+      actionId,
+      sequence,
       actionType: action.type,
-      source: context.source
-    } as any);
+      source: context.source,
+      sourceId: context.sourceId,
+      targetId: context.targetId,
+      cardId: context.cardId,
+      cardInstanceId: context.cardInstanceId
+    } as ActionStartEvent);
   }
 
-  private onActionEnd(action: IAction, context: IActionContext): void {
+  private onActionEnd(action: IAction, context: IActionContext, actionId: string, sequence: number): void {
+    this.currentContext = context;
     if (this.config.enableLogging) {
       console.log(`[ActionManager] Completed: ${action.type}`);
     }
 
     globalEventBus.publish({
       type: 'ActionEnd',
+      actionId,
+      sequence,
       actionType: action.type,
-      source: context.source
-    } as any);
+      source: context.source,
+      sourceId: context.sourceId,
+      targetId: context.targetId,
+      cardId: context.cardId,
+      cardInstanceId: context.cardInstanceId
+    } as ActionEndEvent);
   }
 
   registerAction(type: string, actionClass: new (spec: ActionSpec) => IAction): void {
@@ -92,7 +132,7 @@ export class ActionManager {
   }
 
   enqueue(
-    spec: ActionSpec, 
+    spec: ActionSpec,
     context: IActionContext,
     priority: number = 0,
     _source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
@@ -102,7 +142,7 @@ export class ActionManager {
   }
 
   enqueueAll(
-    specs: ActionSpec[], 
+    specs: ActionSpec[],
     context: IActionContext,
     priority: number = 0,
     source: 'card' | 'relic' | 'synergy' | 'system' = 'card'
@@ -155,7 +195,7 @@ export class ActionManager {
     this.queue.pushFront(action, context);
   }
 
-  async executeAll(): Promise<void> {
+  executeAll(): void {
     this.queue.processQueue(this.state);
   }
 
@@ -166,7 +206,11 @@ export class ActionManager {
   executeImmediate(spec: ActionSpec, context: IActionContext): void {
     const action = this.createAction(spec);
     this.currentContext = context;
-    action.execute(this.state, this.queue);
+    try {
+      action.execute(this.state, this.queue);
+    } catch (error) {
+      console.error(`[ActionManager] Action ${spec.type} execution failed:`, error);
+    }
   }
 
   executeImmediateAll(specs: ActionSpec[], context: IActionContext): void {
@@ -186,11 +230,16 @@ export class ActionManager {
     return this.queue.isProcessingQueue;
   }
 
-  getQueueSnapshot(): Array<{ type: string; priority: number; source: string }> {
+  getQueueSnapshot(): Array<{ type: string; priority: number; sequence: number; source: string; sourceId?: string; targetId?: string; cardId?: string; cardInstanceId?: string }> {
     return this.queue.getQueueSnapshot().map(qa => ({
       type: qa.action.type,
       priority: qa.priority,
+      sequence: qa.sequence,
       source: qa.context.source,
+      sourceId: qa.context.sourceId,
+      targetId: qa.context.targetId,
+      cardId: qa.context.cardId,
+      cardInstanceId: qa.context.cardInstanceId,
     }));
   }
 
@@ -215,10 +264,21 @@ export class ActionManager {
   static resetInstance(): void {
     globalActionManager = null;
   }
+
+  static bindInstance(manager: ActionManager): ActionManager {
+    globalActionManager = manager;
+    return manager;
+  }
+
+  static clearIfCurrent(manager: ActionManager): void {
+    if (globalActionManager === manager) {
+      globalActionManager = null;
+    }
+  }
 }
 
 export function createActionManager(state: GameState, config?: Partial<ActionManagerConfig>): ActionManager {
-  return new ActionManager(state, config);
+  return ActionManager.bindInstance(new ActionManager(state, config));
 }
 
 export function getActionManager(): ActionManager {
@@ -227,9 +287,9 @@ export function getActionManager(): ActionManager {
 
 class NullAction implements IAction {
   readonly type = 'Null';
-  
+
   constructor(private spec: ActionSpec) {}
-  
+
   execute(_state: GameState, _queue: ActionQueue): void {
     console.warn(`NullAction executed for spec: ${this.spec.type}`);
   }

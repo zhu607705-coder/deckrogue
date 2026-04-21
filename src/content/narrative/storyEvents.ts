@@ -1,4 +1,4 @@
-import type { StoryEventDef } from '@/core';
+import type { StoryEventDef } from '@/core/types';
 
 export const STORY_EVENTS: StoryEventDef[] = [
   {
@@ -147,7 +147,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
         id: 'legacy_take_rosary',
         text: '[只拿走玫瑰念珠]',
         description: '不去触碰禁忌，只带走信仰的象征。',
-        gains: ['获得奇物《审判官玫瑰》（战斗开始获得格挡）'],
+        gains: ['获得奇物《审判官玫瑰》（战斗开始获得护盾）'],
         costs: ['受到 10 点伤害'],
         danger: 'low'
       }
@@ -988,6 +988,120 @@ export const STORY_EVENTS: StoryEventDef[] = [
         costs: [],
         danger: 'medium'
       },
+    ]
+  },
+  {
+    id: 'warp_gate_discovery',
+    title: '亚空间传送门',
+    imagePath: '/assets/events/event_warp.png',
+    floorMin: 2,
+    floorMax: 6,
+    weight: 0.7,
+    loreText: [
+      '一道不稳定的传送门在你面前脉动，紫色的能量从裂隙中喷涌而出。',
+      '门的另一端似乎连接着某个未知的扇区——可能是捷径，也可能是陷阱。'
+    ],
+    options: [
+      {
+        id: 'warp_gate_enter',
+        text: '[踏入传送门]',
+        description: '随机传送到下一层或上一层的随机节点。',
+        gains: ['随机传送（可能跳过危险或错过奖励）'],
+        costs: ['有 20% 概率受到 15 点亚空间侵蚀伤害'],
+        danger: 'medium'
+      },
+      {
+        id: 'warp_gate_stabilize',
+        text: '[稳定传送门]',
+        description: '消耗 30 点生命值来稳定传送门，选择传送方向。',
+        gains: ['选择传送到上一层或下一层', '获得遗物《空间锚点》'],
+        costs: ['失去 30 点当前生命值'],
+        danger: 'high'
+      },
+      {
+        id: 'warp_gate_leave',
+        text: '[谨慎离开]',
+        description: '不冒险，继续当前路线。',
+        gains: ['获得 10 点 Intel'],
+        costs: [],
+        danger: 'low'
+      }
+    ]
+  },
+  {
+    id: 'secret_passage',
+    title: '隐藏通道',
+    imagePath: '/assets/events/event_forge.png',
+    floorMin: 1,
+    floorMax: 5,
+    weight: 0.6,
+    loreText: [
+      '墙壁上一道看似普通的裂缝引起了你的注意。凑近一看，这是一条精心伪装的秘密通道。',
+      '通道尽头隐约有光芒闪烁——可能是宝藏，也可能是守卫的岗哨。'
+    ],
+    options: [
+      {
+        id: 'secret_passage_explore',
+        text: '[探索通道]',
+        description: '进入秘密通道探索。',
+        gains: ['50% 概率获得随机稀有遗物', '50% 概率获得 120 金币'],
+        costs: ['无论结果如何，都需要跳过下一个节点'],
+        danger: 'medium'
+      },
+      {
+        id: 'secret_passage_guard',
+        text: '[设下陷阱]',
+        description: '在通道口设下陷阱，然后继续前进。',
+        gains: ['下一场精英战敌人开局 2 层虚弱'],
+        costs: [],
+        danger: 'low'
+      },
+      {
+        id: 'secret_passage_ignore',
+        text: '[忽略通道]',
+        description: '假装没看见，继续你的征程。',
+        gains: [],
+        costs: [],
+        danger: 'low'
+      }
+    ]
+  },
+  {
+    id: 'oracle_shrine',
+    title: '先见之神龛',
+    imagePath: '/assets/events/event_shrine.png',
+    floorMin: 3,
+    floorMax: 7,
+    weight: 0.5,
+    loreText: [
+      '一座古老的神龛矗立在你面前，龛中宝石闪烁着神秘的光芒。',
+      '据说这里的先知能够窥见未来——代价是你的一部分记忆。'
+    ],
+    options: [
+      {
+        id: 'oracle_shrine_consult',
+        text: '[咨询先知]',
+        description: '揭示下一层的所有节点类型和危险程度。',
+        gains: ['揭示下一层所有节点', '获得 20 点 Intel'],
+        costs: ['牌库随机移除 1 张非诅咒牌'],
+        danger: 'medium'
+      },
+      {
+        id: 'oracle_shrine_sacrifice',
+        text: '[献上祭品]',
+        description: '牺牲 1 张牌来换取更深远的视野。',
+        gains: ['揭示接下来 3 层的 Boss 位置', '获得遗物《先见之眼》'],
+        costs: ['选择并移除 1 张牌'],
+        danger: 'high'
+      },
+      {
+        id: 'oracle_shrine_leave',
+        text: '[保持无知]',
+        description: '命运未知才有趣。',
+        gains: ['接下来 2 场战斗获得 1 层力量'],
+        costs: [],
+        danger: 'low'
+      }
     ]
   }
 

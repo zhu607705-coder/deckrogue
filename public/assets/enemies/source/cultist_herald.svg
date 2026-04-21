@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f16"/>
+      <stop offset="58%" stop-color="#1a1f2d"/>
+      <stop offset="100%" stop-color="#08090f"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.58"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="240" r="208" fill="#111827" opacity="0.4"/>
+  <circle cx="256" cy="210" r="170" fill="#1a2332" opacity="0.45"/>
+  <g filter="url(#shadow)">
+
+      <path d="M158 430 L194 176 L256 98 L320 176 L356 430 Z" fill="#2d1636" stroke="#e178ff" stroke-width="8"/>
+      <path d="M188 182 Q254 64 326 182 L300 230 Q256 204 214 230 Z" fill="#4f1d65"/>
+      <path d="M204 238 C224 208 284 206 308 238 C332 270 324 338 256 372 C188 340 184 272 204 238 Z" fill="#5b4357" stroke="#f9d8ff" stroke-width="6"/>
+      <circle cx="232" cy="274" r="12" fill="#0c0711"/>
+      <circle cx="284" cy="272" r="12" fill="#0c0711"/>
+      <path d="M220 322 Q256 340 294 320" fill="none" stroke="#f9e1ff" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="256" cy="116" r="94" fill="none" stroke="#a53dff" stroke-width="10" opacity="0.22"/>
+      <path d="M332 256 L404 210" stroke="#d2b8a7" stroke-width="8" stroke-linecap="round"/>
+      <path d="M390 186 C418 208 420 250 394 276 C370 252 366 208 390 186 Z" fill="#f29131" stroke="#ffe29d" stroke-width="6"/>
+      <circle cx="390" cy="204" r="14" fill="#fff2a8" opacity="0.86"/>
+
+  </g>
+  <rect x="0" y="0" width="512" height="512" fill="url(#vignette)"/>
+  <rect x="24" y="24" width="464" height="464" rx="24" fill="none" stroke="#d5b98b" stroke-opacity="0.18" stroke-width="3"/>
+  <path d="M54 446 Q256 478 458 446" fill="none" stroke="#b78a5a" stroke-opacity="0.2" stroke-width="8"/>
+</svg>

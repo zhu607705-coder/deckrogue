@@ -1,18 +1,38 @@
 import { GameState, ActionSpec } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
-import { TargetingService, CardTarget } from '@/core/combat/targetingService';
+import { TargetingService, CardTarget, TargetInfo } from '@/core/combat/targetingService';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { stateRandomId, stateRandomInt, stateShuffle } from '@/infrastructure/rng/stateRandom';
 
+export interface DamageModifier {
+  type: 'additive' | 'multiplicative';
+  value: number;
+  source: string;
+  priority: number;
+}
+
+export interface ConstructState {
+  id: string;
+  hp: number;
+  maxHp: number;
+  taunt?: boolean;
+  damageSharePct?: number;
+  overflowDamageToPlayer?: boolean;
+}
+
+interface ActionQueuePrivate {
+  _currentContext?: IActionContext;
+}
+
 export abstract class BaseAction implements IAction {
   protected spec: ActionSpec;
   protected context: IActionContext = { source: 'player' };
-  
+
   constructor(spec: ActionSpec) {
     this.spec = spec;
   }
-  
+
   get type(): string {
     return this.spec.type;
   }
@@ -20,15 +40,15 @@ export abstract class BaseAction implements IAction {
   setContext(context: IActionContext): void {
     this.context = context;
   }
-  
+
   abstract execute(state: GameState, queue: ActionQueue): void;
-  
+
   protected resolveTargets(state: GameState, targetType: CardTarget) {
     return TargetingService.resolveTargets(state, this.context, targetType);
   }
 
   protected getContextFromQueue(queue: ActionQueue): IActionContext {
-    return (queue as any)._currentContext || { source: 'player' };
+    return (queue as unknown as ActionQueuePrivate)._currentContext || { source: 'player' };
   }
 }
 
@@ -36,14 +56,14 @@ export class DealDamageAction extends BaseAction {
   private targetType: CardTarget;
   private amount: number;
   private scaling?: { type: 'DelayedCards' | 'Constructs' | 'Corruption'; multiplier?: number };
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.targetType = (spec.target as CardTarget) || 'Enemy';
     this.amount = spec.amount || 0;
     this.scaling = spec.scaling;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -95,8 +115,8 @@ export class DealDamageAction extends BaseAction {
     });
   }
 
-  private buildModifiers(sourceStatuses: Record<string, number>, targetStatuses: Record<string, number>): any[] {
-    const modifiers: any[] = [];
+  private buildModifiers(sourceStatuses: Record<string, number>, targetStatuses: Record<string, number>): DamageModifier[] {
+    const modifiers: DamageModifier[] = [];
 
     if (sourceStatuses['Strength']) {
       modifiers.push({ type: 'additive', value: sourceStatuses['Strength'], source: 'strength', priority: 10 });
@@ -117,11 +137,11 @@ export class DealDamageAction extends BaseAction {
     return modifiers;
   }
 
-  private handleTauntAndSoulLink(state: GameState, damageContext: DamageContext, targetInfo: any): void {
+  private handleTauntAndSoulLink(state: GameState, damageContext: DamageContext, targetInfo: TargetInfo): void {
     const combat = state.combat;
     if (!combat || targetInfo.type !== 'player') return;
 
-    const tauntIndex = combat.player.constructs.findIndex(c => c.taunt);
+    const tauntIndex = combat.player.constructs.findIndex((c: ConstructState) => c.taunt);
     if (tauntIndex !== -1) {
       const construct = combat.player.constructs[tauntIndex];
       const incoming = Math.max(0, Math.floor(damageContext.amount || 0));
@@ -129,15 +149,16 @@ export class DealDamageAction extends BaseAction {
       let overflowToPlayer = 0;
       if (construct.hp <= 0) {
         if (construct.overflowDamageToPlayer) {
-          overflowToPlayer = Math.max(0, -construct.hp);
+          overflowToPlayer = Math.max(0, Math.abs(construct.hp));
         }
+        construct.hp = 0;
         combat.player.constructs.splice(tauntIndex, 1);
       }
       damageContext.amount = overflowToPlayer;
       return;
     }
 
-    const trenchIndex = combat.player.constructs.findIndex(c => (c.damageSharePct || 0) > 0 && c.hp > 0);
+    const trenchIndex = combat.player.constructs.findIndex((c: ConstructState) => (c.damageSharePct || 0) > 0 && c.hp > 0);
     if (trenchIndex !== -1 && damageContext.amount > 0) {
       const construct = combat.player.constructs[trenchIndex];
       const pct = Math.max(0, Math.min(0.95, Number(construct.damageSharePct || 0)));
@@ -147,7 +168,7 @@ export class DealDamageAction extends BaseAction {
         damageContext.amount = Math.max(0, incoming - redirected);
         construct.hp -= redirected;
         if (construct.hp <= 0) {
-          const overflow = Math.max(0, -construct.hp);
+          const overflow = Math.max(0, Math.abs(construct.hp));
           construct.hp = 0;
           combat.player.constructs.splice(trenchIndex, 1);
           // Damage conservation: redirected damage that exceeded construct HP returns to the player.
@@ -186,7 +207,7 @@ export class DealDamageAction extends BaseAction {
 
     if (def?.keywords?.includes('splits') && combat.enemies.length < 5) {
       const smallDef = enemiesData.find(e => e.id === 'fission_small');
-      if (smallDef) {
+      if (smallDef && smallDef.hp_range && smallDef.hp_range.length >= 2) {
         for (let i = 0; i < 2; i++) {
           const hp = smallDef.hp_range[0] + stateRandomInt(state, Math.max(1, smallDef.hp_range[1] - smallDef.hp_range[0]));
           combat.enemies.push({
@@ -216,14 +237,14 @@ export class ApplyStatusAction extends BaseAction {
   private target: CardTarget;
   private status: string;
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.target = (spec.target as CardTarget) || 'Enemy';
     this.status = spec.status || '';
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     if (!this.status || this.amount === 0) return;
 
@@ -246,12 +267,12 @@ export class ApplyStatusAction extends BaseAction {
 
 export class DrawCardsAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -272,12 +293,12 @@ export class DrawCardsAction extends BaseAction {
 
 export class DiscardCardsAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -294,12 +315,12 @@ export class DiscardCardsAction extends BaseAction {
 
 export class GainBlockAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -319,12 +340,12 @@ export class GainBlockAction extends BaseAction {
 
 export class GainEnergyAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     if (state.combat) {
       state.combat.player.energy += this.amount;
@@ -336,14 +357,14 @@ export class HealAction extends BaseAction {
   private amount: number;
   private target: CardTarget;
   private scaling?: { type: 'DelayedCards' | 'Constructs' | 'Corruption'; multiplier?: number };
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
     this.target = (spec.target as CardTarget) || 'Self';
     this.scaling = spec.scaling;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -367,15 +388,93 @@ export class HealAction extends BaseAction {
 
 export class ModifyEnergyAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     if (state.combat) {
       state.combat.player.energy = Math.max(0, state.combat.player.energy + this.amount);
+    }
+  }
+}
+
+export class LoseHpAction extends BaseAction {
+  private amount: number;
+  private target: CardTarget;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = spec.amount || 0;
+    this.target = (spec.target as CardTarget) || 'Self';
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || this.amount === 0) return;
+
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    targets.forEach(targetInfo => {
+      if (targetInfo.entity.hp <= 0) return;
+
+      const damage = Math.min(targetInfo.entity.hp, this.amount);
+      targetInfo.entity.hp -= damage;
+
+      if (targetInfo.type === 'player') {
+        state.player.hp = targetInfo.entity.hp;
+      }
+
+      if (targetInfo.type === 'enemy' && targetInfo.entity.hp <= 0) {
+        this.checkEnemyDeath(state, targetInfo.entity, queue);
+      }
+    });
+  }
+
+  private checkEnemyDeath(state: GameState, enemy: any, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat || enemy.hp > 0) return;
+
+    const def = enemiesData.find(e => e.id === enemy.defId);
+
+    if (def?.keywords?.includes('symbiote')) {
+      combat.enemies.forEach(other => {
+        if (other.id !== enemy.id && other.hp > 0) {
+          const otherDef = enemiesData.find(e => e.id === other.defId);
+          if (otherDef?.keywords?.includes('symbiote')) {
+            other.hp = Math.max(0, other.hp - 10);
+          }
+        }
+      });
+    }
+
+    if (def?.keywords?.includes('splits') && combat.enemies.length < 5) {
+      const smallDef = enemiesData.find(e => e.id === 'fission_small');
+      if (smallDef && smallDef.hp_range && smallDef.hp_range.length >= 2) {
+        for (let i = 0; i < 2; i++) {
+          const hp = smallDef.hp_range[0] + stateRandomInt(state, Math.max(1, smallDef.hp_range[1] - smallDef.hp_range[0]));
+          combat.enemies.push({
+            id: stateRandomId(state, 'enemy'),
+            defId: smallDef.id,
+            name: smallDef.name,
+            hp,
+            maxHp: hp,
+            block: 0,
+            statuses: {},
+            nextIntent: 'Attack',
+            summoned: true,
+            deathProcessed: false,
+            devotion: 0,
+            corruptionAxis: 0,
+            axisDisposition: 'corruption',
+            autonomyState: 'Normal',
+            autonomyTurns: 0
+          } as any);
+        }
+      }
     }
   }
 }

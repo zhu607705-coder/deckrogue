@@ -1,0 +1,136 @@
+{
+  "branching_outcomes": [
+    {
+      "id": "slime_mercy",
+      "trigger_enemy": "slime_boss",
+      "trigger_condition": {
+        "type": "hp_threshold",
+        "params": { "threshold": 0.1, "target": "enemy" },
+        "comparison": "lte"
+      },
+      "narrative": {
+        "title": "Slime King's Desperate Plea",
+        "description": "The Slime King oozes toward you, weakened and desperate...",
+        "flavorText": "You could show mercy, or end its suffering.",
+        "icon": "slime_king"
+      },
+      "available_choices": [
+        {
+          "id": "accept_mercy",
+          "label": "Show Mercy",
+          "description": "Spare the slime and receive a blessing",
+          "result": {
+            "combat_continuation": false,
+            "reward": { "type": "relic", "id": "slime_blessing" },
+            "narrative": {
+              "title": "Mercy Granted",
+              "description": "The slime transforms into a helpful ally.",
+              "flavorText": "Your compassion shall be rewarded."
+            }
+          }
+        },
+        {
+          "id": "finish_it",
+          "label": "Finish It",
+          "description": "End the slime's suffering",
+          "result": {
+            "combat_continuation": true,
+            "narrative": {
+              "title": "Merciful End",
+              "description": "The slime dissolves peacefully.",
+              "flavorText": "A quick death is a gift."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cultist_negotiation",
+      "trigger_enemy": "cultist",
+      "trigger_condition": {
+        "type": "turn_count",
+        "params": { "min_turns": 5 },
+        "comparison": "gte"
+      },
+      "narrative": {
+        "title": "Cultist's Bargain",
+        "description": "The cultist offers to join your cause...",
+        "flavorText": "Power can be found in unlikely places."
+      },
+      "available_choices": [
+        {
+          "id": "accept_cult",
+          "label": "Accept Offer",
+          "description": "Gain dark knowledge but lose devotion",
+          "result": {
+            "combat_continuation": false,
+            "reward": { "type": "relic", "id": "cultist_tome" },
+            "penalty": { "type": "gold", "value": -50 },
+            "narrative": {
+              "title": "Dark Pact",
+              "description": "You accept the cultist's forbidden knowledge.",
+              "flavorText": "The price of power is always paid."
+            }
+          }
+        },
+        {
+          "id": "reject_cult",
+          "label": "Reject",
+          "description": "Purify the heretic",
+          "result": {
+            "combat_continuation": true,
+            "reward": { "type": "potion", "value": 1 },
+            "narrative": {
+              "title": "Heresy Purified",
+              "description": "The cultist's dark ritual is disrupted.",
+              "flavorText": "The Emperor protects."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "guardian_wisdom",
+      "trigger_enemy": "time_guardian",
+      "trigger_condition": {
+        "type": "hp_threshold",
+        "params": { "threshold": 0.25, "target": "enemy" },
+        "comparison": "lte"
+      },
+      "narrative": {
+        "title": "Guardian's Final Wisdom",
+        "description": "The ancient guardian offers to share its knowledge...",
+        "flavorText": "Time flows ever forward, but wisdom echoes eternally."
+      },
+      "available_choices": [
+        {
+          "id": "learn_wisdom",
+          "label": "Learn",
+          "description": "Gain insight into future battles",
+          "result": {
+            "combat_continuation": false,
+            "reward": { "type": "relic", "id": "guardian_insight" },
+            "narrative": {
+              "title": "Wisdom Gained",
+              "description": "You glimpse fragments of battles yet to come.",
+              "flavorText": "Knowledge is the greatest weapon."
+            }
+          }
+        },
+        {
+          "id": "defeat_guardian",
+          "label": "Battle On",
+          "description": "Prove your strength",
+          "result": {
+            "combat_continuation": true,
+            "narrative": {
+              "title": "Challenge Accepted",
+              "description": "The guardian admires your courage.",
+              "flavorText": "Prove yourself worthy!"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

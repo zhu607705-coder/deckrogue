@@ -224,7 +224,7 @@
         "id": "overheat_mass",
         "name": "Overheat Mass",
         "triggerHpPctLte": 0.66,
-        "hint": "过热爆发：入场获大量格挡和力量，每2回合释放灼热冲击。",
+        "hint": "过热爆发：入场获大量护盾和力量，每2回合释放灼热冲击。",
         "onEnter": {
           "gainBlock": 24,
           "gainStatuses": {
@@ -356,7 +356,7 @@
         "id": "cathedral_bloom",
         "name": "Cathedral Bloom",
         "triggerHpPctLte": 0.66,
-        "hint": "绽放阶段：入场获大量格挡和仪式，每2回合全场追加毒素。",
+        "hint": "绽放阶段：入场获大量护盾和仪式，每2回合全场追加毒素。",
         "onEnter": {
           "gainBlock": 20,
           "gainStatuses": {
@@ -424,7 +424,7 @@
         "id": "sinking_mass",
         "name": "Sinking Mass",
         "triggerHpPctLte": 0.5,
-        "hint": "沉没阶段：半血入场令玩家手牌费用随机+0/1，Boss每2回合获14格挡。",
+        "hint": "沉没阶段：半血入场令玩家手牌费用随机+0/1，Boss每2回合获14护盾。",
         "onEnter": {
           "warpPulse": "泥潭圣者开始沉没，准备拖拽你的资源。"
         },
@@ -437,7 +437,7 @@
             "everyEnemyTurns": 2,
             "damage": 0,
             "gainBlock": 14,
-            "text": "沉没阶段：泥潭圣者持续获得大量格挡。"
+            "text": "沉没阶段：泥潭圣者持续获得大量护盾。"
           }
         }
       },

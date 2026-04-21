@@ -446,3 +446,31 @@ test('CardPlayed combat log resolves card names from card data', () => {
     engine.dispose();
   }
 });
+
+test('boss phase initialization writes adaptation state onto the live combat bossPhase object', () => {
+  const state = makeState();
+  state.combat!.enemies = [
+    {
+      id: 'boss_init',
+      defId: 'cathedral_engine',
+      name: 'Cathedral Engine',
+      hp: 90,
+      maxHp: 100,
+      block: 0,
+      statuses: {},
+      nextIntent: 'Attack',
+      lastUsedIntent: '',
+      intentCooldowns: {},
+      devotion: 0,
+      corruptionAxis: 0,
+      axisDisposition: 'balanced',
+    } as any,
+  ];
+
+  const manager = makeBossPhaseManager(state, []);
+  manager.initializeBossPhaseRuntime();
+
+  assert.equal(state.combat!.bossPhase?.enemyId, 'boss_init');
+  assert.equal(state.combat!.bossPhase?.adaptationEnabled, true);
+  assert.equal(state.combat!.bossPhase?.adaptationProfile?.enemyId, 'boss_init');
+});

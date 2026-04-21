@@ -4,9 +4,12 @@ import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
 import { globalEventBus } from '@/core/events/eventBus';
 import { getActionManager } from '@/core/actions/actionManager';
 import { TargetingService } from '@/core/combat/targetingService';
-import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { stateRandom } from '@/infrastructure/rng/stateRandom';
+
+interface ActionQueuePrivate {
+  _currentContext?: IActionContext;
+}
 
 export abstract class BaseWarpAction implements IAction {
   protected spec: ActionSpec;
@@ -27,7 +30,7 @@ export abstract class BaseWarpAction implements IAction {
   abstract execute(state: GameState, queue: ActionQueue): void;
 
   protected getContextFromQueue(queue: ActionQueue): IActionContext {
-    return (queue as any)._currentContext || { source: 'player' };
+    return (queue as unknown as ActionQueuePrivate)._currentContext || { source: 'player' };
   }
 }
 
@@ -199,7 +202,7 @@ export class CheckWarpPerilAction extends BaseWarpAction {
     const manager = getActionManager();
     if (!manager) return;
 
-    const summonAction = ActionFactoryV2.createAction({
+    const summonAction = manager.createAction({
       type: 'Summon',
       unit: 'daemonic_incursion',
       amount: 1

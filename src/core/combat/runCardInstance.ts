@@ -55,7 +55,7 @@ function applyEffectToActions(actions: ActionSpec[], effect: CardEnchantmentDef[
 function modifierSummary(effect: CardEnchantmentDef['effect'] | CardAfflictionDef['effect']): string {
   switch (effect.type) {
     case 'damage': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} 伤害`;
-    case 'block': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} 格挡`;
+    case 'block': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} 护盾`;
     case 'cost': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} 费用`;
     case 'draw': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} 抽牌`;
     case 'professionResource': return `${effect.amount >= 0 ? '+' : ''}${effect.amount} ${effect.resource}`;
@@ -92,7 +92,8 @@ export function deriveRunCardInstance(instance: RunCardInstance): RunCardInstanc
     combatAfflictions: instance.combatAfflictions.map((entry) => cloneModifier(entry)),
     text: extraText.length > 0 ? `${runtimeBase.text}\n${extraText.join('\n')}` : runtimeBase.text,
     actions: derived.actions,
-    cost: derived.cost,
+    cost: instance.tempCost ?? derived.cost,
+    tempCost: instance.tempCost,
     tags: [...derived.tags, ...(instance.persistentEnchantments.length ? ['enchanted'] : []), ...(instance.combatAfflictions.length ? ['afflicted'] : [])]
   };
 }
@@ -115,11 +116,12 @@ export function normalizeRunCardInstance(card: CardDef | RunCardInstance, instan
       ...card,
       instanceId: card.instanceId || instanceIdFactory(),
       baseCardId: card.baseCardId || card.id,
-      runtimeBase: cloneBaseCard(card.runtimeBase || card),
-      persistentEnchantments: (card.persistentEnchantments || []).map((entry) => cloneModifier(entry)),
-      combatAfflictions: (card.combatAfflictions || []).map((entry) => cloneModifier(entry))
-    });
-  }
+    runtimeBase: cloneBaseCard(card.runtimeBase || card),
+    persistentEnchantments: (card.persistentEnchantments || []).map((entry) => cloneModifier(entry)),
+    combatAfflictions: (card.combatAfflictions || []).map((entry) => cloneModifier(entry)),
+    tempCost: card.tempCost
+  });
+}
 
   return createRunCardInstance(card, card.instanceId || instanceIdFactory());
 }
@@ -130,7 +132,8 @@ export function cloneRunCardInstance(card: RunCardInstance, nextInstanceId = car
     instanceId: nextInstanceId,
     runtimeBase: cloneBaseCard(card.runtimeBase),
     persistentEnchantments: card.persistentEnchantments.map((entry) => cloneModifier(entry)),
-    combatAfflictions: card.combatAfflictions.map((entry) => cloneModifier(entry))
+    combatAfflictions: card.combatAfflictions.map((entry) => cloneModifier(entry)),
+    tempCost: card.tempCost
   });
 }
 

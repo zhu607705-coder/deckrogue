@@ -1,6 +1,8 @@
-import type { GameState, RunCardInstance } from '@/core/types';
+import type { GameState, RunCardInstance, CombatState } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { getBossPhaseEncounter, getBossPhaseForHpPct, type BossPhaseDef } from '@/core/events/bossPhaseSystem';
+import { AdaptiveBossAI, combatMemory, type AdaptationProfile, type DetailedPlayerPatternAnalysis } from '@/core/ai';
+import { combatSystem } from '@/core/combat/combatSystem';
 
 export interface BossPhaseManagerDeps {
   getState: () => GameState;
@@ -12,7 +14,17 @@ export interface BossPhaseManagerDeps {
   getCurrentFloorNumber: () => number;
 }
 
+type LiveCombatState = CombatState;
+type BossPhaseState = NonNullable<LiveCombatState['bossPhase']>;
+type CombatEnemyState = LiveCombatState['enemies'][number];
+
+function getBossPhase(combat: LiveCombatState | null | undefined): BossPhaseState | undefined {
+  return combat?.bossPhase;
+}
+
 export class BossPhaseManager {
+  private bossAI = new AdaptiveBossAI();
+
   constructor(private deps: BossPhaseManagerDeps) {}
 
   initializeBossPhaseRuntime(): void {
@@ -20,10 +32,7 @@ export class BossPhaseManager {
     const combat = state.combat;
     if (!combat) return;
 
-    const bossEnemy = combat.enemies.find(e => {
-      const def = e as any;
-      return def.keywords?.includes('boss') || def.defId?.includes('boss');
-    });
+    const bossEnemy = combat.enemies.find((enemy) => !!getBossPhaseEncounter(enemy.defId));
     if (!bossEnemy) return;
 
     const encounter = getBossPhaseEncounter(bossEnemy.defId);
@@ -31,8 +40,11 @@ export class BossPhaseManager {
 
     const initial = getBossPhaseForHpPct(bossEnemy.defId, bossEnemy.maxHp > 0 ? bossEnemy.hp / bossEnemy.maxHp : 1);
 
-    (combat as any).bossPhase = {
+    const adaptationProfile = this.bossAI.getOrCreateProfile(bossEnemy.id);
+
+    combat.bossPhase = {
       phaseIndex: initial?.phaseIndex ?? 0,
+      bossDefId: bossEnemy.defId,
       phaseId: initial?.phase?.id,
       phaseName: initial?.phase?.name,
       phaseHint: initial?.phase?.hint,
@@ -40,22 +52,27 @@ export class BossPhaseManager {
       enemyId: bossEnemy.id,
       currentPlayerTurnCards: [],
       previousPlayerTurnCards: [],
-      flags: {}
+      flags: {},
+      adaptationProfile,
+      adaptationEnabled: true
     };
   }
 
   refreshBossPhaseState(): void {
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat || !(combat as any).bossPhase) return;
+    if (!combat) return;
 
-    const boss = combat.enemies.find(e => e.id === (combat as any).bossPhase.enemyId);
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return;
+
+    const boss = combat.enemies.find(e => e.id === bossPhase.enemyId);
     if (!boss) return;
 
     const next = getBossPhaseForHpPct(boss.defId, boss.maxHp > 0 ? boss.hp / boss.maxHp : 0);
     if (!next) return;
 
-    if (next.phaseIndex <= (combat as any).bossPhase.phaseIndex) return;
+    if (next.phaseIndex <= bossPhase.phaseIndex) return;
 
     this.enterBossPhase(next.phaseIndex, next.phase);
   }
@@ -63,17 +80,23 @@ export class BossPhaseManager {
   private enterBossPhase(phaseIndex: number, phase: BossPhaseDef): void {
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat || !(combat as any).bossPhase) return;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return;
 
-    const boss = combat.enemies.find(e => e.id === (combat as any).bossPhase.enemyId);
+    const boss = combat.enemies.find(e => e.id === bossPhase.enemyId);
     if (!boss) return;
 
-    (combat as any).bossPhase.phaseIndex = phaseIndex;
-    (combat as any).bossPhase.phaseId = phase.id;
-    (combat as any).bossPhase.phaseName = phase.name;
-    (combat as any).bossPhase.phaseHint = phase.hint;
-    (combat as any).bossPhase.enteredTurn = combat.turn || 1;
-    (combat as any).bossPhase.flags = {};
+    const existingProfile = bossPhase.adaptationProfile;
+    const existingEnabled = bossPhase.adaptationEnabled;
+
+    bossPhase.phaseIndex = phaseIndex;
+    bossPhase.phaseId = phase.id;
+    bossPhase.phaseName = phase.name;
+    bossPhase.phaseHint = phase.hint;
+    bossPhase.enteredTurn = combat.turn || 1;
+    bossPhase.flags = {};
+    bossPhase.adaptationProfile = existingProfile;
+    bossPhase.adaptationEnabled = existingEnabled;
 
     this.deps.appendVoxLog(`Boss 进入阶段: ${phase.name}`);
     this.deps.notify();
@@ -82,30 +105,32 @@ export class BossPhaseManager {
   snapshotPlayerTurnForBossPhase(): void {
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat || !(combat as any).bossPhase) return;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return;
 
-    (combat as any).bossPhase.previousPlayerTurnCards = [...((combat as any).bossPhase.currentPlayerTurnCards || [])];
-    (combat as any).bossPhase.currentPlayerTurnCards = [];
+    bossPhase.previousPlayerTurnCards = [...(bossPhase.currentPlayerTurnCards || [])];
+    bossPhase.currentPlayerTurnCards = [];
   }
 
   recordBossPhasePlayedCard(card: RunCardInstance): void {
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat || !(combat as any).bossPhase || !card) return;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase || !card) return;
 
-    (combat as any).bossPhase.currentPlayerTurnCards.push(card);
-    if ((combat as any).bossPhase.currentPlayerTurnCards.length > 12) {
-      (combat as any).bossPhase.currentPlayerTurnCards = (combat as any).bossPhase.currentPlayerTurnCards.slice(-12);
+    bossPhase.currentPlayerTurnCards.push(card);
+    if (bossPhase.currentPlayerTurnCards.length > 12) {
+      bossPhase.currentPlayerTurnCards = bossPhase.currentPlayerTurnCards.slice(-12);
     }
   }
 
-  async applyBossPhaseEnemyPrelude(enemy: any): Promise<void> {
+  async applyBossPhaseEnemyPrelude(enemy: CombatEnemyState): Promise<void> {
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat || !(combat as any).bossPhase) return;
-    if (enemy.id !== (combat as any).bossPhase.enemyId) return;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return;
+    if (enemy.id !== bossPhase.enemyId) return;
 
-    const bossPhase = (combat as any).bossPhase;
     const active = getBossPhaseForHpPct(enemy.defId, enemy.maxHp > 0 ? enemy.hp / enemy.maxHp : 0);
     if (!active?.phase) return;
 
@@ -122,7 +147,11 @@ export class BossPhaseManager {
       if (combat.turn - lastTurn >= interval) {
         const summonDef = mechanics.periodicSummon;
         const count = summonDef.count || 1;
-        for (let i = 0; i < count; i++) {
+        const summonedUnitId = summonDef.unitId;
+        const existingCount = combat.enemies.filter(e => e.defId === summonedUnitId).length;
+        const MAX_TOTAL_SUMMONS = 4;
+        const maxNewSummons = Math.max(0, Math.min(count, MAX_TOTAL_SUMMONS - existingCount));
+        for (let i = 0; i < maxNewSummons; i++) {
           const baseHp = summonDef.hpScale || 10;
           const hp = this.deps.applyEnemyHpTuning(baseHp, this.deps.getCurrentFloorNumber(), 'Boss');
           combat.enemies.push({
@@ -134,6 +163,8 @@ export class BossPhaseManager {
             block: 0,
             statuses: {},
             nextIntent: 'Attack',
+            lastUsedIntent: null,
+            intentCooldowns: {},
             devotion: 0,
             corruptionAxis: 0,
             axisDisposition: 'balanced' as const
@@ -169,7 +200,16 @@ export class BossPhaseManager {
       if (combat.turn - lastTurn >= interval) {
         const pulseDef = mechanics.playerPulse;
         if (pulseDef.damage) {
-          combat.player.hp = Math.max(0, combat.player.hp - pulseDef.damage);
+          combatSystem.applyDamage(state, {
+            amount: pulseDef.damage,
+            sourceType: 'enemy',
+            sourceId: enemy.id,
+            targetType: 'player',
+            targetId: 'player',
+            modifiers: [],
+            isTrueDamage: !!pulseDef.trueDamage,
+            ignoreBlock: !!pulseDef.trueDamage,
+          });
         }
         if (pulseDef.statuses) {
           for (const [status, amount] of Object.entries(pulseDef.statuses)) {
@@ -188,12 +228,24 @@ export class BossPhaseManager {
       if (previous.length > 0) {
         const echoedThisTurn = Number(bossPhase.flags['echoLastTurnAppliedAt'] || 0);
         if (echoedThisTurn !== combat.turn) {
-          const echoDamage = Math.floor(
+          const rawEchoDamage = Math.floor(
             previous.reduce((sum: number, card: any) => sum + (card.damage || 0), 0) * mechanics.echoLastPlayerAttack.damageScale
           );
+          const minDamage = Math.max(0, Number(mechanics.echoLastPlayerAttack.minDamage || 0));
+          const maxDamage = Math.max(minDamage, Number(mechanics.echoLastPlayerAttack.maxDamage || rawEchoDamage));
+          const echoDamage = Math.max(minDamage, Math.min(maxDamage, rawEchoDamage));
           if (echoDamage > 0) {
-            combat.player.hp = Math.max(0, combat.player.hp - echoDamage);
-            this.deps.appendVoxLog(`Boss 回响造成 ${echoDamage} 点伤害！`);
+            const actualDamage = combatSystem.applyDamage(state, {
+              amount: echoDamage,
+              sourceType: 'enemy',
+              sourceId: enemy.id,
+              targetType: 'player',
+              targetId: 'player',
+              modifiers: [],
+              isTrueDamage: false,
+              ignoreBlock: false,
+            });
+            this.deps.appendVoxLog(`Boss 回响造成 ${actualDamage} 点伤害！`);
           }
           bossPhase.flags['echoLastTurnAppliedAt'] = combat.turn;
         }
@@ -201,5 +253,61 @@ export class BossPhaseManager {
     }
 
     this.deps.notify();
+  }
+
+  private updateBossAdaptation(
+    enemyId: string,
+    intentExecuted: string,
+    damageDealt: number,
+    playerReacted: boolean,
+    turnNumber: number
+  ): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase || !bossPhase.adaptationEnabled) return;
+
+    const profile = bossPhase.adaptationProfile || this.bossAI.getOrCreateProfile(enemyId);
+
+    const detailedPatterns = combatMemory.getDetailedPlayerPatterns();
+
+    const updatedProfile = this.bossAI.updateProfile(
+      profile,
+      detailedPatterns,
+      intentExecuted,
+      damageDealt,
+      playerReacted,
+      turnNumber
+    );
+
+    this.bossAI.saveProfile(updatedProfile);
+
+    bossPhase.adaptationProfile = updatedProfile;
+  }
+
+  public getBossAdaptationProfile(enemyId: string): AdaptationProfile | undefined {
+    return this.bossAI.getProfile(enemyId);
+  }
+
+  public isBossAdaptationEnabled(): boolean {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return false;
+    return bossPhase.adaptationEnabled ?? false;
+  }
+
+  public setBossAdaptationEnabled(enabled: boolean): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    const bossPhase = getBossPhase(combat);
+    if (!bossPhase) return;
+    bossPhase.adaptationEnabled = enabled;
+  }
+
+  public getAdaptedIntentBonus(enemyId: string): Record<string, number> {
+    const profile = this.bossAI.getProfile(enemyId);
+    if (!profile) return {};
+    return this.bossAI.getAdaptedIntentBonus(profile.counterStrategy);
   }
 }

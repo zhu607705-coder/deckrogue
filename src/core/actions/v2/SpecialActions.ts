@@ -1,21 +1,25 @@
-import { GameState, ActionSpec } from '@/core/types';
+import { GameState, ActionSpec, RunCardInstance } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { TargetingService, CardTarget } from '@/core/combat/targetingService';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
 import { globalEventBus } from '@/core/events/eventBus';
 import { getActionManager } from '@/core/actions/actionManager';
-import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { getEnemyDefById, getCardDefById } from '@/content/narrative/numericSystem';
+import { createRunCardInstance, deriveRunCardInstance, normalizeRunCardInstance } from '@/core/combat/runCardInstance';
 import { stateRandomChoice, stateRandomId, stateRandomInt } from '@/infrastructure/rng/stateRandom';
+
+interface ActionQueuePrivate {
+  _currentContext?: IActionContext;
+}
 
 export abstract class BaseAction implements IAction {
   protected spec: ActionSpec;
   protected context: IActionContext = { source: 'player' };
-  
+
   constructor(spec: ActionSpec) {
     this.spec = spec;
   }
-  
+
   get type(): string {
     return this.spec.type;
   }
@@ -23,26 +27,26 @@ export abstract class BaseAction implements IAction {
   setContext(context: IActionContext): void {
     this.context = context;
   }
-  
+
   abstract execute(state: GameState, queue: ActionQueue): void;
-  
+
   protected resolveTargets(state: GameState, targetType: CardTarget) {
     return TargetingService.resolveTargets(state, this.context, targetType);
   }
 
   protected getContextFromQueue(queue: ActionQueue): IActionContext {
-    return (queue as any)._currentContext || { source: 'player' };
+    return (queue as unknown as ActionQueuePrivate)._currentContext || { source: 'player' };
   }
 }
 
 export class DelayAction extends BaseAction {
   private turns: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.turns = spec.turns || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     this.context = this.getContextFromQueue(queue);
@@ -91,7 +95,7 @@ export class ConditionalAction extends BaseAction {
         return false;
     }
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
     const actions = this.evaluateCondition(state) ? (this.spec.trueActions || []) : (this.spec.falseActions || []);
@@ -99,7 +103,7 @@ export class ConditionalAction extends BaseAction {
 
     // Push in reverse so execution order matches array order when popped from the front.
     for (let i = actions.length - 1; i >= 0; i--) {
-      const action = ActionFactoryV2.createAction(actions[i]);
+      const action = getActionManager().createAction(actions[i]);
       queue.pushFront(action, { ...this.context }, 0);
     }
   }
@@ -123,7 +127,7 @@ export class ConditionalKillAction extends BaseAction {
 
     const actions = this.spec.trueActions || [];
     for (let i = actions.length - 1; i >= 0; i--) {
-      const action = ActionFactoryV2.createAction(actions[i]);
+      const action = getActionManager().createAction(actions[i]);
       queue.pushFront(action, { ...this.context }, 0);
     }
   }
@@ -133,7 +137,7 @@ export class TriggerDelayAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat || combat.player.delayedCards.length === 0) return;
@@ -146,11 +150,11 @@ export class TriggerDelayAction extends BaseAction {
       const manager = getActionManager();
       if (manager) {
         delayAction.actions.forEach((spec: ActionSpec) => {
-          const action = ActionFactoryV2.createAction(spec);
-          manager.enqueueUrgentAction(action, { 
-            source: 'player', 
-            targetId: delayed.targetId, 
-            card: delayed.card 
+          const action = manager.createAction(spec);
+          manager.enqueueUrgentAction(action, {
+            source: 'player',
+            targetId: delayed.targetId,
+            card: delayed.card
           }, 'system');
         });
       }
@@ -160,12 +164,12 @@ export class TriggerDelayAction extends BaseAction {
 
 export class SummonConstructAction extends BaseAction {
   private unit: string;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.unit = spec.unit || '';
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -183,16 +187,16 @@ export class SummonConstructAction extends BaseAction {
       return;
     }
 
-    globalEventBus.publish({ 
-      type: 'ConstructCreated', 
-      constructId: construct.id, 
-      name: construct.name 
+    globalEventBus.publish({
+      type: 'ConstructCreated',
+      constructId: construct.id,
+      name: construct.name
     });
   }
 
   private createConstruct(state: GameState): { id: string; name: string; hp: number; maxHp: number; atk: number; taunt: boolean; overflowDamageToPlayer?: boolean; damageSharePct?: number } | null {
     const id = stateRandomId(state, 'construct');
-    
+
     switch (this.unit) {
       case 'scrap_golem':
         return { id, name: 'Scrap Golem', hp: 8, maxHp: 8, atk: 3, taunt: false, damageSharePct: 0.5 };
@@ -301,12 +305,12 @@ export class SummonMegaConstructAction extends BaseAction {
 
 export class BuffConstructsAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -326,7 +330,7 @@ export class ConstructOverdriveAction extends BaseAction {
     super(spec);
     this.multiplier = Math.max(1, Math.floor(spec.multiplier || spec.amount || 1));
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -339,7 +343,7 @@ export class ConstructOverdriveAction extends BaseAction {
     combat.player.constructs.forEach(c => {
       const target = stateRandomChoice(state, aliveEnemies);
       if (!target) return;
-      
+
       const damageContext: DamageContext = {
         amount: c.atk * this.multiplier,
         sourceType: 'player',
@@ -367,7 +371,7 @@ export class HealConstructAction extends BaseAction {
     this.consumeOtherConstructs = Math.max(0, Math.floor(spec.consumeOtherConstructs || 0));
     this.constructAtkBonus = Math.max(0, Math.floor(spec.constructAtkBonus || 0));
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat || combat.player.constructs.length === 0) return;
@@ -375,13 +379,16 @@ export class HealConstructAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
 
     const constructs = combat.player.constructs;
+    if (constructs.length === 0) return;
     const targetIndex = constructs.reduce((bestIdx, cur, idx, arr) => {
+      if (bestIdx >= arr.length) return idx;
       const best = arr[bestIdx];
       const curMissing = Math.max(0, cur.maxHp - cur.hp);
       const bestMissing = Math.max(0, best.maxHp - best.hp);
       return curMissing > bestMissing ? idx : bestIdx;
     }, 0);
-    const target = constructs[targetIndex];
+    const target = targetIndex < constructs.length ? constructs[targetIndex] : undefined;
+    if (!target) return;
 
     if (this.consumeOtherConstructs > 0) {
       const availableOthers = constructs.length - 1;
@@ -394,7 +401,7 @@ export class HealConstructAction extends BaseAction {
         if (i === targetIndex) continue;
         const [removed] = constructs.splice(i, 1);
         if (removed) {
-          globalEventBus.publish({ type: 'ConstructDestroyed', constructId: removed.id } as any);
+          globalEventBus.publish({ type: 'ConstructDestroyed', constructId: removed.id, data: { constructId: removed.id } });
           toConsume -= 1;
         }
       }
@@ -414,12 +421,12 @@ export class HealConstructAction extends BaseAction {
 
 export class AddRandomElementAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -435,12 +442,12 @@ export class AddRandomElementAction extends BaseAction {
 
 export class AddElementAction extends BaseAction {
   private element: string;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.element = spec.element || '';
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat || !this.element) return;
@@ -455,7 +462,7 @@ export class TriggerReactionsAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -501,7 +508,7 @@ export class TransmuteElementsAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -519,13 +526,13 @@ export class TransmuteElementsAction extends BaseAction {
 export class EmergencyBlockAction extends BaseAction {
   private bonus: number;
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.bonus = spec.bonus || 0;
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -541,7 +548,7 @@ export class ReviveAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -561,33 +568,38 @@ export class ReviveAction extends BaseAction {
 
 export class ReturnLastCardAction extends BaseAction {
   private costModifier: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.costModifier = spec.costModifier || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat || !combat.player.lastPlayedCard) return;
 
     this.context = this.getContextFromQueue(queue);
 
-    const returnedCard = { ...combat.player.lastPlayedCard, tempCost: this.costModifier };
-    combat.hand.push(returnedCard as any);
+    if (!combat.player.lastPlayedCard) return;
+    const returnedCard = deriveRunCardInstance({
+      ...normalizeRunCardInstance(combat.player.lastPlayedCard, () => stateRandomId(state, 'returned_card')),
+      instanceId: stateRandomId(state, 'returned_card'),
+      tempCost: this.costModifier,
+    });
+    combat.hand.push(returnedCard);
   }
 }
 
 export class DoubleStatusAction extends BaseAction {
   private target: CardTarget;
   private status: string;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.target = (spec.target as CardTarget) || 'Enemy';
     this.status = spec.status || '';
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     if (!this.status) return;
 
@@ -596,7 +608,7 @@ export class DoubleStatusAction extends BaseAction {
 
     targets.forEach(targetInfo => {
       if (targetInfo.entity.hp <= 0) return;
-      
+
       const currentAmount = targetInfo.entity.statuses[this.status] || 0;
       if (currentAmount > 0) {
         combatSystem.applyStatus(
@@ -614,13 +626,13 @@ export class DoubleStatusAction extends BaseAction {
 export class GainDevotionAction extends BaseAction {
   private target: CardTarget;
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.target = (spec.target as CardTarget) || 'Self';
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -644,13 +656,13 @@ export class GainDevotionAction extends BaseAction {
 export class GainCorruptionAxisAction extends BaseAction {
   private target: CardTarget;
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.target = (spec.target as CardTarget) || 'Self';
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -709,13 +721,13 @@ export class GainCorruptionAction extends BaseAction {
 export class PurgeFearAndCorruptionAction extends BaseAction {
   private target: CardTarget;
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.target = (spec.target as CardTarget) || 'Self';
     this.amount = spec.amount || 20;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -734,17 +746,17 @@ export class PurgeFearAndCorruptionAction extends BaseAction {
 
 export class GainIntelAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
     state.player.intel += this.amount;
     if (state.combat) {
-      (state.combat.player as any).intel = state.player.intel;
+      state.combat.player.intel = state.player.intel;
       state.combat.warpPulse = { text: `情报 +${this.amount}（当前 ${state.player.intel}）`, tone: 'faith' };
     }
   }
@@ -752,17 +764,17 @@ export class GainIntelAction extends BaseAction {
 
 export class SpendIntelAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
     state.player.intel = Math.max(0, state.player.intel - this.amount);
     if (state.combat) {
-      (state.combat.player as any).intel = state.player.intel;
+      state.combat.player.intel = state.player.intel;
       state.combat.warpPulse = { text: `情报 -${this.amount}（当前 ${state.player.intel}）`, tone: 'neutral' };
     }
   }
@@ -810,7 +822,7 @@ export class RedirectIntentAction extends BaseAction {
     if (!combat) return;
     this.context = this.getContextFromQueue(queue);
     const targets = this.resolveTargets(state, 'Enemy');
-    const targetEnemy = targets.find(t => t.type === 'enemy')?.entity as any;
+    const targetEnemy = targets.find(t => t.type === 'enemy')?.entity as NonNullable<GameState['combat']>['enemies'][number] | undefined;
     if (!targetEnemy) return;
 
     const def = getEnemyDefById(targetEnemy.defId);
@@ -834,7 +846,7 @@ export class MutateCardAction extends BaseAction {
 
   constructor(spec: ActionSpec) {
     super(spec);
-    this.mutateTo = String((spec as any).mutateTo || '');
+    this.mutateTo = String((spec as { mutateTo?: string }).mutateTo || '');
   }
 
   execute(state: GameState, queue: ActionQueue): void {
@@ -843,7 +855,7 @@ export class MutateCardAction extends BaseAction {
     const targetCard = getCardDefById(this.mutateTo);
     if (!targetCard) return;
 
-    const clone = { ...(targetCard as any), instanceId: stateRandomId(state, 'mutate') } as any;
+    const clone: RunCardInstance = createRunCardInstance(targetCard, stateRandomId(state, 'mutate'));
     combat.discardPile.push(clone);
     state.player.deck.push(clone);
     combat.warpPulse = {
@@ -873,12 +885,12 @@ export class EmperorMercyAction extends BaseAction {
 
 export class PurgeEnemyBuffsAction extends BaseAction {
   private zealPerBuff: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.zealPerBuff = spec.zealPerBuff || 3;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
@@ -906,9 +918,9 @@ export class PurgeEnemyBuffsAction extends BaseAction {
       if (!combat.player.statuses) combat.player.statuses = {};
       const currentZeal = (combat.player.statuses['Zeal'] as number) || 0;
       combat.player.statuses['Zeal'] = currentZeal + zealGained;
-      combat.warpPulse = { 
-        text: `净除 ${buffsRemoved} 项增益，获得 ${zealGained} 点狂热`, 
-        tone: 'faith' 
+      combat.warpPulse = {
+        text: `净除 ${buffsRemoved} 项增益，获得 ${zealGained} 点狂热`,
+        tone: 'faith'
       };
     }
   }
@@ -917,28 +929,28 @@ export class PurgeEnemyBuffsAction extends BaseAction {
 export class PrecisionThrowDamageAction extends BaseAction {
   private amount: number;
   private bonus: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 6;
     this.bonus = spec.bonus || 9;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const targetId = this.context.targetId;
-    
+
     if (!targetId) return;
-    
+
     const target = combat.enemies.find(e => e.id === targetId);
     if (!target) return;
-    
+
     const hasVulnerable = target.statuses && target.statuses['Vulnerable'];
     const damage = hasVulnerable ? this.amount + this.bonus : this.amount;
-    
+
     const damageContext: DamageContext = {
       amount: damage,
       sourceType: 'player',
@@ -949,7 +961,7 @@ export class PrecisionThrowDamageAction extends BaseAction {
       isTrueDamage: false,
       ignoreBlock: false
     };
-    
+
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
       text: hasVulnerable ? `精准投掷命中易伤目标，造成 ${damage} 点伤害。` : `精准投掷造成 ${damage} 点伤害。`,
@@ -960,24 +972,24 @@ export class PrecisionThrowDamageAction extends BaseAction {
 
 export class ForceEnemyAttackAction extends BaseAction {
   private damage: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.damage = spec.amount || 5;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
-    
+
     const aliveEnemies = combat.enemies.filter(e => e.hp > 0);
     if (aliveEnemies.length < 2) return;
-    
+
     const attacker = aliveEnemies[0];
     const target = aliveEnemies[1];
-    
+
     const damageContext: DamageContext = {
       amount: this.damage,
       sourceType: 'enemy',
@@ -988,7 +1000,7 @@ export class ForceEnemyAttackAction extends BaseAction {
       isTrueDamage: true,
       ignoreBlock: true
     };
-    
+
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
       text: `${attacker.name || attacker.id} 强制攻击 ${target.name || target.id}。`,
@@ -999,27 +1011,27 @@ export class ForceEnemyAttackAction extends BaseAction {
 
 export class SolventDamageAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 3;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const targetId = this.context.targetId;
-    
+
     if (!targetId) return;
-    
+
     const target = combat.enemies.find(e => e.id === targetId);
     if (!target) return;
-    
+
     const block = target.block || 0;
     const damage = this.amount + Math.floor(block / 2);
-    
+
     const damageContext: DamageContext = {
       amount: damage,
       sourceType: 'player',
@@ -1030,10 +1042,10 @@ export class SolventDamageAction extends BaseAction {
       isTrueDamage: false,
       ignoreBlock: false
     };
-    
+
     combatSystem.applyDamage(state, damageContext);
     combat.warpPulse = {
-      text: `溶解剂造成 ${damage} 点伤害（格挡转化加成 ${Math.floor(block / 2)}）。`,
+      text: `溶解剂造成 ${damage} 点伤害（护盾转化加成 ${Math.floor(block / 2)}）。`,
       tone: 'neutral'
     };
   }
@@ -1082,16 +1094,16 @@ export class TriggerPoisonOnTargetAction extends BaseAction {
 
 export class GainTimeLayerAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.timeLayer = Math.min(10, (combat.player.timeLayer || 0) + this.amount);
     combat.warpPulse = { text: `时间层 +${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'warp' };
@@ -1100,16 +1112,16 @@ export class GainTimeLayerAction extends BaseAction {
 
 export class SpendTimeLayerAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.timeLayer = Math.max(0, (combat.player.timeLayer || 0) - this.amount);
     combat.warpPulse = { text: `时间层 -${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'neutral' };
@@ -1118,16 +1130,16 @@ export class SpendTimeLayerAction extends BaseAction {
 
 export class GainThreadAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.thread = Math.min(10, (combat.player.thread || 0) + this.amount);
     combat.warpPulse = { text: `丝线 +${this.amount}（当前 ${combat.player.thread}）`, tone: 'faith' };
@@ -1136,16 +1148,16 @@ export class GainThreadAction extends BaseAction {
 
 export class SpendThreadAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.thread = Math.max(0, (combat.player.thread || 0) - this.amount);
     combat.warpPulse = { text: `丝线 -${this.amount}（当前 ${combat.player.thread}）`, tone: 'neutral' };
@@ -1154,16 +1166,16 @@ export class SpendThreadAction extends BaseAction {
 
 export class GainConcoctionAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.concoction = Math.min(10, (combat.player.concoction || 0) + this.amount);
     combat.warpPulse = { text: `调配 +${this.amount}（当前 ${combat.player.concoction}）`, tone: 'faith' };
@@ -1172,16 +1184,16 @@ export class GainConcoctionAction extends BaseAction {
 
 export class SpendConcoctionAction extends BaseAction {
   private amount: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.amount = spec.amount || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.concoction = Math.max(0, (combat.player.concoction || 0) - this.amount);
     combat.warpPulse = { text: `调配 -${this.amount}（当前 ${combat.player.concoction}）`, tone: 'neutral' };
@@ -1192,11 +1204,11 @@ export class SpendAllIntelAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const intelSpent = state.player.intel || 0;
     state.player.intel = 0;
@@ -1208,11 +1220,11 @@ export class SpendAllConcoctionAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const concoctionSpent = combat.player.concoction || 0;
     combat.player.concoction = 0;
@@ -1224,11 +1236,11 @@ export class RewindCombatStateAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.hp = combat.player.maxHp;
     combat.player.block = 0;
@@ -1241,25 +1253,26 @@ export class BindEnemySoulAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const targetId = this.context.targetId;
     const enemy = combat.enemies.find(e => e.id === targetId);
     if (!enemy || enemy.hp > 0) return;
-    
+
+    const enemyWithBaseDamage = enemy as typeof enemy & { baseDamage?: number };
     const construct = {
       id: `soulbound_${enemy.id}_${Date.now()}`,
       name: `${enemy.name}之魂`,
       hp: Math.floor(enemy.maxHp * 0.5),
       maxHp: Math.floor(enemy.maxHp * 0.5),
-      atk: Math.floor((enemy as any).baseDamage || 5),
+      atk: Math.floor(enemyWithBaseDamage.baseDamage || 5),
       taunt: false
     };
-    
+
     combat.player.constructs = combat.player.constructs || [];
     combat.player.constructs.push(construct);
     combat.warpPulse = { text: `灵魂绑定：${construct.name}`, tone: 'faith' };
@@ -1271,7 +1284,7 @@ export class CreateConstructAction extends BaseAction {
   private hp: number;
   private atk: number;
   private taunt: boolean;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.name = spec.name || '构造体';
@@ -1279,11 +1292,11 @@ export class CreateConstructAction extends BaseAction {
     this.atk = spec.atk || 6;
     this.taunt = spec.taunt || false;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const construct = {
       id: `construct_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -1293,7 +1306,7 @@ export class CreateConstructAction extends BaseAction {
       atk: this.atk,
       taunt: this.taunt
     };
-    
+
     combat.player.constructs = combat.player.constructs || [];
     combat.player.constructs.push(construct);
     combat.warpPulse = { text: `创建构造体：${this.name}`, tone: 'faith' };
@@ -1303,17 +1316,17 @@ export class CreateConstructAction extends BaseAction {
 export class BuffAllConstructsAction extends BaseAction {
   private hpBonus: number;
   private atkBonus: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.hpBonus = spec.hpBonus || 0;
     this.atkBonus = spec.atkBonus || 0;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat || !combat.player.constructs) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.player.constructs.forEach(c => {
       c.maxHp += this.hpBonus;
@@ -1326,20 +1339,20 @@ export class BuffAllConstructsAction extends BaseAction {
 
 export class TriggerAllReactionsAction extends BaseAction {
   private times: number;
-  
+
   constructor(spec: ActionSpec) {
     super(spec);
     this.times = spec.times || 1;
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     const elements = combat.player.elements || [];
     if (elements.length < 2) return;
-    
+
     const uniqueElements = new Set(elements).size;
     let totalDamage = 0;
     for (let i = 0; i < this.times; i++) {
@@ -1369,11 +1382,11 @@ export class TransformHandToRareAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }
-  
+
   execute(state: GameState, queue: ActionQueue): void {
     const combat = state.combat;
     if (!combat) return;
-    
+
     this.context = this.getContextFromQueue(queue);
     combat.warpPulse = { text: '手牌转化：稀有卡牌', tone: 'warp' };
   }

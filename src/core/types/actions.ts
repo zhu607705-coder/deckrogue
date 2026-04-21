@@ -1,6 +1,9 @@
+import type { EnemyAiProfile } from '@/core/types/enemyAI';
+
 export type CardType = 'Attack' | 'Skill' | 'Power';
 export type CardTarget = 'Enemy' | 'Self' | 'AllEnemies' | 'RandomEnemy' | 'None';
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Starter';
+export type EarlyGameRole = 'route_confirm' | 'route_payoff' | 'generic_power' | 'generic_fallback';
 
 export type ActionCondition =
   | { type: 'HasIntel'; amount: number }
@@ -72,7 +75,8 @@ export interface ActionSpec {
     | 'SpendThread'
     | 'GainConcoction'
     | 'SpendConcoction'
-    | 'TriggerPoisonOnTarget';
+    | 'TriggerPoisonOnTarget'
+    | 'LoseHp';
   amount?: number;
   bonus?: number;
   status?: string;
@@ -153,6 +157,9 @@ export interface CardDef {
   artUrl?: string;
   character?: string;
   lastWords?: string;
+  routeTags?: string[];
+  routeSignalStrength?: number;
+  earlyGameRole?: EarlyGameRole;
 }
 
 export interface RunCardInstance extends CardDef {
@@ -161,6 +168,7 @@ export interface RunCardInstance extends CardDef {
   runtimeBase: CardDef;
   persistentEnchantments: CardEnchantmentDef[];
   combatAfflictions: CardAfflictionDef[];
+  tempCost?: number;
 }
 
 export interface EnemyDef {
@@ -168,8 +176,10 @@ export interface EnemyDef {
   name: string;
   hp_range: [number, number];
   intent_policy: { intent: string; weight: number }[];
+  intentPolicy?: { intent: string; weight: number }[];
   moves: Record<string, ActionSpec[]>;
   keywords: string[];
+  ai_profile?: EnemyAiProfile;
 }
 
 export interface CharacterDef {

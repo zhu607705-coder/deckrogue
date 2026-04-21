@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-04-10T08:52:56.090Z",
+  "variants": [
+    {
+      "id": "slime_small_glass",
+      "name": "Glass Slime",
+      "prompt": "A crystalline slime with stained-glass shards, cyan core glow, grimdark fantasy enemy portrait, dark cavern backdrop, card game standee art",
+      "svg": "public/assets/enemies/source/slime_small_glass.svg",
+      "png": "public/assets/enemies/slime_small_glass.png"
+    },
+    {
+      "id": "slime_small_rot",
+      "name": "Rot-Bloom Slime",
+      "prompt": "A diseased slime blooming with toxic spores and bone fragments, sickly green glow, grimdark fantasy enemy portrait, swamp haze, card game standee art",
+      "svg": "public/assets/enemies/source/slime_small_rot.svg",
+      "png": "public/assets/enemies/slime_small_rot.png"
+    },
+    {
+      "id": "goblin_trapper",
+      "name": "Goblin Wirebinder",
+      "prompt": "A hooded goblin trapper with a snare launcher and taut wire loops, orange torchlight, grimdark mine portrait, card game standee art",
+      "svg": "public/assets/enemies/source/goblin_trapper.svg",
+      "png": "public/assets/enemies/goblin_trapper.png"
+    },
+    {
+      "id": "barrier_redeemer",
+      "name": "Redeemer Bulwark",
+      "prompt": "A red-cloaked shield sentinel carrying a lantern and redemption sigils, heavy plate armor, grimdark mechanized chapel portrait, card game standee art",
+      "svg": "public/assets/enemies/source/barrier_redeemer.svg",
+      "png": "public/assets/enemies/barrier_redeemer.png"
+    },
+    {
+      "id": "cultist_herald",
+      "name": "Ashen Herald",
+      "prompt": "A masked cult herald swinging a burning censer, purple ash halo, occult grimdark portrait, ritual altar lighting, card game standee art",
+      "svg": "public/assets/enemies/source/cultist_herald.svg",
+      "png": "public/assets/enemies/cultist_herald.png"
+    },
+    {
+      "id": "jaw_worm_burrower",
+      "name": "Burrow Maw",
+      "prompt": "A sand-burrowing jaw worm erupting with a bone maw and ridge spines, dusty cavern palette, grimdark beast portrait, card game standee art",
+      "svg": "public/assets/enemies/source/jaw_worm_burrower.svg",
+      "png": "public/assets/enemies/jaw_worm_burrower.png"
+    }
+  ]
+}

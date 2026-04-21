@@ -34,7 +34,6 @@ export function getPreferredRouteTagFromState(
       .filter((tag): tag is string => knownRouteTags.includes(tag)) ?? [];
   const latestCommittedTag = recentCommitTags.at(-1) ?? null;
   const authoritativePrimaryTag =
-    recentCommitTags.length > 0 &&
     routeState?.primaryTag &&
     knownRouteTags.includes(routeState.primaryTag) && (
       latestCommittedTag === routeState.primaryTag ||

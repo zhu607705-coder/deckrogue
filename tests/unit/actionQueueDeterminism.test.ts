@@ -1,0 +1,119 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import type { GameState } from '@/core/types';
+import { ActionManager } from '@/core/actions/actionManager';
+import { ActionQueue, type IAction } from '@/core/actions/actionQueue';
+import { globalEventBus, type GameEvent } from '@/core/events/eventBus';
+
+function makeState(): GameState {
+  return {
+    seed: 1,
+    rngState: 1,
+    character: null,
+    player: {
+      hp: 20,
+      maxHp: 20,
+      energy: 3,
+      maxEnergy: 3,
+      gold: 0,
+      intel: 0,
+      deck: [],
+      relics: [],
+      potions: [],
+      corruption: 0,
+      devotion: 0,
+      relicStates: {},
+      runEffects: {},
+    },
+    combat: null,
+    map: [],
+    currentNodeId: null,
+    rewardCards: [],
+    shopCards: [],
+    shopRelics: [],
+    shopPotions: [],
+    cardRemovalCost: 75,
+    screen: 'Map',
+    pendingNodeResolution: false,
+    campfireChoiceLocked: false,
+    metaRuntime: {
+      unlockedPoolIds: [],
+      appliedUpgradeIds: [],
+      appliedPactIds: [],
+    },
+  } as GameState;
+}
+
+test.afterEach(() => {
+  globalEventBus.clear();
+  ActionManager.resetInstance();
+});
+
+test('ActionQueue keeps deterministic order for front inserts and equal-priority entries', () => {
+  const queue = new ActionQueue();
+  const order: string[] = [];
+  const state = makeState();
+
+  class MockAction implements IAction {
+    constructor(readonly type: string, private readonly label: string) {}
+    execute(): void {
+      order.push(this.label);
+    }
+  }
+
+  queue.push(new MockAction('A', 'base-1'), { source: 'player' }, 0);
+  queue.push(new MockAction('B', 'base-2'), { source: 'player' }, 0);
+  queue.pushFront(new MockAction('C', 'front-1'), { source: 'system' }, 0);
+  queue.pushFront(new MockAction('D', 'front-2'), { source: 'system' }, 0);
+  queue.pushBack(new MockAction('E', 'base-3'), { source: 'player' }, 0);
+
+  queue.processQueue(state);
+
+  assert.deepEqual(order, ['front-2', 'front-1', 'base-1', 'base-2', 'base-3']);
+});
+
+test('ActionManager publishes ActionStart and ActionEnd with real execution context metadata', () => {
+  const manager = new ActionManager(makeState());
+  const starts: Array<Extract<GameEvent, { type: 'ActionStart' }>> = [];
+  const ends: Array<Extract<GameEvent, { type: 'ActionEnd' }>> = [];
+  const offStart = globalEventBus.subscribe('ActionStart', (event) => starts.push(event as Extract<GameEvent, { type: 'ActionStart' }>));
+  const offEnd = globalEventBus.subscribe('ActionEnd', (event) => ends.push(event as Extract<GameEvent, { type: 'ActionEnd' }>));
+
+  class MockAction implements IAction {
+    readonly type = 'MockAction';
+    execute(): void {}
+  }
+
+  try {
+    manager.enqueueAction(new MockAction(), {
+      source: 'player',
+      sourceId: 'player',
+      targetId: 'enemy_1',
+      cardId: 'strike',
+      cardInstanceId: 'card_1',
+    });
+
+    const snapshot = manager.getQueueSnapshot();
+    assert.equal(snapshot.length, 1);
+    assert.equal(snapshot[0].sequence, 0);
+    assert.equal(snapshot[0].cardId, 'strike');
+
+    manager.executeAllSync();
+
+    assert.equal(starts.length, 1);
+    assert.equal(ends.length, 1);
+    assert.equal(starts[0].actionType, 'MockAction');
+    assert.equal(starts[0].source, 'player');
+    assert.equal(starts[0].sourceId, 'player');
+    assert.equal(starts[0].targetId, 'enemy_1');
+    assert.equal(starts[0].cardId, 'strike');
+    assert.equal(starts[0].cardInstanceId, 'card_1');
+    assert.equal(ends[0].actionId, starts[0].actionId);
+    assert.equal(ends[0].sequence, starts[0].sequence);
+    assert.equal(ends[0].targetId, 'enemy_1');
+  } finally {
+    offStart();
+    offEnd();
+  }
+});
