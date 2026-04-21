@@ -104,8 +104,8 @@ export function SetupLauncher({
   }, [tutorialOpen]);
 
   return (
-    <div ref={shellRef} className="launcher-shell relative min-h-screen w-full overflow-hidden text-white">
-      <div className="launcher-veil absolute inset-0" />
+    <div ref={shellRef} className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_eldar_void.png')] bg-cover bg-center">
+      <div className="launcher-veil absolute inset-0 bg-black/60" />
       <div className="launcher-grain absolute inset-0 opacity-60" />
       <div className="launcher-orb launcher-orb-left absolute" />
       <div className="launcher-orb launcher-orb-right absolute" />
@@ -119,10 +119,10 @@ export function SetupLauncher({
                   {getUiLabelZh('Ritual Access Node')}
                 </div>
                 <div className="launcher-brand reveal-rise">
-                  <div className="text-[clamp(3.75rem,11vw,8.8rem)] font-black uppercase leading-[0.85] tracking-[0.08em] text-amber-50 xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
+                  <div className="text-[clamp(3.75rem,11vw,8.8rem)] font-black uppercase leading-[0.85] tracking-[0.08em] text-amber-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.7)] xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
                     DeckRogue
                   </div>
-                  <h1 className="mt-3 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-100 xl:text-[clamp(1.5rem,2.8vw,2.5rem)]">
+                  <h1 className="mt-3 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.5)] xl:text-[clamp(1.5rem,2.8vw,2.5rem)]">
                     战区启动器
                   </h1>
                 </div>
@@ -150,13 +150,13 @@ export function SetupLauncher({
                 <div className="mt-5 space-y-3 xl:mt-4 xl:space-y-2.5">
                   <button
                     onClick={onNewRun}
-                    className="launcher-action group w-full border border-emerald-500/35 bg-emerald-950/35 px-5 py-5 text-left transition hover:border-emerald-300 hover:bg-emerald-900/35 lg:px-4 lg:py-4"
+                    className="launcher-action group w-full border border-emerald-500/50 bg-emerald-900/50 px-6 py-6 text-left transition hover:border-emerald-300 hover:bg-emerald-800/60 lg:px-5 lg:py-5"
                     data-keyboard-option="1"
                     data-keyboard-focus="true"
                   >
                     <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-300/75">{getUiLabelZh('New Run')}</div>
-                    <div className="mt-2 text-2xl font-semibold text-white xl:text-xl">开始新战区</div>
-                    <div className="mt-3 max-w-sm text-sm leading-6 text-emerald-50/80 xl:mt-2 xl:text-[13px] xl:leading-5">
+                    <div className="mt-2 text-3xl font-semibold text-white xl:text-2xl">开始新战区</div>
+                    <div className="mt-3 max-w-sm text-base leading-6 text-emerald-50/80 xl:mt-2 xl:text-base xl:leading-5">
                       初始化新种子并进入角色选择，沿着当前版本冻结线开始一局完整远征。
                     </div>
                   </button>
@@ -164,13 +164,13 @@ export function SetupLauncher({
                   <button
                     onClick={onContinue}
                     disabled={!canContinue}
-                    className="launcher-action group w-full border border-amber-500/30 bg-amber-950/20 px-5 py-5 text-left transition enabled:hover:border-amber-200 enabled:hover:bg-amber-900/25 disabled:cursor-not-allowed disabled:opacity-40 lg:px-4 lg:py-4"
+                    className="launcher-action group w-full border border-amber-500/40 bg-amber-900/30 px-6 py-6 text-left transition enabled:hover:border-amber-300 enabled:hover:bg-amber-800/40 disabled:cursor-not-allowed disabled:opacity-40 lg:px-5 lg:py-5"
                     data-keyboard-option="2"
                     data-keyboard-focus="true"
                   >
                     <div className="text-[11px] uppercase tracking-[0.28em] text-amber-200/70">{getUiLabelZh('Continue')}</div>
-                    <div className="mt-2 text-2xl font-semibold text-white xl:text-xl">继续作战</div>
-                    <div className="mt-3 max-w-sm text-sm leading-6 text-stone-200/80 xl:mt-2 xl:text-[13px] xl:leading-5">
+                    <div className="mt-2 text-3xl font-semibold text-white xl:text-2xl">继续作战</div>
+                    <div className="mt-3 max-w-sm text-base leading-6 text-stone-200/80 xl:mt-2 xl:text-base xl:leading-5">
                       优先读取快速存档，没有则读取最近普通槽位。
                     </div>
                   </button>
