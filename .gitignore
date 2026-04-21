@@ -9,10 +9,13 @@ coverage/
 .minimax/
 .playwright-cli/
 .trae/
+__pycache__/
+*.pyc
 
 # Playwright 测试输出
 output/playwright/
 output/web-game/
+output/packages/
 
 # 测试报告和截图
 output/**/screenshots/
@@ -23,5 +26,18 @@ output/**/combat-flow/
 # QA dogfood 测试输出
 dogfood-output/
 
+# 生成报告与本地验证输出
+reports/
+test-reports/
+test-screenshots/
+review-report/
+
 # Jest 快照差异
 *.test.actual.*
+
+# 根目录一次性调试脚本
+/create_*.js
+/make_*.js
+/test_*.js
+/tmp-*.test.ts
+.omx/
