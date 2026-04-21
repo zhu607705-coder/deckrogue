@@ -47,7 +47,7 @@ interface CoverageEntry {
   failedRuns: number;
 }
 
-interface RealUi30RoundsReport {
+interface RealUiRoundsReport {
   startedAt: string;
   completedAt: string;
   baseUrl: string;
@@ -60,6 +60,7 @@ interface RealUi30RoundsReport {
 }
 
 const BASE_URL = getDefaultSmokeUrl();
+const DEFAULT_ROUND_COUNT = 30;
 
 const SCENARIOS: ScenarioConfig[] = [
   {
@@ -139,28 +140,53 @@ const SCENARIOS: ScenarioConfig[] = [
   },
 ];
 
-const ANCHOR_SCENARIOS = ['ui-smoke-expansion', 'runtime-v2-flow-smoke'];
+const STRESS_REPEAT_SCENARIOS = [
+  'ui-smoke-expansion',
+  'runtime-v2-flow-smoke',
+  'reward-flow-smoke',
+  'shop-flow-smoke',
+  'event-flow-smoke',
+  'boss-phase-flow-smoke',
+];
 
-function buildRoundPlan(): PlannedRound[] {
-  const anchors = ANCHOR_SCENARIOS.map((name) => {
+function parseRoundCount(argv: string[]): number {
+  const roundsArg = argv.find((arg) => arg.startsWith('--rounds='));
+  if (!roundsArg) return DEFAULT_ROUND_COUNT;
+
+  const parsed = Number.parseInt(roundsArg.slice('--rounds='.length), 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`Invalid --rounds value: ${roundsArg}`);
+  }
+  return parsed;
+}
+
+function resolveScenarioList(names: string[]): ScenarioConfig[] {
+  return names.map((name) => {
     const scenario = SCENARIOS.find((entry) => entry.name === name);
     if (!scenario) {
-      throw new Error(`Unknown anchor scenario: ${name}`);
+      throw new Error(`Unknown stress scenario: ${name}`);
     }
     return scenario;
   });
+}
 
-  const cycles = [SCENARIOS, SCENARIOS, anchors];
+function buildRoundPlan(roundCount: number): PlannedRound[] {
+  const stressRepeats = resolveScenarioList(STRESS_REPEAT_SCENARIOS);
+  const sequence: ScenarioConfig[] = [];
+
+  while (sequence.length < roundCount) {
+    sequence.push(...SCENARIOS);
+    if (sequence.length >= roundCount) break;
+    sequence.push(...stressRepeats);
+  }
+
+  const selectedScenarios = sequence.slice(0, roundCount);
   const plan: PlannedRound[] = [];
-  let round = 1;
-  cycles.forEach((scenarios, index) => {
-    scenarios.forEach((scenario) => {
-      plan.push({
-        round,
-        cycle: index + 1,
-        scenario,
-      });
-      round += 1;
+  selectedScenarios.forEach((scenario, index) => {
+    plan.push({
+      round: index + 1,
+      cycle: Math.floor(index / SCENARIOS.length) + 1,
+      scenario,
     });
   });
   return plan;
@@ -281,13 +307,13 @@ function runRound(plannedRound: PlannedRound): RoundResult {
   }
 }
 
-function buildCoverageSummary(rounds: RoundResult[]): CoverageEntry[] {
+function buildCoverageSummary(roundPlan: PlannedRound[], rounds: RoundResult[]): CoverageEntry[] {
   const expectedRuns = new Map<string, number>();
   const completedRuns = new Map<string, number>();
   const passedRuns = new Map<string, number>();
   const failedRuns = new Map<string, number>();
 
-  for (const plannedRound of buildRoundPlan()) {
+  for (const plannedRound of roundPlan) {
     expectedRuns.set(plannedRound.scenario.name, (expectedRuns.get(plannedRound.scenario.name) ?? 0) + 1);
   }
   for (const round of rounds) {
@@ -310,12 +336,14 @@ function buildCoverageSummary(rounds: RoundResult[]): CoverageEntry[] {
 }
 
 async function main() {
-  const reportPath = path.join(process.cwd(), 'reports', 'flows', 'real-ui-30-rounds.json');
+  const requestedRoundCount = parseRoundCount(process.argv.slice(2));
+  const reportName = `real-ui-${requestedRoundCount}-rounds`;
+  const reportPath = path.join(process.cwd(), 'reports', 'flows', `${reportName}.json`);
   ensureDir(path.dirname(reportPath));
 
   const startedAt = new Date().toISOString();
   const rounds: RoundResult[] = [];
-  const roundPlan = buildRoundPlan();
+  const roundPlan = buildRoundPlan(requestedRoundCount);
 
   let devServer: ReturnType<typeof spawnDevServer> | null = null;
   const ownsDevServer = !checkServer(BASE_URL);
@@ -327,20 +355,20 @@ async function main() {
   try {
     for (const plannedRound of roundPlan) {
       console.log(
-        `[real-ui-30-rounds] round ${plannedRound.round}/${roundPlan.length} cycle=${plannedRound.cycle} scenario=${plannedRound.scenario.name}`
+        `[${reportName}] round ${plannedRound.round}/${roundPlan.length} cycle=${plannedRound.cycle} scenario=${plannedRound.scenario.name}`
       );
       const result = runRound(plannedRound);
       rounds.push(result);
       console.log(
-        `[real-ui-30-rounds] round ${plannedRound.round} ${result.status} (${result.durationMs}ms) report=${result.reportGenerated ? 'yes' : 'no'}`
+        `[${reportName}] round ${plannedRound.round} ${result.status} (${result.durationMs}ms) report=${result.reportGenerated ? 'yes' : 'no'}`
       );
       if (result.status === 'fail') {
         break;
       }
     }
   } finally {
-    const coverageSummary = buildCoverageSummary(rounds);
-    const report: RealUi30RoundsReport = {
+    const coverageSummary = buildCoverageSummary(roundPlan, rounds);
+    const report: RealUiRoundsReport = {
       startedAt,
       completedAt: new Date().toISOString(),
       baseUrl: BASE_URL,
@@ -363,11 +391,11 @@ async function main() {
     throw new Error(`UI round ${failedRound.round} failed for scenario ${failedRound.scenario}`);
   }
 
-  if (rounds.length !== 30) {
-    throw new Error(`Expected 30 completed rounds, got ${rounds.length}`);
+  if (rounds.length !== requestedRoundCount) {
+    throw new Error(`Expected ${requestedRoundCount} completed rounds, got ${rounds.length}`);
   }
 
-  const coverageSummary = buildCoverageSummary(rounds);
+  const coverageSummary = buildCoverageSummary(roundPlan, rounds);
   const incompleteScenario = coverageSummary.find((entry) => entry.completedRuns !== entry.expectedRuns);
   if (incompleteScenario) {
     throw new Error(

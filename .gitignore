@@ -31,6 +31,9 @@ reports/
 test-reports/
 test-screenshots/
 review-report/
+/char-select-*.png
+/combat-test-*.png
+/map-test-*.png
 
 # Jest 快照差异
 *.test.actual.*

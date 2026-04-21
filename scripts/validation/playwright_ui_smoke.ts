@@ -75,7 +75,8 @@ async function auditView(page: Page, label: string, screenshotName: string, layo
     const isVisible = (el) => {
       const rect = el.getBoundingClientRect();
       const style = window.getComputedStyle(el);
-      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+      const intersectsViewport = rect.right > 0 && rect.bottom > 0 && rect.left < window.innerWidth && rect.top < window.innerHeight;
+      return rect.width > 0 && rect.height > 0 && intersectsViewport && style.visibility !== 'hidden' && style.display !== 'none';
     };
     const brokenImages = Array.from(document.images)
       .filter((img) => isVisible(img) && img.naturalWidth === 0)
