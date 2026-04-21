@@ -11,6 +11,8 @@ import {
   getSingleSlimeRoomBoostConfig
 } from '@/content/narrative/numericSystem';
 import { unlockCodexEntry } from '@/core/persistence/codexStore';
+import { intentSelector, type IntentCooldownState } from '@/core/ai/intentSelector';
+import { memoryManager } from '@/core/performance/MemoryManager';
 
 export interface CombatManagerDeps {
   getState: () => GameState;
@@ -29,6 +31,9 @@ export interface CombatManagerDeps {
 }
 
 export class CombatManager {
+  private combatTempData = new WeakMap<object, unknown>();
+  private combatEventSubscriptions: Map<string, () => void> = new Map();
+
   constructor(private deps: CombatManagerDeps) {}
 
   startCombat(nodeType: 'Combat' | 'Elite' | 'Boss'): void {
@@ -112,6 +117,7 @@ export class CombatManager {
     hpMultiplier: number,
     damageMultiplier: number
   ): any[] {
+    const state = this.deps.getState();
     const validEnemies = enemiesData.filter((e: any) => {
       if (nodeType === 'Boss') return e.keywords?.includes('boss');
       if (nodeType === 'Elite') return e.keywords?.includes('elite');
@@ -129,6 +135,48 @@ export class CombatManager {
       const baseHp = rollEnemyBaseHp(def as any, this.deps.rng);
       const scaledHp = this.deps.applyEnemyHpTuning(baseHp, floor, nodeType);
 
+      const enemyDef = def as any;
+      const tempEnemyState = {
+        id: `temp_${i}`,
+        defId: def.id,
+        name: def.name,
+        hp: scaledHp,
+        maxHp: scaledHp,
+        block: 0,
+        statuses: {},
+        nextIntent: 'Attack',
+        devotion: 0,
+        corruptionAxis: 0,
+        axisDisposition: 'balanced' as const,
+        lastUsedIntent: null,
+        intentCooldowns: {}
+      };
+      const initialIntent = intentSelector.selectIntent(
+        enemyDef,
+        tempEnemyState,
+        {
+          hp: state.player.hp,
+          maxHp: state.player.maxHp,
+          block: 0,
+          energy: state.player.maxEnergy,
+          statuses: {},
+          delayedCards: [],
+          constructs: [],
+          elements: [],
+          potionToxicity: 0,
+          potionsUsedThisTurn: 0,
+          cardsPlayedThisTurn: 0,
+          damageTakenThisTurn: 0,
+          damageTakenLastTurn: 0,
+          intel: state.player.intel,
+          devotion: 0,
+          corruptionAxis: 0,
+          axisDisposition: 'balanced' as const
+        },
+        1,
+        this.deps.rng
+      );
+
       return {
         id: `enemy_${i}_${this.deps.generateId()}`,
         defId: def.id,
@@ -137,7 +185,9 @@ export class CombatManager {
         maxHp: scaledHp,
         block: 0,
         statuses: {},
-        nextIntent: this.selectIntent(def as any),
+        nextIntent: initialIntent,
+        lastUsedIntent: null,
+        intentCooldowns: {},
         devotion: 0,
         corruptionAxis: 0,
         axisDisposition: 'balanced' as const
@@ -169,35 +219,17 @@ export class CombatManager {
     });
   }
 
-  private selectIntent(enemyDef: any): string {
-    const baseWeights = Array.isArray(enemyDef.intent_policy)
-      ? enemyDef.intent_policy.map((p: any) => Math.max(0, Number(p.weight) || 0))
-      : [];
-    const totalWeight = baseWeights.reduce((sum: number, w: number) => sum + w, 0);
-    if (totalWeight <= 0) {
-      return enemyDef.intent_policy?.[0]?.intent || 'Attack';
-    }
-
+  private selectIntent(enemyDef: any, enemyState: any, playerState: any, turnNumber: number, cooldowns: IntentCooldownState): string {
     const aggroBias = Math.max(0, Number(this.deps.getState().metaRuntime?.ascensionIntentAggroBias || 0));
-    let weights = [...baseWeights];
-    if (aggroBias > 0 && Array.isArray(enemyDef.intent_policy)) {
-      for (let i = 0; i < enemyDef.intent_policy.length; i++) {
-        const intent = enemyDef.intent_policy[i]?.intent || '';
-        const isAggressive = /attack|strike|damage|slam|burn|punch|kick|gore|claw|bite|curse|doom/.test(intent.toLowerCase());
-        if (isAggressive) {
-          weights[i] = weights[i] * (1 + aggroBias);
-        }
-      }
-    }
-
-    const totalAdjustedWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
-    const roll = this.deps.rng() * totalAdjustedWeight;
-    let cumulative = 0;
-    for (let i = 0; i < weights.length; i++) {
-      cumulative += weights[i];
-      if (roll <= cumulative) return enemyDef.intent_policy[i]?.intent || 'Attack';
-    }
-    return enemyDef.intent_policy[0]?.intent || 'Attack';
+    const intent = intentSelector.selectIntent(
+      enemyDef,
+      enemyState,
+      playerState,
+      turnNumber,
+      this.deps.rng,
+      cooldowns
+    );
+    return intent;
   }
 
   startTurn(): void {
@@ -376,19 +408,28 @@ export class CombatManager {
   }
 
   private handleEnemyDefeated(enemyId: string): void {
+    console.log('[CombatManager.handleEnemyDefeated] Called with enemyId:', enemyId);
     const state = this.deps.getState();
     const combat = state.combat;
-    if (!combat) return;
+    if (!combat) {
+      console.log('[CombatManager.handleEnemyDefeated] No combat state');
+      return;
+    }
 
     const enemyIndex = combat.enemies.findIndex(e => e.id === enemyId);
-    if (enemyIndex === -1) return;
+    if (enemyIndex === -1) {
+      console.log('[CombatManager.handleEnemyDefeated] Enemy not found:', enemyId);
+      return;
+    }
 
     const enemy = combat.enemies[enemyIndex];
     combat.enemies.splice(enemyIndex, 1);
+    console.log('[CombatManager.handleEnemyDefeated] Removed enemy, remaining enemies:', combat.enemies.length);
 
     this.deps.appendVoxLog(`${enemy.name} 被击败！`);
 
     if (combat.enemies.length === 0) {
+      console.log('[CombatManager.handleEnemyDefeated] All enemies defeated, calling handleCombatVictory');
       this.handleCombatVictory();
     }
   }
@@ -400,6 +441,7 @@ export class CombatManager {
     this.deps.appendVoxLog(`战斗胜利！`);
 
     globalEventBus.publish({ type: 'CombatVictory' } as any);
+    this.cleanupCombatState();
   }
 
   private handlePlayerDefeated(): void {
@@ -409,6 +451,7 @@ export class CombatManager {
     this.deps.appendVoxLog(`战斗失败...`);
 
     globalEventBus.publish({ type: 'PlayerDeath' } as any);
+    this.cleanupCombatState();
   }
 
   discardHand(): void {
@@ -418,6 +461,111 @@ export class CombatManager {
 
     combat.discardPile.push(...combat.hand);
     combat.hand = [];
+  }
+
+  async playCard(cardInstanceId: string, targetId?: string): Promise<void> {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat || !combat.isPlayerTurn) {
+      console.log('[CombatManager.playCard] Early return: combat=', !!combat, 'isPlayerTurn=', combat?.isPlayerTurn);
+      return;
+    }
+
+    const cardIndex = combat.hand.findIndex(c => c.instanceId === cardInstanceId);
+    if (cardIndex === -1) {
+      console.warn('[CombatManager] Card not in hand:', cardInstanceId);
+      return;
+    }
+
+    const card = combat.hand[cardIndex];
+    console.log('[CombatManager.playCard] Playing card:', { instanceId: card.instanceId, name: card.name, id: card.id, cost: card.cost, actions: card.actions, targetId });
+
+    if (combat.player.energy < (card.cost || 0)) {
+      this.deps.appendVoxLog('能量不足，无法使用此指令。');
+      return;
+    }
+
+    combat.player.energy -= card.cost || 0;
+    combat.hand.splice(cardIndex, 1);
+    combat.player.cardsPlayedThisTurn++;
+
+    const cardName = card.name || card.id;
+
+    for (const actionSpec of card.actions || []) {
+      console.log('[CombatManager.playCard] Executing action:', actionSpec);
+      await this.executeActionSpec(actionSpec, targetId, combat, cardName);
+    }
+
+    combat.discardPile.push(card);
+    this.deps.notify();
+
+    const allEnemiesDead = combat.enemies.every(e => e.hp <= 0);
+    if (allEnemiesDead) {
+      this.handleCombatVictory();
+    }
+  }
+
+  private async executeActionSpec(actionSpec: any, targetId: string | undefined, combat: any, cardName: string): Promise<void> {
+    switch (actionSpec.type) {
+      case 'DealDamage': {
+        const amount = actionSpec.amount || 0;
+        const target = actionSpec.target === 'Enemy' && targetId
+          ? combat.enemies.find((e: any) => e.id === targetId)
+          : combat.enemies.find((e: any) => e.hp > 0);
+
+        if (target && amount > 0) {
+          const damage = this.deps.calculateDamage(
+            amount,
+            combat.player.statuses,
+            target.statuses || {},
+            'player'
+          );
+          this.deps.appendVoxLog(`${cardName} 对 ${target.name} 造成 ${damage} 点伤害。`);
+
+          if (target.block > 0) {
+            const actualDamage = Math.max(0, damage - target.block);
+            target.block = Math.max(0, target.block - damage);
+            if (actualDamage > 0) {
+              target.hp = Math.max(0, target.hp - actualDamage);
+            }
+          } else {
+            target.hp = Math.max(0, target.hp - damage);
+          }
+
+          if (target.hp <= 0) {
+            console.log('[CombatManager] Enemy defeated:', target.name, target.id, 'HP now:', target.hp);
+            this.handleEnemyDefeated(target.id);
+          } else {
+            console.log('[CombatManager] Enemy HP after attack:', target.name, 'HP:', target.hp, '/', target.maxHp);
+          }
+        }
+        break;
+      }
+      case 'GainBlock': {
+        const amount = actionSpec.amount || 0;
+        if (amount > 0) {
+          combat.player.block += amount;
+          this.deps.appendVoxLog(`${cardName} 为执行体部署 ${amount} 点护盾。`);
+        }
+        break;
+      }
+      case 'ApplyStatus': {
+        const status = actionSpec.status;
+        const amount = actionSpec.amount || 0;
+        const target = actionSpec.target === 'Enemy' && targetId
+          ? combat.enemies.find((e: any) => e.id === targetId)
+          : combat.enemies.find((e: any) => e.hp > 0);
+
+        if (target && status && amount > 0) {
+          if (!target.statuses) target.statuses = {};
+          target.statuses[status] = (target.statuses[status] || 0) + amount;
+          this.deps.appendVoxLog(`${cardName} 对 ${target.name} 施加 ${amount} 层 ${status}。`);
+        }
+        break;
+      }
+      default:
+        console.log('[CombatManager] Unknown action type:', actionSpec.type);
+    }
   }
 
   async endTurn(): Promise<void> {
@@ -470,7 +618,54 @@ export class CombatManager {
         }
       }
 
-      enemy.nextIntent = this.selectIntent(def);
+      const usedIntent = enemy.nextIntent || 'Attack';
+      enemy.lastUsedIntent = usedIntent;
+      enemy.intentCooldowns = intentSelector.updateCooldowns(enemy.intentCooldowns || {}, usedIntent);
+      
+      enemy.nextIntent = this.selectIntent(
+        def,
+        enemy,
+        combat.player,
+        combat.turn,
+        enemy.intentCooldowns
+      );
     }
+  }
+
+  setCombatTempData(key: object, value: unknown): void {
+    this.combatTempData.set(key, value);
+  }
+
+  getCombatTempData<T = unknown>(key: object): T | undefined {
+    return this.combatTempData.get(key) as T | undefined;
+  }
+
+  registerCombatEventSubscription(id: string, unsubscribe: () => void): void {
+    this.combatEventSubscriptions.set(id, unsubscribe);
+  }
+
+  unregisterCombatEventSubscription(id: string): void {
+    const unsubscribe = this.combatEventSubscriptions.get(id);
+    if (unsubscribe) {
+      unsubscribe();
+      this.combatEventSubscriptions.delete(id);
+    }
+  }
+
+  private cleanupCombatState(): void {
+    this.combatEventSubscriptions.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        console.warn('[CombatManager] 清理事件订阅失败:', e);
+      }
+    });
+    this.combatEventSubscriptions.clear();
+    this.combatTempData = new WeakMap();
+    memoryManager.clearCombatTempData();
+  }
+
+  forceCleanup(): void {
+    this.cleanupCombatState();
   }
 }
