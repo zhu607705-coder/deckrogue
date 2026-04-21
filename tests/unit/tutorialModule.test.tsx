@@ -50,7 +50,7 @@ test('TutorialView renders glossary-driven onboarding content', () => {
   assert.match(html, /术语索引/);
   assert.match(html, /glossary-term__trigger/);
   assert.match(html, /情报/);
-  assert.match(html, /格挡/);
+  assert.match(html, /护盾/);
   assert.match(html, /单体异端/);
   assert.match(html, /易伤/);
 });

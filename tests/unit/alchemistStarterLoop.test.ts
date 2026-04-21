@@ -14,7 +14,7 @@ test('element spark should gain 4 Block and still set up the element loop', () =
   const card = getCard('element_spark');
   const gainBlock = card.actions.find((action: any) => action.type === 'GainBlock');
   assert.equal(gainBlock?.amount, 4, `expected element_spark GainBlock 4, got ${gainBlock?.amount}`);
-  assert.match(card.text, /获得 4 点格挡。/);
+  assert.match(card.text, /获得 4 点护盾。/);
 });
 
 test('frost armor should gain 8 Block and still add Frost', () => {
@@ -23,7 +23,7 @@ test('frost armor should gain 8 Block and still add Frost', () => {
   const addElement = card.actions.find((action: any) => action.type === 'AddElement');
   assert.equal(gainBlock?.amount, 8, `expected frost_armor GainBlock 8, got ${gainBlock?.amount}`);
   assert.equal(addElement?.element, 'Frost');
-  assert.match(card.text, /获得 8 点格挡。/);
+  assert.match(card.text, /获得 8 点护盾。/);
   assert.match(card.text, /向元素池加入 1 个霜元素。/);
 });
 

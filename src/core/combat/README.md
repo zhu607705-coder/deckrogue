@@ -1,7 +1,7 @@
 # core/combat / 战斗系统
 
 ## 1. 功能职责
-处理伤害、状态、格挡、护甲等即时战斗结算。
+处理伤害、状态、护盾、护甲等即时战斗结算。
 
 ## 2. 核心边界
 - In: 伤害管道、状态应用、单位受击。
@@ -18,7 +18,7 @@
 ```mermaid
 flowchart LR
   A["Action"] --> B["combatSystem.applyDamage"]
-  B --> C["状态/护甲/格挡结算"]
+  B --> C["状态/护甲/护盾结算"]
   C --> D["eventBus 通知"]
 ```
 
