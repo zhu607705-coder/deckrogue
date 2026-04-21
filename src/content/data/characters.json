@@ -32,8 +32,8 @@
       "deadly_secrets"
     ],
     "rewardWeights": {
-      "newCardBonus": 0.25,
-      "controlCardBonus": 0.25,
+      "newCardBonus": 0.2,
+      "controlCardBonus": 0.2,
       "sharedSynergyBonus": 0.2
     }
   },
@@ -109,8 +109,8 @@
       "checkmate"
     ],
     "rewardWeights": {
-      "attritionPlanBonus": 0.1,
-      "wiretapRosaryBonus": 0.1
+      "attritionPlanBonus": 0.15,
+      "wiretapRosaryBonus": 0.15
     }
   },
   {
@@ -148,7 +148,7 @@
     "rewardWeights": {
       "venomAlembicBonus": 0.1,
       "attritionEngineBonus": 0.1,
-      "concoctionRelicPenalty": 0.75
+      "concoctionRelicPenalty": 0.5
     }
   },
   {
