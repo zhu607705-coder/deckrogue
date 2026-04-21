@@ -111,16 +111,17 @@ export interface ToastMessage {
   timestamp: number;
 }
 
-export type SceneId = 
-  | 'Launcher' 
-  | 'CharacterSelect' 
-  | 'Map' 
-  | 'Combat' 
-  | 'Reward' 
-  | 'Shop' 
-  | 'Event' 
+export type SceneId =
+  | 'Launcher'
+  | 'CharacterSelect'
+  | 'Map'
+  | 'Combat'
+  | 'Reward'
+  | 'Shop'
+  | 'Event'
   | 'Rest'
   | 'Upgrade'
+  | 'RelicUpgrade'
   | 'Enchant'
   | 'RemoveCard'
   | 'GameOver'
@@ -150,11 +151,11 @@ let currentScene: SceneId = 'Launcher';
 
 function loadStoredConfig(): void {
   if (typeof window === 'undefined') return;
-  
+
   const storedSpeed = window.localStorage.getItem(STORAGE_KEY_SPEED) as AnimationSpeed | null;
   const storedQuality = window.localStorage.getItem(STORAGE_KEY_QUALITY) as AnimationQuality | null;
   const storedAmbient = window.localStorage.getItem(STORAGE_KEY_AMBIENT) as AmbientProfile | null;
-  
+
   if (storedSpeed === 'fast' || storedSpeed === 'normal' || storedSpeed === 'reduced') {
     currentConfig.speed = storedSpeed;
   }
@@ -218,14 +219,14 @@ export function showToast(toast: Omit<ToastMessage, 'id' | 'timestamp'>): string
     timestamp: Date.now(),
     duration: toast.duration ?? (toast.type === 'victory' || toast.type === 'defeat' ? 5000 : 3000),
   };
-  
+
   toastQueue = [...toastQueue, fullToast];
   notifyToastListeners();
-  
+
   if (fullToast.duration && fullToast.duration > 0) {
     setTimeout(() => dismissToast(id), fullToast.duration);
   }
-  
+
   return id;
 }
 
@@ -255,15 +256,15 @@ function notifyToastListeners(): void {
 export function emitSceneTransition(from: SceneId | null, to: SceneId): void {
   const direction = determineTransitionDirection(from, to);
   const tokens = getMotionTokens();
-  
+
   const transition: SceneTransition = {
     from,
     to,
     direction,
-    duration: direction === 'crossfade' ? tokens.sceneCrossfade : 
+    duration: direction === 'crossfade' ? tokens.sceneCrossfade :
               direction === 'forward' ? tokens.sceneEnter : tokens.sceneExit,
   };
-  
+
   globalEventBus.publish({ type: 'SceneTransition', transition });
 }
 
@@ -271,13 +272,13 @@ function determineTransitionDirection(from: SceneId | null, to: SceneId): 'forwa
   const sceneOrder: SceneId[] = [
     'Launcher', 'CharacterSelect', 'Map', 'Combat', 'Reward', 'Shop', 'Event', 'Rest'
   ];
-  
+
   if (!from) return 'forward';
   if (from === to) return 'crossfade';
-  
+
   const fromIndex = sceneOrder.indexOf(from);
   const toIndex = sceneOrder.indexOf(to);
-  
+
   if (fromIndex === -1 || toIndex === -1) return 'crossfade';
   if (toIndex > fromIndex) return 'forward';
   if (toIndex < fromIndex) return 'backward';
@@ -296,21 +297,21 @@ export const COMBAT_BEATS = {
 } as const;
 
 export function triggerCombatBeat(
-  element: HTMLElement, 
+  element: HTMLElement,
   beatType: typeof COMBAT_BEATS[keyof typeof COMBAT_BEATS],
   options?: { resourceGlow?: 'energy' | 'hp' | 'block' }
 ): void {
   const tokens = getMotionTokens();
-  
+
   element.classList.remove(beatType);
   void element.offsetWidth;
-  
+
   if (options?.resourceGlow) {
     element.classList.add(`resource-glow--${options.resourceGlow}`);
   }
-  
+
   element.classList.add(beatType);
-  
+
   const duration = beatType === COMBAT_BEATS.KILL ? tokens.slow : tokens.normal;
   setTimeout(() => {
     element.classList.remove(beatType);
@@ -322,18 +323,18 @@ export function triggerCombatBeat(
 
 export function triggerScreenShake(intensity: 'light' | 'medium' | 'heavy'): void {
   if (currentConfig.quality === 'reduced') return;
-  
+
   const container = document.querySelector('.app-shell') as HTMLElement | null;
   if (!container) return;
-  
+
   const shakeClass = `screen-shake--${intensity}`;
   container.classList.remove(shakeClass);
   void container.offsetWidth;
   container.classList.add(shakeClass);
-  
+
   const tokens = getMotionTokens();
   const duration = intensity === 'light' ? 300 : intensity === 'medium' ? 500 : 700;
-  
+
   setTimeout(() => {
     container.classList.remove(shakeClass);
   }, duration);
@@ -351,10 +352,10 @@ export function getAmbientClassForScene(scene: SceneId): string {
     Victory: 'ambient-victory',
     GameOver: 'ambient-defeat',
   };
-  
+
   const sceneClass = sceneAmbients[scene] || '';
   const profileClass = baseAmbient !== 'clear' ? `ambient-profile--${baseAmbient}` : '';
-  
+
   return [sceneClass, profileClass].filter(Boolean).join(' ');
 }
 

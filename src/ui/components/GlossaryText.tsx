@@ -1,5 +1,5 @@
-import React from 'react';
-import { tokenizeGlossaryText } from '@/ui/content/terminology';
+import React, { useMemo } from 'react';
+import { tokenizeGlossaryText, type TextToken } from '@/ui/content/terminology';
 import { GlossaryTerm } from '@/ui/components/GlossaryTerm';
 
 export function GlossaryText({
@@ -9,20 +9,23 @@ export function GlossaryText({
   text: string;
   className?: string;
 }) {
+  const tokens = useMemo(() => tokenizeGlossaryText(text), [text]);
+
   return (
     <span className={className}>
-      {tokenizeGlossaryText(text).map((token, index) => {
+      {tokens.map((token: TextToken, index: number) => {
+        const key = `glossary-${index}-${token.type}`;
         if (token.type === 'term') {
           return (
-            <GlossaryTerm key={`${token.value}-${index}`} term={token.value}>
+            <GlossaryTerm key={key} term={token.value}>
               {token.value}
             </GlossaryTerm>
           );
         }
         if (token.type === 'number') {
-          return <span key={`${token.value}-${index}`}>{token.value}</span>;
+          return <span key={key}>{token.value}</span>;
         }
-        return <React.Fragment key={`${token.value}-${index}`}>{token.value}</React.Fragment>;
+        return <React.Fragment key={key}>{token.value}</React.Fragment>;
       })}
     </span>
   );

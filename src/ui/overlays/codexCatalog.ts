@@ -43,7 +43,7 @@ export interface CodexDemoPanelDef {
 
 const ACTION_LABELS: Record<string, string> = {
   DealDamage: '造成伤害',
-  GainBlock: '获得格挡',
+  GainBlock: '获得护盾',
   ApplyStatus: '施加状态',
   DrawCards: '抽牌',
   Delay: '延迟触发',
@@ -143,7 +143,7 @@ const HANDWRITTEN_ELITE_GUIDES: Record<string, NarrativeOverride> = {
       '优先保留爆发牌与药水，避免把强牌浪费在低威胁回合。',
       '若手上只有防御牌，至少要规划下回合的反打线，不要连续被动。'
     ],
-    examples: ['示例：看到其先手增益后，下一回合通常要准备高格挡或抢杀。']
+    examples: ['示例：看到其先手增益后，下一回合通常要准备高护盾或抢杀。']
   },
   lagavulin: {
     summary: '耐久型精英，常通过高血量与重击逼迫你做长期资源分配。',
@@ -160,14 +160,14 @@ const HANDWRITTEN_ELITE_GUIDES: Record<string, NarrativeOverride> = {
     ]
   },
   hexaghost: {
-    summary: '多段伤害 Boss。其真正危险点是多段命中会放大脆弱、削弱单次格挡价值，并提高药水使用时机要求。',
+    summary: '多段伤害 Boss。其真正危险点是多段命中会放大脆弱、削弱单次护盾价值，并提高药水使用时机要求。',
     mechanics: [
-      '多段攻击会吃满易伤增伤，也会让固定格挡在多 hit 场景下迅速耗尽。',
-      '面对多段回合，提前准备减伤/高格挡/击杀窗口比平均防御更有效。'
+      '多段攻击会吃满易伤增伤，也会让固定护盾在多 hit 场景下迅速耗尽。',
+      '面对多段回合，提前准备减伤/高护盾/击杀窗口比平均防御更有效。'
     ],
     interactions: [
-      '力量与爆发牌在 Boss 多段前的“抢相位”价值很高。',
-      '单次治疗药水不能替代回合内防御，建议与格挡/减伤组合使用。'
+      '力量与爆发牌在 Boss 多段前的"抢相位"价值很高。',
+      '单次治疗药水不能替代回合内防御，建议与护盾/减伤组合使用。'
     ]
   },
   time_guardian: {
@@ -198,8 +198,8 @@ const HANDWRITTEN_CARD_GUIDES: Record<string, NarrativeOverride> = {
   time_bomb: {
     summary: '延迟爆发牌。强度不只在数值，而在你能否用回合节奏和延迟触发工具把伤害落到正确窗口。',
     interactions: [
-      '若没有稳定拖回合或延迟触发手段，Time Bomb 会出现“伤害来不及兑现”的情况。',
-      '与 Time Warp、控场、格挡牌配合时价值显著上升。'
+      '若没有稳定拖回合或延迟触发手段，Time Bomb 会出现"伤害来不及兑现"的情况。',
+      '与 Time Warp、控场、护盾牌配合时价值显著上升。'
     ]
   },
   flex: {
@@ -310,7 +310,7 @@ function createEnemyDemo(enemy: any): CodexDemoPanelDef | undefined {
 function actionSummary(action: any): string {
   if (!action || typeof action !== 'object') return '未知动作';
   if (action.type === 'DealDamage') return `造成 ${action.amount ?? '?'} 点伤害（目标：${action.target || '未知'}）`;
-  if (action.type === 'GainBlock') return `获得 ${action.amount ?? '?'} 点格挡`;
+  if (action.type === 'GainBlock') return `获得 ${action.amount ?? '?'} 点护盾`;
   if (action.type === 'ApplyStatus') return `${action.target === 'Self' ? '自身' : '目标'}获得 ${action.status || '状态'} ${action.amount ?? '?'}`;
   if (action.type === 'DrawCards') return `抽 ${action.amount ?? '?'} 张牌`;
   if (action.type === 'Delay') {
@@ -334,11 +334,11 @@ function effectSummary(effect: any): string {
       : `${effect.amount ?? '?'} 点生命`;
     return `恢复 ${amount}`;
   }
-  if (effect.type === 'GainBlock') return `获得 ${effect.amount ?? '?'} 点格挡`;
+  if (effect.type === 'GainBlock') return `获得 ${effect.amount ?? '?'} 点护盾`;
   if (effect.type === 'GainEnergy') return `获得 ${effect.amount ?? '?'} 点能量`;
   if (effect.type === 'ApplyStatus') return `${effect.target === 'Self' ? '自身' : '目标'}获得 ${effect.status} ${effect.amount ?? '?'}`;
   if (effect.type === 'LiquidLightning') return '获得能量并在本回合进入感电（出牌自伤风险）';
-  if (effect.type === 'MutagenicDraft') return '获得能量/格挡/力量，同时承受副作用（中毒）';
+  if (effect.type === 'MutagenicDraft') return '获得能量/护盾/力量，同时承受副作用（中毒）';
   if (effect.type === 'ComboBrew') return '下张牌获得双重施放效果';
   if (effect.type === 'SacrificialElixir') return '牺牲生命换取能量与力量';
   if (effect.type === 'HexagrammaticWards') return '获得防护并压低亚空间潮汐';
@@ -360,7 +360,7 @@ function parseEnemyMoves(enemy: any): { mechanics: string[]; interactions: strin
     mechanics.push(`意图「${policy.intent}」${pct}: ${desc}`);
     for (const a of moveActions) {
       if (a.type === 'ApplyStatus' && a.status) interactions.push(`会施加 ${a.status}，需提前考虑解法或防御。`);
-      if (a.type === 'DealDamage' && Number(a.amount || 0) >= 10) interactions.push('高伤动作可能需要预留格挡或减伤。');
+      if (a.type === 'DealDamage' && Number(a.amount || 0) >= 10) interactions.push('高伤动作可能需要预留护盾或减伤。');
     }
   }
 
@@ -565,7 +565,7 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
       ...(enemy.keywords || []),
       isEliteLike ? (enemy.keywords?.includes('boss') ? 'Boss' : 'Elite') : 'Normal'
     ]);
-    const summary = `肉体承载力 ${hpRange} · ${Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0} 种意图`;
+    const summary = `生命值 ${hpRange} · ${Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0} 种意图`;
     const mechanics = [`生命区间：${hpRange}`].concat(parsed.mechanics);
     const interactions = uniqStrings([
       ...parsed.interactions,
@@ -589,7 +589,7 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
       badges,
       searchText: [...keywords, summary, ...mechanics, ...interactions, ...examples].join(' ').toLowerCase(),
       dataPoints: [
-        { label: '肉体承载力', value: hpRange },
+        { label: '生命值', value: hpRange },
         { label: '意图数', value: String(Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0) },
         { label: '分类', value: enemy.keywords?.includes('boss') ? 'Boss' : enemy.keywords?.includes('elite') ? 'Elite' : 'Normal' }
       ],

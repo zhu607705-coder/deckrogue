@@ -1,16 +1,18 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { GameEngine, MapNode } from '@/core';
 import type { RenderModel } from '@/runtimeV2';
 import { Eye, ZoomIn, ZoomOut, Maximize2, Skull, Flame } from 'lucide-react';
 import { MapIcon } from '@/ui/components/MapIcon';
 import { BackgroundVisualMode, getMapBackgroundTuning } from '@/ui/components/backgroundVisuals';
 import { grimdarkNodeToneClasses } from '@/ui/theme';
-import worldLoreData from '@/content/data/worldLore.json';
+import { uiWorldLore } from '@/ui/content/worldLore';
+import { buildRouteDossiers } from '@/ui/views/mapRouteAdvisor';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.0;
 const ZOOM_STEP = 0.1;
-const WORLD_LORE = worldLoreData as any;
+const WORLD_LORE = uiWorldLore as any;
 
 const nodeTypeNames: Record<string, string> = {
   Combat: '遭遇战',
@@ -39,17 +41,18 @@ export function MapView({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragStartOffset, setDragStartOffset] = useState({ x: 0, y: 0 });
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const lastAutoCenterKeyRef = useRef<string | null>(null);
   const bgTuning = getMapBackgroundTuning(backgroundVisualMode);
 
-  const getTypeStyles = (type: string) => grimdarkNodeToneClasses[type as keyof typeof grimdarkNodeToneClasses] || grimdarkNodeToneClasses.default;
+  const getTypeStyles = (type: string) => grimdarkNodeToneClasses[type as keyof typeof grimdarkNodeToneClasses] ?? grimdarkNodeToneClasses.default;
 
-  const floors: MapNode[][] = [];
-  map.forEach(node => {
-    if (!floors[node.y]) floors[node.y] = [];
-    floors[node.y].push(node);
-  });
+  const floors: MapNode[][] = map.reduce((acc, node) => {
+    if (!acc[node.y]) acc[node.y] = [];
+    acc[node.y].push(node);
+    return acc;
+  }, [] as MapNode[][]);
 
   const isNodeSelectable = (node: MapNode) => {
     if (engine.state.pendingNodeResolution) return false;
@@ -72,6 +75,29 @@ export function MapView({
     ? (WORLD_LORE?.nodeDescriptions?.[currentNodeType] || '')
     : (WORLD_LORE?.nodeDescriptions?.Combat || '');
 
+  const progressPercent = totalFloors > 0 ? ((currentY + 1) / totalFloors) * 100 : 0;
+  const totalNodes = map.length;
+  const pastNodes = map.filter(n => n.y < currentY).length;
+  const bossFloor = map.find(n => n.type === 'Boss')?.y ?? totalFloors - 1;
+  const floorsToBoss = Math.max(0, bossFloor - currentY);
+  const playerHp = engine.state.player.hp;
+  const playerMaxHp = engine.state.player.maxHp;
+  const playerEnergy = engine.state.player.energy;
+  const playerMaxEnergy = engine.state.player.maxEnergy;
+  const playerRelics = engine.state.player.relics?.length ?? 0;
+  const deckSize = engine.state.player.deck?.length ?? 0;
+  const routeDossiers = useMemo(() => buildRouteDossiers(map, selectableNodeIds, {
+    hp: playerHp,
+    maxHp: playerMaxHp,
+    intel,
+    relicCount: playerRelics,
+    characterId: engine.state.character?.id,
+  }), [map, selectableNodeIds, playerHp, playerMaxHp, intel, playerRelics, engine.state.character?.id]);
+  const routeDossierById = useMemo(
+    () => new Map(routeDossiers.map((dossier) => [dossier.nodeId, dossier])),
+    [routeDossiers]
+  );
+
   const zoomIn = useCallback(() => {
     setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP));
   }, []);
@@ -85,10 +111,18 @@ export function MapView({
     setPanOffset({ x: 0, y: 0 });
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z + delta)));
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z + delta)));
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -134,7 +168,8 @@ export function MapView({
     transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
     transformOrigin: 'center center',
     transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-    cursor: isDragging ? 'grabbing' : 'grab'
+    cursor: isDragging ? 'grabbing' : 'grab',
+    willChange: 'transform'
   };
 
   useEffect(() => {
@@ -172,7 +207,7 @@ export function MapView({
   return (
     <div className="grimdark-terminal-screen campaign-shell flex flex-col h-full text-[#d4d4d8]">
       <div className="absolute inset-0 pointer-events-none">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: 'url("/assets/backgrounds/bg_gemini_map.png")',
@@ -194,7 +229,7 @@ export function MapView({
         <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(0,0,0,0.92)]" />
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#7f1d1d]/16 rounded-full blur-[150px]" />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#4c1d95]/16 rounded-full blur-[120px]" />
-        <div 
+        <div
           className={`absolute inset-0 pointer-events-none ${bgTuning.noiseOpacityClass}`}
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E")`,
@@ -202,8 +237,8 @@ export function MapView({
         />
       </div>
 
-      <div className="grimdark-terminal-topbar relative z-10 flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-6">
+      <div className="grimdark-terminal-topbar relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-8 py-3 md:py-4 gap-4">
+        <div className="flex items-center gap-6 flex-1">
           <div className="flex items-center gap-3">
             <Skull size={28} className="text-[#b45309]" />
             <div>
@@ -212,26 +247,74 @@ export function MapView({
             </div>
           </div>
           <div className="grimdark-terminal-divider h-10" />
-          <div>
-            <div className="text-sm tracking-widest text-[#a1a1aa] uppercase">
-              {currentNodeId ? (
-                <>
-                  深度进度: <span className="text-[#ef4444] font-bold text-lg">{currentY + 1}</span> / {totalFloors}
-                </>
-              ) : (
-                <span className="text-[#ef4444] font-bold">{floorLabel}</span>
+          <div className="flex-1 max-w-md">
+            <div className="flex items-center justify-between mb-2">
+              <div className="grimdark-progress-label">
+                深度进度
+              </div>
+              <div className="grimdark-progress-text">
+                {currentY + 1} / {totalFloors}
+              </div>
+            </div>
+            <div className="grimdark-progress-bar mb-2">
+              <div
+                className="grimdark-progress-fill"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-[#a1a1aa]">
+                📍 已净化: <span className="text-[#fbbf24] font-bold">{pastNodes}</span> / {totalNodes} 节点
+              </div>
+              {floorsToBoss > 0 && (
+                <div className="grimdark-boss-warning">
+                  👑 Boss 战: 剩余 {floorsToBoss} 层
+                </div>
+              )}
+              {floorsToBoss === 0 && currentNodeId && (
+                <div className="grimdark-boss-warning">
+                  ⚔️ Boss 战准备就绪
+                </div>
               )}
             </div>
-            <div className="grimdark-terminal-copy max-w-[620px] text-xs leading-5 mt-1">
+            <div className="grimdark-terminal-copy max-w-[620px] text-xs leading-5 mt-2">
               {currentEnvironmentDescription}
             </div>
           </div>
         </div>
 
-        <div className="grimdark-terminal-sensor flex items-center gap-3 px-4 py-2">
-          <Eye size={16} className="text-[#10b981] animate-pulse" />
-          <span className="grimdark-terminal-sensor-label text-xs">鸟卜仪扫描:</span>
-          <span className="grimdark-terminal-sensor-value text-lg font-bold">{intel}</span>
+        <div className="flex items-center gap-4">
+          <div className="grimdark-resource-card">
+            <div className="grimdark-resource-title">
+              ⚙️ 资源概览
+            </div>
+            <div className="grimdark-resource-row">
+              <span className="grimdark-resource-icon">❤️</span>
+              <span className="grimdark-resource-label">生命值</span>
+              <span className="grimdark-resource-value">{playerHp}/{playerMaxHp}</span>
+            </div>
+            <div className="grimdark-resource-row">
+              <span className="grimdark-resource-icon">⚡</span>
+              <span className="grimdark-resource-label">能量</span>
+              <span className="grimdark-resource-value">{playerEnergy}/{playerMaxEnergy}</span>
+            </div>
+            <div className="grimdark-resource-row">
+              <span className="grimdark-resource-icon">🏺</span>
+              <span className="grimdark-resource-label">遗物</span>
+              <span className="grimdark-resource-value">{playerRelics}</span>
+            </div>
+            <div className="grimdark-resource-row">
+              <span className="grimdark-resource-icon">🃏</span>
+              <span className="grimdark-resource-label">牌库</span>
+              <span className="grimdark-resource-value">{deckSize}</span>
+            </div>
+          </div>
+
+          <div className="grimdark-terminal-sensor flex items-center gap-3 px-4 py-2">
+            <Eye size={16} className="text-[#10b981] animate-pulse" />
+            <span className="grimdark-terminal-sensor-label text-xs">鸟卜仪扫描:</span>
+            <span className="grimdark-terminal-sensor-value text-lg font-bold">{intel}</span>
+          </div>
         </div>
       </div>
 
@@ -240,11 +323,12 @@ export function MapView({
           <button
             onClick={zoomIn}
             disabled={zoom >= MAX_ZOOM}
-            className="grimdark-control-btn p-2 flex items-center justify-center"
+            className="grimdark-control-btn p-2 flex items-center justify-center transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
             title="放大"
+            aria-label="放大地图"
             data-keyboard-focus="true"
           >
-            <ZoomIn size={20} />
+            <ZoomIn size={20} aria-hidden="true" />
           </button>
           <div className="grimdark-control-separator" />
           <div className="grimdark-control-meter px-2 py-1 text-xs text-center">
@@ -254,20 +338,22 @@ export function MapView({
           <button
             onClick={zoomOut}
             disabled={zoom <= MIN_ZOOM}
-            className="grimdark-control-btn p-2 flex items-center justify-center"
+            className="grimdark-control-btn p-2 flex items-center justify-center transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
             title="缩小"
+            aria-label="缩小地图"
             data-keyboard-focus="true"
           >
-            <ZoomOut size={20} />
+            <ZoomOut size={20} aria-hidden="true" />
           </button>
         </div>
         <button
           onClick={resetView}
-          className="grimdark-control-panel grimdark-control-btn p-2 rounded-sm backdrop-blur-sm"
+          className="grimdark-control-panel grimdark-control-btn p-2 rounded-sm backdrop-blur-sm transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
           title="重置视图"
+          aria-label="重置地图视图"
           data-keyboard-focus="true"
         >
-          <Maximize2 size={20} />
+          <Maximize2 size={20} aria-hidden="true" />
         </button>
         <div className="grimdark-control-caption text-[10px] text-center mt-1">
           Cogitator Zoom
@@ -282,10 +368,63 @@ export function MapView({
         </div>
       )}
 
-      <div 
+      {routeDossiers.length > 0 && (
+        <div className="relative z-10 px-4 md:px-8 pt-4">
+          <div className="mx-auto max-w-6xl grid gap-3 md:grid-cols-3">
+            {routeDossiers.map((dossier) => {
+              const isFocused = hoveredNodeId === dossier.nodeId || (!hoveredNodeId && selectableNodeIds[0] === dossier.nodeId);
+              return (
+                <button
+                  key={dossier.nodeId}
+                  type="button"
+                  onMouseEnter={() => setHoveredNodeId(dossier.nodeId)}
+                  onFocus={() => setHoveredNodeId(dossier.nodeId)}
+                  onMouseLeave={() => setHoveredNodeId(null)}
+                  className={`text-left rounded-sm border px-4 py-3 transition-all duration-200 ${
+                    isFocused
+                      ? 'border-amber-400/60 bg-stone-900/85 shadow-[0_0_30px_rgba(245,158,11,0.16)]'
+                      : 'border-stone-700/70 bg-stone-950/75 hover:border-stone-500/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-stone-400">{dossier.fitLabel}</div>
+                      <div className="mt-1 text-sm font-bold text-stone-100">{dossier.title}</div>
+                    </div>
+                    <div className="text-right text-[11px] text-amber-300">{dossier.challengeLabel}</div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-stone-300">
+                    <div>
+                      <div className="text-stone-500">挑战</div>
+                      <div className="font-semibold">{'★'.repeat(dossier.challenge)}</div>
+                    </div>
+                    <div>
+                      <div className="text-stone-500">补给</div>
+                      <div className="font-semibold">{'★'.repeat(dossier.sustain)}</div>
+                    </div>
+                    <div>
+                      <div className="text-stone-500">异动</div>
+                      <div className="font-semibold">{'★'.repeat(dossier.mystery)}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-[11px] leading-5 text-stone-300">{dossier.summary}</div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-stone-400">
+                    {dossier.previewTypes.map((type, index) => (
+                      <span key={`${dossier.nodeId}-${type}-${index}`} className="rounded-sm border border-stone-700 px-2 py-1">
+                        {nodeTypeNames[type] || type}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div
         ref={mapContainerRef}
         className="flex-1 overflow-hidden relative z-10"
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -294,14 +433,21 @@ export function MapView({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleMouseUp}
       >
-        <div 
-          className="flex flex-col-reverse gap-12 items-center w-full max-w-4xl mx-auto relative py-8"
-          style={containerStyle}
-        >
+        <div
+            className="flex flex-col-reverse gap-8 md:gap-12 items-center w-full max-w-4xl mx-auto relative py-6 md:py-8"
+            style={containerStyle}
+          >
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
             <defs>
               <filter id="glow">
                 <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              <filter id="path-glow-strong">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
@@ -312,24 +458,81 @@ export function MapView({
               return node.next.map(nextId => {
                 const nextNode = map.find(n => n.id === nextId);
                 if (!nextNode) return null;
-                
+
                 const isPathActive = currentNodeId === node.id && isNodeSelectable(nextNode);
                 const isPathTaken = node.y < currentY;
+                const isPathHighlighted =
+                  (hoveredNodeId === nextNode.id && isPathActive) ||
+                  (hoveredNodeId === node.id && currentNodeId === node.id) ||
+                  (hoveredNodeId === nextNode.id && currentNodeId === node.id);
+
+                const pathStroke = isPathHighlighted
+                  ? '#fbbf24'
+                  : isPathActive
+                    ? '#ef4444'
+                    : isPathTaken
+                      ? '#57534e'
+                      : '#78716c';
+
+                const pathWidth = isPathHighlighted
+                  ? 6
+                  : isPathActive
+                    ? 4
+                    : isPathTaken
+                      ? 2.5
+                      : 2;
 
                 return (
-                  <line
-                    key={`${node.id}-${nextId}`}
-                    x1={`${node.x * 100}%`}
-                    y1={`${100 - (node.y / totalFloorSpan) * 100}%`}
-                    x2={`${nextNode.x * 100}%`}
-                    y2={`${100 - (nextNode.y / totalFloorSpan) * 100}%`}
-                    stroke={isPathActive ? '#ef4444' : isPathTaken ? '#57534e' : '#78716c'}
-                    strokeWidth={isPathActive ? 4 : isPathTaken ? 2.5 : 2}
-                    strokeDasharray={isPathActive ? 'none' : isPathTaken ? '3 4' : '8 5'}
-                    strokeLinecap="round"
-                    filter={isPathActive ? 'url(#glow)' : 'none'}
-                    opacity={isPathActive ? 0.95 : isPathTaken ? 0.7 : 0.5}
-                  />
+                  <g key={`${node.id}-${nextId}`}>
+                    <line
+                      x1={`${node.x * 100}%`}
+                      y1={`${100 - (node.y / totalFloorSpan) * 100}%`}
+                      x2={`${nextNode.x * 100}%`}
+                      y2={`${100 - (nextNode.y / totalFloorSpan) * 100}%`}
+                      stroke={isPathHighlighted ? '#fbbf24' : isPathActive ? '#ef4444' : pathStroke}
+                      strokeWidth={isPathHighlighted ? pathWidth + 6 : isPathActive ? pathWidth + 4 : pathWidth + 2}
+                      strokeDasharray={isPathActive ? 'none' : isPathTaken ? '3 4' : '8 5'}
+                      strokeLinecap="round"
+                      opacity={isPathHighlighted ? 0.5 : isPathActive ? 0.4 : isPathTaken ? 0.2 : 0.15}
+                      filter="blur(4px)"
+                    />
+                    <line
+                      x1={`${node.x * 100}%`}
+                      y1={`${100 - (node.y / totalFloorSpan) * 100}%`}
+                      x2={`${nextNode.x * 100}%`}
+                      y2={`${100 - (nextNode.y / totalFloorSpan) * 100}%`}
+                      stroke={pathStroke}
+                      strokeWidth={pathWidth}
+                      strokeDasharray={isPathActive ? 'none' : isPathTaken ? '3 4' : '8 5'}
+                      strokeLinecap="round"
+                      filter={isPathHighlighted ? 'url(#path-glow-strong)' : isPathActive ? 'url(#glow)' : 'none'}
+                      opacity={isPathHighlighted ? 1 : isPathActive ? 0.95 : isPathTaken ? 0.7 : 0.5}
+                      className={`${isPathHighlighted ? 'grimdark-path-highlight animate-path-pulse-highlight' : isPathActive ? 'grimdark-path-line--active animate-path-flow-glow' : ''}`}
+                      style={{
+                        willChange: 'opacity, stroke'
+                      }}
+                    />
+                    {(isPathActive || isPathHighlighted) && (
+                      <circle
+                        r="3"
+                        fill={isPathHighlighted ? '#fbbf24' : '#ef4444'}
+                        filter={isPathHighlighted ? 'url(#path-glow-strong)' : 'url(#glow)'}
+                      >
+                        <animateMotion
+                          dur={isPathHighlighted ? '1.5s' : '2.5s'}
+                          repeatCount="indefinite"
+                          path={`M ${node.x * 100} ${100 - (node.y / totalFloorSpan) * 100} L ${nextNode.x * 100} ${100 - (nextNode.y / totalFloorSpan) * 100}`}
+                        />
+                        <animate
+                          attributeName="opacity"
+                          values="0;1;1;0"
+                          keyTimes="0;0.1;0.9;1"
+                          dur={isPathHighlighted ? '1.5s' : '2.5s'}
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                    )}
+                  </g>
                 );
               });
             })}
@@ -343,6 +546,7 @@ export function MapView({
                 const isPast = node.y < currentY;
                 const typeName = nodeTypeNames[node.type] || node.type;
                 const styles = getTypeStyles(node.type);
+                const dossier = routeDossierById.get(node.id);
                 const nodeStateClass = isCurrent
                   ? 'grimdark-node-card--current'
                   : isPast
@@ -354,8 +558,8 @@ export function MapView({
                 const nodeCursorClass = isSelectable ? 'cursor-pointer' : isPast ? 'cursor-default' : 'cursor-not-allowed';
 
                 return (
-                  <div 
-                    key={node.id} 
+                  <div
+                    key={node.id}
                     className="absolute transform -translate-x-1/2 flex flex-col items-center"
                     style={{ left: `${node.x * 100}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
                   >
@@ -366,7 +570,12 @@ export function MapView({
                       data-floor={node.y}
                       data-keyboard-focus="true"
                       data-keyboard-option={isSelectable ? String(selectableNodeIds.indexOf(node.id) + 1) : undefined}
-                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${unknownClass} ${nodeCursorClass} w-28 min-h-[90px] px-2.5 py-2.5 flex flex-col items-center justify-center gap-2`}
+                      onMouseEnter={() => isSelectable && setHoveredNodeId(node.id)}
+                      onMouseLeave={() => setHoveredNodeId(null)}
+                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${unknownClass} ${nodeCursorClass} grimdark-node-card--enhanced w-28 min-h-[90px] px-2.5 py-2.5 flex flex-col items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 focus:ring-2 focus:ring-amber-500/50`}
+                      aria-label={node.revealed ? `${typeName} - 第 ${node.y + 1} 扇区` : '未探明区域'}
+                      aria-disabled={!isSelectable}
+
                     >
                       {node.revealed ? (
                         <>
@@ -402,6 +611,74 @@ export function MapView({
                       )}
                     </button>
 
+                    {hoveredNodeId === node.id && node.revealed && isSelectable && (
+                      <motion.div
+                        className="grimdark-node-detail-panel"
+                        initial={{ scale: 0.8, opacity: 0, y: 10 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.8, opacity: 0, y: 10 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 400,
+                          damping: 15,
+                          duration: 0.3
+                        }}
+                      >
+                        <motion.div
+                          className="grimdark-node-detail-title"
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.1, duration: 0.3 }}
+                        >
+                          {dossier?.title || typeName} - 第 {node.y + 1} 扇区
+                        </motion.div>
+                        <motion.div
+                          className="grimdark-node-detail-row"
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.15, duration: 0.3 }}
+                        >
+                          <span className="grimdark-node-detail-label">挑战倾向</span>
+                          <span className="grimdark-node-detail-value">
+                            {'★'.repeat(dossier?.challenge || 1)}
+                          </span>
+                        </motion.div>
+                        <motion.div
+                          className="grimdark-node-detail-row"
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.2, duration: 0.3 }}
+                        >
+                          <span className="grimdark-node-detail-label">补给空间</span>
+                          <span className="grimdark-node-detail-value">
+                            {'★'.repeat(dossier?.sustain || 1)}
+                          </span>
+                        </motion.div>
+                        <motion.div
+                          className="grimdark-node-detail-row"
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.25, duration: 0.3 }}
+                        >
+                          <span className="grimdark-node-detail-label">未知收益</span>
+                          <span className="grimdark-node-detail-value" style={{
+                            color: dossier && dossier.mystery >= 4 ? '#a855f7' : '#38bdf8'
+                          }}>
+                            {'★'.repeat(dossier?.mystery || 1)}
+                          </span>
+                        </motion.div>
+                        <motion.div
+                          className="grimdark-node-detail-hint"
+                          initial={{ x: -10, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.3 }}
+                        >
+                          <span className="grimdark-node-detail-hint-label">💡 提示</span>
+                          {dossier?.summary || '愿帝皇保佑你的征程。'}
+                        </motion.div>
+                      </motion.div>
+                    )}
+
                     {isCurrent && (
                       <div className="grimdark-node-current-tag mt-2 px-3 py-1 text-[10px] font-bold rounded-none animate-pulse">
                         所在坐标
@@ -409,12 +686,13 @@ export function MapView({
                     )}
 
                     {!node.revealed && intel > 0 && isSelectable && (
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); engine.revealNode(node.id); }}
-                        className="grimdark-node-reveal-btn absolute -bottom-12 text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-none transition-all"
+                        className="grimdark-node-reveal-btn absolute -bottom-12 text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-none transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
                         data-keyboard-focus="true"
+                        aria-label="启动侦测，查看节点信息"
                       >
-                        <Eye size={12} />
+                        <Eye size={12} aria-hidden="true" />
                         启动侦测
                       </button>
                     )}

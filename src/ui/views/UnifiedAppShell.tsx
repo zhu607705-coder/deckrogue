@@ -12,9 +12,10 @@ import { ThemeProvider, useTheme } from '@/ui/theme/ThemeContext';
 import { GlobalFilterOverlay } from '@/ui/overlays/GlobalFilterOverlay';
 import { ViewBackgroundLayer, type ScreenId } from '@/ui/components/ViewBackgroundLayer';
 import { SetupLauncher } from '@/ui/launcher/SetupLauncher';
-import { Sun, Moon, Eye, Layers, Zap, Skull, Cpu, Database } from 'lucide-react';
-import worldLoreData from '@/content/data/worldLore.json';
+import { Eye, Layers, Zap, Skull, Cpu, Database, Sun, Moon } from 'lucide-react';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { animationSpeedManager, ANIMATION_SPEEDS, type AnimationSpeedLevel } from '@/ui/animations/AnimationSpeedManager';
+import { uiWorldLore } from '@/ui/content/worldLore';
 import {
   buildEffectiveKeybinds,
   DEFAULT_KEYBINDS,
@@ -43,7 +44,7 @@ import {
 
 const BG_VISUAL_MODE_KEY = 'deckrogue_bg_visual_mode';
 const ENGINE_MODE_KEY = 'deckrogue_engine_mode';
-const WORLD_LORE = worldLoreData as any;
+const WORLD_LORE = uiWorldLore as any;
 const KEYBIND_LABELS: Record<KeyboardActionId, string> = {
   toggleMenu: '打开菜单',
   back: '返回 / 关闭上一级',
@@ -92,6 +93,7 @@ const ShopView = lazy(async () => import('@/ui/views/ShopView').then((m) => ({ d
 const RestView = lazy(async () => import('@/ui/views/RestView').then((m) => ({ default: m.RestView })));
 const EventView = lazy(async () => import('@/ui/views/EventView').then((m) => ({ default: m.EventView })));
 const UpgradeView = lazy(async () => import('@/ui/views/UpgradeView').then((m) => ({ default: m.UpgradeView })));
+const RelicUpgradeView = lazy(async () => import('@/ui/views/RelicUpgradeView').then((m) => ({ default: m.RelicUpgradeView })));
 const EnchantView = lazy(async () => import('@/ui/views/EnchantView').then((m) => ({ default: m.EnchantView })));
 const RemoveCardView = lazy(async () => import('@/ui/views/RemoveCardView').then((m) => ({ default: m.RemoveCardView })));
 const TutorialView = lazy(async () => import('@/ui/views/TutorialView').then((m) => ({ default: m.TutorialView })));
@@ -117,7 +119,7 @@ function formatKeyCodeLabel(code: string) {
   return code;
 }
 
-function resolveActiveScreen(screen: string): ScreenId {
+export function resolveActiveScreen(screen: string): ScreenId {
   switch (screen) {
     case 'Launcher':
     case 'CharacterSelect':
@@ -128,6 +130,7 @@ function resolveActiveScreen(screen: string): ScreenId {
     case 'Shop':
     case 'Rest':
     case 'Upgrade':
+    case 'RelicUpgrade':
     case 'RemoveCard':
     case 'Enchant':
     case 'GameOver':
@@ -432,6 +435,7 @@ function AppContent() {
         setLegacyEngine(newEngine);
         const newAdapter = createLegacyAdapter(newEngine);
         setAdapter(newAdapter);
+        setRenderModel(newAdapter.renderModel);
       } else {
         if (adapter) {
           adapter.dispose();
@@ -721,6 +725,7 @@ function AppContent() {
             canContinue={gameSetup.hasQuickSave() || saveSlots.length > 0}
             saveSlots={saveSlots}
             metaProfile={metaProfile}
+            tutorialOpen={showTutorial}
             onNewRun={handleStartNewRun}
             onOpenTutorial={() => setShowTutorial(true)}
             onContinue={handleContinueRun}
@@ -756,7 +761,7 @@ function AppContent() {
       <div key={`theme-flash-${themeFlashKey}`} className={`theme-swap-flash ${isThemeTransitioning ? 'is-active' : ''}`} aria-hidden="true" />
       <GlobalFilterOverlay />
       <ToastContainer />
-      
+
       <div className="fixed top-2 right-2 z-50 flex gap-2">
         <button
           onClick={() => handleSwitchEngineMode(engineMode === 'legacy' ? 'runtimeV2' : 'legacy')}
@@ -794,7 +799,7 @@ function AppContent() {
             {menuPage === 'root' && (
               <div className="flex flex-col gap-2">
                 <div className="px-2 py-1 text-[11px] tracking-wider uppercase text-slate-400">系统</div>
-                
+
                 <button
                   onClick={() => setMenuPage('engine')}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-between"
@@ -967,7 +972,7 @@ function AppContent() {
                 </div>
 
                 <div className="px-3 text-xs text-slate-500">
-                  {engineMode === 'legacy' 
+                  {engineMode === 'legacy'
                     ? '旧引擎：使用 GameEngine，功能完整，稳定性高。'
                     : '新引擎：使用 EngineHost + Python WASM，架构现代化，支持未来扩展。'}
                 </div>
@@ -1021,18 +1026,22 @@ function AppContent() {
                 <div className="px-2 py-2 rounded-lg border border-slate-800 bg-slate-900/60">
                   <div className="text-[10px] tracking-wider uppercase text-slate-500 mb-2">动画速度</div>
                   <div className="grid grid-cols-3 gap-1">
-                    {(['fast', 'normal', 'reduced'] as const).map((speed) => (
+                    {ANIMATION_SPEEDS.map((speed) => (
                       <button
-                        key={speed}
-                        onClick={() => setAnimationSpeed(speed)}
+                        key={speed.value}
+                        onClick={() => {
+                          animationSpeedManager.setSpeedLevel(speed.value);
+                          setAnimationSpeed(speed.value);
+                        }}
                         className={`px-2 py-1.5 rounded-md border text-[11px] transition-colors ${
-                          getMotionConfig().speed === speed
+                          getMotionConfig().speed === speed.value
                             ? 'bg-slate-700 border-slate-500 text-white'
                             : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
                         }`}
+                        title={speed.description}
                         data-keyboard-focus="true"
                       >
-                        {speed === 'fast' ? '快速' : speed === 'normal' ? '正常' : '减慢'}
+                        {speed.label}
                       </button>
                     ))}
                   </div>
@@ -1157,7 +1166,7 @@ function AppContent() {
                   </>
                 )}
                 <div className="px-3 pt-1 text-xs text-slate-500">
-                  {engineMode === 'legacy' 
+                  {engineMode === 'legacy'
                     ? '存储到本地浏览器存储。'
                     : '新引擎模式下存档功能正在开发中。'}
                 </div>
@@ -1339,6 +1348,19 @@ function AppContent() {
           <UpgradeView engine={adapter.getLegacyEngine()!} />
         </Suspense>
       )}
+      {activeScreen === 'RelicUpgrade' && engineMode === 'runtimeV2' && adapter && (
+        <UnifiedRuntimeV2Screen
+          renderModel={renderModel}
+          adapter={adapter}
+          characters={RUNTIME_V2_CHARACTERS}
+          onRuntimeError={(message) => setLauncherError(`新引擎指令失败: ${message}`)}
+        />
+      )}
+      {activeScreen === 'RelicUpgrade' && engineMode === 'legacy' && adapter?.getLegacyEngine() && (
+        <Suspense fallback={<ScreenLoadingFallback label="RelicUpgrade" />}>
+          <RelicUpgradeView engine={adapter.getLegacyEngine()!} />
+        </Suspense>
+      )}
       {activeScreen === 'Enchant' && engineMode === 'runtimeV2' && adapter && (
         <UnifiedRuntimeV2Screen
           renderModel={renderModel}
@@ -1497,7 +1519,7 @@ function AppContent() {
               )}
             </div>
           )}
-          <button 
+          <button
             onClick={handleRestart}
             className="campaign-action mt-8 px-8 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-stone-100"
           >
@@ -1579,7 +1601,7 @@ function AppContent() {
               </div>
             </div>
           )}
-          <button 
+          <button
             onClick={handleRestart}
             className="campaign-action px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-stone-100"
           >

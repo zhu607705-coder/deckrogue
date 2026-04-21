@@ -16,10 +16,10 @@ const TUTORIAL_SECTIONS: TutorialSection[] = [
     id: 'resources',
     kicker: '资源术语',
     title: '先看资源，再决定这一轮能做什么',
-    body: '战斗内最常见的术语是[生命值]、[格挡]、[能量]与[情报]。这些词决定你当前能承受多少伤害、能打出多少牌，以及某些牌是否会进入强化状态。',
+    body: '战斗内最常见的术语是[生命值]、[护盾]、[能量]与[情报]。这些词决定你当前能承受多少伤害、能打出多少牌，以及某些牌是否会进入强化状态。',
     bullets: [
       '[生命值] 归零时，你这一局会立刻结束。',
-      '[格挡] 会优先吸收直接伤害，通常只维持到当前轮次结束。',
+      '[护盾] 会优先吸收直接伤害，通常只维持到当前轮次结束。',
       '[能量] 决定你这一轮还能再打几张牌。',
       '[情报] 属于高频职业资源，很多侦缉牌会要求你先持有它。'
     ],
@@ -98,7 +98,7 @@ export function TutorialView({
                   术语索引
                 </div>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-300 md:text-base">
-                  <GlossaryText text="这份教程只负责解释高频专业术语。你会在这里看到[生命值]、[格挡]、[能量]、[情报]、[易伤]、[虚弱]、[单体异端]等词的统一含义，方便你在战斗、图鉴和事件页里快速读懂描述。" />
+                  <GlossaryText text="这份教程只负责解释高频专业术语。你会在这里看到[生命值]、[护盾]、[能量]、[情报]、[易伤]、[虚弱]、[单体异端]等词的统一含义，方便你在战斗、图鉴和事件页里快速读懂描述。" />
                 </p>
               </div>
               <button
@@ -170,7 +170,7 @@ export function TutorialView({
                   <div className="text-[11px] uppercase tracking-[0.32em] text-emerald-300/70">使用建议</div>
                   <h3 className="mt-2 text-2xl font-semibold tracking-tight text-stone-50">把它当成术语索引，而不是流程手册</h3>
                   <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-300">
-                    <GlossaryText text="如果你已经能读懂[能量]、[格挡]、[情报]、[易伤]与[单体异端]这些高频词，就可以关闭教程进入正式远征。以后再遇到陌生词条，直接回到教程或图鉴继续查阅即可。" />
+                    <GlossaryText text="如果你已经能读懂[能量]、[护盾]、[情报]、[易伤]与[单体异端]这些高频词，就可以关闭教程进入正式远征。以后再遇到陌生词条，直接回到教程或图鉴继续查阅即可。" />
                   </p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     {onStartRun ? (

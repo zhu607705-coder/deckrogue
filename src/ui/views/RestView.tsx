@@ -39,15 +39,15 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
     canUpgradeRelic,
   });
   const hintFor = (action: RestActionId) => restRouteAdvice.actionHints[action];
-  
-  const [backgroundIndex] = useState(() => 
+
+  const [backgroundIndex] = useState(() =>
     VIEW_BACKGROUNDS.rest.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.rest.length) : 0
   );
   const backgroundSrc = VIEW_BACKGROUNDS.rest[backgroundIndex]?.desktop || '';
 
   return (
-    <BackgroundImage 
-      src={backgroundSrc} 
+    <BackgroundImage
+      src={backgroundSrc}
       className="flex flex-col h-full text-slate-200 p-8 items-center justify-center"
       overlayOpacity={0.55}
     >
@@ -72,9 +72,9 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
           · {hintFor(restRouteAdvice.primaryAction)?.reason}
         </div>
       )}
-      
+
       <div className="flex gap-8">
-        <button 
+        <button
           onClick={() => engine.restHeal()}
           disabled={!canHeal}
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
@@ -90,10 +90,10 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
               {hintFor('heal')!.reason}
             </div>
           )}
-          <div className="text-sm text-slate-400">恢复 {healAmount} 点肉体承载力</div>
+          <div className="text-sm text-slate-400">恢复 {healAmount} 点生命值</div>
         </button>
 
-        <button 
+        <button
           onClick={() => engine.enterUpgrade()}
           disabled={!canUpgrade}
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
@@ -112,7 +112,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
           <div className="text-sm text-slate-400">强化一张记忆印痕</div>
         </button>
 
-        <button 
+        <button
           onClick={() => engine.restEnchant()}
           disabled={!canEnchant}
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
@@ -133,7 +133,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
           <div className="text-sm text-slate-400">为一张牌追加局内强化</div>
         </button>
 
-        <button 
+        <button
           onClick={() => engine.restDisperse()}
           disabled={!player.relics.some((r: string) => {
             const relic = (relicsData as any[]).find((rel: any) => rel.id === r);
@@ -158,11 +158,11 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
           <div className="text-sm text-slate-400">随机移除一个腐化遗物</div>
         </button>
 
-        <button 
+        <button
           onClick={() => engine.restUpgradeRelic()}
           disabled={!canUpgradeRelic}
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
-            ${canUpgradeRelic 
+            ${canUpgradeRelic
               ? 'bg-slate-900/80 border-yellow-500 hover:bg-slate-800/80 hover:scale-105 cursor-pointer'
               : 'bg-slate-900/80 border-slate-700 opacity-50 cursor-not-allowed'}
           `}

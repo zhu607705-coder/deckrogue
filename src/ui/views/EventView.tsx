@@ -1,13 +1,14 @@
 import React from 'react';
 import { GameEngine } from '@/core';
 import { getStoryEventDef, getStoryEventOptionPresentation, relicsData } from '@/content/narrative/numericSystem';
-import worldLoreData from '@/content/data/worldLore.json';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { GlossaryText } from '@/ui/components/GlossaryText';
+import { EventOptionLongTermEffect } from '@/ui/components/EventLongTermEffect';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { uiWorldLore } from '@/ui/content/worldLore';
 
-const WORLD_LORE = worldLoreData as any;
+const WORLD_LORE = uiWorldLore as any;
 
 type EventOptionVm = {
   id: string;
@@ -188,6 +189,38 @@ function dangerLabel(level: EventOptionVm['danger'] = 'medium') {
   return level === 'low' ? '低危' : level === 'high' ? '高危' : '中危';
 }
 
+function detectLongTermEffects(gains: string[], costs: string[]): Array<{ type: string; duration: string; description: string }> {
+  const effects: Array<{ type: string; duration: string; description: string }> = [];
+
+  const longTermKeywords = [
+    { regex: /最大生命值|Max HP/i, type: 'blessing', duration: '永久' },
+    { regex: /每场战斗|每章|this chapter|this run/i, type: 'buff', duration: '本局' },
+    { regex: /后续|Next combat|Next \d+ combats/i, type: 'buff', duration: '短期' },
+    { regex: /遗物|relic/i, type: 'blessing', duration: '永久' },
+    { regex: /牌库|牌组|deck|curse/i, type: 'curse', duration: '永久' },
+    { regex: /永久|permanent/i, type: 'blessing', duration: '永久' },
+    { regex: /腐化|虔敬|Corruption|Devotion/i, type: 'buff', duration: '永久' },
+  ];
+
+  gains.forEach(gain => {
+    longTermKeywords.forEach(({ regex, type, duration }) => {
+      if (regex.test(gain)) {
+        effects.push({ type, duration, description: gain });
+      }
+    });
+  });
+
+  costs.forEach(cost => {
+    longTermKeywords.forEach(({ regex, duration }) => {
+      if (regex.test(cost)) {
+        effects.push({ type: 'curse', duration, description: cost });
+      }
+    });
+  });
+
+  return effects;
+}
+
 function StoryEventPanel({ engine }: { engine: GameEngine }) {
   const event = engine.state.activeEvent!;
   const def = getStoryEventDef(event.id);
@@ -197,8 +230,8 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
   const npcLine = getEventNpcLine(engine, event.id, event.stage);
 
   return (
-    <BackgroundImage 
-      src={backgroundSrc} 
+    <BackgroundImage
+      src={backgroundSrc}
       className="campaign-shell flex h-full flex-col px-4 py-6 text-slate-100 md:px-8"
       overlayOpacity={0.78}
     >
@@ -276,6 +309,19 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
                       </ul>
                     </div>
                   )}
+
+                  {(() => {
+                    const longTermEffects = detectLongTermEffects(option.gains || [], option.costs || []);
+                    if (longTermEffects.length === 0) return null;
+                    return (
+                      <div className="mt-3">
+                        <EventOptionLongTermEffect
+                          effects={longTermEffects}
+                          className="w-full"
+                        />
+                      </div>
+                    );
+                  })()}
                 </button>
               ))}
             </div>
@@ -310,8 +356,8 @@ export function EventView({ engine }: { engine: GameEngine }) {
     const bgImage = getEventBackground(event.id);
     const npcLine = getEventNpcLine(engine, event.id, event.stage);
     return (
-      <BackgroundImage 
-        src={bgImage} 
+      <BackgroundImage
+        src={bgImage}
         className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
         overlayOpacity={0.7}
       >
@@ -365,8 +411,8 @@ export function EventView({ engine }: { engine: GameEngine }) {
   const bgImage = getEventBackground(event.id);
   const shrineLine = getEventNpcLine(engine, event.id, event.stage);
   return (
-    <BackgroundImage 
-      src={bgImage} 
+    <BackgroundImage
+      src={bgImage}
       className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
       overlayOpacity={0.68}
     >
@@ -386,7 +432,7 @@ export function EventView({ engine }: { engine: GameEngine }) {
         <div className="flex w-full flex-col gap-4">
           <button onClick={() => engine.resolveEventChoice('pray')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="1" data-keyboard-focus="true">
             <span className="font-bold">祈祷</span>
-            <span className="text-emerald-400 text-sm block mt-1">肉体承载力上限 +10</span>
+            <span className="text-emerald-400 text-sm block mt-1">生命上限 +10</span>
           </button>
           <button onClick={() => engine.resolveEventChoice('leave')} className="campaign-choice w-full p-4 text-left" data-keyboard-option="2" data-keyboard-focus="true">
             <span className="font-bold">离开</span>

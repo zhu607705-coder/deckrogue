@@ -146,10 +146,8 @@ async function waitForPlayerTurn(page: import('playwright').Page) {
   });
 }
 
-async function clickCharacterCard(page: import('playwright').Page, characterName: string) {
-  const card = page.locator('div.cursor-pointer').filter({
-    has: page.getByRole('heading', { name: characterName })
-  }).first();
+async function clickCharacterCard(page: import('playwright').Page, characterId: string) {
+  const card = page.locator(`[data-character-id="${characterId}"]`).first();
   await card.scrollIntoViewIfNeeded();
   await card.click({ force: true });
 }
@@ -193,7 +191,7 @@ async function captureLongCombat(url: string) {
 
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /开始新战区|new run/i }).click();
-  await clickCharacterCard(page, 'The Informant');
+  await clickCharacterCard(page, 'informant');
   await page.locator('button[data-node-id]').first().waitFor({ timeout: 10_000 });
   const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
   if (await combatNode.count()) {

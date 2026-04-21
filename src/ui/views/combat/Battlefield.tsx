@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Shield, Sword, Heart, Clock, Layers, FlaskConical } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { GameEngine } from '@/core';
@@ -6,10 +6,11 @@ import type { IntentDisplay } from '@/types';
 import { CardView } from '@/ui/views/CardView';
 import { WarpDeceptionText } from '@/ui/overlays/WarpDeceptionText';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
-import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narrative/numericSystem';
+import { getPotionRuntimeConfig } from '@/content/narrative/numericSystem';
 import { grimdarkTerminology } from '@/ui/theme';
-import { clampCombatInteger, clampCombatPercent, getIntentThreatLevel } from './combatViewModel';
+import { clampCombatInteger, clampCombatPercent } from './combatViewModel';
 import { COMBAT_BEATS, triggerCombatBeat, triggerScreenShake } from '@/ui/motion';
+import { EnemyStandee } from './EnemyStandee';
 
 type RuntimeCombat = NonNullable<GameEngine['state']['combat']>;
 type RuntimeEnemy = RuntimeCombat['enemies'][number];
@@ -41,7 +42,7 @@ interface BattlefieldProps {
   maybeMasqueradeIntent: (enemy: RuntimeEnemy, intent: IntentDisplay) => IntentDisplay;
   getIntentDisplay: (enemy: RuntimeEnemy) => IntentDisplay;
   getEnemyStandeeClass: (enemy: RuntimeEnemy) => string;
-  renderEnemyStatuses: (statuses: Record<string, number>) => React.ReactNode | null;
+  renderEnemyStatuses: (statuses: Record<string, number>, entityId?: string) => React.ReactNode | null;
   renderAxisGauge: (entity: AxisGaugeEntity) => React.ReactNode;
   formatHitBreakdown: (hits: number[]) => string;
   hasIntelRead: boolean;
@@ -87,10 +88,10 @@ export function Battlefield({
   const state = engine.state.combat!;
   const player = state.player;
   const terms = grimdarkTerminology;
-  const enemyRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
-  const defeatedEnemyIdsRef = React.useRef<Set<string>>(new Set());
+  const enemyRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const defeatedEnemyIdsRef = useRef<Set<string>>(new Set());
 
-  React.useEffect(() => {
+  useEffect(() => {
     state.enemies.forEach((enemy) => {
       if (enemy.hp > 0) {
         defeatedEnemyIdsRef.current.delete(enemy.id);
@@ -107,10 +108,10 @@ export function Battlefield({
   }, [state.enemies]);
 
   return (
-    <div className="relative flex-1 flex items-center justify-between gap-8 px-8 xl:px-12 grimdark-battlefield">
+    <div className="relative flex-1 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8 px-4 md:px-8 xl:px-12 grimdark-battlefield">
       {/* 亚空间扭曲背景效果 */}
       <div className="grimdark-warp-overlay" style={{ opacity: (state.warpTide || 0) / 100 }} />
-      
+
       {/* 玩家立绘区域 */}
       <div className="flex flex-col items-center grimdark-player-section">
         <div className={`player-standee grimdark-player-standee ${state.isPlayerTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>
@@ -124,7 +125,7 @@ export function Battlefield({
               {state.isPlayerTurn ? '先看能量、手牌和敌方风险' : '等待敌方结算完成'}
             </div>
           </div>
-          
+
           {/* 施法预览 */}
           {selectedCardPreview && (
             <div className="player-standee__castPreview grimdark-cast-preview">
@@ -138,7 +139,7 @@ export function Battlefield({
             )}
 
           {/* 玩家立绘框架 */}
-          <div className="player-standee__frame grimdark-player-frame">
+          <div className="player-standee__frame grimdark-player-frame" aria-label={`玩家: ${playerName}, 生命值: ${playerHpNow}/${playerMaxHpNow}`}>
             {playerPortrait ? (
               <img src={playerPortrait} alt={playerName} className="player-standee__art grimdark-player-art" onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.character)} />
             ) : (
@@ -164,11 +165,10 @@ export function Battlefield({
                 <div className="player-standee__glassCracks grimdark-glass-cracks" style={{ opacity: `${Math.max(0, clampCombatPercent(100 - playerHpPct) / 120)}` }} />
               </div>
               <div className="player-standee__tubeText grimdark-tube-text">
-                <span className="label grimdark-label">肉体</span>
                 <span className="value grimdark-value" key={`tubehp-${playerHpNow}-${playerMaxHpNow}`}>{playerHpNow}/{playerMaxHpNow}</span>
               </div>
             </div>
-            
+
             {/* 生命值条 */}
             <div className="player-standee__hpBar grimdark-hp-bar">
               <div className="player-standee__hpFill grimdark-hp-fill" style={{ width: `${playerHpPct}%` }} />
@@ -200,7 +200,7 @@ export function Battlefield({
               )}
             </div>
 
-            {renderEnemyStatuses(player.statuses)}
+            {renderEnemyStatuses(player.statuses, 'player')}
             {renderAxisGauge(player)}
           </div>
         </div>
@@ -335,6 +335,7 @@ export function Battlefield({
                             ? `战壕掩体：分担约 ${Math.round((c.damageSharePct || 0) * 100)}% 玩家受击伤害`
                             : c.name
                       }
+                      aria-label={`构造物: ${c.name}, 生命值: ${c.hp}/${c.maxHp}, 攻击力: ${c.atk}`}
                     >
                       <div className="grimdark-construct-name">{c.name}</div>
                       <div className="grimdark-construct-stat grimdark-construct-stat--hp">
@@ -359,6 +360,9 @@ export function Battlefield({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0 }}
                   className="grimdark-wreckage"
+                  style={{
+                    willChange: 'transform, opacity'
+                  }}
                 >
                   <div className="grimdark-wreckage-glow" />
                   <div className="grimdark-wreckage-ember" />
@@ -375,158 +379,25 @@ export function Battlefield({
       </div>
 
       {/* 敌人区域 */}
-      <div className="flex gap-8 grimdark-enemies-section">
+      <div className="flex flex-wrap justify-center gap-4 md:gap-8 grimdark-enemies-section">
         {state.enemies.map(enemy => (
-          (() => {
-            const intent = maybeMasqueradeIntent(enemy, getIntentDisplay(enemy));
-            const standeeClass = getEnemyStandeeClass(enemy);
-            const isDead = enemy.hp <= 0;
-            const hpPct = enemy.maxHp > 0 ? Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100)) : 0;
-            const enemyHpNow = Math.max(0, Math.round(enemy.hp));
-            const enemyMaxHpNow = Math.max(0, Math.round(enemy.maxHp));
-            const imageUrl =
-              enemy.autonomyState === 'ChaosEgg'
-                ? '/assets/enemies/chaos_egg.png'
-                : enemy.autonomyState === 'Martyr'
-                  ? '/assets/enemies/martyr_frenzy.png'
-                  : `/assets/enemies/${enemy.defId}.png`;
-            const toneClass =
-              intent.tone === 'attack' ? 'grimdark-intent--attack' :
-              intent.tone === 'block' ? 'grimdark-intent--block' :
-              intent.tone === 'status' ? 'grimdark-intent--status' :
-              intent.tone === 'hybrid' ? 'grimdark-intent--hybrid' : 'grimdark-intent--neutral';
-            const threatLevel = getIntentThreatLevel(intent);
-            return (
-          <div 
-            key={enemy.id} 
-            ref={(element) => {
-              enemyRefs.current[enemy.id] = element;
-            }}
-            className={[
-              'enemy-standee grimdark-enemy-standee',
-              standeeClass,
-              selectedCard ? 'is-targetable' : '',
-              selectedCard ? 'is-targeting' : '',
-              isDead ? 'is-dead' : '',
-              enemy.autonomyState === 'ChaosEgg' ? 'grimdark-enemy--chaos-egg' : '',
-              enemy.autonomyState === 'Martyr' ? 'grimdark-enemy--martyr' : ''
-            ].filter(Boolean).join(' ')}
+          <EnemyStandee
+            key={enemy.id}
+            enemy={enemy}
+            engine={engine}
+            selectedCard={selectedCard}
             onClick={() => handleEnemyClick(enemy.id)}
             onMouseEnter={() => setHoveredEnemyId(enemy.id)}
             onMouseLeave={() => setHoveredEnemyId(null)}
-            role="button"
-            tabIndex={0}
-            data-keyboard-focus="true"
-            data-keyboard-target="true"
-            data-keyboard-enemy-id={enemy.id}
-            aria-label={enemy.name}
-          >
-            {/* 敌人意图 */}
-            <div className={`enemy-standee__intent grimdark-enemy-intent ${toneClass}`}>
-              <div className="enemy-standee__intentHeader">
-                <div className="enemy-standee__intentIcon grimdark-enemy-intent-icon">{intent.icon}</div>
-                <div className="enemy-standee__intentTextBlock">
-                  <div className="enemy-standee__intentValue grimdark-enemy-intent-value">{intent.text}</div>
-                  <div className="enemy-standee__intentMeta">{threatLevel}</div>
-                </div>
-              </div>
-              {intent.isWarpMasquerade && (
-                <div className="grimdark-masquerade-badge">
-                  伪装
-                </div>
-              )}
-              {intent.breakdown.totalDamage > 0 && (() => {
-                const playerMaxHp = engine.state.player.maxHp;
-                const playerHp = engine.state.player.hp;
-                const damageRatio = intent.breakdown.totalDamage / playerMaxHp;
-                const isLethal = intent.breakdown.totalDamage >= playerHp;
-                const isCritical = damageRatio >= 0.5;
-                const isWarning = damageRatio >= 0.3;
-                if (isLethal) {
-                  return (
-                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--lethal" title="致命伤害预警">
-                      <span>⚠️ 致命</span>
-                    </div>
-                  );
-                }
-                if (isCritical) {
-                  return (
-                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--critical" title="高风险伤害预警">
-                      <span>⚠️ 危险</span>
-                    </div>
-                  );
-                }
-                if (isWarning) {
-                  return (
-                    <div className="enemy-standee__intentWarning grimdark-intent-warning grimdark-intent-warning--warning" title="中等风险伤害预警">
-                      <span>⚡ 警告</span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-              {hasIntelRead && (intent.breakdown.totalDamage > 0 || intent.breakdown.block > 0 || intent.breakdown.statuses.length > 0 || intent.breakdown.extras.length > 0) && (
-                <div className="enemy-standee__intentBreakdown grimdark-intent-breakdown">
-                  {intent.breakdown.totalDamage > 0 && (
-                    <div className="enemy-standee__intentChip grimdark-intent-chip grimdark-intent-chip--damage" title="预估总创伤 (考虑力量/虚弱/易伤)">
-                      <span>创伤</span>
-                      <strong><WarpDeceptionText realValue={intent.breakdown.totalDamage} warpTide={state.warpTide} type="damage" /></strong>
-                      {intent.breakdown.hits.length > 1 && <em>{formatHitBreakdown(intent.breakdown.hits)}</em>}
-                    </div>
-                  )}
-                  {intent.breakdown.block > 0 && (
-                    <div className="enemy-standee__intentChip grimdark-intent-chip grimdark-intent-chip--block" title="预估虚空盾增益">
-                      <span>护盾</span>
-                      <strong>+<WarpDeceptionText realValue={intent.breakdown.block} warpTide={state.warpTide} type="block" /></strong>
-                    </div>
-                  )}
-                  {intent.breakdown.statuses.slice(0, 2).map((s, idx: number) => (
-                    <div
-                      key={`${s.status}_${idx}`}
-                      className="enemy-standee__intentChip grimdark-intent-chip grimdark-intent-chip--status"
-                      title={`状态: ${s.status} ${s.amount > 0 ? `+${s.amount}` : ''} (${s.target})`}
-                    >
-                      <span>{s.target === 'self' ? '自身' : '目标'}</span>
-                      <strong>{s.status}</strong>
-                      {s.amount > 0 && <em>+{s.amount}</em>}
-                    </div>
-                  ))}
-                  {intent.breakdown.extras.slice(0, 2).map((extra: string, idx: number) => (
-                    <div key={`${extra}_${idx}`} className="enemy-standee__intentChip grimdark-intent-chip grimdark-intent-chip--extra" title={extra}>
-                      <span>特效</span>
-                      <strong>{extra}</strong>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 敌人立绘框架 */}
-            <div className="enemy-standee__frame grimdark-enemy-frame">
-              <img src={imageUrl} alt={enemy.name} className="enemy-standee__art grimdark-enemy-art" onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.enemy)} />
-              <div className="enemy-standee__shade grimdark-enemy-shade" />
-              <div className="enemy-standee__nameplate grimdark-enemy-nameplate">{enemy.name}</div>
-              {enemy.block > 0 && (
-                <div className="enemy-standee__armorBadge grimdark-enemy-armor" title={`${terms.resources.block.name} ${enemy.block}`}>
-                  <Shield size={12} />
-                  <span>{enemy.block}</span>
-                </div>
-              )}
-              {selectedCard && <div className="enemy-standee__targetRing grimdark-target-ring" />}
-            </div>
-
-            {/* 敌人HUD */}
-            <div className="enemy-standee__hud grimdark-enemy-hud">
-              <div className="enemy-standee__hpBar grimdark-enemy-hp-bar">
-                <div className="enemy-standee__hpFill grimdark-enemy-hp-fill" style={{ width: `${hpPct}%` }} />
-                <div className="enemy-standee__hpText grimdark-enemy-hp-text" key={`enemyhp-${enemy.id}-${enemyHpNow}-${enemyMaxHpNow}`}>{enemyHpNow}/{enemyMaxHpNow}</div>
-              </div>
-              {renderEnemyStatuses(enemy.statuses)}
-              {renderAxisGauge(enemy)}
-            </div>
-          </div>
-            );
-          })()
+            maybeMasqueradeIntent={maybeMasqueradeIntent}
+            getIntentDisplay={getIntentDisplay}
+            getEnemyStandeeClass={getEnemyStandeeClass}
+            renderEnemyStatuses={renderEnemyStatuses}
+            renderAxisGauge={renderAxisGauge}
+            formatHitBreakdown={formatHitBreakdown}
+            hasIntelRead={hasIntelRead}
+            enemyRef={(element) => { enemyRefs.current[enemy.id] = element; }}
+          />
         ))}
       </div>
     </div>
