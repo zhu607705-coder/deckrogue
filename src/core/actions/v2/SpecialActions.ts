@@ -1,3 +1,20 @@
+/**
+ * @file SpecialActions.ts
+ * @description 特殊卡牌动作 - 处理非标准伤害/防御的特殊卡牌效果
+ *
+ * 主要职责:
+ * - 注册和执行特殊类型的卡牌动作 (如: 抽牌、施加状态、区域效果、条件触发等)
+ * - 与战斗系统集成，处理卡牌打出后的连锁效果
+ * - 管理卡牌目标选择和效果应用
+ *
+ * 动作类型包括:
+ * - 抽牌/弃牌动作
+ * - 状态效果施加 (中毒、虚弱、易伤等)
+ * - 条件触发动作 (基于手牌数、能量数等条件)
+ * - 区域效果动作 (对全体敌人/友方生效)
+ * - 遗物触发动作
+ * - 特殊机制动作 (附魔、升级等)
+ */
 import { GameState, ActionSpec, RunCardInstance } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { TargetingService, CardTarget } from '@/core/combat/targetingService';

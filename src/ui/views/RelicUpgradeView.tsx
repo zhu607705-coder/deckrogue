@@ -1,3 +1,13 @@
+/**
+ * @file RelicUpgradeView.tsx
+ * @description 遗物升级视图 - 遗物升级选择界面
+ *
+ * 主要职责:
+ * - 展示可升级遗物列表
+ * - 显示升级等级和费用
+ * - 处理遗物升级操作
+ * - 按路线偏好排序遗物
+ */
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
 import rawRelicsData from '@/content/data/relics.json';

@@ -1,3 +1,13 @@
+/**
+ * @file metaProfileStore.ts
+ * @description Meta档案持久化存储 - 管理跨Run的Meta进度和解锁状态
+ *
+ * 主要职责:
+ * - 管理MetaProfile的创建、保存和加载 (货币、解锁、升级、契约等)
+ * - 处理Run结束后的Meta结算 (货币转换、解锁更新、成就记录)
+ * - 提供攀登难度(Ascension)配置的查询接口
+ * - 支持殉道者遗物(Martyr Relic)的跨Run传承数据
+ */
 import type { GameState, MartyrRelic, MetaProfile, RunSummary } from '@/core/types';
 import { getAscensionMaxLevel, metaBalance } from '@/core/balance/metaBalance';
 import { cardsData } from '@/content/narrative/numericSystem';

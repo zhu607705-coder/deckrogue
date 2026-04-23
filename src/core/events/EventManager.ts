@@ -1,3 +1,19 @@
+/**
+ * @file EventManager.ts
+ * @description 事件管理器 - 处理游戏内随机事件和奖励生成
+ *
+ * 主要职责:
+ * - 管理游戏内随机事件的触发和解析
+ * - 生成卡牌奖励 (战斗后、事件中等)
+ * - 处理事件选项的选择和结果应用
+ * - 管理免费移除卡牌的事件逻辑
+ * - 与经济系统、平衡系统集成
+ *
+ * 事件流程:
+ * 1. 进入事件节点 -> EventManager 初始化事件
+ * 2. 玩家选择选项 -> EventManager 应用结果
+ * 3. 结果应用 -> 更新玩家状态 (HP/金币/卡牌/遗物等)
+ */
 import type { GameState, RunCardInstance, CardDef, ActiveEventState, RelicDef, PotionDef } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { metricsTracker } from '@/core/events/metricsTracker';

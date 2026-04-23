@@ -1,3 +1,13 @@
+/**
+ * @file saveManager.ts
+ * @description 存档管理器 - 负责游戏存档的创建、读取和校验
+ *
+ * 主要职责:
+ * - 管理多个存档槽位的保存与加载
+ * - 提供存档校验和完整性检查
+ * - 计算存档的难度画像和玩家表现统计
+ * - 支持自动存档和存档元数据管理
+ */
 import { GameState, RunSummary } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 

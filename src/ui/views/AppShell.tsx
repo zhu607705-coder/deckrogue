@@ -1,3 +1,17 @@
+/**
+ * @file AppShell.tsx
+ * @description 旧版应用外壳组件 - 旧引擎模式下的主界面结构
+ *
+ * 主要职责:
+ * - 旧引擎模式下的游戏界面管理
+ * - 资源预加载和路由资源管理
+ * - 主题和背景视觉效果
+ * - 游戏菜单和存档管理
+ * - 各游戏视图的懒加载和切换
+ *
+ * 注意: 此组件为旧版实现，新版本请参考 UnifiedAppShell.tsx
+ * UnifiedAppShell 支持旧引擎和新引擎(RuntimeV2)的双模式切换
+ */
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { ResourcePreloader, preloadRouteAssets } from '@/ui/components/ResourcePreloader';
 import { computeRunSummary, GameEngine, gameSetup, globalEventBus, loadMetaProfile } from '@/core';

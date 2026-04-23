@@ -1,3 +1,17 @@
+/**
+ * @file storyEvents.ts
+ * @description 故事事件数据定义 - 定义游戏中所有可遇到的随机事件
+ *
+ * 主要职责:
+ * - 定义所有故事事件的结构和内容
+ * - 每个事件包含: ID、描述文本、选项列表、选项结果
+ * - 选项结果可影响: 生命值、金币、卡牌获取/移除、遗物、腐蚀/虔诚值
+ *
+ * 事件类型:
+ * - 普通事件: 简单的选择和结果
+ * - 分支事件: 根据条件产生不同分支 (如腐败度阈值)
+ * - 角色限定事件: 只有特定角色才能遇到的事件
+ */
 import type { StoryEventDef } from '@/core/types';
 
 export const STORY_EVENTS: StoryEventDef[] = [

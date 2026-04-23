@@ -1,3 +1,13 @@
+/**
+ * @file RewardView.tsx
+ * @description 奖励视图 - 战斗胜利后的卡牌奖励选择界面
+ *
+ * 主要职责:
+ * - 展示奖励卡牌供玩家选择
+ * - 显示卡牌方向标签（输出/生存/资源/控制）
+ * - 处理卡牌选择和跳过操作
+ * - 支持 RenderModel 的奖励数量配置
+ */
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { GameEngine } from '@/core';

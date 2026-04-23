@@ -1,3 +1,18 @@
+/**
+ * @file EventView.tsx
+ * @description 事件视图 - 处理随机故事事件和玩家选择
+ *
+ * 主要职责:
+ * - 渲染事件文本和选项
+ * - 显示选项代价和收益预览
+ * - 处理事件选项点击和确认
+ * - 支持 NPC 对话分支系统
+ * - 根据事件类型切换背景
+ *
+ * 架构说明:
+ * - 与 GlossaryText 组件协作展示术语高亮
+ * - 支持 EventOptionLongTermEffect 显示长期影响
+ */
 import React from 'react';
 import { GameEngine } from '@/core';
 import { getStoryEventDef, getStoryEventOptionPresentation, relicsData } from '@/content/narrative/numericSystem';

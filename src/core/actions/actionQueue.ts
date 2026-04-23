@@ -1,3 +1,13 @@
+/**
+ * @file actionQueue.ts
+ * @description 动作队列 - 定义动作接口和队列管理的基础类型
+ *
+ * 主要职责:
+ * - 定义 IAction 接口，所有具体动作实现需实现此接口
+ * - 定义 IActionContext 接口，提供动作执行的上下文信息
+ * - 定义 QueuedAction 接口，描述队列中的动作项
+ * - 导出动作相关的类型别名供其他模块使用
+ */
 import type { GameState } from '@/core/types';
 
 export type ActionId = string;

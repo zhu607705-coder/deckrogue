@@ -1,3 +1,13 @@
+/**
+ * @file setup.ts
+ * @description 游戏初始化设置 - 负责游戏引擎和存档系统的启动配置
+ *
+ * 主要职责:
+ * - 创建和配置 GameEngine 实例
+ * - 初始化存档管理器并加载现有存档
+ * - 提供游戏设置的创建、获取和重置功能
+ * - 管理自动存档间隔和调试日志开关
+ */
 import { GameEngine } from '@/core/events/gameEngine';
 import { saveManager, SaveData } from '@/core/persistence/saveManager';
 import { globalEventBus } from '@/core/events/eventBus';

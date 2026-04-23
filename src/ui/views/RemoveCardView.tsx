@@ -1,3 +1,13 @@
+/**
+ * @file RemoveCardView.tsx
+ * @description 移除卡牌视图 - 从卡组中永久移除卡牌的界面
+ *
+ * 主要职责:
+ * - 展示卡组中所有卡牌
+ * - 处理卡牌移除操作
+ * - 支持事件免费移除模式
+ * - 显示移除费用或剩余次数
+ */
 import React from 'react';
 import { GameEngine } from '@/core';
 import { CardView } from '@/ui/views/CardView';

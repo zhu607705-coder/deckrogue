@@ -1,3 +1,13 @@
+/**
+ * @file UpgradeView.tsx
+ * @description 升级视图 - 卡牌升级选择界面
+ *
+ * 主要职责:
+ * - 展示可升级卡牌列表
+ * - 显示升级前后差异对比
+ * - 按路线偏好排序卡牌
+ * - 处理卡牌升级选择
+ */
 import React from 'react';
 import { GameEngine } from '@/core';
 import { CardView } from '@/ui/views/CardView';

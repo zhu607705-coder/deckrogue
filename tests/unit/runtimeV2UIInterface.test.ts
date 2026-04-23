@@ -82,7 +82,7 @@ test('ContentService loads character data from content bundle', () => {
   const informant = service.getCharacter('informant');
 
   assert.ok(informant);
-  assert.equal(informant?.name, 'The Informant');
+  assert.equal(informant?.name, '情报员');
   assert.equal(informant?.maxHp, 70);
   assert.equal(informant?.maxEnergy, 3);
 });

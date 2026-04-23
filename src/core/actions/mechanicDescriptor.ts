@@ -1,3 +1,13 @@
+/**
+ * @file mechanicDescriptor.ts
+ * @description 机制描述符 - 定义卡牌/遗物效果的声明式描述结构
+ *
+ * 主要职责:
+ * - 定义 EffectDefinition 接口，描述静态效果 (数值修正、触发器、资源变更)
+ * - 定义 TriggerDefinition 接口，描述触发式效果的条件和执行逻辑
+ * - 定义 MechanicContext 和 MechanicResult 类型，作为效果执行的上下文和返回结果
+ * - 支持效果的作用域管理 (persistent/combat/room)
+ */
 import type { GameState, CombatState } from '@/core/types';
 import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep, ResolutionContext, ResolutionStepResult } from './resolutionTypes';
 

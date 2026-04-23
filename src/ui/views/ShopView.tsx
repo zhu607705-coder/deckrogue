@@ -1,3 +1,17 @@
+/**
+ * @file ShopView.tsx
+ * @description 商店视图 - 提供卡牌购买、遗物购买、药水服务和卡牌操作服务
+ *
+ * 主要职责:
+ * - 展示待售卡牌、遗物、药水
+ * - 处理购买操作和金币扣除
+ * - 提供卡牌升级、移除、附魔服务
+ * - 显示路线建议和购买提示
+ *
+ * 架构说明:
+ * - 通过 shopRouteAdvisor 提供购买建议
+ * - 支持价格调整机制（遗物折扣）
+ */
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
 import type { RenderModel } from '@/runtimeV2';

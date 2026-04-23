@@ -1,3 +1,28 @@
+/**
+ * @file UnifiedAppShell.tsx
+ * @description 统一应用外壳组件 - 管理整个游戏应用的主界面结构
+ *
+ * 主要职责:
+ * - 引擎模式切换 (旧引擎/新引擎 RuntimeV2)
+ * - 全局键盘快捷键处理
+ * - 主题和背景视觉效果管理
+ * - 游戏菜单和设置面板
+ * - 各游戏视图的懒加载和切换
+ *
+ * 支持的游戏视图:
+ * - CharacterSelectView: 角色选择
+ * - MapView: 地图导航
+ * - CombatView: 战斗界面
+ * - RewardView: 奖励选择
+ * - ShopView: 商店
+ * - RestView: 休息站
+ * - EventView: 事件处理
+ * - UpgradeView: 卡牌升级
+ * - RelicUpgradeView: 遗物升级
+ * - EnchantView: 附魔
+ * - RemoveCardView: 移除卡牌
+ * - TutorialView: 教程
+ */
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { computeRunSummary, GameEngine, gameSetup, globalEventBus, loadMetaProfile } from '@/core';
 import {

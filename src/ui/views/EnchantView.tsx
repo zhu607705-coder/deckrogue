@@ -1,3 +1,13 @@
+/**
+ * @file EnchantView.tsx
+ * @description 附魔视图 - 卡牌附魔选择界面
+ *
+ * 主要职责:
+ * - 展示可附魔卡牌列表
+ * - 显示附魔效果预览
+ * - 按路线偏好排序卡牌
+ * - 处理附魔选择确认
+ */
 import React from 'react';
 import { GameEngine } from '@/core';
 import { CardView } from '@/ui/views/CardView';

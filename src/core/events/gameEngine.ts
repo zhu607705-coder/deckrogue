@@ -1,3 +1,23 @@
+/**
+ * @file gameEngine.ts
+ * @description 核心游戏引擎 - 管理整个游戏状态和逻辑的中央协调器
+ *
+ * 主要职责:
+ * - 游戏状态初始化和管理 (GameState)
+ * - 随机数生成器 (RNG) 管理
+ * - 动作处理系统 (ActionManager)
+ * - 运行时委托 (RuntimeDelegate) - 将部分逻辑委托给 RuntimeV2 引擎
+ * - 事件管理 (EventManager) - 处理游戏内事件
+ * - 战斗管理 (CombatManager) - 协调战斗流程
+ * - 运行流程管理 (RunFlowManager) - 管理单次运行的流程
+ * - 存档/读档逻辑
+ * - 角色选择、地图导航、商店、奖励等核心游戏逻辑
+ *
+ * 架构说明:
+ * GameEngine 是旧引擎的核心，它协调多个子系统来处理游戏逻辑。
+ * 当 RuntimeV2 委托启用时，部分逻辑（如启动和地图）会被委托给新引擎处理，
+ * GameEngine 会同步两个引擎之间的状态。
+ */
 import { GameState, CardDef, RunCardInstance, MapNode, MetaProfile, CharacterDef } from '@/core/types';
 import { createRNG, RNG } from '@/infrastructure/rng/rng';
 import { globalEventBus } from '@/core/events/eventBus';

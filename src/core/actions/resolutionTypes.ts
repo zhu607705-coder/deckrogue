@@ -1,3 +1,13 @@
+/**
+ * @file resolutionTypes.ts
+ * @description 动作解析类型 - 定义触发窗口、解析意图和解析步骤的类型系统
+ *
+ * 主要职责:
+ * - 定义 TriggerWindow 类型，描述触发时机 (on_command, on_damage_applied, on_kill 等)
+ * - 定义 TriggerSource 类型，描述触发来源 (card, relic, potion, synergy 等)
+ * - 定义 ResolutionIntent 类型，描述动作的解析意图 (deal_damage, apply_status, heal 等)
+ * - 定义 ResolutionStep 和 ResolutionContext 类型，用于动作解析流水线
+ */
 import type { GameState } from '@/core/types';
 
 export type TriggerWindow =

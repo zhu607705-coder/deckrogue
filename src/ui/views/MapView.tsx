@@ -1,3 +1,15 @@
+/**
+ * @file MapView.tsx
+ * @description 地图视图组件 - 显示游戏地图并允许玩家导航
+ *
+ * 主要职责:
+ * - 渲染地图节点 (战斗/精英/Boss/商店/休息/事件)
+ * - 处理节点点击和导航
+ * - 地图缩放和平移
+ * - 显示当前节点和可达节点
+ * - 迷雾系统 (未揭示的节点显示为迷雾)
+ * - 路线信号和路线状态可视化
+ */
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { GameEngine, MapNode } from '@/core';

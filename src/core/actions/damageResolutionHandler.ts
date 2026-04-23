@@ -1,3 +1,14 @@
+/**
+ * @file damageResolutionHandler.ts
+ * @description 伤害解析处理器 - 处理战斗中伤害计算和应用的完整流水线
+ *
+ * 主要职责:
+ * - 计算基础伤害，考虑多重伤害修正器 (additive, multiplicative, independent)
+ * - 应用状态效果对伤害的修正 (weak, vulnerable, strength, dexterity 等)
+ * - 处理真实伤害(True Damage)和穿盾伤害
+ * - 管理护盾值的扣除顺序和逻辑
+ * - 触发伤害应用相关的事件和副作用
+ */
 import type { GameState, CombatState } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { finalizeDamage, normalizeDamageBase } from '@/core/balance/numericMath';

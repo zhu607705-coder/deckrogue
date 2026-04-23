@@ -1,3 +1,14 @@
+/**
+ * @file CharacterSelectView.tsx
+ * @description 角色选择视图 - 游戏开始时的角色选择界面
+ *
+ * 主要职责:
+ * - 展示可选角色列表及其属性
+ * - 管理角色选择和确认
+ * - 显示进阶等级选择
+ * - 提供图鉴和成就入口
+ * - 展示上次运行记录
+ */
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import {
   GameEngine,

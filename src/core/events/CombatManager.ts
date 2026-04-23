@@ -1,3 +1,21 @@
+/**
+ * @file CombatManager.ts
+ * @description 战斗事件管理器 - 处理战斗相关的游戏逻辑
+ *
+ * 主要职责:
+ * - 管理战斗回合流程 (玩家回合 / 敌人回合)
+ * - 处理卡牌打出和效果计算
+ * - 管理玩家和敌人的状态 (HP、格挡、能量等)
+ * - 处理敌人意图的计算和显示
+ * - 管理战斗中的抽牌、弃牌、消耗堆
+ * - 与动作系统集成处理战斗动作
+ *
+ * 战斗流程:
+ * 1. 战斗开始 -> 初始化敌人、玩家状态、手牌
+ * 2. 玩家回合 -> 打出卡牌、计算伤害/效果
+ * 3. 敌人回合 -> 敌人行动、意图计算
+ * 4. 回合结束 -> 清理状态、准备下一回合
+ */
 import { GameState, CardDef, RunCardInstance } from '@/core/types';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
 import {

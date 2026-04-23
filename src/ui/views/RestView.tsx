@@ -1,3 +1,15 @@
+/**
+ * @file RestView.tsx
+ * @description 休息视图 - 休息站的多选项服务界面
+ *
+ * 主要职责:
+ * - 提供休息回血选项
+ * - 提供卡牌升级选项
+ * - 提供卡牌附魔选项
+ * - 提供遗物升级选项
+ * - 提供药水混合功能
+ * - 显示路线建议和最优选择提示
+ */
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
 import type { RenderModel } from '@/runtimeV2';

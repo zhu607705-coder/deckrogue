@@ -1,3 +1,12 @@
+/**
+ * @file codexStore.ts
+ * @description 全书/图鉴存储系统 - 记录玩家已发现的道具、卡牌、敌人等信息
+ *
+ * 主要职责:
+ * - 管理图鉴解锁状态 (遗物、药水、卡牌、敌人、精英Boss、事件)
+ * - 支持收藏夹功能和跨设备同步元数据
+ * - 提供查询接口判断某个内容是否已被发现
+ */
 export type CodexCategory = 'relics' | 'potions' | 'cards' | 'enemies' | 'elites' | 'events';
 
 export interface CodexUnlockRecord {

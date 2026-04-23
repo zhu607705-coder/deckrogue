@@ -1,3 +1,16 @@
+/**
+ * @file TutorialView.tsx
+ * @description 教程视图 - 新手引导界面
+ *
+ * 主要职责:
+ * - 展示游戏基础规则和术语
+ * - 分模块讲解资源、状态、目标系统
+ * - 提供术语高亮和跳转图鉴功能
+ *
+ * 架构说明:
+ * - 与 GlossaryText 组件协作展示术语高亮
+ * - 支持在 CombatView 中作为内嵌模态框显示
+ */
 import React from 'react';
 import { BookOpen, Crosshair, Shield, Sparkles, X } from 'lucide-react';
 import { GlossaryText } from '@/ui/components/GlossaryText';

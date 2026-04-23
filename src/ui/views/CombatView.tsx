@@ -1,3 +1,19 @@
+/**
+ * @file CombatView.tsx
+ * @description 战斗视图 - 游戏核心战斗界面
+ *
+ * 主要职责:
+ * - 渲染战场和敌我双方站位
+ * - 管理手牌区和行动牌操作
+ * - 显示敌人意图和状态
+ * - 处理卡牌使用和目标选择
+ * - 集成战斗 HUD 和各种模态框
+ * - 支持 Warp Eye 机制可视化
+ *
+ * 架构说明:
+ * - 组合 Battlefield、ActionHand、WarpEye、CombatHUD 等子组件
+ * - 通过 hooks 管理战斗遥测、意图伪装、卡牌预览
+ */
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Cog, Clock, Crown } from 'lucide-react';

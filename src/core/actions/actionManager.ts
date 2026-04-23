@@ -1,3 +1,13 @@
+/**
+ * @file actionManager.ts
+ * @description 动作管理器 - 负责动作队列的调度和执行监控
+ *
+ * 主要职责:
+ * - 管理动作队列的生命周期 (开始、暂停、恢复、清空)
+ * - 调度和执行动作，记录动作序列号和时间戳
+ * - 向全局事件总线发送动作开始/结束事件
+ * - 提供动作执行进度的观察者模式接口
+ */
 import { GameState, ActionSpec } from '@/core/types';
 import { ActionQueue, IAction, IActionContext } from '@/core/actions/actionQueue';
 import { globalEventBus } from '@/core/events/eventBus';

@@ -1,3 +1,12 @@
+/**
+ * @file metaInjection.ts
+ * @description Meta档案注入器 - 将Meta解锁和升级效果注入到新Run的初始状态中
+ *
+ * 主要职责:
+ * - 在新Run开始时，根据MetaProfile向玩家牌组注入起始卡牌和遗物
+ * - 处理殉道者遗物(Martyr Relic)的跨Run传承效果
+ * - 根据难度和RNG生成初始牌组和遗物组合
+ */
 import type { CardDef, GameState, MetaProfile, RunCardInstance } from '@/core/types';
 import { getAscensionLevelConfig, getAscensionMaxLevel, metaBalance } from '@/core/balance/metaBalance';
 import { createRunCardInstance, normalizeRunCardInstance } from '@/core/combat/runCardInstance';
