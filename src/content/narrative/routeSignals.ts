@@ -1,4 +1,4 @@
-import rawCardsData from '@/content/data/cards.json';
+import { baseCardMap } from '@/content/narrative/cardsDataEntry';
 import type { CardDef, EarlyGameRole, RunCardInstance } from '@/core/types';
 
 export interface CardRouteSignalDef {
@@ -29,8 +29,6 @@ export interface CardRouteAffinityDef {
 }
 
 export type EventChoiceRouteRole = 'confirm' | 'payoff' | 'pivot' | 'support';
-
-const rawCardMap = new Map((rawCardsData as CardDef[]).map((card) => [card.id, card]));
 
 const CARD_ROUTE_SIGNALS_BY_ID: Record<string, CardRouteSignalDef> = {
   // Informant
@@ -412,7 +410,7 @@ export function getCardRouteAffinity(card: Pick<CardDef, 'id'>): CardRouteAffini
     };
   }
 
-  const rawCard = rawCardMap.get(card.id);
+  const rawCard = baseCardMap.get(card.id);
   if (!rawCard) return null;
   const routeTags = inferCardRouteTagsFromTags(rawCard);
   if (routeTags.length === 0) return null;
@@ -540,7 +538,7 @@ export function getRelicRouteTags(relicId: string): string[] {
 }
 
 export function resolvePreferredRouteTag(
-  deck: Array<Pick<RunCardInstance, 'id'>>,
+  deck: Array<Pick<CardDef, 'id'>>,
   knownRouteTags: string[],
   maxRecentCards = 3,
 ): string | null {

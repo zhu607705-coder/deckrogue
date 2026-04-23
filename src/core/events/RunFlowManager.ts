@@ -35,6 +35,10 @@ import type { CharacterDef } from '@/core/types';
 
 const charactersData = charactersDataRaw as CharacterDef[];
 
+function isRuntimeCard(card: RunCardInstance | null): card is RunCardInstance {
+  return card !== null;
+}
+
 function resolveCurrentRouteTag(
   deck: RunCardInstance[],
   routeTagsForCharacter: string[],
@@ -110,7 +114,7 @@ export class RunFlowManager {
     state.player.deck = charDef.startingDeck.map(cardId => {
       const def = cardsData.find(c => c.id === cardId);
       return def ? this.deps.createRuntimeCard(def, this.deps.generateId()) : null;
-    }).filter(Boolean);
+    }).filter(isRuntimeCard);
     unlockManyCodexEntries('cards', state.player.deck.map((c: any) => c.id));
 
     state.map = runGenerator.generateMap(state.seed, 10);
@@ -459,7 +463,7 @@ export class RunFlowManager {
     if (cardInstanceId) {
       const card = state.rewardCards.find(c => c.instanceId === cardInstanceId);
       if (card) {
-        state.player.deck.push(this.deps.createRuntimeCard(card as CardDef));
+        state.player.deck.push(this.deps.createRuntimeCard(card));
         const committedTag = getPreferredRouteTagFromState([card], getKnownRouteTagsForCharacter(state.character?.id ?? ''), null, 1);
         maybeRecordRouteCommit(state, committedTag, 'reward', this.deps.getCurrentFloorNumber(), 16);
         syncRouteStateFromLegacyState(state);
@@ -484,12 +488,12 @@ export class RunFlowManager {
     const card = normalizeRunCardInstance(state.player.deck[cardIndex], () => this.deps.generateId());
     if (!card.upgrade || card.isUpgraded) return;
 
-    const upgradedBase = {
+    const upgradedBase: CardDef = {
       ...card.runtimeBase,
       ...card.upgrade,
       id: card.id,
       isUpgraded: true
-    } as CardDef;
+    };
 
     state.player.deck[cardIndex] = deriveRunCardInstance({
       ...card,

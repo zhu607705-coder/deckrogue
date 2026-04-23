@@ -30,7 +30,7 @@ export interface CombatManagerDeps {
   rng: () => number;
   generateId: () => string;
   createRuntimeCard: (card: CardDef, instanceId?: string) => RunCardInstance;
-  shuffleDeck: <T extends CardDef>(deck: T[]) => T[];
+  shuffleDeck: <T>(deck: T[]) => T[];
   syncRngState: () => void;
   appendVoxLog: (message: string) => void;
   notify: () => void;

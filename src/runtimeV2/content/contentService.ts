@@ -1,8 +1,9 @@
-import cardsData from '@/content/data/cards.json';
+import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import charactersData from '@/content/data/characters.json';
 import enemiesData from '@/content/data/enemies.json';
 import potionsData from '@/content/data/potions.json';
 import relicsData from '@/content/data/relics.json';
+import type { ActionSpec, CardDef } from '@/core/types';
 
 export interface CardData {
   id: string;
@@ -13,23 +14,9 @@ export interface CardData {
   targeting?: string;
   tags?: string[];
   text?: string;
-  actions?: Array<{
-    type: string;
-    amount?: number;
-    target?: string;
-    [key: string]: unknown;
-  }>;
+  actions?: ActionSpec[];
   art_prompt?: string;
-  upgrade?: {
-    name?: string;
-    text?: string;
-    actions?: Array<{
-      type: string;
-      amount?: number;
-      target?: string;
-      [key: string]: unknown;
-    }>;
-  };
+  upgrade?: Partial<Omit<CardDef, 'id' | 'upgrade'>>;
   character?: string;
 }
 
@@ -97,7 +84,8 @@ class ContentService {
   private potions: Map<string, { id: string; name: string; description?: string; price?: number; rarity?: string }>;
 
   constructor(bundle?: ContentBundle) {
-    this.cards = new Map((bundle?.cards ?? cardsData as CardData[]).map(c => [c.id, c]));
+    const cards: CardData[] = bundle?.cards ?? baseCardsData;
+    this.cards = new Map(cards.map((c): [string, CardData] => [c.id, c]));
     this.characters = new Map((bundle?.characters ?? charactersData as CharacterData[]).map(c => [c.id, c]));
     this.enemies = new Map((bundle?.enemies ?? enemiesData as EnemyData[]).map(e => [e.id, e]));
     this.relics = new Map((bundle?.relics ?? relicsData as RelicData[]).map(r => [r.id, r]));

@@ -125,13 +125,13 @@ function buildMartyrLegacyFromRun(state: GameState, summary: RunSummary): Martyr
 
   const rareOrUncommon = [...state.player.deck].reverse().find((c) => c.rarity === 'Rare' || c.rarity === 'Uncommon');
   const inheritedCardId = rareOrUncommon?.id;
-  const inheritedRelicId = (state.player.relics || []).find((id) => relicsData.some((r: any) => r.id === id));
+  const inheritedRelicId = (state.player.relics || []).find((id) => relicsData.some((r) => r.id === id));
   if (!inheritedCardId && !inheritedRelicId) return null;
 
   const enemyName = state.combat?.enemies?.find((e) => e.hp > 0)?.name;
   const cause = enemyName ? `死于第${summary.reachedFloor}层的${enemyName}` : `死于第${summary.reachedFloor}层`;
-  const relicName = inheritedRelicId ? ((relicsData as any[]).find(r => r.id === inheritedRelicId)?.name || inheritedRelicId) : '';
-  const cardName = inheritedCardId ? ((cardsData as any[]).find(c => c.id === inheritedCardId)?.name || inheritedCardId) : '';
+  const relicName = inheritedRelicId ? (relicsData.find(r => r.id === inheritedRelicId)?.name || inheritedRelicId) : '';
+  const cardName = inheritedCardId ? (cardsData.find(c => c.id === inheritedCardId)?.name || inheritedCardId) : '';
   const epitaph =
     inheritedCardId && inheritedRelicId ? `${cause}，遗下${cardName}与${relicName}` :
     inheritedCardId ? `${cause}，遗下${cardName}` :

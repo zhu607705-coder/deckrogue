@@ -108,7 +108,7 @@ export function deriveRouteStateFromDeck(
         });
       return;
     }
-    const fallbackTag = resolvePreferredRouteTag([card as RunCardInstance], knownRouteTags, 1);
+    const fallbackTag = resolvePreferredRouteTag([card], knownRouteTags, 1);
     if (!fallbackTag) return;
     scoreByTag[fallbackTag] = (scoreByTag[fallbackTag] || 0) + RECENT_CARD_WEIGHTS[index]!;
   });

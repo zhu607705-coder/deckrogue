@@ -17,9 +17,9 @@ function pickRandom<T>(items: T[], rng?: () => number): T | null {
 }
 
 function addCardToDeck(state: GameState, cardId: string, ctx: MetaInjectionContext, mutate?: (card: RunCardInstance) => CardDef | RunCardInstance): boolean {
-  const def = (cardsData as any[]).find((c) => c.id === cardId);
+  const def = cardsData.find((c) => c.id === cardId);
   if (!def) return false;
-  const baseCard = createRunCardInstance(def as CardDef, ctx.generateId());
+  const baseCard = createRunCardInstance(def, ctx.generateId());
   const mutated = mutate ? mutate(baseCard) : baseCard;
   state.player.deck.push(normalizeRunCardInstance(mutated, ctx.generateId));
   return true;
@@ -73,14 +73,14 @@ export function applyMetaProfileToNewRunState(state: GameState, meta: MetaProfil
     }
     if (typeof benefits.addRandomRareCard === 'number' && benefits.addRandomRareCard > 0) {
       const charId = state.character?.id;
-      const rarePool = (cardsData as any[]).filter((c) =>
+      const rarePool = cardsData.filter((c) =>
         c.rarity === 'Rare' &&
-        ((((c as any).character ?? 'All') === 'All') || (c as any).character === charId)
+        (((c.character ?? 'All') === 'All') || c.character === charId)
       );
       for (let i = 0; i < benefits.addRandomRareCard; i++) {
         const picked = pickRandom(rarePool, ctx.rng);
         if (picked) {
-          state.player.deck.push(createRunCardInstance(picked as CardDef, ctx.generateId()) as RunCardInstance);
+          state.player.deck.push(createRunCardInstance(picked, ctx.generateId()));
         }
       }
     }

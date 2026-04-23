@@ -32,10 +32,6 @@ import { syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
 import { getEventChoiceRouteCommitWeight } from '@/content/narrative/routeSignals';
 import { getEventChoiceCommitTags, getEventChoiceRouteRole } from '@/content/narrative/routeSignals';
 
-interface CardWithCharacter extends CardDef {
-  character?: string;
-}
-
 export interface EventManagerDeps {
   getState: () => GameState;
   setState: (updater: (state: GameState) => void) => void;
@@ -477,7 +473,7 @@ export class EventManager {
 
   private addCardByIdToDeck(cardId: string): void {
     const state = this.deps.getState();
-    const card = (cardsData as CardDef[]).find(c => c.id === cardId);
+    const card = cardsData.find(c => c.id === cardId);
     if (!card) return;
     unlockCodexEntry('cards', card.id);
     state.player.deck.push(this.deps.createRuntimeCard(card));
@@ -574,7 +570,7 @@ export class EventManager {
   private transformBaseCardsIntoWarped(): void {
     const state = this.deps.getState();
     const characterId = state.character?.id;
-    const pool = (cardsData as CardWithCharacter[]).filter(c =>
+    const pool = cardsData.filter(c =>
       (c.rarity === 'Uncommon' || c.rarity === 'Rare') &&
       c.id !== 'strike' && c.id !== 'defend' &&
       ((c.character ?? 'All') === 'All' || c.character === characterId)
@@ -601,13 +597,13 @@ export class EventManager {
     const routeTagsForCharacter = characterId ? getKnownRouteTagsForCharacter(characterId) : [];
     const dominantTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
 
-    const cardPool = (cardsData as CardWithCharacter[]).filter((card) =>
+    const cardPool = cardsData.filter((card) =>
       ((card.character ?? 'All') === 'All' || card.character === characterId)
     );
     const chosenIds = new Set<string>();
     const seedKey = `${state.seed}:${characterId ?? 'all'}:${source}:${floor}:${dominantTag ?? 'none'}`;
 
-    const chooseUniqueSeeded = (pool: CardWithCharacter[], label: string): CardWithCharacter | null => {
+    const chooseUniqueSeeded = (pool: CardDef[], label: string): CardDef | null => {
       const filtered = pool.filter((card) => !chosenIds.has(card.id));
       if (filtered.length === 0) return null;
       const index = stableHash(`${seedKey}:${label}:${filtered.map((card) => card.id).join('|')}`) % filtered.length;
@@ -618,8 +614,8 @@ export class EventManager {
 
     const genericPowerIds = new Set(characterId ? getGenericPowerIdsForCharacter(characterId) : []);
 
-    const pickEarlyRewardCards = (): CardWithCharacter[] => {
-      const result: CardWithCharacter[] = [];
+    const pickEarlyRewardCards = (): CardDef[] => {
+      const result: CardDef[] = [];
       const availableRouteTags = routeTagsForCharacter.length > 0 ? routeTagsForCharacter : routeProfile.activeTags;
       const primaryTag = dominantTag ?? safeArrayAccess(
         availableRouteTags,
@@ -672,8 +668,8 @@ export class EventManager {
       return result.slice(0, count);
     };
 
-    const pickEarlyShopCards = (): CardWithCharacter[] => {
-      const result: CardWithCharacter[] = [];
+    const pickEarlyShopCards = (): CardDef[] => {
+      const result: CardDef[] = [];
       const earlyShopTag = dominantTag ?? routeTagsForCharacter[0] ?? null;
       const alignedPool = cardPool.filter((card) => !!(earlyShopTag && getCardRouteAffinityTags(card).includes(earlyShopTag)));
       const alignedPayoffPool = alignedPool.filter((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_payoff');
@@ -710,8 +706,8 @@ export class EventManager {
       return result;
     };
 
-    const pickMidgameRewardCards = (): CardWithCharacter[] => {
-      const result: CardWithCharacter[] = [];
+    const pickMidgameRewardCards = (): CardDef[] => {
+      const result: CardDef[] = [];
       if (!dominantTag) return result;
 
       const alignedAffinityPool = cardPool.filter((card) => getCardRouteAffinityTags(card).includes(dominantTag));
@@ -744,8 +740,8 @@ export class EventManager {
       return result.slice(0, count);
     };
 
-    const pickMidgameShopCards = (): CardWithCharacter[] => {
-      const result: CardWithCharacter[] = [];
+    const pickMidgameShopCards = (): CardDef[] => {
+      const result: CardDef[] = [];
       if (!dominantTag) return result;
 
       const alignedAffinityPool = cardPool.filter((card) => getCardRouteAffinityTags(card).includes(dominantTag));
@@ -805,7 +801,7 @@ export class EventManager {
             : [];
 
     for (const card of plannedCards) {
-      rewards.push(this.deps.createRuntimeCard(card as CardDef));
+      rewards.push(this.deps.createRuntimeCard(card));
     }
 
     for (let i = rewards.length; i < count; i++) {
@@ -814,14 +810,14 @@ export class EventManager {
       if (rarityRoll > 0.85) rarity = 'Rare';
       else if (rarityRoll > 0.55) rarity = 'Uncommon';
 
-      let validCards = (cardsData as CardWithCharacter[]).filter(c =>
+      let validCards = cardsData.filter(c =>
         c.rarity === rarity &&
         ((c.character ?? 'All') === 'All' || c.character === characterId)
       );
 
-      const pool = validCards.length > 0 ? validCards : (cardsData as CardWithCharacter[]).filter(c => c.rarity === rarity && ((c.character ?? 'All') === 'All'));
+      const pool = validCards.length > 0 ? validCards : cardsData.filter(c => c.rarity === rarity && ((c.character ?? 'All') === 'All'));
 
-      let card: any = null;
+      let card: CardDef | null = null;
       if (pool.length > 0) {
         const weightedPool: any[] = [];
         for (const candidate of pool) {
@@ -847,7 +843,7 @@ export class EventManager {
       }
       if (card) {
         chosenIds.add(card.id);
-        rewards.push(this.deps.createRuntimeCard(card as CardDef));
+        rewards.push(this.deps.createRuntimeCard(card));
       }
     }
     unlockManyCodexEntries('cards', rewards.map(c => c.id));

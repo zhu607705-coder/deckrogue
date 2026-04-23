@@ -207,7 +207,7 @@ function toBaseCardId(cardId: string): string {
 
 function makeRuntimeCard(cardId: string, instanceId: string): RunCardInstance | null {
   const baseCardId = toBaseCardId(cardId);
-  const cardDef = getCardDefById(baseCardId) as CardDef | undefined;
+  const cardDef = getCardDefById(baseCardId);
   if (!cardDef) return null;
   return {
     ...cardDef,

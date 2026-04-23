@@ -116,12 +116,12 @@ export function normalizeRunCardInstance(card: CardDef | RunCardInstance, instan
       ...card,
       instanceId: card.instanceId || instanceIdFactory(),
       baseCardId: card.baseCardId || card.id,
-    runtimeBase: cloneBaseCard(card.runtimeBase || card),
-    persistentEnchantments: (card.persistentEnchantments || []).map((entry) => cloneModifier(entry)),
-    combatAfflictions: (card.combatAfflictions || []).map((entry) => cloneModifier(entry)),
-    tempCost: card.tempCost
-  });
-}
+      runtimeBase: cloneBaseCard(card.runtimeBase || card),
+      persistentEnchantments: (card.persistentEnchantments || []).map((entry) => cloneModifier(entry)),
+      combatAfflictions: (card.combatAfflictions || []).map((entry) => cloneModifier(entry)),
+      tempCost: card.tempCost
+    });
+  }
 
   return createRunCardInstance(card, card.instanceId || instanceIdFactory());
 }

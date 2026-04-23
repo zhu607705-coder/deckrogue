@@ -139,7 +139,7 @@ export class GameEngine {
       rng: () => this.rng(),
       generateId: () => this.generateId(),
       createRuntimeCard: (card, instanceId) => this.createRuntimeCard(card, instanceId),
-      shuffleDeck: <T extends CardDef>(deck: T[]) => this.shuffleDeck(deck),
+      shuffleDeck: <T>(deck: T[]) => this.shuffleDeck(deck),
       syncRngState: () => this.syncRngState(),
       appendVoxLog: (message) => this.appendVoxLog(message),
       notify: () => this.notify(),
@@ -219,7 +219,7 @@ export class GameEngine {
 
     this.subscribeToGlobalEvent<{ cardId?: string }>('CardPlayed', (event) => {
       const cardId = String(event?.cardId || '');
-      const card = (cardsData as CardDef[]).find((c) => c.id === cardId);
+      const card = cardsData.find((c) => c.id === cardId);
       const cardName = card?.name || cardId || '未知指令';
       this.appendVoxLog(`执行指令：${cardName}。`);
     });
@@ -451,7 +451,7 @@ export class GameEngine {
     this.listeners.forEach(l => l());
   }
 
-  private createRuntimeCard(card: CardDef, instanceId?: string) {
+  private createRuntimeCard(card: CardDef, instanceId?: string): RunCardInstance {
     return normalizeRunCardInstance(card, () => instanceId ?? this.generateId());
   }
 
@@ -981,12 +981,12 @@ export class GameEngine {
     const card = normalizeRunCardInstance(this.state.player.deck[cardIndex], () => this.generateId());
     if (!card.upgrade || card.isUpgraded) return;
 
-    const upgradedBase = {
+    const upgradedBase: CardDef = {
       ...card.runtimeBase,
       ...card.upgrade,
       id: card.id,
       isUpgraded: true
-    } as CardDef;
+    };
 
     this.state.player.deck[cardIndex] = deriveRunCardInstance({
       ...card,
@@ -1025,7 +1025,7 @@ export class GameEngine {
     if (cardInstanceId) {
       const card = this.state.rewardCards.find(c => c.instanceId === cardInstanceId);
       if (card) {
-        this.state.player.deck.push(this.createRuntimeCard(card as CardDef));
+        this.state.player.deck.push(this.createRuntimeCard(card));
         syncRouteStateFromLegacyState(this.state);
       }
     }

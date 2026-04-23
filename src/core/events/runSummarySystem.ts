@@ -3,8 +3,8 @@ import { cardsData } from '@/content/narrative/numericSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
 import { metaBalance } from '@/core/balance/metaBalance';
 
-const cardById = new Map((cardsData as any[]).map((c) => [c.id, c]));
-const relicById = new Map((relicsData as any[]).map((r) => [r.id, r]));
+const cardById = new Map(cardsData.map((c) => [c.id, c]));
+const relicById = new Map(relicsData.map((r) => [r.id, r]));
 
 function getReachedFloor(state: GameState): number {
   const current = state.currentNodeId ? state.map.find((n) => n.id === state.currentNodeId) : null;

@@ -1,8 +1,8 @@
 import charactersDataRaw from '@/content/data/characters.json';
-import cardsDataRaw from '@/content/data/cards.json';
 import enemiesDataRaw from '@/content/data/enemies.json';
 import relicsDataRaw from '@/content/data/relics.json';
 import potionsDataRaw from '@/content/data/potions.json';
+import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 import type { ContentBundle } from '@/runtimeV2/contracts';
 
@@ -20,12 +20,6 @@ type EnemyEntry = {
   hp_range?: number[];
   keywords?: string[];
   intent_policy?: Array<{ intent?: string; weight?: number }>;
-};
-
-type CardEntry = {
-  id: string;
-  rarity?: string;
-  character?: string;
 };
 
 type RelicEntry = {
@@ -54,7 +48,7 @@ export function buildRuntimeV2ContentBundle(): ContentBundle {
     special_resource: entry.specialResource,
   }));
 
-  const cards = (cardsDataRaw as CardEntry[]).map((entry) => ({
+  const cards = baseCardsData.map((entry) => ({
     id: entry.id,
     rarity: String(entry.rarity || 'Common'),
     character: String(entry.character || 'All'),

@@ -1,9 +1,9 @@
-import rawCardsData from '@/content/data/cards.json';
 import rawEnemiesData from '@/content/data/enemies.json';
 import rawPotionsData from '@/content/data/potions.json';
 import rawRelicsData from '@/content/data/relics.json';
 import rawNumericConfig from '@/content/data/numericConfig.json';
 import rawCardEnchantmentsData from '@/content/data/cardEnchantments.json';
+import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import { STORY_EVENTS as RAW_STORY_EVENTS } from '@/content/narrative/storyEvents';
 import {
   analyzeRouteSignals as analyzeRouteSignalsFromCards,
@@ -223,7 +223,7 @@ function applyStoryEventOverrides(source: StoryEventDef[]): StoryEventDef[] {
   return source.map((event) => deepMergePatch(deepClone(event), defs[event.id]));
 }
 
-export const cardsData: CardDef[] = enrichCardRouteSignals(applyEntityOverrides(rawCardsData as unknown as CardDef[], numericConfig.cards?.byId));
+export const cardsData: CardDef[] = enrichCardRouteSignals(applyEntityOverrides(baseCardsData, numericConfig.cards?.byId));
 export const enemiesData: EnemyDef[] = applyEntityOverrides(rawEnemiesData as unknown as EnemyDef[], numericConfig.enemies?.byId);
 export const potionsData: PotionDef[] = applyEntityOverrides(rawPotionsData as unknown as PotionDef[], numericConfig.potions?.byId);
 export const relicsData: RelicDef[] = applyEntityOverrides(rawRelicsData as unknown as RelicDef[], numericConfig.relics?.byId);

@@ -1,5 +1,5 @@
 /** @deprecated experimental legacy combat manager; active gameplay orchestration lives in src/core/events/CombatManager.ts */
-import type { GameState, RunCardInstance, CardDef } from '@/core/types';
+import type { GameState, RunCardInstance } from '@/core/types';
 import type { ActionManager } from '@/core/actions/actionManager';
 import type { IActionContext } from '@/core/actions/actionQueue';
 import { globalEventBus } from '@/core/events/eventBus';
@@ -24,7 +24,7 @@ export interface CombatManagerDeps {
   appendVoxLog: (message: string) => void;
   notify: () => void;
   generateId: () => string;
-  shuffleDeck: <T extends CardDef>(deck: T[]) => T[];
+  shuffleDeck: <T>(deck: T[]) => T[];
   getCurrentFloorNumber: () => number;
   getCurrentNode: () => { y: number } | undefined;
   calculateDamage: (base: number, attackerStatuses: Record<string, number>, defenderStatuses: Record<string, number>, source: 'player' | 'enemy') => number;
@@ -71,7 +71,7 @@ export class CombatManager {
         concoction: state.character?.specialResource === 'concoction' ? 1 : undefined
       },
       enemies,
-      drawPile: this.deps.shuffleDeck([...state.player.deck]) as RunCardInstance[],
+      drawPile: this.deps.shuffleDeck([...state.player.deck]),
       hand: [],
       discardPile: [],
       exhaustPile: [],
@@ -320,7 +320,7 @@ export class CombatManager {
     for (let i = 0; i < amount; i++) {
       if (combat.drawPile.length === 0) {
         if (combat.discardPile.length === 0) break;
-        combat.drawPile = this.deps.shuffleDeck(combat.discardPile as CardDef[]) as RunCardInstance[];
+        combat.drawPile = this.deps.shuffleDeck(combat.discardPile);
         combat.discardPile = [];
 
         globalEventBus.publish({ type: 'DeckShuffled' } as any);
