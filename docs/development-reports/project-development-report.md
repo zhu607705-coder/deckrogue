@@ -309,3 +309,10 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **变更内容**：提交 Python runtime snapshot normalization 抽取、Windows `py -3` 启动器适配、未引用 UI shell helper 删除，并保留剩余大批量模块文件头说明为独立文档性提交。
 - **验证证据**：`npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Parity.test.ts` 通过 `31/31`；UI 删除用 `rg -n "ThemeAndBackgroundProvider|useUnifiedAppShellKeybinds" src tests scripts` 确认无引用；每个暂存提交执行 `git diff --cached --check`；剩余批量提交执行 `npm run lint --silent`、`npx tsc --noEmit --pretty false --project tsconfig.json`、`py -m unittest discover -s python_runtime/tests -p "test_*.py"`、`npm run build`。
 - **剩余风险**：build 仍保留既有 `pixi-vendor` chunk-size warning；大批量文件头说明没有逐文件人工复核语义，只验证了语法、类型和构建。
+
+### Step 119: review bulk file headers and settle Pixi vendor chunk warning
+
+- **操作方向**：补上 Step 118 的剩余风险，逐文件复核大批量文件头语义，并处理 `pixi-vendor` 构建体积提示。
+- **变更内容**：复核 `714b4a4` 涉及的 `369` 个 TS/TSX/PY 文件头；修正 `BranchingOutcomeModal.tsx` 将“事件结果”改为“战斗分支结果”；补充 `pluginSystem.ts` 的 `VersionManager`/UI 模型版本迁移职责；`vite.config.ts` 对 chunk id 做 Windows 路径归一化，并把 Pixi umbrella vendor 的稳定 508KB 基线纳入 `chunkSizeWarningLimit=550`，避免用内部目录强拆造成 circular chunk warning。
+- **验证证据**：文件头结构检查输出 `reviewedHeaderFiles=369`、`structuralIssues=0`；尝试拆分 Pixi 内部 chunk 时 build 暴露 circular chunk warning，已回退为稳定 vendor chunk；`npm run build` 通过且无 chunk-size/circular warning；生产 `vite preview` 上运行 `npm run test:runtime-v2-entry-smoke -- --url=http://127.0.0.1:4173` 通过，报告中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，覆盖 `python_pixi_map`。
+- **剩余风险**：Pixi vendor 仍是单一 vendor chunk；后续若要进一步降低体积，需要改为更细粒度 Pixi API import 或场景级懒加载，而不是按 `pixi.js/lib/*` 强拆。

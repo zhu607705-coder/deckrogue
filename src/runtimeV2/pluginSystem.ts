@@ -1,10 +1,11 @@
 /**
  * @file pluginSystem.ts
- * @description UI 插件系统，支持可扩展的插件注册和生命周期管理
+ * @description UI 插件系统，支持插件注册、生命周期管理和 UI 模型版本迁移
  *
  * 主要职责:
  * - 定义 UIPlugin 插件接口（initialize / cleanup / onModelUpdate / onEvent）
  * - 实现 PluginManager 插件管理器
+ * - 实现 VersionManager UI 模型版本迁移管理器
  * - 提供 UISystem 系统接口暴露核心能力
  */
 import type { UIModel } from './uiModel';

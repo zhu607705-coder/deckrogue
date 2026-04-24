@@ -1,6 +1,6 @@
 /**
  * @file BranchingOutcomeModal.tsx
- * @description 分支结果模态框 - 展示事件的多种可能结果和选择
+ * @description 分支结果模态框 - 展示战斗分支的可选结果、条件和奖励
  *
  * 主要职责:
  * - 渲染分支叙事条目

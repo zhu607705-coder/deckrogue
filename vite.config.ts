@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
+function normalizeChunkId(id: string): string {
+  return id.replace(/\\/g, '/');
+}
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   const disableHmr = process.env.DISABLE_HMR === 'true';
@@ -18,44 +22,47 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
+      // Pixi's umbrella package is a stable 508 kB vendor chunk; splitting it by internals creates circular chunks.
+      chunkSizeWarningLimit: 550,
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules/pixi.js') || id.includes('node_modules/@pixi/')) {
+            const normalizedId = normalizeChunkId(id);
+            if (normalizedId.includes('/node_modules/pixi.js/') || normalizedId.includes('/node_modules/@pixi/')) {
               return 'pixi-vendor';
             }
-            if (id.includes('node_modules/motion')) {
+            if (normalizedId.includes('node_modules/motion')) {
               return 'motion-vendor';
             }
-            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            if (normalizedId.includes('node_modules/react') || normalizedId.includes('node_modules/react-dom')) {
               return 'react-vendor';
             }
-            if (id.includes('node_modules/lucide-react')) {
+            if (normalizedId.includes('node_modules/lucide-react')) {
               return 'icon-vendor';
             }
-            if (id.includes('/src/runtimeV2/scenes/')) {
-              if (id.includes('MapScene')) return 'scene-map';
-              if (id.includes('CombatScene')) return 'scene-combat';
-              if (id.includes('ShopScene')) return 'scene-shop';
-              if (id.includes('EventScene')) return 'scene-event';
-              if (id.includes('RestScene')) return 'scene-rest';
-              if (id.includes('RewardScene')) return 'scene-reward';
+            if (normalizedId.includes('/src/runtimeV2/scenes/')) {
+              if (normalizedId.includes('MapScene')) return 'scene-map';
+              if (normalizedId.includes('CombatScene')) return 'scene-combat';
+              if (normalizedId.includes('ShopScene')) return 'scene-shop';
+              if (normalizedId.includes('EventScene')) return 'scene-event';
+              if (normalizedId.includes('RestScene')) return 'scene-rest';
+              if (normalizedId.includes('RewardScene')) return 'scene-reward';
               return 'scene-shared';
             }
-            if (id.includes('/src/runtimeV2/pixi/')) {
-              if (id.includes('Pixi')) return 'pixi-scenes';
+            if (normalizedId.includes('/src/runtimeV2/pixi/')) {
+              if (normalizedId.includes('Pixi')) return 'pixi-scenes';
               return 'pixi-shared';
             }
-            if (id.includes('/src/content/data/')) {
+            if (normalizedId.includes('/src/content/data/')) {
               return 'content-data';
             }
-            if (id.includes('/src/core/')) {
+            if (normalizedId.includes('/src/core/')) {
               return 'core-runtime';
             }
-            if (id.includes('/src/ui/components/')) {
+            if (normalizedId.includes('/src/ui/components/')) {
               return 'ui-components';
             }
-            if (id.includes('/src/ui/overlays/')) {
+            if (normalizedId.includes('/src/ui/overlays/')) {
               return 'ui-overlays';
             }
           },
