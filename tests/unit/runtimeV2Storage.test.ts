@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Storage.test.ts
+ * @description Unit tests for runtime v2 storage abstraction for save game and replay.
+ *
+ * 主要职责:
+ * - 测试 localStorage 的存档读写
+ * - 测试回放日志的持久化
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,13 @@
+/**
+ * @file LoadingScreen.tsx
+ * @description 加载屏幕组件 - 资源加载时的进度展示界面
+ *
+ * 主要职责:
+ * - 显示加载进度和消息
+ * - 支持全屏和覆盖层两种模式
+ * - 提供动画加载效果
+ */
+
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 

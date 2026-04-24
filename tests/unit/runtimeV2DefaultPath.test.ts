@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2DefaultPath.test.ts
+ * @description Unit tests for runtime v2 default entry path and adapter/renderer resolution.
+ *
+ * 主要职责:
+ * - 测试默认入口路径的回退逻辑
+ * - 测试适配器和渲染器的默认值
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

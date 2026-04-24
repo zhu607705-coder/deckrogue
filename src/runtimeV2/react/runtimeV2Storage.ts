@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Storage.ts
+ * @description RuntimeV2 存档与回放日志的浏览器持久化工具
+ *
+ * 主要职责:
+ * - 提供 SaveGameV2 存档的加载与保存
+ * - 提供 ReplayLogV1 回放日志的加载与保存
+ * - 封装 localStorage 读写与 JSON 序列化
+ */
 import type { ReplayLogV1, SaveGameV2 } from '@/runtimeV2/contracts';
 
 export const RUNTIME_V2_SAVE_STORAGE_KEY = 'deckrogue:runtime-v2:save';

@@ -1,3 +1,11 @@
+"""
+test_persistence.py - 存档序列化与回放日志功能的单元测试
+
+主要职责:
+- 验证 create_save_game_v2 / restore_snapshot_from_save_game 的往返一致性
+- 验证 replay_log 能从日志重建最终快照
+"""
+
 import unittest
 
 from deckrogue_rules_core import (

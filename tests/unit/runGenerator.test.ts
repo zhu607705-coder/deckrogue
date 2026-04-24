@@ -1,3 +1,12 @@
+/**
+ * @file runGenerator.test.ts
+ * @description Unit tests for run map generation and route expectation.
+ *
+ * 主要职责:
+ * - 测试地图生成器的路由期望值
+ * - 测试地图节点的连通性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

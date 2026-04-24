@@ -1,3 +1,12 @@
+/**
+ * @file simulate_early_balance.ts
+ * @description Simulates early game economy and asset EVU balance for all characters.
+ *
+ * 主要职责:
+ * - 模拟前期经济系统与资产 EVU 增长
+ * - 测试商店可负担性与移除费用
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GameEngine } from '../../src/core/events/gameEngine';

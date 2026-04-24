@@ -1,3 +1,12 @@
+/**
+ * @file starterBalanceDetection.test.ts
+ * @description Unit tests for starter card balance detection and construct output verification.
+ *
+ * 主要职责:
+ * - 测试构造体基础输出数值
+ * - 测试卡牌定义中的属性值
+ */
+
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import charactersDataRaw from '@/content/data/characters.json';

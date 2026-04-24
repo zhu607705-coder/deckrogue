@@ -1,3 +1,12 @@
+/**
+ * @file flowSmokeHelpers.test.ts
+ * @description Unit tests for flow smoke test fixture creation helpers.
+ *
+ * 主要职责:
+ * - 测试 Boss 终端、事件、商店等场景的 fixture 创建
+ * - 测试 fixture 状态的完整性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

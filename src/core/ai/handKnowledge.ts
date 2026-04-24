@@ -1,3 +1,13 @@
+/**
+ * @file handKnowledge.ts
+ * @description 手牌认知系统 - 模拟敌人对玩家手牌的认知和预测
+ *
+ * 主要职责:
+ * - 定义 HandKnowledge 接口，记录已知卡牌和未知索引
+ * - 实现 peekPlayerHand，根据情报等级查看玩家手牌
+ * - 定义 HandKnowledgeSystem 接口，提供手牌预测功能
+ * - 为 AI 系统提供手牌信息支持
+ */
 export interface HandKnowledge {
   knownCards: string[];
   unknownIndices: number[];

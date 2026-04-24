@@ -1,3 +1,12 @@
+/**
+ * @file combatVictoryFromEnemyDeath.test.ts
+ * @description Unit tests for combat victory triggered by enemy death in the damage pipeline.
+ *
+ * 主要职责:
+ * - 测试敌人死亡后战斗推进到奖励阶段
+ * - 测试共享伤害管道的胜利判定
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Host.test.ts
+ * @description Unit tests for runtime v2 engine host and legacy oracle adapter boot.
+ *
+ * 主要职责:
+ * - 测试引擎主机启动旧版 oracle 适配器
+ * - 测试 dispatch 后快照的合约投影
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

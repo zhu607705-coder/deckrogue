@@ -1,3 +1,12 @@
+/**
+ * @file roomSessionLifecycle.test.ts
+ * @description Unit tests for room session lifecycle and surface stack management.
+ *
+ * 主要职责:
+ * - 测试商店嵌套表面的单一 RoomSession 所有者
+ * - 测试表面栈的正确推入与弹出
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

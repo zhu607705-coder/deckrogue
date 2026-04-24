@@ -1,3 +1,12 @@
+/**
+ * @file routeStateSurfaceContext.test.ts
+ * @description Unit tests for route state and surface context preservation through runtime snapshots.
+ *
+ * 主要职责:
+ * - 测试快照中路由状态的保留
+ * - 测试休息升级表面上下文的正确投影
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

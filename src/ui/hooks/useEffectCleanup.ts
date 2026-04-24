@@ -1,3 +1,14 @@
+/**
+ * @file useEffectCleanup.ts
+ * @description 效果清理 Hooks 工具集 - 提供各类资源清理的标准化 Hooks
+ *
+ * 主要职责:
+ * - 提供事件监听器清理 Hook
+ * - 提供定时器清理 Hooks (interval/timeout)
+ * - 提供动画帧清理 Hook
+ * - 提供弱引用清理 Hook
+ */
+
 import { useEffect, useRef, useCallback } from 'react';
 import { memoryManager } from '@/core/performance/MemoryManager';
 

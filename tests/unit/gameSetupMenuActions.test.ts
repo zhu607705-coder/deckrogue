@@ -1,3 +1,12 @@
+/**
+ * @file gameSetupMenuActions.test.ts
+ * @description Unit tests for game setup menu actions and save/load interactions.
+ *
+ * 主要职责:
+ * - 测试游戏设置的创建与重置
+ * - 测试存档存储的交互
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

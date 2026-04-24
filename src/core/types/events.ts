@@ -1,3 +1,13 @@
+/**
+ * @file events.ts
+ * @description 事件类型定义 - 定义地图节点、故事事件和房间会话的类型系统
+ *
+ * 主要职责:
+ * - 定义 MapNode 接口，描述地图节点的类型、位置和连接
+ * - 定义 StoryEventDef 和 EventOption 接口，描述故事事件和选项
+ * - 定义 RoomSession、RoomSurface 等房间会话类型
+ * - 定义 ActiveEventState，描述当前激活的事件状态
+ */
 import type { ActionSpec } from '@/core/types/actions';
 import type { GameState } from '@/core/types/combat';
 

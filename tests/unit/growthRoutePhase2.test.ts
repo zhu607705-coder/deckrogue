@@ -1,3 +1,12 @@
+/**
+ * @file growthRoutePhase2.test.ts
+ * @description Unit tests for growth route phase 2 evolution and route signal interactions.
+ *
+ * 主要职责:
+ * - 测试路由亲和性标签和信号
+ * - 测试路由提交记录与状态同步
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

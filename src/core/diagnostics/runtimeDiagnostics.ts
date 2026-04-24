@@ -1,3 +1,13 @@
+/**
+ * @file runtimeDiagnostics.ts
+ * @description 运行时诊断 - 提供游戏运行时的回放导出和诊断功能
+ *
+ * 主要职责:
+ * - 定义 ReplayExport 接口，描述回放导出的完整结构
+ * - 记录命令日志、快照、追踪日志等诊断数据
+ * - 提供运行时性能统计 (总游玩时间、平均回合时间等)
+ * - 支持调试和问题排查
+ */
 import type { RuleSnapshot } from '@/runtimeV2/contracts';
 import type { ResolutionTrace } from '@/core/audit/resolutionTrace';
 

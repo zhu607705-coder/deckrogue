@@ -1,3 +1,12 @@
+/**
+ * @file runtimeDelegationRoomExit.test.ts
+ * @description Unit tests for runtime delegation room exit and snapshot preservation.
+ *
+ * 主要职责:
+ * - 测试运行时委托的房间退出逻辑
+ * - 测试快照中路由状态和表面上下文的保留
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

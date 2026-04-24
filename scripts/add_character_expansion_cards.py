@@ -1,3 +1,12 @@
+"""
+add_character_expansion_cards.py - 添加角色扩展卡牌数据
+
+主要职责:
+- 生成镜宫共享卡牌数据
+- 添加职业分支路线卡牌
+- 更新 cards.json 文件
+"""
+
 import json
 
 # 读取现有的 cards.json

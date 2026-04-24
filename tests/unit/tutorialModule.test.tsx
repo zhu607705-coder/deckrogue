@@ -1,3 +1,12 @@
+/**
+ * @file tutorialModule.test.tsx
+ * @description Unit tests for tutorial module views including launcher, reward, and combat.
+ *
+ * 主要职责:
+ * - 测试 SetupLauncher 的教程入口渲染
+ * - 测试 RewardView、CombatView、TutorialView 的渲染
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';

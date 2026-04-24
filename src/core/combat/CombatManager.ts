@@ -1,4 +1,8 @@
-/** @deprecated experimental legacy combat manager; active gameplay orchestration lives in src/core/events/CombatManager.ts */
+/**
+ * @file CombatManager.ts (legacy)
+ * @description 遗留战斗管理器 - 已弃用，活跃的战斗编排逻辑在 src/core/events/CombatManager.ts
+ * @deprecated 活跃的战斗编排逻辑在 src/core/events/CombatManager.ts
+ */
 import type { GameState, RunCardInstance } from '@/core/types';
 import type { ActionManager } from '@/core/actions/actionManager';
 import type { IActionContext } from '@/core/actions/actionQueue';

@@ -1,3 +1,13 @@
+/**
+ * @file useCombatTelemetry.ts
+ * @description 战斗遥测 Hook - 从战斗引擎提取结构化的敌人/构造体状态数据
+ *
+ * 主要职责:
+ * - 提取敌人状态和意图数据
+ * - 计算意图威胁等级和色调
+ * - 处理构造体状态和数值修正
+ */
+
 import { useMemo, useCallback } from 'react';
 import type { GameEngine } from '@/core';
 import { enemiesData } from '@/content/narrative/numericSystem';

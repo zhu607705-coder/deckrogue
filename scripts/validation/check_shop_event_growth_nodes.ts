@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_shop_event_growth_nodes.ts
+ * @description 检查商店和事件的成长节点对齐情况。
+ *
+ * 主要职责:
+ * - 验证商店卡牌与路线标签的对齐
+ * - 检查事件节点与路线的对齐
+ * - 生成对齐质量报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

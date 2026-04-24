@@ -1,3 +1,13 @@
+/**
+ * @file releaseChannel.ts
+ * @description 发布渠道 - 定义游戏的发布渠道和构建清单类型
+ *
+ * 主要职责:
+ * - 定义 ReleaseChannel 类型 (stable-ea, experimental-ea, internal-debug)
+ * - 定义 ReleaseChannelManifest 接口，描述版本号、构建号、内容版本、平台配置等
+ * - 支持多平台构建配置 (PC/Web) 和兼容性声明
+ * - 为持续集成和发布流程提供类型支持
+ */
 export type ReleaseChannel = 'stable-ea' | 'experimental-ea' | 'internal-debug';
 
 export interface ReleaseChannelManifest {

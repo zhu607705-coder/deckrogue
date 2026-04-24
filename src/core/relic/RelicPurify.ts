@@ -1,3 +1,12 @@
+/**
+ * @file RelicPurify.ts
+ * @description 遗物净化系统 - 管理被腐化遗物的诅咒效果和净化机制
+ *
+ * 主要职责:
+ * - 定义 CurseEffect 接口，描述诅咒效果类型 (持续伤害/属性惩罚/随机费用)
+ * - 定义 CURSE_RELIC_IDS 和 CURSE_RELIC_CONFIGS，列举可腐化遗物
+ * - 提供遗物腐化和净化的逻辑
+ */
 import { relicsData } from '@/content/narrative/numericSystem';
 
 export interface CurseEffect {

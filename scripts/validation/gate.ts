@@ -1,5 +1,15 @@
 #!/usr/bin/env tsx
 
+/**
+ * @file gate.ts
+ * @description 运行 CI 门禁检查脚本，依次执行多个验证阶段并生成报告。
+ *
+ * 主要职责:
+ * - 定义多个验证阶段（lint、type-check、测试等）
+ * - 依次执行各阶段并记录结果
+ * - 生成门禁报告供 CI 使用
+ */
+
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 

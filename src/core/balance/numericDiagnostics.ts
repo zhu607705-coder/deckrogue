@@ -1,3 +1,12 @@
+/**
+ * @file numericDiagnostics.ts
+ * @description 数值诊断 - 分析数值权重变更对游戏内容的影响
+ *
+ * 主要职责:
+ * - 实现 analyzeWeightChange，分析权重变更对卡牌、遗物、事件和敌人的影响
+ * - 生成 NumericDiagnosticReport，列出所有受影响的内容项
+ * - 提供数值平衡调整的诊断和验证功能
+ */
 import type { ValuationWeights } from './valuationKernel';
 import { DEFAULT_VALUATION_WEIGHTS, calculateCardStaticEVU, calculateRelicStaticEVU } from './valuationKernel';
 import type { CompiledCardProfile, CompiledRelicProfile, CompiledEventOptionProfile, CompiledEnemyIntentProfile } from './numericProfileCompiler';

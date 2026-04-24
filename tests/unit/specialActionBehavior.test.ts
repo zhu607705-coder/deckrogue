@@ -1,3 +1,12 @@
+/**
+ * @file specialActionBehavior.test.ts
+ * @description Unit tests for special action behavior and card instance interactions.
+ *
+ * 主要职责:
+ * - 测试特殊动作的行为逻辑
+ * - 测试卡牌实例与动作管理器的交互
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

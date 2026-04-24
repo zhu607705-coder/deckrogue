@@ -1,3 +1,13 @@
+/**
+ * @file shopRouteAdvisor.ts
+ * @description 商店路线顾问 - 评估商店物品的购买优先级
+ *
+ * 主要职责:
+ * - 评估卡牌和遗物的购买价值
+ * - 基于路线偏好排序物品
+ * - 提供购买建议
+ */
+
 import type { RouteState, RunCardInstance } from '@/core/types';
 import rawRelicsData from '@/content/data/relics.json';
 import {

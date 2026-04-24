@@ -1,3 +1,14 @@
+/**
+ * @file CardView.tsx
+ * @description 卡牌视图组件 - 渲染单张卡牌的完整视觉表现
+ *
+ * 主要职责:
+ * - 渲染卡牌名称、描述和属性
+ * - 支持多种卡牌主题和稀有度
+ * - 集成术语高亮和扭曲欺诈文本
+ * - 处理卡牌图片和回退方案
+ */
+
 import React from 'react';
 import type { CardDef, RunCardInstance } from '@/core';
 import { ASSET_PLACEHOLDERS, bindImgFallback, localCardArt } from '@/ui/components/assetHelpers';

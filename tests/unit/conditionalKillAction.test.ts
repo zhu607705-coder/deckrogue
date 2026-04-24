@@ -1,3 +1,12 @@
+/**
+ * @file conditionalKillAction.test.ts
+ * @description Unit tests for conditional kill action execution via the action queue.
+ *
+ * 主要职责:
+ * - 测试条件击杀动作的执行与判定
+ * - 测试 ActionQueue 与 ActionFactoryV2 的交互
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

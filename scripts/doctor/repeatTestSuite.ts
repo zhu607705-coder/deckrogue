@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file repeatTestSuite.ts
+ * @description Repeats the test suite multiple times to detect flaky tests.
+ *
+ * 主要职责:
+ * - 运行指定次数的测试套件
+ * - 检测并报告不稳定的测试
+ * - 计算 flake 率
+ */
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';

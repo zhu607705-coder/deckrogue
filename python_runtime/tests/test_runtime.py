@@ -1,3 +1,11 @@
+"""
+test_runtime.py - RuleRuntime 核心运行时的单元测试
+
+主要职责:
+- 验证角色选择、地图导航、战斗流程等核心游戏逻辑
+- 验证事件分派与快照状态转换的正确性
+"""
+
 import unittest
 
 from deckrogue_rules_core import boot

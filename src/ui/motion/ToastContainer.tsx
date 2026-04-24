@@ -1,3 +1,13 @@
+/**
+ * @file ToastContainer.tsx
+ * @description Toast 提示容器 - 管理和渲染全局 Toast 消息
+ *
+ * 主要职责:
+ * - 订阅 Toast 消息流
+ * - 渲染带图标的 Toast 消息
+ * - 支持 Toast 自动消失和手动关闭
+ */
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   getToasts, 

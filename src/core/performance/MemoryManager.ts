@@ -1,3 +1,13 @@
+/**
+ * @file MemoryManager.ts
+ * @description 内存管理器 - 监控和管理游戏运行时内存使用
+ *
+ * 主要职责:
+ * - 监控 JS 堆内存使用 (usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit)
+ * - 追踪战斗临时数据和事件监听器数量
+ * - 管理临时数据缓存和战斗临时数据
+ * - 提供内存快照和 GC 警告功能
+ */
 export interface MemoryStats {
   usedJSHeapSize: number;
   totalJSHeapSize: number;

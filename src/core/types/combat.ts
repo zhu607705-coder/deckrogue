@@ -1,3 +1,13 @@
+/**
+ * @file combat.ts
+ * @description 战斗类型定义 - 定义战斗状态和玩家状态的类型系统
+ *
+ * 主要职责:
+ * - 定义 PlayerState 接口，描述玩家的 HP、能量、牌组、遗物、药水等状态
+ * - 定义 CombatState 接口，描述战斗中的玩家和敌人状态
+ * - 定义 GameState 接口，描述完整的游戏状态 (包含战斗、地图、Meta 等)
+ * - 定义 RelicState、RunEffects 等辅助类型
+ */
 import type { ActiveEventState, MapNode } from '@/core/types/events';
 import type { CardDef, CharacterDef, RunCardInstance } from '@/core/types/actions';
 import type { AdaptationProfile } from '@/core/ai';

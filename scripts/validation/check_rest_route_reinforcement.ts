@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_rest_route_reinforcement.ts
+ * @description 检查休息点的路线增强建议是否正确对齐当前路线。
+ *
+ * 主要职责:
+ * - 运行多角色多种子模拟休息场景
+ * - 验证休息建议的路线语义对齐
+ * - 检查路线支撑遗物的推荐逻辑
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

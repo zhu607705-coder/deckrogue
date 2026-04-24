@@ -1,3 +1,12 @@
+/**
+ * @file releaseAndTranslationGate.test.ts
+ * @description Unit tests for release readiness and translation audit gate checks.
+ *
+ * 主要职责:
+ * - 测试翻译审计的数据记录审计
+ * - 测试英文残留检测的有效性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

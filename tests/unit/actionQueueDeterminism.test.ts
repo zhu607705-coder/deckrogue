@@ -1,3 +1,12 @@
+/**
+ * @file actionQueueDeterminism.test.ts
+ * @description Unit tests for action queue determinism and event emission order.
+ *
+ * 主要职责:
+ * - 测试 ActionQueue 的确定性执行顺序
+ * - 测试事件总线的事件发射一致性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

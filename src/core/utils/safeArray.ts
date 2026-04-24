@@ -1,3 +1,13 @@
+/**
+ * @file safeArray.ts
+ * @description 安全数组操作 - 提供防御性数组访问工具函数
+ *
+ * 主要职责:
+ * - 实现 safeArrayAccess，安全地按索引访问数组元素
+ * - 实现 safeArrayFirst/safeArrayLast，安全获取首/末元素
+ * - 实现 safeArraySlice/safeArrayFind/safeArrayFilter，安全的数组遍历操作
+ * - 防止 undefined/null 数组导致的运行时错误
+ */
 export function safeArrayAccess<T>(array: T[] | undefined | null, index: number): T | undefined {
   if (!array || !Array.isArray(array)) return undefined;
   if (index < 0 || index >= array.length) return undefined;

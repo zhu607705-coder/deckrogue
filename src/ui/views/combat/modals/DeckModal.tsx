@@ -1,3 +1,13 @@
+/**
+ * @file DeckModal.tsx
+ * @description 牌组模态框 - 展示当前卡组的所有卡牌
+ *
+ * 主要职责:
+ * - 渲染卡组卡牌列表
+ * - 支持按类型筛选
+ * - 显示卡牌详细信息
+ */
+
 import React from 'react';
 import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';

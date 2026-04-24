@@ -1,3 +1,12 @@
+/**
+ * @file routeState.ts
+ * @description 路线状态管理 - 追踪和推导玩家当前构筑路线
+ *
+ * 主要职责:
+ * - 管理路线状态（主标签、副标签、置信度、阶段）
+ * - 基于卡组和历史提交推导当前路线
+ * - 记录和衰减路线提交记录
+ */
 import type { GameState, RouteCommit, RouteCommitSource, RouteState, RunCardInstance } from '@/core/types';
 import { analyzeRouteSignals, getCardRouteAffinity, getKnownRouteTagsForCharacter, resolvePreferredRouteTag } from '@/content/narrative/routeSignals';
 

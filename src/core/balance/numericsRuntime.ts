@@ -1,3 +1,13 @@
+/**
+ * @file numericsRuntime.ts
+ * @description 运行时数值 - 提供运行时环境下的数值评估功能
+ *
+ * 主要职责:
+ * - 实现 createRuntimeNumericsContext，创建运行时数值上下文
+ * - 实现 quoteCardValue、quoteRelicPrice、quotePotionPrice 等运行时估值函数
+ * - 提供敌人难度缩放计算函数 calculateEnemyRuntimeScaling
+ * - 支持运行时价格生成和价值评估
+ */
 import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 import { ECONOMY_DEFAULTS } from '@/core/balance/numericConstants';
 import { createValuationContext, evaluateCardEVU, evaluateCardEfficiency, evaluateRelicEVU } from '@/core/balance/numericsValuation';

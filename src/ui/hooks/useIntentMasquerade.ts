@@ -1,3 +1,13 @@
+/**
+ * @file useIntentMasquerade.ts
+ * @description 意图伪装 Hook - 在高扭曲值时随机篡改敌人意图显示
+ *
+ * 主要职责:
+ * - 根据扭曲值计算伪装概率
+ * - 生成虚假的意图图标和文本
+ * - 支持 IntelRead 能力降低欺骗效果
+ */
+
 import { useCallback, useRef, useEffect, useState } from 'react';
 import type { GameEngine } from '@/core';
 import type { IntentDisplay, IntentType } from '@/types';

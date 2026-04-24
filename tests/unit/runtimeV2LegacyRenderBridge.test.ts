@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2LegacyRenderBridge.test.ts
+ * @description Unit tests for projecting a legacy engine into the runtime v2 render contract.
+ *
+ * 主要职责:
+ * - 测试 createLegacyRenderModel 的投影逻辑
+ * - 测试商店房间摘要的包含性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

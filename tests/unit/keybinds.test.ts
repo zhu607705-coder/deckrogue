@@ -1,3 +1,12 @@
+/**
+ * @file keybinds.test.ts
+ * @description Unit tests for keyboard binding configuration and conflict detection.
+ *
+ * 主要职责:
+ * - 测试默认键绑定的完整性
+ * - 测试键绑定冲突检测逻辑
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

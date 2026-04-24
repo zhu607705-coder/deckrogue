@@ -1,3 +1,12 @@
+/**
+ * @file bossPhaseFlow.test.ts
+ * @description Unit tests for boss phase flow and cathedral engine overheat pulse.
+ *
+ * 主要职责:
+ * - 测试 Boss 阶段流程
+ * - 测试大教堂引擎过热脉冲
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

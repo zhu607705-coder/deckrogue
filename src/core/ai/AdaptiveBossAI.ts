@@ -1,3 +1,13 @@
+/**
+ * @file AdaptiveBossAI.ts
+ * @description 自适应 Boss AI - 根据玩家行为模式动态调整战斗策略
+ *
+ * 主要职责:
+ * - 实现 AdaptationProfile，跟踪和学习玩家行为模式
+ * - 分析 aggressivePlays、defensivePlays、cardUsage 等玩家特征
+ * - 定义 LearnedBehavior，记录玩家触发条件和响应模式
+ * - 实现 counterStrategy，根据玩家类型选择克制策略
+ */
 import type { DetailedPlayerPatternAnalysis } from './combatMemory';
 
 export type PlayerType = 'aggressive' | 'defensive' | 'balanced' | 'opportunistic' | 'unknown';

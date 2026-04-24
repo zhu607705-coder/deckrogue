@@ -1,3 +1,13 @@
+/**
+ * @file numericConstants.ts
+ * @description 数值常量 - 定义游戏数值系统的核心常量配置
+ *
+ * 主要职责:
+ * - 定义 NUMERIC_PRECISION (数值精度配置：内部浮点精度、伤害输出精度)
+ * - 定义 COMBAT_NUMBERS (战斗数值：状态乘数、伤害范围、腐蚀加成等)
+ * - 定义 ECONOMY_DEFAULTS (经济默认值：商店配置、价格缩放、奖励选择权重等)
+ * - 定义 BALANCE_CONSTANTS (平衡常量：基础定价、效率阈值、延迟系数等)
+ */
 import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 
 export const NUMERIC_PRECISION = {

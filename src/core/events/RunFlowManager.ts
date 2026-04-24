@@ -1,3 +1,13 @@
+/**
+ * @file RunFlowManager.ts
+ * @description Run 流程管理器 - 协调 Run 中的节点进入、战斗胜利、奖励选择等流程
+ *
+ * 主要职责:
+ * - 管理节点进入逻辑 (选择角色、进入节点)
+ * - 处理战斗胜利后的奖励结算 (卡牌、遗物、药水)
+ * - 管理事件选项、休息、升级等房间类型的流程
+ * - 与 runtimeDelegation 协作支持运行时委托
+ */
 import type { GameState, MapNode, CardDef, RunCardInstance, RelicDef, PotionDef } from '@/core/types';
 import { deriveRunTransitionState, runPhaseToScreen, transitionRunState, type RunAction } from '@/core/events/runStateMachine';
 import { runGenerator } from '@/core/events/runGenerator';

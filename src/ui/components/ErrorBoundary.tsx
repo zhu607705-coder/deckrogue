@@ -1,3 +1,13 @@
+/**
+ * @file ErrorBoundary.tsx
+ * @description 错误边界组件 - 捕获子组件树中的渲染错误并提供降级 UI
+ *
+ * 主要职责:
+ * - 捕获渲染阶段的 JavaScript 错误
+ * - 显示降级回退 UI
+ * - 支持自定义回退组件和错误回调
+ */
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {

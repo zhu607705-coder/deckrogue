@@ -1,3 +1,11 @@
+/**
+ * @file mirrorZoneFlow.test.ts
+ * @description Unit tests for mirror zone entry and flow logic.
+ *
+ * 主要职责:
+ * - 测试镜宫区域进入流程
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

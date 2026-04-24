@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_growth_route_formation.ts
+ * @description 检查成长路线形成情况，验证路线标签分布和形成率。
+ *
+ * 主要职责:
+ * - 运行多角色多种子模拟
+ * - 分析路线标签的分布和形成率
+ * - 识别标签垄断或形成率不达标的情况
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

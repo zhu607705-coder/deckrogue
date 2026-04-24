@@ -1,3 +1,13 @@
+/**
+ * @file useCombatFeedback.ts
+ * @description 战斗反馈 Hook - 监听战斗事件并触发视觉/音效反馈
+ *
+ * 主要职责:
+ * - 监听战斗事件流
+ * - 触发战斗节拍和动画
+ * - 处理伤害/护盾等反馈效果
+ */
+
 import { useEffect } from 'react';
 import { globalEventBus } from '@/core';
 import { 

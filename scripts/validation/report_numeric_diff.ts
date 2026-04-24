@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file report_numeric_diff.ts
+ * @description 生成数值差异报告跟踪数值配置变更历史。
+ *
+ * 主要职责:
+ * - 解析 changelogs/numeric 目录的变更记录
+ * - 按类别和作者聚合变更
+ * - 检测未验证的变更和缺失回滚锚点
+ */
+
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { resolve, join } from 'path';
 

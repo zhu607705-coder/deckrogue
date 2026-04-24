@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file report_growth_route_formation.ts
+ * @description 生成成长路线形成报告，汇总各角色的路线标签分布数据。
+ *
+ * 主要职责:
+ * - 读取 check_growth_route_formation 的输出数据
+ * - 聚合并分析路线形成率
+ * - 生成路线形成分析报告
+ */
+
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

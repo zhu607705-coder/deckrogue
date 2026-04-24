@@ -1,3 +1,13 @@
+/**
+ * @file runCardInstance.ts
+ * @description 运行时卡牌实例 - 管理 CardDef 到 RunCardInstance 的转换和克隆
+ *
+ * 主要职责:
+ * - 实现 createRunCardInstance，从 CardDef 创建运行时卡牌实例
+ * - 实现 normalizeRunCardInstance，标准化卡牌实例数据
+ * - 实现 deriveRunCardInstance，从已有实例派生新实例
+ * - 提供卡牌动作、附魔、腐化的深拷贝功能
+ */
 import type {
   ActionSpec,
   CardAfflictionDef,

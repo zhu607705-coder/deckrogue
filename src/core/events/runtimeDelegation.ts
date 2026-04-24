@@ -1,3 +1,13 @@
+/**
+ * @file runtimeDelegation.ts
+ * @description 运行时委托 - 支持将运行时逻辑委托给 runtimeV2 处理
+ *
+ * 主要职责:
+ * - 定义 GameEngineRuntimeDelegate 接口，描述运行时委托器的契约
+ * - 实现 SyncBootAndMapRuntimeDelegate，提供启动和地图的同步委托实现
+ * - 支持战斗、奖励、事件等房间类型的委托处理
+ * - 提供委托诊断和回退机制
+ */
 import { runGenerator } from '@/core/events/runGenerator';
 import { screenToRunPhase } from '@/core/events/runStateMachine';
 import type { RuleSnapshot } from '@/runtimeV2/contracts';

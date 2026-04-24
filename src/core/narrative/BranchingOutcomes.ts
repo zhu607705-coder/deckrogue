@@ -1,3 +1,13 @@
+/**
+ * @file BranchingOutcomes.ts
+ * @description 分支结局系统 - 管理战斗中的条件分支和叙事变化
+ *
+ * 主要职责:
+ * - 定义 BranchingOutcome 接口，描述触发条件和战斗修正
+ * - 定义 OutcomeCondition，支持 HP 阈值、回合数、状态数、遗物持有等条件
+ * - 定义 CombatModification，修改敌人行为或战斗参数
+ * - 定义 OutcomeChoice，描述分支选择的选项
+ */
 import type { CombatState, GameState } from '@/core/types/combat';
 import type { CombatActionRecord } from '@/core/ai';
 import { cloneJsonValue } from '@/core/utils/safeJson';

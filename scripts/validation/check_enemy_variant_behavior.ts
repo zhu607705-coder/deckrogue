@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_enemy_variant_behavior.ts
+ * @description 检查敌人变体的行为配置是否与其基础敌人一致。
+ *
+ * 主要职责:
+ * - 识别所有敌人变体
+ * - 验证变体的动作类型在支持列表中
+ * - 报告变体与基础敌人的行为差异问题
+ */
+
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { enemiesData } from '@/content/narrative/numericSystem';

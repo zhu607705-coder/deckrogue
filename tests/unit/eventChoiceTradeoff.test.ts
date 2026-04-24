@@ -1,3 +1,12 @@
+/**
+ * @file eventChoiceTradeoff.test.ts
+ * @description Unit tests for event choice tradeoff and route commit weight recording.
+ *
+ * 主要职责:
+ * - 测试事件选择的路由提交权重
+ * - 测试路由状态的确认与记录
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

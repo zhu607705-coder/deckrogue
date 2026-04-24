@@ -1,3 +1,12 @@
+/**
+ * @file runtimeKernel.test.ts
+ * @description Unit tests for the runtime action queue and room bridge registry.
+ *
+ * 主要职责:
+ * - 测试 RuntimeActionQueue 的顺序执行与停止
+ * - 测试房间桥接注册表的创建与查询
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

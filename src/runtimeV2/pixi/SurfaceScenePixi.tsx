@@ -1,3 +1,12 @@
+/**
+ * @file SurfaceScenePixi.tsx
+ * @description 表面场景 PixiJS 渲染组件，处理升级、移除、附魔、胜利和结束等子屏幕
+ *
+ * 主要职责:
+ * - 渲染升级/移除/附魔/遗物升级等表面场景
+ * - 渲染胜利和游戏结束画面
+ * - 处理各表面场景的交互回调
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { RenderModel } from '../contracts';

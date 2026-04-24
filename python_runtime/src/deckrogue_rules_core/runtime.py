@@ -1,3 +1,12 @@
+"""
+runtime.py - 规则引擎的核心运行时实现，提供确定性状态机与存档/回放功能
+
+主要职责:
+- RuleRuntime 类：管理游戏状态、事件分派、快照生成
+- 存档序列化 (create_save_game_v2) 与反序列化 (restore_snapshot_from_save_game)
+- 战斗日志回放 (replay_log, create_replay_log_v1)
+"""
+
 from __future__ import annotations
 
 from copy import deepcopy

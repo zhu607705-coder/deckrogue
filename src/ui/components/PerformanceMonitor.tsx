@@ -1,3 +1,13 @@
+/**
+ * @file PerformanceMonitor.tsx
+ * @description 性能监控组件 - 显示 FPS、内存等性能指标
+ *
+ * 主要职责:
+ * - 实时监控并显示 FPS
+ * - 显示内存使用情况
+ * - 支持位置和详细程度配置
+ */
+
 import { useEffect, useState } from 'react';
 import { memoryManager } from '@/core/performance/MemoryManager';
 

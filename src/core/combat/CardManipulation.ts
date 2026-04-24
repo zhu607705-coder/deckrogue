@@ -1,3 +1,13 @@
+/**
+ * @file CardManipulation.ts
+ * @description 卡牌操作工具 - 实现查看、交换、窃取等卡牌操作
+ *
+ * 主要职责:
+ * - 实现 peekPlayerHand，查看玩家手牌 (基于情报等级)
+ * - 实现 swapPlayerCard，与玩家手牌交换
+ * - 实现 stealPlayerCard，窃取玩家手牌
+ * - 管理 HandKnowledge 结构，记录已知卡牌信息
+ */
 import type { RunCardInstance } from '@/core/types/actions';
 
 export type CardManipulationType = 'peek' | 'swap' | 'steal' | 'discard' | 'return';

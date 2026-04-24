@@ -1,3 +1,12 @@
+"""
+add_character_expansion_events.py - 添加角色扩展事件数据
+
+主要职责:
+- 生成镜宫相关事件数据
+- 添加主线章节插入事件
+- 更新 events.json 文件
+"""
+
 import json
 
 # 主线章节插入事件 8 个

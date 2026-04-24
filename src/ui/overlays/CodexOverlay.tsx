@@ -1,3 +1,13 @@
+/**
+ * @file CodexOverlay.tsx
+ * @description 图鉴覆盖层 - 展示游戏图鉴和百科条目
+ *
+ * 主要职责:
+ * - 渲染图鉴分类和条目
+ * - 支持搜索和筛选
+ * - 提供导入/导出图鉴数据功能
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, BookOpen, Search, Star, Filter, Download, Upload, Eye, EyeOff, Shield, FlaskConical, ScrollText, Swords, PlayCircle } from 'lucide-react';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';

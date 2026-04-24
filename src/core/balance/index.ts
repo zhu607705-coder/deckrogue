@@ -1,3 +1,10 @@
+/**
+ * @file index.ts
+ * @description balance 子模块的统一导出入口
+ *
+ * 主要职责:
+ * - 汇总并导出所有数值平衡相关功能 (balanceSystem, evaluationSystem, metaBalance, numericConstants 等)
+ */
 export * from '@/core/balance/balanceSystem';
 export * from '@/core/balance/evaluationSystem';
 export * from '@/core/balance/metaBalance';

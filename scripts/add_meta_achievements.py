@@ -1,3 +1,12 @@
+"""
+add_meta_achievements.py - 添加元成就数据
+
+主要职责:
+- 生成章节通关成就
+- 添加游戏进程里程碑成就
+- 更新 achievements.json 文件
+"""
+
 import json
 
 with open('src/content/data/achievements.json', 'r') as f:

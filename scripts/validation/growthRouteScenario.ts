@@ -1,3 +1,13 @@
+/**
+ * @file growthRouteScenario.ts
+ * @description 成长路线场景构建工具，为路线测试创建标准化的游戏状态。
+ *
+ * 主要职责:
+ * - 提供种子驱动的路线场景构建函数
+ * - 生成路线确认卡牌的运行时实例
+ * - 设置最近选择覆盖的游戏引擎状态
+ */
+
 import { cardsData, getCardRouteSignal, getKnownRouteTagsForCharacter } from '@/content/narrative/numericSystem';
 import { GameEngine } from '@/core/events/gameEngine';
 import type { RunCardInstance } from '@/core/types';

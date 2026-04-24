@@ -1,3 +1,13 @@
+/**
+ * @file ActionFactory.ts
+ * @description 动作工厂 - 根据 ActionSpec 创建具体的动作实例
+ *
+ * 主要职责:
+ * - 解析 ActionSpec 定义，创建对应的 IAction 实例
+ * - 注册 DamageActions、WarpActions、SpecialActions 等动作类型
+ * - 配置动作的上下文信息 (source, target, cardId 等)
+ * - 提供动作管理器的初始化和设置接口
+ */
 import { ActionSpec, GameState } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { ActionManager } from '@/core/actions/actionManager';

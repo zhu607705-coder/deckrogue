@@ -1,3 +1,12 @@
+/**
+ * @file runStateMachine.test.ts
+ * @description Unit tests for run state machine phase and transition mappings.
+ *
+ * 主要职责:
+ * - 测试屏幕到运行阶段的映射
+ * - 测试运行状态转换的正确性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

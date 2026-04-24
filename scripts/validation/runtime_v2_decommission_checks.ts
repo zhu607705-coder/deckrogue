@@ -1,3 +1,13 @@
+/**
+ * @file runtime_v2_decommission_checks.ts
+ * @description 检查运行时 V2 废弃条件是否满足，确保旧入口安全。
+ *
+ * 主要职责:
+ * - 验证 main.tsx 默认入口为 legacy 模式
+ * - 检查 entryMode 解析逻辑是否正确
+ * - 确认 V2 废弃前置条件已就绪
+ */
+
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 

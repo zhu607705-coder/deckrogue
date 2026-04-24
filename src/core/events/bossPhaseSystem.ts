@@ -1,3 +1,13 @@
+/**
+ * @file bossPhaseSystem.ts
+ * @description Boss 阶段系统 - 定义 Boss 战斗的多阶段配置和查询接口
+ *
+ * 主要职责:
+ * - 定义 BossPhaseDef 接口，描述 Boss 阶段的技能、召唤、Buff 等配置
+ * - 定义 BossPhaseEncounterDef，描述 Boss 遭遇的完整配置
+ * - 实现 getBossPhaseEncounter，查询 Boss 的阶段配置
+ * - 实现 getBossPhaseForHpPct，根据血量百分比返回当前阶段
+ */
 import bossPhasesData from '@/content/data/bossPhases.json';
 
 export interface BossPhaseSummonDef {

@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file gameDoctor.ts
+ * @description Runs comprehensive diagnostics including type check, build, and runtime tests.
+ *
+ * 主要职责:
+ * - 执行多阶段诊断检查
+ * - 生成健康度报告
+ * - 报告失败的检查项
+ */
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';

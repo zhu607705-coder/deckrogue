@@ -1,3 +1,13 @@
+/**
+ * @file BranchingOutcomeModal.tsx
+ * @description 分支结果模态框 - 展示事件的多种可能结果和选择
+ *
+ * 主要职责:
+ * - 渲染分支叙事条目
+ * - 显示结果条件和奖励
+ * - 提供视觉动画效果
+ */
+
 import React from 'react';
 
 export interface NarrativeEntry {

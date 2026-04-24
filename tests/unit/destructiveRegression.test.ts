@@ -1,3 +1,12 @@
+/**
+ * @file destructiveRegression.test.ts
+ * @description Unit tests for destructive regression detection in action queue and combat system.
+ *
+ * 主要职责:
+ * - 测试动作队列的回归检测
+ * - 测试战斗系统的破坏性变更检测
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

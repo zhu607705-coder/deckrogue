@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file code_health_report.ts
+ * @description Generates code health reports aggregating vulnerability scan and risk metrics.
+ *
+ * 主要职责:
+ * - 聚合漏洞扫描结果
+ * - 生成中危和低危问题进度报告
+ * - 提供总体健康状态评估
+ */
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';

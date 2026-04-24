@@ -1,3 +1,13 @@
+/**
+ * @file check_deprecated_imports.ts
+ * @description 检查项目中是否使用了已废弃的导入路径。
+ *
+ * 主要职责:
+ * - 扫描源码、脚本和测试目录的 import 语句
+ * - 识别引用已废弃模块路径的情况
+ * - 报告所有废弃导入违规
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

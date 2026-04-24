@@ -1,3 +1,12 @@
+/**
+ * @file safeStorage.ts
+ * @description 安全存储操作 - 提供防御性 localStorage 访问工具
+ *
+ * 主要职责:
+ * - 实现 isStorageAvailable，检测 localStorage 是否可用
+ * - 实现 getStorage，安全获取 localStorage 引用
+ * - 提供安全存取操作，防止隐私模式或存储不可用时的错误
+ */
 const STORAGE_UNAVAILABLE = 'Storage is not available';
 
 export interface StorageResult<T> {

@@ -1,3 +1,12 @@
+/**
+ * @file targetingService.ts
+ * @description 目标选择服务 - 解析卡牌动作的目标
+ *
+ * 主要职责:
+ * - 定义 CardTarget 类型 (Enemy, AllEnemies, Self, RandomEnemy, Player, AllAllies)
+ * - 实现 TargetingService.resolveTargets，根据目标类型解析实际目标列表
+ * - 支持随机目标选择和全目标选择
+ */
 import { GameState } from '@/core/types';
 import { stateRandomInt } from '@/infrastructure/rng/stateRandom';
 

@@ -1,3 +1,12 @@
+/**
+ * @file contentService.ts
+ * @description 内容服务单例，提供运行时内容查询和卡片/角色/遗物等数据访问
+ *
+ * 主要职责:
+ * - 管理 CharacterData / CardData / RelicData / PotionData / EnemyData 数据缓存
+ * - 提供 getCharacterDef / getCardDef / getRelicDef / getPotionDef / getEnemyDef 查询接口
+ * - 支持 ActionSpec 卡牌动作定义解析
+ */
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import charactersData from '@/content/data/characters.json';
 import enemiesData from '@/content/data/enemies.json';

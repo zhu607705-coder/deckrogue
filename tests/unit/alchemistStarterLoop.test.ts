@@ -1,3 +1,12 @@
+/**
+ * @file alchemistStarterLoop.test.ts
+ * @description Unit tests for alchemist character starter card balance and element interactions.
+ *
+ * 主要职责:
+ * - 测试元素火花/寒霜护甲的基础数值
+ * - 测试元素附加与护盾获取的协同
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import cardsDataRaw from '@/content/data/cards.json';

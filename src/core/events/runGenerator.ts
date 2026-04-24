@@ -1,3 +1,13 @@
+/**
+ * @file runGenerator.ts
+ * @description Run 生成器 - 负责生成地牢地图和节点布局
+ *
+ * 主要职责:
+ * - 定义 ChapterConfig 和 ChapterNodeWeights，配置章节和节点权重
+ * - 实现 RunGenerator 类，生成具有分支路径的地牢地图
+ * - 支持精英怪、事件、商店、休息点的加权随机分布
+ * - 提供默认章节权重配置 (DEFAULT_CHAPTER_WEIGHTS)
+ */
 import { GameState, MapNode } from '@/core/types';
 import { safeArrayAccess } from '@/core/utils/safeArray';
 import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';

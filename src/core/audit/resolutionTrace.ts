@@ -1,3 +1,13 @@
+/**
+ * @file resolutionTrace.ts
+ * @description 解析追踪 - 记录动作解析流水线的完整执行追踪
+ *
+ * 主要职责:
+ * - 定义 ResolutionTrace 接口，记录触发窗口、解析意图、解析步骤等
+ * - 追踪动作从触发到完成的完整生命周期
+ * - 记录解析上下文 (回合、战斗ID、房间ID)
+ * - 为调试和审计提供解析过程的完整记录
+ */
 import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep } from '../actions/resolutionTypes';
 import type { ResourceMutation } from '../actions/mechanicDescriptor';
 

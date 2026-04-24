@@ -1,3 +1,12 @@
+/**
+ * @file launcherSeed.ts
+ * @description 启动器种子管理工具，提供种子的加载、保存和解析功能
+ *
+ * 主要职责:
+ * - 管理 localStorage 中的种子持久化
+ * - 提供种子值的解析和校验
+ * - 从 URL 查询参数中解析种子值
+ */
 export const RUNTIME_V2_SEED_STORAGE_KEY = 'deckrogue:runtime-v2:seed';
 
 interface SeedStorageLike {

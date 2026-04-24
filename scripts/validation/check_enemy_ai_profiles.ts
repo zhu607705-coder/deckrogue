@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_enemy_ai_profiles.ts
+ * @description 检查敌人 AI 配置文件的完整性和正确性。
+ *
+ * 主要职责:
+ * - 验证 enemies.json 中每个敌人是否配置了 ai_profile
+ * - 检查 intent_policy 的完整性
+ * - 报告缺失或无效的 AI 配置
+ */
+
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 

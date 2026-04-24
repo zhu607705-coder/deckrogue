@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_ui_runtime_boundaries.ts
+ * @description 检查 UI 运行时边界，确保 UI 层不直接访问全局事件总线等受限模块。
+ *
+ * 主要职责:
+ * - 定义允许访问全局事件总线的白名单
+ * - 扫描所有 import 语句检测违规
+ * - 报告 UI 层对运行时模块的违规访问
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

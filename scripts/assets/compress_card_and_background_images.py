@@ -1,3 +1,12 @@
+"""
+compress_card_and_background_images.py - 压缩卡牌和背景图片资源
+
+主要职责:
+- 扫描卡牌和背景图片目录
+- 使用 PIL 压缩图片至目标大小
+- 生成压缩报告（JSON 和 Markdown）
+"""
+
 from __future__ import annotations
 
 import io

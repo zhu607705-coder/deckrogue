@@ -1,3 +1,13 @@
+/**
+ * @file check_route_taxonomy_guardrails.ts
+ * @description 检查路线分类学的护栏配置，验证路线标签和支撑遗物的正确性。
+ *
+ * 主要职责:
+ * - 验证每个角色的路线标签分类
+ * - 检查路线支撑遗物的配置
+ * - 运行场景测试验证护栏逻辑
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

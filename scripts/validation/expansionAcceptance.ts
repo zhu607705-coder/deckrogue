@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file expansionAcceptance.ts
+ * @description Runs expansion acceptance tests to validate new content integration.
+ *
+ * 主要职责:
+ * - 运行扩展内容验收测试
+ * - 验证新内容与现有系统的集成
+ * - 报告测试结果
+ */
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';

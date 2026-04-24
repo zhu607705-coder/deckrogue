@@ -1,3 +1,13 @@
+/**
+ * @file balanceSystem.ts
+ * @description 平衡系统核心 - 管理游戏数值平衡的核心逻辑
+ *
+ * 主要职责:
+ * - 定义 CardEvaluation 和 RelicEvaluation 接口，描述卡牌和遗物的数值评估结果
+ * - 提供资源价值换算 (energy, damage, block, draw, gold, hp, status 的 EVU 换算)
+ * - 管理平衡常量和调整系数
+ * - 支持数值诊断报告的生成
+ */
 import { BALANCE_CONSTANTS } from '@/core/balance/numericConstants';
 import {
   calculateEnemyRuntimeScaling,

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_shop_flow_smoke.ts
+ * @description 使用 Playwright 测试商店流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 创建商店测试 fixture
+ * - 验证商店购买和移除功能
+ * - 记录截图和错误日志
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

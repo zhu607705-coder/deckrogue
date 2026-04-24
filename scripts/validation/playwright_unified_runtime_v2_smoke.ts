@@ -1,3 +1,13 @@
+/**
+ * @file playwright_unified_runtime_v2_smoke.ts
+ * @description 使用 Playwright 对统一运行时 V2 进行冒烟测试。
+ *
+ * 主要职责:
+ * - 启动 Playwright 浏览器访问统一运行时 V2
+ * - 检查控制台错误、页面错误和请求失败
+ * - 执行基础功能检查并生成报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

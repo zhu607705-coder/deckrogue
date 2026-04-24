@@ -1,3 +1,13 @@
+/**
+ * @file WarpEye.tsx
+ * @description 扭曲之眼组件 - 可视化显示当前的扭曲值
+ *
+ * 主要职责:
+ * - 渲染扭曲值进度条
+ * - 显示扭曲等级警告
+ * - 根据扭曲值切换视觉样式
+ */
+
 import React from 'react';
 import type { GameEngine } from '@/core';
 

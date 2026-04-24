@@ -1,3 +1,12 @@
+/**
+ * @file backgroundVisuals.ts
+ * @description 背景视觉模式配置 - 控制地图和战斗场景的视觉强度
+ *
+ * 主要职责:
+ * - 定义背景视觉模式类型 (cinematic/balanced/vivid)
+ * - 提供模式选项和调优参数
+ */
+
 export type BackgroundVisualMode = 'cinematic' | 'balanced' | 'vivid';
 
 export const BACKGROUND_VISUAL_MODE_OPTIONS: Array<{ id: BackgroundVisualMode; label: string }> = [

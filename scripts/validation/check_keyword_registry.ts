@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file check_keyword_registry.ts
+ * @description Validates the keyword registry structure and enumerations.
+ *
+ * 主要职责:
+ * - 检查关键词定义格式
+ * - 验证关键词分类与属性
+ */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';

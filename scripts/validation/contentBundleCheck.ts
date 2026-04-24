@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file contentBundleCheck.ts
+ * @description Validates the content bundle completeness and reachability.
+ *
+ * 主要职责:
+ * - 检查内容包的完整性
+ * - 验证内容项的可触达性
+ */
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';

@@ -1,3 +1,12 @@
+/**
+ * @file legacyStateProjector.ts
+ * @description 旧版游戏状态投影器，将 GameState 投射为 UI 模型所需的数据结构
+ *
+ * 主要职责:
+ * - 定义 LegacyScreen 兼容类型集合
+ * - 提供 coerceLegacyScreen 类型安全转换
+ * - 定义 LegacyStateProjection 投影接口
+ */
 import type { GameState } from '@/core/types';
 import type { RuleSnapshot } from './contracts';
 

@@ -1,3 +1,12 @@
+/**
+ * @file enemyVariantEnemyTurn.test.ts
+ * @description Unit tests for enemy variant behavior during enemy turns in combat.
+ *
+ * 主要职责:
+ * - 测试敌人变体的回合行为
+ * - 测试敌人回合中的状态变化
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

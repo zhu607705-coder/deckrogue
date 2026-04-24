@@ -1,3 +1,13 @@
+/**
+ * @file dogfood_victory_flow.ts
+ * @description 使用 Playwright 进行胜利流程的端到端测试。
+ *
+ * 主要职责:
+ * - 启动开发服务器并运行浏览器测试
+ * - 模拟完整游戏流程直到胜利
+ * - 记录每个步骤的截图和错误信息
+ */
+
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';

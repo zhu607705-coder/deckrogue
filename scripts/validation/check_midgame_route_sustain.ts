@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_midgame_route_sustain.ts
+ * @description 检查中期路线持续性，验证路线在中期的延续和转变。
+ *
+ * 主要职责:
+ * - 运行多角色多种子模拟至中期
+ * - 检查路线在中期阶段的持续性
+ * - 报告路线流失或异常切换问题
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

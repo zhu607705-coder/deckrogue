@@ -1,3 +1,12 @@
+/**
+ * @file runSummarySystem.ts
+ * @description Run 结算系统 - 计算 Run 结束时的总结数据
+ *
+ * 主要职责:
+ * - 实现 computeRunSummary，根据游戏状态计算 Run 结算数据
+ * - 统计楼层进度、卡牌使用、遗物收集、死亡原因等信息
+ * - 计算货币转换 (金币 -> 征用令) 和成就解锁条件
+ */
 import type { GameState, RunSummary } from '@/core/types';
 import { cardsData } from '@/content/narrative/numericSystem';
 import { relicsData } from '@/content/narrative/numericSystem';

@@ -1,3 +1,12 @@
+/**
+ * @file shopRouteAdvisor.test.ts
+ * @description Unit tests for shop route advisor and route-aware shop suggestions.
+ *
+ * 主要职责:
+ * - 测试 buildShopRouteAdvice 的路由感知建议
+ * - 测试遗物路由标签的亲和性排序
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

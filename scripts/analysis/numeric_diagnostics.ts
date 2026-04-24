@@ -1,3 +1,12 @@
+/**
+ * @file numeric_diagnostics.ts
+ * @description Runs numeric diagnostics for detecting NaN, Infinity, and negative values in game state.
+ *
+ * 主要职责:
+ * - 运行模拟并检测异常数值
+ * - 生成数值健康度报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GameEngine } from '../../src/core/events/gameEngine';

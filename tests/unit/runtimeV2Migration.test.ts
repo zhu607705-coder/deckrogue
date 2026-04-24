@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Migration.test.ts
+ * @description Unit tests for migrating legacy save data to the SaveGameV2 format.
+ *
+ * 主要职责:
+ * - 测试旧版存档到 V2 格式的转换
+ * - 测试迁移后快照的恢复正确性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

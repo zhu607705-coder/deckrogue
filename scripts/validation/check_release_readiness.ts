@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_release_readiness.ts
+ * @description 检查发布准备情况，验证发布前的必要条件和最佳实践。
+ *
+ * 主要职责:
+ * - 检查 README 更新和版本变更
+ * - 验证测试覆盖率和构建状态
+ * - 生成发布准备报告
+ */
+
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { pathToFileURL } from 'url';

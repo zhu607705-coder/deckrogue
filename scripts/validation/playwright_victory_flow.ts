@@ -1,3 +1,13 @@
+/**
+ * @file playwright_victory_flow.ts
+ * @description 使用 Playwright 测试胜利流程的端到端测试。
+ *
+ * 主要职责:
+ * - 运行完整游戏流程直到胜利
+ * - 验证胜利条件和结局画面
+ * - 记录每个步骤的截图和状态
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'child_process';

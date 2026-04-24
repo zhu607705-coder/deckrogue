@@ -1,3 +1,12 @@
+/**
+ * @file desktopHost.test.ts
+ * @description Unit tests for desktop host platform detection and environment resolution.
+ *
+ * 主要职责:
+ * - 测试 resolveHostPlatform 的回退逻辑
+ * - 测试桌面端桥接环境识别
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

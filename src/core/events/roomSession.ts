@@ -1,3 +1,13 @@
+/**
+ * @file roomSession.ts
+ * @description 房间会话管理 - 跟踪当前房间/节点的会话状态
+ *
+ * 主要职责:
+ * - 实现 createRoomSessionForNode，为指定节点创建房间会话
+ * - 实现 syncRoomSessionFromLegacyState，从旧状态同步房间会话
+ * - 实现 syncRoomSessionFromTransition，从状态转换同步房间会话
+ * - 管理房间解决令牌 (roomResolutionToken) 和房间归属类型
+ */
 import type {
   GameState,
   RoomOwnerKind,

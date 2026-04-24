@@ -1,3 +1,13 @@
+/**
+ * @file combatMemory.ts
+ * @description 战斗记忆系统 - 记录和分析玩家战斗行为模式
+ *
+ * 主要职责:
+ * - 记录玩家在最近回合的进攻/防守行为
+ * - 分析玩家的伤害策略 (focus/spread/balanced) 和护盾策略 (early/late/none)
+ * - 追踪玩家的卡牌使用频率和遗物触发记录
+ * - 为 AI 系统提供玩家模式分析数据
+ */
 export interface CombatActionRecord {
   turn: number;
   actor: 'player' | 'enemy';

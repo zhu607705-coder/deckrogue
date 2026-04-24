@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_enemy_ai_boundaries.ts
+ * @description 检查敌人 AI 层的导入边界，确保 AI 逻辑不被外部直接访问。
+ *
+ * 主要职责:
+ * - 扫描源文件的 import 语句
+ * - 检测对敌人 AI 模块的违规导入
+ * - 报告分层违规并生成检查报告
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

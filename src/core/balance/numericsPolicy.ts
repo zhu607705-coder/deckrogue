@@ -1,3 +1,13 @@
+/**
+ * @file numericsPolicy.ts
+ * @description 数值策略 - 定义数值修正的策略函数
+ *
+ * 主要职责:
+ * - 定义 VARIANCE_WEIGHTS，为不同方差等级提供权重系数
+ * - 实现 clampNonNegative (非负钳制) 和 applyTurnDiscount (回合折价)
+ * - 实现 applyTriggerRate (触发率修正) 和 resolveVarianceWeight (方差权重解析)
+ * - 应用风险调整和条件折扣到 EVU 计算中
+ */
 import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 import type { VarianceClass } from '@/core/balance/numericsTypes';
 

@@ -1,3 +1,12 @@
+/**
+ * @file migration.ts
+ * @description 旧版存档迁移工具，将遗留存档数据转换为 SaveGameV2 格式
+ *
+ * 主要职责:
+ * - 从旧版存档数据中提取种子并重建 GameEngine
+ * - 通过 normalizeLegacyGameState 规范化遗留游戏状态
+ * - 生成符合 V2 格式的 SaveGameV2 存档
+ */
 import { GameEngine } from '@/core/events/gameEngine';
 import type { SaveGameV2 } from '@/runtimeV2/contracts';
 import { createSaveGameV2 } from '@/runtimeV2/persistence';

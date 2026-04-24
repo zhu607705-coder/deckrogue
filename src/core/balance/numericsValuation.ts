@@ -1,3 +1,13 @@
+/**
+ * @file numericsValuation.ts
+ * @description 数值估值 - 计算卡牌、遗物和状态效果的 EVU 估值
+ *
+ * 主要职责:
+ * - 实现 evaluateCardEVU，计算卡牌的有效价值单位
+ * - 实现 evaluateRelicEVU，计算遗物的有效价值单位
+ * - 实现 evaluateCardEfficiency，计算卡牌效率比
+ * - 考虑稀有度因子、卡牌类型因子、状态因子等修正估值
+ */
 import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 import { armorToEVU, blockToEVU, damageToEVU, drawToEVU, energyToEVU, goldToEVU, healToEVU, statusToEVU } from '@/core/balance/numericsFormulas';
 import type { CardValuationInput, RelicValuationInput, StatusValuationInput, ValuationContext } from '@/core/balance/numericsTypes';

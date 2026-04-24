@@ -1,3 +1,12 @@
+/**
+ * @file balance_test.ts
+ * @description Runs balance diagnostics for card output and resource loop analysis.
+ *
+ * 主要职责:
+ * - 测试战斗前后的卡牌产出与资源循环
+ * - 生成平衡性层分析报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GameEngine } from '../../src/core/events/gameEngine';

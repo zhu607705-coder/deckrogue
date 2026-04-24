@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_boss_phase_flow_smoke.ts
+ * @description 使用 Playwright 测试 Boss 阶段流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 创建 Boss 阶段测试 fixture
+ * - 验证 Boss 战斗和阶段效果触发
+ * - 记录截图和错误日志
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

@@ -1,3 +1,13 @@
+/**
+ * @file DrawPileModal.tsx
+ * @description 抽牌堆模态框 - 展示抽牌堆中的卡牌 (需要洞悉)
+ *
+ * 主要职责:
+ * - 渲染抽牌堆卡牌列表
+ * - 支持洞悉效果预览
+ * - 显示卡牌数量和详情
+ */
+
 import React, { useMemo } from 'react';
 import { Eye, Cog, Clock, Crown } from 'lucide-react';
 import { CardView } from '@/ui/views/CardView';

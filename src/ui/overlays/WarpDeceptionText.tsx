@@ -1,3 +1,13 @@
+/**
+ * @file WarpDeceptionText.tsx
+ * @description 扭曲欺诈文本组件 - 在高扭曲值时显示误导性的数值
+ *
+ * 主要职责:
+ * - 渲染带有扭曲效果的伤害/护盾/费用数值
+ * - 根据扭曲值动态调整显示内容
+ * - 支持多种文本类型 (damage/block/cost)
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { systemRandom, systemRandomInt } from '@/infrastructure/rng/systemRandom';

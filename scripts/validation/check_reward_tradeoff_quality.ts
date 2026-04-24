@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_reward_tradeoff_quality.ts
+ * @description 检查奖励卡牌交易的质量，验证路线牌和对冲牌的配置。
+ *
+ * 主要职责:
+ * - 运行多角色多种子模拟
+ * - 检查奖励是否包含路线确认/支付卡
+ * - 验证交易质量阈值并生成报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

@@ -1,3 +1,13 @@
+/**
+ * @file motionSystem.ts
+ * @description 动画系统配置 - 定义动画速度、质量和环境配置
+ *
+ * 主要职责:
+ * - 定义动画速度和品质档位
+ * - 管理环境氛围配置
+ * - 提供动画配置接口
+ */
+
 import { globalEventBus } from '@/core';
 
 export type AnimationSpeed = 'fast' | 'normal' | 'reduced';

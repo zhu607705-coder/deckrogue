@@ -1,3 +1,13 @@
+/**
+ * @file unifiedEngineAdapter.ts
+ * @description 统一引擎适配器，提供 legacy 和 runtimeV2 两种模式的抽象接口
+ *
+ * 主要职责:
+ * - 定义 EngineMode 引擎模式类型（legacy / runtimeV2）
+ * - 实现 LegacyEngineAdapter 适配旧版 GameEngine
+ * - 实现 RuntimeV2EngineAdapter 适配新版 EngineHost
+ * - 提供工厂函数根据模式创建对应适配器
+ */
 import type { GameEngine } from '@/core/events/gameEngine';
 import type { EngineHost, RenderModel, RuleCommand, RuleSnapshot } from '@/runtimeV2';
 import { createLegacyRenderModel } from '@/runtimeV2/legacyRenderBridge';

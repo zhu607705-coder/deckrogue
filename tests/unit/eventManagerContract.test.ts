@@ -1,3 +1,12 @@
+/**
+ * @file eventManagerContract.test.ts
+ * @description Unit tests for event manager contract and story event interactions.
+ *
+ * 主要职责:
+ * - 测试事件管理器的合约
+ * - 测试故事事件的选择与结算
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

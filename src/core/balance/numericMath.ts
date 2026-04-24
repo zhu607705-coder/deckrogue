@@ -1,3 +1,13 @@
+/**
+ * @file numericMath.ts
+ * @description 数值数学工具 - 提供伤害计算中的基础数学运算
+ *
+ * 主要职责:
+ * - 提供 clampNumber (数值钳制) 和 quantizeFloat (浮点数量化) 等基础数学运算
+ * - 实现 normalizeDamageBase (伤害基础值标准化)
+ * - 实现 applyDamageMultiplierStep (伤害乘数步骤计算)
+ * - 实现 finalizeDamage (最终伤害值计算)
+ */
 import { COMBAT_NUMBERS, NUMERIC_PRECISION } from '@/core/balance/numericConstants';
 
 export function clampNumber(value: number, min: number, max: number): number {

@@ -1,3 +1,14 @@
+/**
+ * @file ActionHand.tsx
+ * @description 行动手牌区 - 渲染玩家可操作的卡牌手牌
+ *
+ * 主要职责:
+ * - 渲染手牌区域的卡牌
+ * - 处理卡牌选择和目标指定
+ * - 显示卡牌消耗和可用状态
+ * - 支持悬停预览
+ */
+
 import React from 'react';
 import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';

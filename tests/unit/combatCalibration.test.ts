@@ -1,3 +1,12 @@
+/**
+ * @file combatCalibration.test.ts
+ * @description Unit tests for combat balance regression data and character survival rates.
+ *
+ * 主要职责:
+ * - 测试角色前3层/全5层生存率
+ * - 测试战斗平衡回归基线
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

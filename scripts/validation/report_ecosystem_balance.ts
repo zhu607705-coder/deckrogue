@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file report_ecosystem_balance.ts
+ * @description 生成生态系统平衡报告，分析各角色原型的健康度。
+ *
+ * 主要职责:
+ * - 聚合角色回归数据
+ * - 按原型分类分析健康度
+ * - 识别过强或过弱的角色
+ */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 
 const REPORT_DIR = 'reports/content';

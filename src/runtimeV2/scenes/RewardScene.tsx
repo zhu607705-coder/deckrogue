@@ -1,3 +1,12 @@
+/**
+ * @file RewardScene.tsx
+ * @description 奖励场景 DOM 组件，渲染卡牌奖励选择和跳过按钮
+ *
+ * 主要职责:
+ * - 渲染奖励卡牌列表和玩家状态
+ * - 处理卡牌选择和跳过奖励的交互回调
+ * - 显示路线引导信息
+ */
 import React from 'react';
 import type { RewardSceneProps } from '../sceneProps';
 

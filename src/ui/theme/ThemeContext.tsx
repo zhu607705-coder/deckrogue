@@ -1,3 +1,13 @@
+/**
+ * @file ThemeContext.tsx
+ * @description 主题上下文 - 提供深色/浅色模式和视觉强度切换
+ *
+ * 主要职责:
+ * - 管理主题模式状态 (dark/light)
+ * - 提供视觉强度配置 (subtle/balanced/intense)
+ * - 导出滤镜效果配置
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type ThemeMode = 'dark' | 'light';

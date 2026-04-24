@@ -1,3 +1,12 @@
+/**
+ * @file routeStateAuthority.test.ts
+ * @description Unit tests for route state authority and committed route outranking.
+ *
+ * 主要职责:
+ * - 测试已提交路由状态优先于近期卡牌信号
+ * - 测试路由状态的权威性判定
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

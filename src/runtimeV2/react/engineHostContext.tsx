@@ -1,3 +1,12 @@
+/**
+ * @file engineHostContext.tsx
+ * @description 引擎宿主 React 上下文，提供 EngineHost 的状态管理与命令分发
+ *
+ * 主要职责:
+ * - 提供 EngineHostProvider 上下文组件
+ * - 管理快照、渲染模型、状态等响应式数据
+ * - 暴露 useDispatch / useSnapshot / useRenderModel 等 Hooks
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { EngineHost, RenderModel, RuleCommand, RuleSnapshot, EngineHostStartOptions } from '../index';
 

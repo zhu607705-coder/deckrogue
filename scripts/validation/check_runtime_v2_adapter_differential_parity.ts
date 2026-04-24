@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_runtime_v2_adapter_differential_parity.ts
+ * @description 检查运行时 V2 适配器的微分一致性，对比新旧适配器的输出差异。
+ *
+ * 主要职责:
+ * - 创建传统适配器和 Python 进程适配器
+ * - 运行一致性场景并收集差异报告
+ * - 分析稳定差异字段并生成报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

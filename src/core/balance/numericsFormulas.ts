@@ -1,3 +1,13 @@
+/**
+ * @file numericsFormulas.ts
+ * @description 数值公式 - 实现资源到 EVU 的换算公式
+ *
+ * 主要职责:
+ * - 实现 energyToEVU、damageToEVU、blockToEVU 等基础资源换算公式
+ * - 实现 drawToEVU、healToEVU、statusToEVU 等扩展资源换算公式
+ * - 应用修正器 (timing, triggerRate, variance, risk) 到 EVU 计算
+ * - 实现价格推导公式 derivePriceGold
+ */
 import { NUMERICS_BASELINE } from '@/core/balance/numericsBaseline';
 import { applyArmorDiminishing, applyRiskAdjustment, applySoftCap, applyTriggerRate, applyTurnDiscount, applyVarianceDiscount, clampNonNegative } from '@/core/balance/numericsPolicy';
 import type { PriceQuote, ValuationModifiers, VarianceClass } from '@/core/balance/numericsTypes';

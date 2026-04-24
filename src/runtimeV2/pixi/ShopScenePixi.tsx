@@ -1,3 +1,12 @@
+/**
+ * @file ShopScenePixi.tsx
+ * @description 商店场景 PixiJS 渲染组件，绘制商品列表和购买操作按钮
+ *
+ * 主要职责:
+ * - 渲染商店中的卡牌、遗物和药水商品
+ * - 处理购买、移除和附魔等交互回调
+ * - 管理 PixiJS 应用生命周期和点击事件分发
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { ShopSceneProps } from '../sceneProps';

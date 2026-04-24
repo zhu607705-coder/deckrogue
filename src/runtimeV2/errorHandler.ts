@@ -1,3 +1,12 @@
+/**
+ * @file errorHandler.ts
+ * @description UI 系统错误处理器，集中捕获和分发错误事件
+ *
+ * 主要职责:
+ * - 捕获 UI 系统错误并通过事件总线发布
+ * - 提供 ErrorContext 上下文信息用于错误溯源
+ * - 支持 ValidationResult 校验结果收集
+ */
 import type { UIModel } from './uiModel';
 import { getEventBus } from './eventBus';
 import type { EventType, UIEvent } from './eventBus';

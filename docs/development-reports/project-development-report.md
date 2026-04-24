@@ -302,3 +302,10 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **发现与修复**：`checkServer()` 不再依赖外部 `curl`，改用当前 Node 进程执行内置 `fetch` probe；`spawnDevServer()` 不再通过 `cmd.exe/npm.cmd` 间接启动，改为直接启动本地 `node_modules/vite/bin/vite.js`，避免 Windows `spawn EINVAL` 和 smoke 结束后遗留 Vite 子进程。
 - **验证证据**：无现成 dev server 时运行 `npm run test:ui-smoke -- --url=http://127.0.0.1:3000` 通过；完成后 3000 端口释放；`npm run lint --silent`、`npm run build`、scoped `git diff --check` 通过。
 - **剩余风险**：build 仍保留既有 `pixi-vendor` chunk-size warning；不属于本次 Windows smoke helper 修复范围。
+
+### Step 118: organize and commit pending Windows workspace changes
+
+- **操作方向**：梳理当前工作区未提交改动，并按审查边界拆成可回溯提交。
+- **变更内容**：提交 Python runtime snapshot normalization 抽取、Windows `py -3` 启动器适配、未引用 UI shell helper 删除，并保留剩余大批量模块文件头说明为独立文档性提交。
+- **验证证据**：`npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Parity.test.ts` 通过 `31/31`；UI 删除用 `rg -n "ThemeAndBackgroundProvider|useUnifiedAppShellKeybinds" src tests scripts` 确认无引用；每个暂存提交执行 `git diff --cached --check`；剩余批量提交执行 `npm run lint --silent`、`npx tsc --noEmit --pretty false --project tsconfig.json`、`py -m unittest discover -s python_runtime/tests -p "test_*.py"`、`npm run build`。
+- **剩余风险**：build 仍保留既有 `pixi-vendor` chunk-size warning；大批量文件头说明没有逐文件人工复核语义，只验证了语法、类型和构建。

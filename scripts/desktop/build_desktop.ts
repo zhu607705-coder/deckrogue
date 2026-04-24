@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file build_desktop.ts
+ * @description Builds the desktop application package using electron-builder.
+ *
+ * 主要职责:
+ * - 配置 Electron 构建参数
+ * - 生成桌面平台安装包
+ */
 
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';

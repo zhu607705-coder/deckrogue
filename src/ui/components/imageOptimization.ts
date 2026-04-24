@@ -1,3 +1,13 @@
+/**
+ * @file imageOptimization.ts
+ * @description 图片优化工具 - 生成多格式图片源集和优化配置
+ *
+ * 主要职责:
+ * - 生成 AVIF/WebP 回退源集
+ * - 提供图片格式优先级配置
+ * - 管理图片加载策略
+ */
+
 export interface ImageSrcSet {
   avif?: string;
   webp?: string;

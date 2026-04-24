@@ -1,3 +1,13 @@
+/**
+ * @file unifiedRuntimeV2.tsx
+ * @description 统一运行时视图 - V2 版本的场景切换和引擎宿主
+ *
+ * 主要职责:
+ * - 创建和管理游戏引擎实例
+ * - 根据场景类型渲染对应视图
+ * - 处理场景间的状态传递
+ */
+
 import React, { useCallback, useMemo } from 'react';
 import {
   CombatScene,

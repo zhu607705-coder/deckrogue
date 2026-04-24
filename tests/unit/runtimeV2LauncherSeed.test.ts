@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2LauncherSeed.test.ts
+ * @description Unit tests for runtime v2 launcher seed coercion and storage.
+ *
+ * 主要职责:
+ * - 测试种子值的规范化与回退
+ * - 测试 localStorage 的读写与搜索参数解析
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

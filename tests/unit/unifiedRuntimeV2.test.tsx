@@ -1,3 +1,12 @@
+/**
+ * @file unifiedRuntimeV2.test.tsx
+ * @description Unit tests for unified runtime v2 screen rendering and adapter boot.
+ *
+ * 主要职责:
+ * - 测试统一运行时适配器的启动
+ * - 测试 UnifiedRuntimeV2Screen 的渲染输出
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';

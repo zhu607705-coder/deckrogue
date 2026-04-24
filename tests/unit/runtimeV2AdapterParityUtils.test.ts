@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2AdapterParityUtils.test.ts
+ * @description Unit tests for runtime v2 adapter parity utility semantic code classification.
+ *
+ * 主要职责:
+ * - 测试 inferSemanticCode 的选择器解析失败分类
+ * - 测试缺失商品和无效阶段消息的分类
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

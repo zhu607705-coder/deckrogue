@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2FlowSmokeRoute.test.ts
+ * @description Unit tests for runtime v2 flow smoke coverage route discovery and relic fixture synthesis.
+ *
+ * 主要职责:
+ * - 测试覆盖率路由的发现逻辑
+ * - 测试可购买遗物 fixture 的合成
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPurchasableRelicFixture, findCoverageRoute } from '../../scripts/validation/playwright_runtime_v2_flow_smoke';

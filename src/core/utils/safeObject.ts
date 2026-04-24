@@ -1,3 +1,13 @@
+/**
+ * @file safeObject.ts
+ * @description 安全对象访问 - 提供防御性对象属性访问工具函数
+ *
+ * 主要职责:
+ * - 实现 safeGet，通过路径字符串安全地访问嵌套对象属性
+ * - 实现 safeGetString/safeGetNumber/safeGetBoolean，类型安全的属性访问
+ * - 防止 null/undefined 或非对象类型导致的运行时错误
+ * - 支持点号分隔的路径访问 (如 'player.deck.0.id')
+ */
 export function safeGet<T>(obj: unknown, path: string, defaultValue: T): T {
   if (!obj || typeof obj !== 'object') return defaultValue;
   

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_electron_smoke.ts
+ * @description 使用 Playwright 测试 Electron 桌面应用的冒烟测试。
+ *
+ * 主要职责:
+ * - 构建 Electron 应用并启动
+ * - 验证桌面应用的基本功能
+ * - 记录截图和错误日志
+ */
+
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';

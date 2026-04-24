@@ -1,3 +1,12 @@
+/**
+ * @file MapScenePixi.tsx
+ * @description 地图场景 PixiJS 渲染组件，绘制地图节点、路线和玩家 HUD
+ *
+ * 主要职责:
+ * - 渲染地图节点、连线和路线推荐面板
+ * - 处理节点进入交互回调
+ * - 管理 PixiJS 应用生命周期和点击事件分发
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { MapSceneProps } from '../sceneProps';

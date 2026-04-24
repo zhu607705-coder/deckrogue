@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_runtime_v2_adapter_differential_parity_wasm.ts
+ * @description 使用 Playwright 检查运行时 V2 适配器的 WASM 微分一致性。
+ *
+ * 主要职责:
+ * - 通过浏览器 UI 运行一致性场景
+ * - 对比 Legacy 适配器和 WASM 适配器的输出
+ * - 生成差异分析报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

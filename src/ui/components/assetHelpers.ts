@@ -1,3 +1,13 @@
+/**
+ * @file assetHelpers.ts
+ * @description 资源辅助工具 - 提供图片路径、回退方案和资源占位符
+ *
+ * 主要职责:
+ * - 定义资源占位符路径
+ * - 提供图片加载回退绑定函数
+ * - 生成卡牌/敌人/遗物等资源路径
+ */
+
 export const ASSET_PLACEHOLDERS = {
   card: '/assets/cards/strike.png',
   relic: '/assets/relics/anchor.png',

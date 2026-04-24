@@ -1,3 +1,12 @@
+/**
+ * @file MapScene.tsx
+ * @description 地图场景 DOM 组件，渲染地图节点、路线和玩家 HUD
+ *
+ * 主要职责:
+ * - 渲染地图节点、连线和路线推荐面板
+ * - 处理节点进入交互回调
+ * - 显示玩家状态和路线判断信息
+ */
 import React from 'react';
 import type { MapSceneProps } from '../sceneProps';
 

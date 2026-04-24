@@ -1,3 +1,12 @@
+/**
+ * @file parityReport.ts
+ * @description 一致性校验报告类型定义，描述校验结果与差异报告的数据结构
+ *
+ * 主要职责:
+ * - 定义 ParityReportEntry 校验条目结构
+ * - 定义 MapSnapshotComparison 地图对比结果
+ * - 定义 RuleCommandSemanticCode 语义错误码
+ */
 import type { RuleSnapshot } from './contracts';
 
 export type RuleCommandSemanticCode =

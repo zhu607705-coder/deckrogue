@@ -1,3 +1,13 @@
+/**
+ * @file runtimeCoefficients.ts
+ * @description 运行时系数 - 定义战斗中的状态效果修正系数
+ *
+ * 主要职责:
+ * - 定义 RuntimeCoefficients 接口，描述伤害、护盾、状态、资源等的运行时系数
+ * - 提供弱化 (weak)、易伤 (vulnerable)、恐惧 (fear) 等状态的乘数
+ * - 提供力量 (strength)、敏捷 (dexterity)、腐蚀 (corruption) 等属性的增量系数
+ * - 实现 calculateDamage 等核心运行时计算函数
+ */
 export interface RuntimeCoefficients {
   damage: {
     weakMultiplier: number;

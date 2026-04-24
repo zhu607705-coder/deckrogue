@@ -1,3 +1,12 @@
+/**
+ * @file balanceLayerAnalysis.ts
+ * @description Analyzes balance metrics across survivability, rhythm, resource loop, economy, and deck growth layers.
+ *
+ * 主要职责:
+ * - 读取并分析各平衡层的指标
+ * - 生成层化平衡评分报告
+ */
+
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 

@@ -1,3 +1,13 @@
+/**
+ * @file buildContentBundle.ts
+ * @description 内容包构建器，将 JSON 数据和代码定义聚合为 RuntimeV2 可用的 ContentBundle
+ *
+ * 主要职责:
+ * - 从 characters / enemies / relics / potions JSON 读取角色、敌人、遗物、药水定义
+ * - 从 cardsDataEntry 读取卡牌定义
+ * - 从 numericSystem 读取地图运行时配置
+ * - 输出完整的 ContentBundle 对象供规则引擎使用
+ */
 import charactersDataRaw from '@/content/data/characters.json';
 import enemiesDataRaw from '@/content/data/enemies.json';
 import relicsDataRaw from '@/content/data/relics.json';

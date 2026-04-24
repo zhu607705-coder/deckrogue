@@ -1,3 +1,12 @@
+"""
+add_character_expansion_relics.py - 添加角色扩展遗物数据
+
+主要职责:
+- 生成职业分支路标遗物数据
+- 添加镜宫相关遗物
+- 更新 relics.json 文件
+"""
+
 import json
 
 # 读取现有的 relics.json

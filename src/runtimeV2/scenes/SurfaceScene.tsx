@@ -1,3 +1,12 @@
+/**
+ * @file SurfaceScene.tsx
+ * @description 表面场景 DOM 组件，处理升级、移除、附魔、胜利和结束等子屏幕
+ *
+ * 主要职责:
+ * - 渲染升级/移除/附魔/遗物升级等表面场景
+ * - 渲染胜利和游戏结束画面
+ * - 处理各表面场景的交互回调
+ */
 import React from 'react';
 import type { RenderModel } from '../contracts';
 

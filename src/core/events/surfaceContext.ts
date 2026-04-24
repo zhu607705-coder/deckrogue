@@ -1,3 +1,13 @@
+/**
+ * @file surfaceContext.ts
+ * @description 表面上下文 - 管理房间切换时的界面上下文恢复
+ *
+ * 主要职责:
+ * - 实现 deriveSurfaceContextFromLegacyState，从旧状态推导表面上下文
+ * - 实现 applySurfaceContext，将表面上下文应用到游戏状态
+ * - 实现 syncSurfaceContextFromLegacyState，同步表面上下文
+ * - 管理升级返回屏幕、遗物升级返回屏幕、附魔上下文等恢复逻辑
+ */
 import type { GameState, SurfaceContext } from '@/core/types';
 
 function cloneEnchantContext(enchantContext: GameState['enchantContext']): GameState['enchantContext'] {

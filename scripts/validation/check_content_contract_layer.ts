@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_content_contract_layer.ts
+ * @description 检查内容合约层的导入约束，确保只有授权模块可直接导入游戏数据。
+ *
+ * 主要职责:
+ * - 定义允许直接导入原始游戏数据的白名单
+ * - 扫描所有 import 语句检测违规
+ * - 报告非授权模块对游戏数据文件的访问
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

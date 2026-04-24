@@ -1,3 +1,13 @@
+/**
+ * @file valuationKernel.ts
+ * @description 估值核心 - 提供 EVU 计算的核心算法
+ *
+ * 主要职责:
+ * - 定义 ValuationWeights 接口，描述各资源的权重配置
+ * - 实现 calculateCardStaticEVU 和 calculateRelicStaticEVU 核心估值函数
+ * - 定义 DEFAULT_VALUATION_WEIGHTS 默认权重配置
+ * - 提供稀有度因子 (RARITY_FACTORS) 和类型因子 (TYPE_FACTORS)
+ */
 import type { VarianceClass } from './numericsTypes';
 import { VARIANCE_FACTORS } from './numericsFormulas';
 

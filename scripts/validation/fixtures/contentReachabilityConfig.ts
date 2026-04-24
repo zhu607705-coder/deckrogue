@@ -1,3 +1,13 @@
+/**
+ * @file contentReachabilityConfig.ts
+ * @description 定义内容可触达性检查的配置文件，包含分支卡、镜面内容等 ID 列表。
+ *
+ * 主要职责:
+ * - 定义分支卡 ID 列表
+ * - 定义镜面共享卡、遗物、敌人、Boss ID 列表
+ * - 提供可触达性检查的配置数据
+ */
+
 export interface ReachabilityConfig {
   branchCardIds: string[];
   mirrorSharedCardIds: string[];

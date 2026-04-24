@@ -1,3 +1,13 @@
+/**
+ * @file gameFlowOrchestrator.ts
+ * @description 游戏流程编排器 - 协调游戏的核心流程 (选择角色、移动节点)
+ *
+ * 主要职责:
+ * - 实现 selectCharacter，处理角色选择流程
+ * - 实现 moveToNode，处理节点移动流程
+ * - 支持运行时委托 (delegated actions) 和回退机制
+ * - 使用 RuntimeActionQueue 管理流程队列
+ */
 import type { MapNode } from '@/core/types';
 import { RuntimeActionQueue, type RuntimeAction } from '@/core/runtimeKernel/runtimeActionQueue';
 

@@ -1,3 +1,13 @@
+/**
+ * @file useCardPreview.ts
+ * @description 卡牌预览 Hook - 管理卡牌悬停预览的展示逻辑
+ *
+ * 主要职责:
+ * - 计算卡牌预览的修正数值
+ * - 处理基础值和最终值的对比
+ * - 提供预览数据的记忆化计算
+ */
+
 import { useCallback, useMemo } from 'react';
 import type { GameEngine } from '@/core';
 import type { ActionSpec, CardDef } from '@/core';

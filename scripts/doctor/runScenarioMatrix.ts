@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file runScenarioMatrix.ts
+ * @description Runs a matrix of game scenarios to test various seed and character combinations.
+ *
+ * 主要职责:
+ * - 生成场景矩阵运行结果
+ * - 记录各场景的最终状态
+ * - 报告失败场景的详细信息
+ */
 
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 

@@ -1,3 +1,11 @@
+/**
+ * @file triggerPoisonOnTargetAction.test.ts
+ * @description Unit tests for poison triggering action on target.
+ *
+ * 主要职责:
+ * - 测试毒药触发动作的执行
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

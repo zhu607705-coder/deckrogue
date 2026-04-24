@@ -1,3 +1,12 @@
+/**
+ * @file EventScene.tsx
+ * @description 事件场景 DOM 组件，渲染事件描述和选项按钮
+ *
+ * 主要职责:
+ * - 渲染事件标题、描述和路线引导面板
+ * - 绘制事件选项按钮并处理点击回调
+ * - 显示选项的禁用状态和路线标签
+ */
 import React from 'react';
 import type { EventSceneProps } from '../sceneProps';
 

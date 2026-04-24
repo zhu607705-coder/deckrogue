@@ -1,3 +1,12 @@
+/**
+ * @file legacyOracleAdapter.ts
+ * @description 旧版预言机适配器，将 GameEngine 包装为 RuleRuntimeAdapter 接口
+ *
+ * 主要职责:
+ * - 订阅 GameEngine 状态变更并转换为 RuleSnapshot
+ * - 实现 start / dispatch 接口以执行规则命令
+ * - 管理监听器并派发快照更新事件
+ */
 import { GameEngine } from '@/core/events/gameEngine';
 import type { EngineHostStartOptions, RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';

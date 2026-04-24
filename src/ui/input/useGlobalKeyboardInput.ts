@@ -1,3 +1,13 @@
+/**
+ * @file useGlobalKeyboardInput.ts
+ * @description 全局键盘输入 Hook - 监听键盘事件并分发到对应动作
+ *
+ * 主要职责:
+ * - 监听全局键盘事件
+ * - 将按键映射为应用动作
+ * - 支持快捷键录制模式
+ */
+
 import { useEffect } from 'react';
 import type { AppKeyboardContext, KeyboardActionId, KeybindMap } from './keybinds';
 import { resolveKeyboardAction } from './keybinds';

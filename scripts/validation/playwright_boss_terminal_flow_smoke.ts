@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_boss_terminal_flow_smoke.ts
+ * @description 使用 Playwright 测试 Boss 终端流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 创建 Boss 终端测试 fixture
+ * - 验证终端访问和返回角色选择
+ * - 记录截图和错误日志
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

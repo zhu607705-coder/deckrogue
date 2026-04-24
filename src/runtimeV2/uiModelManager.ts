@@ -1,3 +1,12 @@
+/**
+ * @file uiModelManager.ts
+ * @description UI 模型管理器，负责模型的变更检测、缓存与变更事件发布
+ *
+ * 主要职责:
+ * - 检测 UIModel 前后差异并生成 Change 记录
+ * - 管理模型缓存，避免重复计算
+ * - 通过变更事件发布到事件总线，驱动下游刷新
+ */
 import type { UIModel } from './uiModel';
 import { getEventBus } from './eventBus';
 import { deepEqual, generateHash } from './utils';

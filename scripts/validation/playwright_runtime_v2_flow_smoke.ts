@@ -1,3 +1,13 @@
+/**
+ * @file playwright_runtime_v2_flow_smoke.ts
+ * @description 使用 Playwright 测试运行时 V2 完整流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 运行完整的游戏流程（战斗、事件、休息、商店）
+ * - 验证 V2 运行时的各个流程节点
+ * - 记录截图和错误日志
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

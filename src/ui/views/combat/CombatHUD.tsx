@@ -1,3 +1,14 @@
+/**
+ * @file CombatHUD.tsx
+ * @description 战斗 HUD 组件 - 显示玩家资源、遗物、药水等状态信息
+ *
+ * 主要职责:
+ * - 渲染生命值、护盾、扭曲值
+ * - 显示遗物和药水栏
+ * - 提供次要资源状态显示
+ * - 集成战斗节拍动画
+ */
+
 import React from 'react';
 import { Shield, Zap, Eye, Heart, Layers, FlaskConical, Skull, Activity } from 'lucide-react';
 import type { GameEngine, PotionDef, RelicDef } from '@/core';

@@ -1,3 +1,12 @@
+/**
+ * @file runCardInstance.test.ts
+ * @description Unit tests for run card instance isolation, enchantment, and affliction management.
+ *
+ * 主要职责:
+ * - 测试同基础卡牌实例的隔离性
+ * - 测试附魔和诅咒的施加与清除
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cardsData } from '@/content/narrative/numericSystem';

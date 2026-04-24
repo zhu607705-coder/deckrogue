@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file find_missing_artwork.ts
+ * @description Scans cards.json against existing card art files to find missing artwork.
+ *
+ * 主要职责:
+ * - 读取卡牌数据与现有美术资源
+ * - 报告缺失的卡牌美术文件
+ */
+
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

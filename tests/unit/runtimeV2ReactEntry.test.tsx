@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2ReactEntry.test.tsx
+ * @description Unit tests for runtime v2 React entry mode resolution and app shell rendering.
+ *
+ * 主要职责:
+ * - 测试入口模式解析逻辑
+ * - 测试 RuntimeV2AppShell 的渲染输出
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';

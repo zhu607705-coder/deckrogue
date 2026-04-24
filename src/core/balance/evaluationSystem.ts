@@ -1,3 +1,13 @@
+/**
+ * @file evaluationSystem.ts
+ * @description 评估系统 - 对卡牌和遗物的数值强度进行评估
+ *
+ * 主要职责:
+ * - 评估所有卡牌的战斗效率和经济价值
+ * - 评估所有遗物的触发效率和强度
+ * - 提供查询接口获取特定卡牌/遗物的评估结果
+ * - 基于数值平衡系统 (balanceSystem) 的定价和效率计算
+ */
 import { balanceSystem, CardEvaluation, RelicEvaluation } from '@/core/balance/balanceSystem';
 import { cardsData } from '@/content/narrative/numericSystem';
 import { relicsData } from '@/content/narrative/numericSystem';

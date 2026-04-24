@@ -1,3 +1,13 @@
+/**
+ * @file statePerception.ts
+ * @description 状态感知系统 - 从战斗状态提取玩家和敌人的状态快照
+ *
+ * 主要职责:
+ * - 提取 PlayerStatusSnapshot，包含 HP%、能量、状态效果、遗物共鸣等信息
+ * - 提取 EnemyStatusSnapshot 包含敌人意图、HP、波段信息
+ * - 实现 assessCombatSituation 评估战斗整体局势
+ * - 为 AI 系统提供可量化的状态数据
+ */
 import type { CombatState } from '@/core/types/combat';
 
 type CombatPlayerState = CombatState['player'];

@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2ParityReport.test.ts
+ * @description Unit tests for runtime v2 parity report comparison and summary.
+ *
+ * 主要职责:
+ * - 测试地图快照的比较逻辑
+ * - 测试完美一致性报告的判定
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

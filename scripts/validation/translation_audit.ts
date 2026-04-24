@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file translation_audit.ts
+ * @description 审计游戏内容的翻译质量，检测英文残留和术语冲突。
+ *
+ * 主要职责:
+ * - 扫描卡牌、遗物、药水、成就数据的中文翻译
+ * - 检测英文残留和术语冲突
+ * - 生成翻译审计报告
+ */
+
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join, relative, resolve } from 'path';
 import { pathToFileURL } from 'url';

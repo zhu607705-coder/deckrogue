@@ -1,3 +1,14 @@
+/**
+ * @file terminology.ts
+ * @description 术语和本地化工具 - 提供卡牌/术语的中文名称和解释
+ *
+ * 主要职责:
+ * - 获取卡牌中文名称和描述
+ * - 管理术语词典和关键词注册
+ * - 解析术语标记为富文本
+ * - 提供 UI 标签本地化
+ */
+
 import cardNamesData from '@/content/data/cardNames.json';
 import keywordRegistryData from '@/content/data/keywordRegistry.json';
 import worldLoreData from '@/content/data/worldLore.json';

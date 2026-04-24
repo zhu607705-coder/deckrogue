@@ -1,3 +1,12 @@
+/**
+ * @file RewardScenePixi.tsx
+ * @description 奖励场景 PixiJS 渲染组件，绘制卡牌奖励和跳过按钮
+ *
+ * 主要职责:
+ * - 渲染奖励卡牌列表和玩家 HUD
+ * - 处理卡牌选择和跳过奖励的交互回调
+ * - 管理 PixiJS 应用生命周期和点击事件分发
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { RewardSceneProps } from '../sceneProps';

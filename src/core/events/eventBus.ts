@@ -1,8 +1,15 @@
 /**
- * Global Event Bus
- * @deprecated This bus is now for OBSERVATION/ANIMATION/TRIGGERS ONLY.
- * Do NOT use for rule progression - use ResolutionPipeline instead.
- * Rule progression should go through: ResolutionIntent -> ResolutionPipeline -> ResolutionResult
+ * @file eventBus.ts
+ * @description 全局事件总线 - 游戏事件系统的发布/订阅中心
+ *
+ * 主要职责:
+ * - 定义 GameEvent 联合类型，覆盖所有游戏事件 (RunStarted, CombatStart, DamageDealt 等)
+ * - 实现 EventBus 类，提供事件注册、触发和监听功能
+ * - 导出 globalEventBus 单例，供全局使用
+ *
+ * 架构说明:
+ * - 此总线仅用于观察、动画和触发器，不用于规则推进
+ * - 规则推进应通过 ResolutionPipeline 处理
  */
 export type GameEvent =
   | { type: 'GameShutdown'; timestamp: number }

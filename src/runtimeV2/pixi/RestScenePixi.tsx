@@ -1,3 +1,12 @@
+/**
+ * @file RestScenePixi.tsx
+ * @description 休整场景 PixiJS 渲染组件，绘制休息、升级和附魔等操作按钮
+ *
+ * 主要职责:
+ * - 渲染玩家状态和可用操作按钮（休息、升级、移除、附魔等）
+ * - 处理各操作按钮的点击回调
+ * - 管理 PixiJS 应用生命周期和点击事件分发
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { RestSceneProps } from '../sceneProps';

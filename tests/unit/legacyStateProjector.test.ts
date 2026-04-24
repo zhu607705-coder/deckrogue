@@ -1,3 +1,12 @@
+/**
+ * @file legacyStateProjector.test.ts
+ * @description Unit tests for projecting rule snapshots back to legacy state format.
+ *
+ * 主要职责:
+ * - 测试 RuleSnapshot 到 legacy state 的投影
+ * - 测试屏幕和阶段的映射正确性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

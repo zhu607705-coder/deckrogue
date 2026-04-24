@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file contentReachabilityCheck.ts
+ * @description Checks if all content items are reachable in the game flow.
+ *
+ * 主要职责:
+ * - 检查卡牌、遗物、事件的可触达性
+ * - 验证分支路径的连通性
+ */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';

@@ -1,3 +1,14 @@
+/**
+ * @file combatViewModel.ts
+ * @description 战斗视图模型 - 从引擎状态派生 UI 所需的结构化数据
+ *
+ * 主要职责:
+ * - 提取角色资源快照
+ * - 计算次要资源状态
+ * - 提供战斗数值钳制工具
+ * - 管理意图威胁等级判定
+ */
+
 import type { GameEngine } from '@/core';
 import type { IntentDisplay } from '@/types';
 

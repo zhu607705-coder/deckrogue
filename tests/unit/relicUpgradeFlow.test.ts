@@ -1,3 +1,12 @@
+/**
+ * @file relicUpgradeFlow.test.ts
+ * @description Unit tests for relic upgrade flow from rest and corrupted relic handling.
+ *
+ * 主要职责:
+ * - 测试遗物升级从休息界面的流程
+ * - 测试腐化遗物的升级与返回
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GameEngine } from '@/core/events/gameEngine';

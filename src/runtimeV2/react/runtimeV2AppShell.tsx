@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2AppShell.tsx
+ * @description RuntimeV2 应用外壳组件，提供渲染器切换和顶层布局
+ *
+ * 主要职责:
+ * - 支持 DOM 和 Pixi 两种渲染器切换
+ * - 渲染角色选择、启动器等顶层 UI
+ * - 管理应用启动流程与种子输入
+ */
 import React, { useState, useCallback } from 'react';
 import type { RenderModel } from '../contracts';
 import {

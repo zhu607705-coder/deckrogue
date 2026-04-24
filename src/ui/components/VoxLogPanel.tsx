@@ -1,3 +1,13 @@
+/**
+ * @file VoxLogPanel.tsx
+ * @description 语音日志面板 - 可拖拽、可最小化的战斗日志浮窗
+ *
+ * 主要职责:
+ * - 渲染战斗日志条目
+ * - 支持面板拖拽和最小化
+ * - 提供全屏和最小化两种模式
+ */
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { Radio, Minimize2, Maximize2, X, GripVertical } from 'lucide-react';

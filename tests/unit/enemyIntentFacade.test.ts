@@ -1,3 +1,12 @@
+/**
+ * @file enemyIntentFacade.test.ts
+ * @description Unit tests for enemy intent facade and perception snapshot building.
+ *
+ * 主要职责:
+ * - 测试意图感知快照的构建
+ * - 测试冷却缩减逻辑
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

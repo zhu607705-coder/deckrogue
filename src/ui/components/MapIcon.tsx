@@ -1,3 +1,13 @@
+/**
+ * @file MapIcon.tsx
+ * @description 地图图标组件 - 根据节点类型渲染对应的地图图标
+ *
+ * 主要职责:
+ * - 根据节点类型选择图标
+ * - 提供默认图标回退
+ * - 支持自定义样式和替代文本
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 
 interface MapIconProps {

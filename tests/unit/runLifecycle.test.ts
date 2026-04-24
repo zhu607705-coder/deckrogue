@@ -1,3 +1,12 @@
+/**
+ * @file runLifecycle.test.ts
+ * @description Unit tests for run session lifecycle and game setup interactions.
+ *
+ * 主要职责:
+ * - 测试 RunSession 的创建与销毁
+ * - 测试 gameSetup 与 session 的交互
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

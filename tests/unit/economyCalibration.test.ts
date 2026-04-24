@@ -1,3 +1,12 @@
+/**
+ * @file economyCalibration.test.ts
+ * @description Unit tests for economy calibration and gold balance regression.
+ *
+ * 主要职责:
+ * - 测试经济系统的数值基线
+ * - 测试金币收益与商店可负担性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

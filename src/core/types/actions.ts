@@ -1,3 +1,14 @@
+/**
+ * @file actions.ts
+ * @description 动作类型定义 - 定义卡牌动作、卡牌定义和卡牌实例的类型系统
+ *
+ * 主要职责:
+ * - 定义 CardType、CardTarget、Rarity 等卡牌基础类型
+ * - 定义 ActionSpec 接口，描述卡牌动作的执行规范
+ * - 定义 CardDef 接口，描述不可变的卡牌定义数据
+ * - 定义 RunCardInstance 接口，描述运行时的卡牌实例数据
+ * - 定义 CardEnchantmentDef、CardAfflictionDef 等卡牌修饰类型
+ */
 import type { EnemyAiProfile } from '@/core/types/enemyAI';
 
 export type CardType = 'Attack' | 'Skill' | 'Power';

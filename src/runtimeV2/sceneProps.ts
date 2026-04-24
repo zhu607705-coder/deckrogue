@@ -1,3 +1,12 @@
+/**
+ * @file sceneProps.ts
+ * @description 场景属性类型定义，为各场景组件提供 props 接口
+ *
+ * 主要职责:
+ * - 定义 MapSceneProps / CombatSceneProps / RewardSceneProps 等场景属性接口
+ * - 定义 SceneDecisionGuidance 路线决策引导数据结构
+ * - 提供各场景的 props 推导工厂函数
+ */
 import type { RenderModel } from './contracts';
 import type { CardDef, RunCardInstance } from '@/core/types';
 import { getCardDefById, getRouteTaxonomy } from '@/content/narrative/numericSystem';

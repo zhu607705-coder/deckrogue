@@ -1,3 +1,12 @@
+/**
+ * @file combatViewModel.test.ts
+ * @description Unit tests for combat view model value clamping and intent threat levels.
+ *
+ * 主要职责:
+ * - 测试角色资源快照的数值钳制
+ * - 测试意图威胁等级计算
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,13 @@
+/**
+ * @file check_import_boundaries.ts
+ * @description 检查源代码中的跨层导入是否违反分层架构约束。
+ *
+ * 主要职责:
+ * - 扫描所有源文件的 import 语句
+ * - 检测 UI 层是否直接导入核心运行时模块
+ * - 报告分层违规并生成检查报告
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

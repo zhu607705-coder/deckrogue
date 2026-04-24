@@ -1,3 +1,13 @@
+/**
+ * @file DynamicDifficulty.ts
+ * @description 动态难度系统 - 根据玩家表现动态调整游戏难度
+ *
+ * 主要职责:
+ * - 定义 DifficultyProfile 接口，描述当前难度配置
+ * - 定义 PlayerPerformanceMetrics，追踪玩家近期表现 (胜率、伤害效率等)
+ * - 定义 DIFFICULTY_TIERS，描述难度层级和标签
+ * - 实现 applyDifficultyToCombat，将难度调整应用到战斗状态
+ */
 import type { CombatState } from '@/core/types/combat';
 import { clamp } from '@/core/utils/numberBounds';
 

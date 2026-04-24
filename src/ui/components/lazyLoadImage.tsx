@@ -1,3 +1,13 @@
+/**
+ * @file lazyLoadImage.tsx
+ * @description 懒加载图片组件 - 支持占位符、模糊回退和渐显效果
+ *
+ * 主要职责:
+ * - 使用 IntersectionObserver 实现懒加载
+ * - 支持模糊占位符和渐显动画
+ * - 提供加载状态和错误回退
+ */
+
 import React, { useRef, useState, useEffect, forwardRef } from 'react';
 
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {

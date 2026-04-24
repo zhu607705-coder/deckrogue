@@ -1,3 +1,14 @@
+/**
+ * @file Battlefield.tsx
+ * @description 战场组件 - 渲染战斗场景和敌我双方站位
+ *
+ * 主要职责:
+ * - 渲染战场布局和背景
+ * - 显示敌人立牌和状态
+ * - 处理目标选择
+ * - 显示扭曲欺诈文本
+ */
+
 import React, { useRef, useEffect } from 'react';
 import { Shield, Sword, Heart, Clock, Layers, FlaskConical } from 'lucide-react';
 import { motion } from 'motion/react';

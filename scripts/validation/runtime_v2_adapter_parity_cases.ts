@@ -1,3 +1,13 @@
+/**
+ * @file runtime_v2_adapter_parity_cases.ts
+ * @description 定义运行时 V2 适配器一致性测试的合成场景。
+ *
+ * 主要职责:
+ * - 定义用于测试适配器一致性的合成场景
+ * - 提供场景输入和期望输出
+ * - 辅助适配器差异分析
+ */
+
 import { GameEngine } from '@/core/events/gameEngine';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 import type { ResolvedParityStepInput } from '@/runtimeV2/parity';

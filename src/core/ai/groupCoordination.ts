@@ -1,3 +1,13 @@
+/**
+ * @file groupCoordination.ts
+ * @description 群体协作系统 - 多敌人战斗时的意图分配协调
+ *
+ * 主要职责:
+ * - 定义 IntentDistribution，描述攻击/防御/减益/增益意图的权重分配
+ * - 实现 calculateIntentDistribution，根据战场态势计算意图分布
+ * - 实现 detectIntentConflicts，检测多个敌人的意图冲突
+ * - 实现 adjustIntentWeightForGroup，为群体战斗调整个体意图权重
+ */
 import { intentTagger, type IntentCategory } from './intentTags';
 
 export interface IntentDistribution {

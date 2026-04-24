@@ -1,3 +1,14 @@
+/**
+ * @file EnemyStandee.tsx
+ * @description 敌人立牌组件 - 渲染单个敌人的立牌、意图和状态
+ *
+ * 主要职责:
+ * - 渲染敌人图片和状态栏
+ * - 显示敌人意图图标和数值
+ * - 支持扭曲欺诈文本
+ * - 提供选中/目标高亮
+ */
+
 import React from 'react';
 import { Shield } from 'lucide-react';
 import { motion } from 'motion/react';

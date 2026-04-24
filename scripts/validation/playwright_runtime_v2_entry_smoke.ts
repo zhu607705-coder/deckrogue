@@ -1,3 +1,13 @@
+/**
+ * @file playwright_runtime_v2_entry_smoke.ts
+ * @description 使用 Playwright 测试运行时 V2 入口的冒烟测试。
+ *
+ * 主要职责:
+ * - 测试 V2 运行时入口页面加载
+ * - 验证控制台错误和页面错误
+ * - 检查请求失败情况
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium, type Page } from 'playwright';

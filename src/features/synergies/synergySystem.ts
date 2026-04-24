@@ -1,3 +1,12 @@
+/**
+ * @file synergySystem.ts
+ * @description 协同系统 - 管理卡牌协同、连击链和乘数区域计算
+ *
+ * 主要职责:
+ * - 定义和管理伤害乘数区域（加性/乘性/独立）
+ * - 处理协同触发条件和冷却机制
+ * - 计算连击链效果和最终伤害乘数
+ */
 import { GameState, globalEventBus } from '@/core';
 
 export interface MultiplierZone {

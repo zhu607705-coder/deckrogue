@@ -1,3 +1,13 @@
+/**
+ * @file uiModel.ts
+ * @description UI 模型类型定义，描述游戏运行时 UI 层所需的全部数据结构
+ *
+ * 主要职责:
+ * - 定义 ScreenId / RoomKind 屏幕与房间类型枚举
+ * - 定义玩家、地图、房间、战斗、奖励、事件等子模型接口
+ * - 定义 UIModel 统一 UI 模型结构
+ * - 定义通知、房间选择等辅助类型
+ */
 export type ScreenId =
   | 'Launcher'
   | 'CharacterSelect'

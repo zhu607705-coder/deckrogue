@@ -1,3 +1,12 @@
+/**
+ * @file eventBus.ts
+ * @description UI 事件总线，提供发布/订阅机制驱动 UI 层各模块间通信
+ *
+ * 主要职责:
+ * - 定义 EventType 事件类型枚举（战斗、奖励、地图、玩家等）
+ * - 提供 EventBus 单例，支持 publish / subscribe 模式
+ * - 解耦场景、模型管理器与插件系统之间的通信
+ */
 export type EventType =
   | 'combat.start'
   | 'combat.end'

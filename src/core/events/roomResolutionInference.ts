@@ -1,3 +1,12 @@
+/**
+ * @file roomResolutionInference.ts
+ * @description 房间解决推断 - 从游戏状态推断房间解决类型
+ *
+ * 主要职责:
+ * - 实现 inferRoomResolutionKindFromLegacyState，根据 screen 状态推断房间类型
+ * - 支持升级返回屏幕、 campfire 选择等边界情况处理
+ * - 为房间会话系统提供解决类型推断
+ */
 import type { GameState, RoomResolutionKind } from '@/core/types';
 
 interface RoomResolutionInferenceOptions {

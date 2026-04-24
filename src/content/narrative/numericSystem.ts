@@ -1,3 +1,11 @@
+/**
+ * @file numericSystem.ts
+ * @description 数值系统数据聚合 - 统一导出所有游戏数值定义和配置
+ *
+ * 主要职责:
+ * - 加载并导出敌人、药水、遗物、卡牌、事件等数据
+ * - 提供数值配置和路线系统相关数据的统一访问入口
+ */
 import rawEnemiesData from '@/content/data/enemies.json';
 import rawPotionsData from '@/content/data/potions.json';
 import rawRelicsData from '@/content/data/relics.json';

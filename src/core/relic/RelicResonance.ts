@@ -1,3 +1,13 @@
+/**
+ * @file RelicResonance.ts
+ * @description 遗物共鸣系统 - 管理遗物套装共鸣效果
+ *
+ * 主要职责:
+ * - 定义 ResonanceSet 接口，描述共鸣套装 (遗物组合 + 套装奖励)
+ * - 定义 ResonanceBonus 接口，描述共鸣奖励 (passive/triggered/enhanced)
+ * - 定义 RESONANCE_SETS 常量，列举所有共鸣套装配置
+ * - 提供共鸣激活和效果计算的接口
+ */
 import type { CombatState } from '@/core/types/combat';
 
 export type ResonanceBonusType = 'passive' | 'triggered' | 'enhanced';

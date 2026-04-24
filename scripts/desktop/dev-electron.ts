@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file dev-electron.ts
+ * @description Launches the development server and Electron app for desktop development.
+ *
+ * 主要职责:
+ * - 启动 Vite 开发服务器
+ * - 并行启动 Electron 应用
+ * - 处理进程生命周期管理
+ */
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';

@@ -1,3 +1,13 @@
+/**
+ * @file numericsBaseline.ts
+ * @description 数值基准配置 - 定义游戏数值平衡的基准常数
+ *
+ * 主要职责:
+ * - 定义 EVU (Effective Value Unit) 基准值 (energy, damage, block, draw, gold, heal, status)
+ * - 定义折价系数 (discounting: 延迟生效、触发概率、遗物触发率等)
+ * - 定义风险系数 (risk: 安全阈值、危机系数、扭曲Alpha)
+ * - 定义软上限配置 (caps: 伤害软上限、护甲软上限、状态叠加上限等)
+ */
 import type { NumericsBaseline } from '@/core/balance/numericsTypes';
 
 export const NUMERICS_BASELINE: NumericsBaseline = {

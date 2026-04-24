@@ -1,3 +1,13 @@
+/**
+ * @file RelicUpgrade.ts
+ * @description 遗物升级系统 - 定义遗物升级配置和效果
+ *
+ * 主要职责:
+ * - 定义 RelicUpgradeEffect 接口，描述遗物升级效果 (属性提升/触发增强/新能力)
+ * - 定义 RelicUpgradeConfig 接口，描述遗物的多个升级等级
+ * - 定义 RELIC_UPGRADE_CONFIGS 常量，列举所有可升级遗物的配置
+ * - 提供遗物升级的查询和应用接口
+ */
 import type { GameState } from '@/core/types';
 
 export interface RelicUpgradeEffect {

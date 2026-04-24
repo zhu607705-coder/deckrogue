@@ -1,3 +1,12 @@
+/**
+ * @file engineHost.ts
+ * @description 引擎主机适配器，提供快照订阅、差异计算和渲染模型更新的统一入口
+ *
+ * 主要职责:
+ * - 管理快照监听器并触发渲染模型更新
+ * - 实现快照差异计算检测状态变化
+ * - 代理底层 RuleRuntimeAdapter 的启动与命令分发
+ */
 import type { EngineHostStartOptions, RenderModel, RuleCommand, RuleDiff, RuleResult, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { createRenderModel } from '@/runtimeV2/renderModel';
 

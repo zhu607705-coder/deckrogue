@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Persistence.test.ts
+ * @description Unit tests for runtime v2 save game persistence and replay log.
+ *
+ * 主要职责:
+ * - 测试 SaveGameV2 的创建与快照恢复
+ * - 测试 ReplayLogV1 的回放与持久化
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

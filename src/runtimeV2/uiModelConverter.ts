@@ -1,3 +1,12 @@
+/**
+ * @file uiModelConverter.ts
+ * @description 将规则层 RuleSnapshot 转换为 UI 层 UIModel 的转换器
+ *
+ * 主要职责:
+ * - 将 RuleSnapshot 映射为 UIModel 各子模型（玩家、地图、房间、战斗等）
+ * - 处理卡牌、遗物、药水等实体的 UI 展示转换
+ * - 推导地图可用节点与推荐路线
+ */
 import type { RuleSnapshot } from './contracts';
 import type { UIModel, UICard, UIPlayerModel, UIMapModel, UIRoomModel, UICombatModel, UIRewardModel, UIEventModel, UINotification, UIRoomChoice } from './uiModel';
 import { getContentService } from './content/contentService';

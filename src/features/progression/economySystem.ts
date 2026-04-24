@@ -1,3 +1,12 @@
+/**
+ * @file economySystem.ts
+ * @description 经济系统 - 管理游戏经济数值、奖励计算和随机化
+ *
+ * 主要职责:
+ * - 计算楼层奖励（金币、卡牌、遗物、药水）
+ * - 管理敌人缩放比例和商店价格
+ * - 提供经济随机化和稀有度权重系统
+ */
 import {
   ECONOMY_DEFAULTS,
   GameState,

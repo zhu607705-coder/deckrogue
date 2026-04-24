@@ -1,3 +1,13 @@
+/**
+ * @file intentSelector.ts
+ * @description 意图选择器 - 综合多种因素为敌人选择最优意图
+ *
+ * 主要职责:
+ * - 综合考虑状态感知、战斗记忆、风险评估、群体协作等因素选择意图
+ * - 定义 EnemyDefBase 和 EnemyStateBase 接口，描述敌人定义和状态
+ * - 定义 IntentCooldownState 接口，管理意图冷却
+ * - 实现基于难度、性格、AI档案的意图选择策略
+ */
 import { intentTagger, type IntentCategory, type IntentTag } from './intentTags';
 import { combatMemory, type PlayerPatternAnalysis } from './combatMemory';
 import {

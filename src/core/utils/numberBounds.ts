@@ -1,3 +1,13 @@
+/**
+ * @file numberBounds.ts
+ * @description 数值边界工具 - 定义游戏数值的有效范围和钳制函数
+ *
+ * 主要职责:
+ * - 定义 NumberBounds 接口，描述数值的最小和最大值
+ * - 定义 DEFAULT_BOUNDS，为 HP、能量、护盾、伤害、金币等定义默认边界
+ * - 实现 clamp 函数，将数值钳制到指定范围内
+ * - 为数值系统提供边界保护
+ */
 export interface NumberBounds {
   min: number;
   max: number;

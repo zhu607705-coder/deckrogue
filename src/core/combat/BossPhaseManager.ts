@@ -1,3 +1,13 @@
+/**
+ * @file BossPhaseManager.ts
+ * @description Boss 阶段管理器 - 管理 Boss 战斗的多阶段机制
+ *
+ * 主要职责:
+ * - 初始化 Boss 阶段的运行时状态
+ * - 根据 Boss 血量百分比切换阶段
+ * - 处理阶段转换时的效果 (召唤、清状态、Buff 等)
+ * - 与 AdaptiveBossAI 协作实现动态难度调整
+ */
 import type { GameState, RunCardInstance, CombatState } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { getBossPhaseEncounter, getBossPhaseForHpPct, type BossPhaseDef } from '@/core/events/bossPhaseSystem';

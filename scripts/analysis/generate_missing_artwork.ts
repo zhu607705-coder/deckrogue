@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file generate_missing_artwork.ts
+ * @description Generates placeholder artwork prompts for missing card images.
+ *
+ * 主要职责:
+ * - 读取缺失美术清单
+ * - 为缺失卡牌生成 AI 提示词
+ */
+
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

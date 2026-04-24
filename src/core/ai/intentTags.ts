@@ -1,3 +1,13 @@
+/**
+ * @file intentTags.ts
+ * @description 意图标签系统 - 为敌人意图打分类标签
+ *
+ * 主要职责:
+ * - 定义 IntentCategory (attack, defend, debuff, buff, summon, special)
+ * - 定义 IntentTag (aggressive, defensive, controlling, sustaining, bursty 等)
+ * - 实现 intentTagger，为意图自动分配分类标签
+ * - 为 AI 风险评估和群体协作提供标签数据
+ */
 export type IntentCategory =
   | 'attack'
   | 'defend'

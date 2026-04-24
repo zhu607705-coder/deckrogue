@@ -1,3 +1,13 @@
+/**
+ * @file GlossaryTerm.tsx
+ * @description 术语词条组件 - 渲染可交互的术语高亮和浮窗解释
+ *
+ * 主要职责:
+ * - 高亮显示术语关键词
+ * - 悬停时显示术语解释浮窗
+ * - 从术语表获取词条定义
+ */
+
 import React, { useCallback, useRef, useEffect } from 'react';
 import { getGlossaryEntry } from '@/ui/content/terminology';
 

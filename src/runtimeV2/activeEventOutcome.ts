@@ -1,3 +1,12 @@
+/**
+ * @file activeEventOutcome.ts
+ * @description 活跃事件结果投影器，从 RuleSnapshot 中提取事件选择和结果信息
+ *
+ * 主要职责:
+ * - 定义 ActiveEventChoiceRole / ActiveEventOutcomeKind 类型
+ * - 投影活跃事件的选择角色和结果类型
+ * - 提供旧版事件状态的奇偶校验投影
+ */
 import type { ActiveEventState } from '@/core/types';
 import type { RuleSnapshot } from './contracts';
 

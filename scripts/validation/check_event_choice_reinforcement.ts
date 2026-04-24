@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_event_choice_reinforcement.ts
+ * @description 检查事件选项的路线增强配置是否正确。
+ *
+ * 主要职责:
+ * - 验证事件选项的路线提交权重
+ * - 检查事件选项的路线角色定义
+ * - 报告路线增强配置违规
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

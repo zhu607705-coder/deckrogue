@@ -1,3 +1,12 @@
+/**
+ * @file launcherTutorialLayout.test.ts
+ * @description Unit tests for launcher tutorial layout alignment after closing tutorial.
+ *
+ * 主要职责:
+ * - 测试关闭教程后启动器布局的对齐
+ * - 测试平板视口下的响应式行为
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';

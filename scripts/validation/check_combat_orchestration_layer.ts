@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_combat_orchestration_layer.ts
+ * @description 检查战斗编排层的导入边界，确保核心战斗逻辑不被 UI 层直接调用。
+ *
+ * 主要职责:
+ * - 扫描源码、脚本和测试目录的 import 语句
+ * - 检测是否从非战斗编排模块直接导入战斗核心模块
+ * - 报告分层违规
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

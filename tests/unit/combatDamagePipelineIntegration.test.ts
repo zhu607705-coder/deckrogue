@@ -1,7 +1,18 @@
+/**
+ * @file combatDamagePipelineIntegration.test.ts
+ * @description Unit tests for the combat damage pipeline integration with action factory.
+ *
+ * 主要职责:
+ * - 测试伤害管道与动作队列的集成
+ * - 测试 DamageDealt 事件的发射
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { GameState } from '@/core/types';
+import type { ActionSpec, GameState } from '@/core/types';
+import { ActionQueue } from '@/core/actions/actionQueue';
+import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { globalEventBus, type GameEvent } from '@/core/events/eventBus';
 import { ActionManager } from '@/core/actions/actionManager';
 import { CombatManager } from '@/core/events/CombatManager';

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_enemy_first3_exposure.ts
+ * @description 检查前 3 层敌人的暴露情况，确保展示的是正确的变体。
+ *
+ * 主要职责:
+ * - 验证每层的敌人池是否聚焦于展示/早期变体
+ * - 使用确定性 RNG 选择并验证 picked 敌人
+ * - 报告前 3 层暴露配置问题
+ */
+
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createRNG } from '@/infrastructure/rng/rng';

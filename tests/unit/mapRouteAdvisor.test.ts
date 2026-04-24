@@ -1,3 +1,12 @@
+/**
+ * @file mapRouteAdvisor.test.ts
+ * @description Unit tests for map route advisor dossier generation.
+ *
+ * 主要职责:
+ * - 测试 buildRouteDossiers 生成的对比路由档案
+ * - 测试路由建议中的属性正确性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

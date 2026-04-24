@@ -1,3 +1,13 @@
+/**
+ * @file DiscardPileModal.tsx
+ * @description 弃牌堆模态框 - 展示弃牌堆中的卡牌
+ *
+ * 主要职责:
+ * - 渲染弃牌堆卡牌列表
+ * - 显示卡牌详细信息
+ * - 支持筛选和排序
+ */
+
 import React, { useMemo } from 'react';
 import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';

@@ -1,3 +1,13 @@
+/**
+ * @file SceneTransition.tsx
+ * @description 场景过渡组件 - 管理场景切换时的动画和氛围效果
+ *
+ * 主要职责:
+ * - 根据场景 ID 应用过渡动画
+ * - 管理环境氛围类名
+ * - 处理动画减弱偏好
+ */
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   getMotionTokens, 

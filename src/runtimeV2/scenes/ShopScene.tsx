@@ -1,3 +1,12 @@
+/**
+ * @file ShopScene.tsx
+ * @description 商店场景 DOM 组件，渲染商品列表和购买操作按钮
+ *
+ * 主要职责:
+ * - 渲染商店中的卡牌、遗物和药水商品
+ * - 处理购买、移除和附魔等交互回调
+ * - 显示路线引导信息
+ */
 import React from 'react';
 import type { ShopSceneProps } from '../sceneProps';
 

@@ -1,3 +1,13 @@
+/**
+ * @file selectEnemyIntent.ts
+ * @description 敌人意图选择入口 - 整合各子系统为敌人选择最终意图
+ *
+ * 主要职责:
+ * - 整合 combatMemory、handKnowledge、intentTagger、intentSelector 等子系统
+ * - 定义 EnemyPerceptionSnapshot，描述 AI 对当前局势的感知快照
+ * - 实现基于感知、记忆、群体协作的意图选择流程
+ * - 输出最终意图选择结果
+ */
 import type { GameState, RunCardInstance } from '@/core/types';
 
 import { combatMemory, type PlayerPatternAnalysis } from './combatMemory';

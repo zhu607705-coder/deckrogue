@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_event_tradeoff_route_state.ts
+ * @description 检查事件交易与路线状态的保存加载一致性。
+ *
+ * 主要职责:
+ * - 验证事件交易后路线状态的序列化
+ * - 检查保存加载后路线状态的一致性
+ * - 报告路线状态保存加载问题
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

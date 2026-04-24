@@ -1,3 +1,14 @@
+/**
+ * @file keybinds.ts
+ * @description 快捷键配置 - 定义键盘动作标识和快捷键映射
+ *
+ * 主要职责:
+ * - 定义键盘动作 ID 类型
+ * - 提供默认快捷键映射
+ * - 解析键盘事件为动作
+ * - 检测快捷键冲突
+ */
+
 export type KeyboardActionId =
   | 'toggleMenu'
   | 'back'

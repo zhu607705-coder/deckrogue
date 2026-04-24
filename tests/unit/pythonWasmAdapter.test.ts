@@ -1,3 +1,12 @@
+/**
+ * @file pythonWasmAdapter.test.ts
+ * @description Unit tests for the Python WASM adapter snapshot envelope unwrapping.
+ *
+ * 主要职责:
+ * - 测试裸快照载荷的透传
+ * - 测试 dispatch 信封的解包
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

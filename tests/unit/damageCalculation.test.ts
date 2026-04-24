@@ -1,3 +1,12 @@
+/**
+ * @file damageCalculation.test.ts
+ * @description Unit tests for damage calculation and synergy system interactions.
+ *
+ * 主要职责:
+ * - 测试伤害计算逻辑
+ * - 测试协同系统与伤害的交互
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

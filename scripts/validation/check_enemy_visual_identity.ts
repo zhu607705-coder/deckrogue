@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_enemy_visual_identity.ts
+ * @description 检查敌人变体的视觉标识是否正确配置。
+ *
+ * 主要职责:
+ * - 验证变体是否配置了 variant_of
+ * - 检查变体是否有独立的视觉资源
+ * - 报告视觉标识缺失或冲突
+ */
+
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { enemiesData } from '@/content/narrative/numericSystem';

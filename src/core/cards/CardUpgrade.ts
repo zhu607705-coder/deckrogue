@@ -1,3 +1,12 @@
+/**
+ * @file CardUpgrade.ts
+ * @description 卡牌升级系统 - 定义卡牌升级配置和升级逻辑
+ *
+ * 主要职责:
+ * - 定义 CardUpgradeConfig 接口，描述卡牌的升级参数 (伤害、费用、效果等)
+ * - 定义 CardEffect 接口，描述卡牌效果的结构化定义
+ * - 实现 applyUpgrade，将升级配置应用到卡牌定义上
+ */
 import type { ActionSpec, CardDef } from '@/core/types/actions';
 
 export interface CardUpgradeConfig {

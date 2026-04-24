@@ -1,3 +1,12 @@
+/**
+ * @file pythonRuntime.ts
+ * @description Python 运行时引擎 - 在 Python 中执行游戏规则逻辑
+ *
+ * 主要职责:
+ * - 定义 Python 规则运行时的命令分发接口
+ * - 处理游戏状态序列化、敌人/药水/遗物查询
+ * - 支持战斗事件、节点进入、商店购买等游戏动作
+ */
 export const PYTHON_RUNTIME_CODE = `
 from __future__ import annotations
 

@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * @file check_content_authoring.ts
+ * @description Validates content authoring standards for cards, enemies, relics, and events.
+ *
+ * 主要职责:
+ * - 检查卡牌、敌人、遗物、事件的定义完整性
+ * - 验证内容的授权与可访问性
+ */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';

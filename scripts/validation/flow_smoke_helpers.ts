@@ -1,3 +1,13 @@
+/**
+ * @file flow_smoke_helpers.ts
+ * @description 提供流程冒烟测试的辅助工具函数和共享 fixture。
+ *
+ * 主要职责:
+ * - 管理开发服务器的启动和等待
+ * - 提供存档槽位 fixture 创建工具
+ * - 封装 Playwright 上下文引导逻辑
+ */
+
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';

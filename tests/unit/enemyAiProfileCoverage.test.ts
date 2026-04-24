@@ -1,3 +1,12 @@
+/**
+ * @file enemyAiProfileCoverage.test.ts
+ * @description Unit tests for enemy AI profile coverage and intent bias validation.
+ *
+ * 主要职责:
+ * - 测试所有带意图策略的敌人是否声明了 ai_profile
+ * - 测试 AI profile 意图偏置仅引用已声明的意图
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

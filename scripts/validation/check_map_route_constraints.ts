@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_map_route_constraints.ts
+ * @description 检查地图路线约束，验证地图生成是否满足路线期望。
+ *
+ * 主要职责:
+ * - 定义各节点类型的路线期望值
+ * - 使用 RunGenerator 生成地图并验证约束
+ * - 报告路线约束违规
+ */
+
 import { RunGenerator } from '@/core/events/runGenerator';
 import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 

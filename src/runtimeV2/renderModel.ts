@@ -1,3 +1,12 @@
+/**
+ * @file renderModel.ts
+ * @description 从 RuleSnapshot 构建 RenderModel，为渲染层提供决策引导和房间数据
+ *
+ * 主要职责:
+ * - 将规则层快照转换为渲染模型（玩家、地图、房间、战斗等）
+ * - 推导地图可用节点与推荐路线
+ * - 集成叙事内容服务获取事件描述与选择引导
+ */
 import type {
   RenderModel,
   RenderModelDecisionGuidance,

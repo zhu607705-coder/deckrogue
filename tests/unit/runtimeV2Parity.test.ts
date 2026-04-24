@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2Parity.test.ts
+ * @description Unit tests for runtime v2 parity between legacy oracle and Python adapters.
+ *
+ * 主要职责:
+ * - 测试旧版 oracle 与 Python 适配器的一致性
+ * - 测试路由状态和活跃事件的奇偶校验
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

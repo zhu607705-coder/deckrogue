@@ -1,3 +1,12 @@
+/**
+ * @file unifiedEngineContext.tsx
+ * @description 统一引擎 React 上下文，在 legacy 和 runtimeV2 模式间切换
+ *
+ * 主要职责:
+ * - 提供 UnifiedEngineProvider 上下文组件
+ * - 管理引擎模式切换与适配器生命周期
+ * - 暴露快照、渲染模型、命令分发等 Hooks
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { GameEngine } from '@/core/events/gameEngine';
 import type { EngineHost, RenderModel, RuleCommand, RuleSnapshot } from '@/runtimeV2';

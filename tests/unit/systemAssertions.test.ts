@@ -1,3 +1,12 @@
+/**
+ * @file systemAssertions.test.ts
+ * @description Unit tests for system assertions and storage mock installation.
+ *
+ * 主要职责:
+ * - 测试系统断言的有效性
+ * - 测试存储模拟的安装与清理
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

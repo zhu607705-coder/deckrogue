@@ -1,3 +1,13 @@
+/**
+ * @file playwright_ui_smoke.ts
+ * @description 使用 Playwright 进行 UI 层的冒烟测试和审计。
+ *
+ * 主要职责:
+ * - 扫描 UI 元素的可见性和可访问性
+ * - 检测 UI 问题和可访问性问题
+ * - 生成 UI 审计报告
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium, type Page } from 'playwright';

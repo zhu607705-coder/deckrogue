@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_terminal_flow_smoke.ts
+ * @description 使用 Playwright 测试终局流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 创建终局（游戏结束）测试 fixture
+ * - 验证游戏结束流程和返回主菜单
+ * - 记录截图和错误日志
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

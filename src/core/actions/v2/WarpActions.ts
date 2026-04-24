@@ -1,3 +1,14 @@
+/**
+ * @file WarpActions.ts
+ * @description 扭曲/延时动作 - 实现游戏特殊机制的扭曲效果动作
+ *
+ * 主要职责:
+ * - 实现 DelayAction (延迟执行动作)
+ * - 实现 ConditionalAction (条件触发动作) 和 ConditionalKillAction (条件击杀动作)
+ * - 实现 TriggerDelayAction (触发延迟动作) 控制延迟队列
+ * - 实现 SummonConstructAction、BuffConstructAction 等召唤物相关动作
+ * - 支持元素系统和反应动作 (AddElementAction, TransmuteElementsAction 等)
+ */
 import { GameState, ActionSpec } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';

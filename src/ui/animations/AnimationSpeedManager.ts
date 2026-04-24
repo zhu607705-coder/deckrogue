@@ -1,3 +1,13 @@
+/**
+ * @file AnimationSpeedManager.ts
+ * @description 动画速度管理器 - 控制全局动画速度档位和倍率
+ *
+ * 主要职责:
+ * - 定义动画速度档位 (fast/normal/reduced)
+ * - 提供速度倍率配置
+ * - 管理动画速度偏好持久化
+ */
+
 // 动画速度档位类型，与现有系统保持一致
 export type AnimationSpeedLevel = 'fast' | 'normal' | 'reduced';
 

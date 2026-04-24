@@ -1,3 +1,12 @@
+/**
+ * @file growthRouteFormation.test.ts
+ * @description Unit tests for growth route formation and route signal confirmation.
+ *
+ * 主要职责:
+ * - 测试路由卡牌信号的确认
+ * - 测试路由分布的统计摘要
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,13 @@
+/**
+ * @file BackgroundImage.tsx
+ * @description 背景图片组件 - 支持渐变回退和遮罩层的图片渲染
+ *
+ * 主要职责:
+ * - 加载并显示背景图片
+ * - 提供渐变回退方案
+ * - 支持遮罩层和透明度配置
+ */
+
 import React, { useState, useEffect } from 'react';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 

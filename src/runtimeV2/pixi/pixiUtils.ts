@@ -1,3 +1,12 @@
+/**
+ * @file pixiUtils.ts
+ * @description PixiJS 渲染层通用工具函数，提供样式、绘制和交互辅助
+ *
+ * 主要职责:
+ * - 定义 COLORS 调色板常量
+ * - 提供 createTextStyle / drawRoundedRect / drawCircle 等绘制工具
+ * - 管理 PixiJS 点击目标的注册与分发
+ */
 import { Graphics, TextStyle } from 'pixi.js';
 
 export interface PixiHitTarget {

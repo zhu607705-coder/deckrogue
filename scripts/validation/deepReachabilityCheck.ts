@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * @file deepReachabilityCheck.ts
+ * @description Performs deep reachability analysis for branch cards, mirror flows, and chapter pools.
+ *
+ * 主要职责:
+ * - 分析分支卡牌的可触达性
+ * - 检查镜宫流程的完整性
+ * - 验证章节池的连接性
+ */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';

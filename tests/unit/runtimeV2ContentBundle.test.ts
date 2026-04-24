@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2ContentBundle.test.ts
+ * @description Unit tests for runtime v2 content bundle projection for the Python core.
+ *
+ * 主要职责:
+ * - 测试角色和敌人内容的投影
+ * - 测试内容包版本和地图参数
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,12 @@
+/**
+ * @file enemySelection.test.ts
+ * @description Unit tests for enemy selection pool filtering and floor eligibility.
+ *
+ * 主要职责:
+ * - 测试低层展示变体的优先级
+ * - 测试楼层合法的敌人池筛选
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

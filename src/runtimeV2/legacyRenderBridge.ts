@@ -1,3 +1,12 @@
+/**
+ * @file legacyRenderBridge.ts
+ * @description 旧版渲染桥接器，将 GameEngine 状态桥接为 RenderModel 格式
+ *
+ * 主要职责:
+ * - 从 GameEngine 状态创建旧版渲染模型
+ * - 补充商店、附魔等旧版特有字段
+ * - 集成遗物和药水定义解析
+ */
 import type { GameEngine } from '@/core/events/gameEngine';
 import { getPotionDefById, getRelicDefById } from '@/content/narrative/numericSystem';
 

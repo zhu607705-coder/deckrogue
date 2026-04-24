@@ -1,3 +1,12 @@
+/**
+ * @file gameEngineRuntimeDelegation.test.ts
+ * @description Unit tests for game engine runtime delegation and diagnostic capture.
+ *
+ * 主要职责:
+ * - 测试运行时委托的引导快照创建
+ * - 测试诊断信息的捕获与报告
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

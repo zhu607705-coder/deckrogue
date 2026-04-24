@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_event_flow_smoke.ts
+ * @description 使用 Playwright 测试事件流程的冒烟测试。
+ *
+ * 主要职责:
+ * - 创建事件测试 fixture
+ * - 验证事件触发、选择和解决
+ * - 记录截图和错误日志
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';

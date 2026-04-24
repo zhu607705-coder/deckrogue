@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_real_ui_30_clicks.ts
+ * @description 使用 Playwright 运行真实 UI 的 30 次点击压力测试。
+ *
+ * 主要职责:
+ * - 启动开发服务器并运行浏览器
+ * - 模拟 30 次用户点击操作
+ * - 验证 UI 响应性和稳定性
+ */
+
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';

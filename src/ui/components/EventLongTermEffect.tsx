@@ -1,3 +1,13 @@
+/**
+ * @file EventLongTermEffect.tsx
+ * @description 事件长期效果组件 - 渲染事件带来的持续效果标签
+ *
+ * 主要职责:
+ * - 显示效果类型、持续时间和描述
+ * - 提供动画效果
+ * - 支持自定义样式
+ */
+
 import React from 'react';
 import { motion } from 'motion/react';
 

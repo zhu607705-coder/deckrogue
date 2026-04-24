@@ -1,3 +1,12 @@
+/**
+ * @file restRouteAdvisor.test.ts
+ * @description Unit tests for rest route advisor and route-aware rest suggestions.
+ *
+ * 主要职责:
+ * - 测试 buildRestRouteAdvice 的路由感知建议
+ * - 测试卡牌与遗物的路由亲和性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

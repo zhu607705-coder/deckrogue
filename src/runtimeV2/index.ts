@@ -1,3 +1,12 @@
+/**
+ * @file index.ts
+ * @description RuntimeV2 模块统一导出入口，汇聚所有公共 API 和类型
+ *
+ * 主要职责:
+ * - 重新导出 contracts 中的核心类型与接口
+ * - 重新导出各子模块的工厂函数和工具
+ * - 为外部消费者提供单一导入来源
+ */
 export type {
   AssetManifest,
   AssetManifestEntry,

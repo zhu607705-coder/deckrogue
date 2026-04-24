@@ -1,3 +1,13 @@
+/**
+ * @file GlobalFilterOverlay.tsx
+ * @description 全局滤镜覆盖层 - 根据主题和视觉强度应用全局视觉效果
+ *
+ * 主要职责:
+ * - 根据主题模式应用 CSS 滤镜
+ * - 根据视觉强度调整效果强度
+ * - 提供统一的视觉氛围
+ */
+
 import React from 'react';
 import { useTheme } from '@/ui/theme/ThemeContext';
 

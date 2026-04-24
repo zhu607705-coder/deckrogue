@@ -1,3 +1,13 @@
+/**
+ * @file metaBalance.ts
+ * @description Meta平衡配置 - 管理游戏的元数据平衡配置
+ *
+ * 主要职责:
+ * - 从 JSON 配置文件加载 MetaBalanceConfig
+ * - 提供 ascension (攀登难度) 相关的配置查询接口
+ * - 提供 unlock 权重加成的查询接口
+ * - 作为游戏元层面数值平衡的单一数据源
+ */
 import metaBalanceJson from '@/content/data/metaBalance.json';
 
 export type MetaBalanceConfig = typeof metaBalanceJson;

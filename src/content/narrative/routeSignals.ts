@@ -1,3 +1,12 @@
+/**
+ * @file routeSignals.ts
+ * @description 路线信号系统 - 定义卡牌和事件的路线倾向与亲和度
+ *
+ * 主要职责:
+ * - 定义每张卡牌的路线标签和信号强度
+ * - 计算卡牌与路线的亲和度和排序
+ * - 提供路线分类法和遗物路线标签查询
+ */
 import { baseCardMap } from '@/content/narrative/cardsDataEntry';
 import type { CardDef, EarlyGameRole, RunCardInstance } from '@/core/types';
 

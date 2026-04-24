@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file generate_report_bundle.ts
+ * @description 生成报告捆绑包，聚合战斗、经济、平衡等分析报告。
+ *
+ * 主要职责:
+ * - 扫描 output 目录下的各类报告文件
+ * - 聚合生成统一的报告捆绑包
+ * - 识别异常值和回归数据
+ */
+
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join, relative, resolve } from 'path';
 

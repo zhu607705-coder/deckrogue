@@ -1,3 +1,13 @@
+/**
+ * @file SetupLauncher.tsx
+ * @description 启动器界面 - 游戏初始界面，提供新游戏/继续/设置入口
+ *
+ * 主要职责:
+ * - 显示新游戏和继续按钮
+ * - 管理存档槽位选择
+ * - 提供教程入口
+ */
+
 import React, { useEffect, useRef } from 'react';
 import type { MetaProfile, SaveSlot } from '@/core';
 import { getUiLabelZh } from '@/ui/content/terminology';

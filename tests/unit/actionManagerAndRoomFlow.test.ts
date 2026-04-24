@@ -1,3 +1,12 @@
+/**
+ * @file actionManagerAndRoomFlow.test.ts
+ * @description Unit tests for action manager and room flow interactions.
+ *
+ * 主要职责:
+ * - 测试 ActionManager 的创建与获取
+ * - 测试房间流程中的动作管理
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

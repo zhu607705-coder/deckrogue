@@ -1,3 +1,12 @@
+/**
+ * @file parity.ts
+ * @description 一致性校验引擎，对比新旧运行时适配器在同一命令序列下的快照差异
+ *
+ * 主要职责:
+ * - 定义 ParityDiff / ParityStep 差异记录结构
+ * - 执行一致性校验场景，逐命令对比快照差异
+ * - 支持 strictStableFields 严格模式校验
+ */
 import type { RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { projectRuleActiveEventForParity } from './activeEventOutcome';
 

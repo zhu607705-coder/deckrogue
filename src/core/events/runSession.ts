@@ -1,8 +1,12 @@
 /**
- * RunSession - Facade for run lifecycle ownership
- * 
- * This module provides a clean abstraction layer for run state management,
- * separating ownership concerns from GameEngine's game logic.
+ * @file runSession.ts
+ * @description Run 会话管理 - 提供运行时 Run 生命周期的门面接口
+ *
+ * 主要职责:
+ * - 实现 RunSession 类，封装 Run 状态管理的所有权
+ * - 分离 GameEngine 的游戏逻辑与 Run 生命周期管理
+ * - 提供 start、pause、resume、end 等 Run 生命周期操作
+ * - 支持从配置创建 RunSession 实例
  */
 import type { GameState } from '@/core/types';
 import { deriveRunTransitionState, transitionRunState, type RunAction, type RunTransitionState } from './runStateMachine';

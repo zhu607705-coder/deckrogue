@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file security_report.ts
+ * @description 生成安全报告，聚合漏洞扫描结果并分析趋势。
+ *
+ * 主要职责:
+ * - 聚合漏洞扫描摘要数据
+ * - 分析日/周/月趋势
+ * - 提供风险评估和建议
+ */
+
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, join } from 'path';
 

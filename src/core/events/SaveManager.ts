@@ -1,3 +1,12 @@
+/**
+ * @file SaveManager.ts
+ * @description 存档管理器 - 负责游戏存档的保存和加载
+ *
+ * 主要职责:
+ * - 实现 SaveManager 类，管理多个存档槽位
+ * - 支持存档快照的序列化和反序列化
+ * - 提供存档验证和错误处理
+ */
 import { GameState } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { cloneJsonValue } from '@/core/utils/safeJson';

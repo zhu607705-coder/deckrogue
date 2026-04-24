@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_ui_smoke_expansion.ts
+ * @description 使用 Playwright 进行扩展的 UI 冒烟测试。
+ *
+ * 主要职责:
+ * - 测试更多 UI 场景和路径
+ * - 验证 UI 组件在不同状态下的表现
+ * - 记录详细测试结果
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium, type BrowserContext, type Page } from 'playwright';

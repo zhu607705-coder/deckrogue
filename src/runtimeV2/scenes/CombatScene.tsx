@@ -1,3 +1,12 @@
+/**
+ * @file CombatScene.tsx
+ * @description 战斗场景 DOM 组件，渲染手牌、敌人信息和战斗交互
+ *
+ * 主要职责:
+ * - 渲染战斗场景中的手牌、敌人和玩家状态
+ * - 处理卡牌出牌和结束回合交互
+ * - 显示Boss适应等级和 archetype
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import type { CombatSceneProps } from '../sceneProps';
 

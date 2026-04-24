@@ -1,3 +1,12 @@
+/**
+ * @file informantStarterLoop.test.ts
+ * @description Unit tests for the informant character's starter card balance and action values.
+ *
+ * 主要职责:
+ * - 测试情报收集卡牌的数值平衡
+ * - 测试条件打击卡的计算逻辑
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import cardsDataRaw from '@/content/data/cards.json';

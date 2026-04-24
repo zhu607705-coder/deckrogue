@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_experience_polish.ts
+ * @description 检查游戏体验打磨情况，验证各组件的体验需求实现状态。
+ *
+ * 主要职责:
+ * - 检查战斗反馈节奏、动画速度、敌人意图显示
+ * - 检查奖励、商店、事件、升级体验组件
+ * - 生成体验打磨报告
+ */
+
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
 

@@ -1,3 +1,13 @@
+/**
+ * @file codexCatalog.ts
+ * @description 图鉴目录数据 - 定义图鉴分类和导出函数
+ *
+ * 主要职责:
+ * - 定义 CodexCategory 类型
+ * - 提供图鉴数据导入/导出函数
+ * - 管理图鉴更新事件
+ */
+
 import { cardsData } from '@/content/narrative/numericSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
 import { potionsData } from '@/content/narrative/numericSystem';

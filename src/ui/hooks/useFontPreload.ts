@@ -1,3 +1,13 @@
+/**
+ * @file useFontPreload.ts
+ * @description 字体预加载 Hook - 在组件挂载时加载指定字体
+ *
+ * 主要职责:
+ * - 预加载 Web 字体
+ * - 支持多字重和样式配置
+ * - 提供加载状态和超时控制
+ */
+
 import { useEffect, useState } from 'react';
 
 interface FontPreloadOptions {

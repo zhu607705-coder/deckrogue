@@ -1,3 +1,12 @@
+/**
+ * @file combatSystem.ts
+ * @description 战斗系统核心 - 管理战斗中的伤害计算和状态应用
+ *
+ * 主要职责:
+ * - 管理伤害修正器列表 (DamageModifier)
+ * - 应用护盾值、状态效果到玩家和敌人
+ * - 与全局事件总线同步战斗事件
+ */
 import { GameState, CombatState } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';

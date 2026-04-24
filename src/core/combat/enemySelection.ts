@@ -1,3 +1,12 @@
+/**
+ * @file enemySelection.ts
+ * @description 敌人选择器 - 根据节点类型和楼层筛选可用的敌人池
+ *
+ * 主要职责:
+ * - 实现 getNodeTypeEligibleEnemies，根据节点类型 (Combat/Elite/Boss) 筛选敌人
+ * - 实现 getFloorEligibleEnemyPool，根据楼层和权重筛选敌人池
+ * - 支持敌人权重随机选择和关键词过滤
+ */
 import { isEnemyEligibleForFloorByNumericRules } from '@/content/narrative/numericSystem';
 
 export type EncounterNodeType = 'Combat' | 'Elite' | 'Boss';

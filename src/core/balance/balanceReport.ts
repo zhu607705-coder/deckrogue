@@ -1,3 +1,13 @@
+/**
+ * @file balanceReport.ts
+ * @description 平衡报告 - 生成游戏数值平衡的诊断报告
+ *
+ * 主要职责:
+ * - 定义 SurvivabilityMetrics (生存指标)、ResourceLoopMetrics (资源循环指标)
+ * - 定义 EconomyMetrics (经济指标)、CombatPacingMetrics (战斗节奏指标) 等诊断接口
+ * - 提供数值平衡问题的检测和报告生成功能
+ * - 追踪玩家表现数据用于动态难度调整
+ */
 import type { GameState, CombatState } from '@/core/types';
 import type { ResolutionPipelineDiagnostics } from '../actions/resolutionTypes';
 import type { MechanicAuditSnapshot } from '../actions/mechanicDescriptor';

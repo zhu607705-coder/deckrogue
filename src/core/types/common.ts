@@ -1,3 +1,12 @@
+/**
+ * @file common.ts
+ * @description 通用类型定义 - 定义 ID 类型别名和卡牌动作的基础类型
+ *
+ * 主要职责:
+ * - 定义 CardId、EnemyId、RelicId、EventId、InstanceId 类型别名
+ * - 定义 CardAction 接口，描述卡牌动作的执行参数
+ * - 定义 CardSpec 接口，描述卡牌的基础规范
+ */
 export type CardId = string;
 export type EnemyId = string;
 export type RelicId = string;

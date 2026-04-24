@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file report_enemy_ai_tuning.ts
+ * @description 运行敌人 AI 调整模拟并生成调优建议报告。
+ *
+ * 主要职责:
+ * - 执行多角色多轮次模拟
+ * - 收集生存率和战斗轮次数据
+ * - 生成平衡调优建议
+ */
+
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';

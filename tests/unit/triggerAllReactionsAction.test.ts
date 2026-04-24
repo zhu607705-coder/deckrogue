@@ -1,3 +1,12 @@
+/**
+ * @file triggerAllReactionsAction.test.ts
+ * @description Unit tests for trigger-all-reactions action execution in combat.
+ *
+ * 主要职责:
+ * - 测试触发全部反应动作的执行
+ * - 测试战斗中的反应链触发
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

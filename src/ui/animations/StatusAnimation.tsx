@@ -1,3 +1,13 @@
+/**
+ * @file StatusAnimation.tsx
+ * @description 状态动画组件 - 为状态效果提供入场/退场动画
+ *
+ * 主要职责:
+ * - 包裹状态效果元素
+ * - 提供动画过渡效果
+ * - 支持自定义样式
+ */
+
 import React from 'react';
 import { motion } from 'motion/react';
 

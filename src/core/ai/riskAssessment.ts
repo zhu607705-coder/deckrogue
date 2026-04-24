@@ -1,3 +1,13 @@
+/**
+ * @file riskAssessment.ts
+ * @description 风险评估系统 - 评估战斗中的生存风险和策略风险
+ *
+ * 主要职责:
+ * - 定义 RiskProfile 接口，描述生存风险、进攻风险、防御风险和总体风险
+ * - 实现 calculateSurvivalRisk，根据 HP% 和预期伤害计算生存风险
+ * - 实现 assessEnemyRisk 和 assessPlayerRisk，为 AI 提供风险数据
+ * - 定义 DEFAULT_RISK_THRESHOLDS 作为风险阈值默认值
+ */
 export interface RiskProfile {
   survivalRisk: number;
   aggressionRisk: number;

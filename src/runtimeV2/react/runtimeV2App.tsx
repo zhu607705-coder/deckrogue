@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2App.tsx
+ * @description RuntimeV2 应用主组件，组装引擎宿主、场景渲染和交互处理
+ *
+ * 主要职责:
+ * - 管理引擎启动、存档加载和种子解析
+ * - 根据屏幕类型渲染对应的场景组件
+ * - 处理场景切换和交互回调
+ */
 import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import {
   appendReplayCommand,

@@ -1,3 +1,12 @@
+/**
+ * @file enchantmentFlow.test.ts
+ * @description Unit tests for enchantment selection flow triggered by story events.
+ *
+ * 主要职责:
+ * - 测试事件选择进入附魔模式的流程
+ * - 测试附魔上下文的来源与附魔ID
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GameEngine } from '@/core/events/gameEngine';

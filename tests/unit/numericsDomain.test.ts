@@ -1,3 +1,12 @@
+/**
+ * @file numericsDomain.test.ts
+ * @description Unit tests for the numerics baseline and derived formulas.
+ *
+ * 主要职责:
+ * - 测试能量与伤害的 EVU 换算
+ * - 测试扭曲力量/危难几率的单调性
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

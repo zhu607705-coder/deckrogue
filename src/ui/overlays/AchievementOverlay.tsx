@@ -1,3 +1,13 @@
+/**
+ * @file AchievementOverlay.tsx
+ * @description 成就覆盖层 - 展示成就列表和奖励详情
+ *
+ * 主要职责:
+ * - 渲染成就列表和分类
+ * - 显示成就解锁状态和奖励
+ * - 支持成就搜索和筛选
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { Trophy, X, Search, Lock, CheckCircle2, Gift, Sparkles } from 'lucide-react';
 import { getAchievementDefs, type AchievementDef } from '@/features/achievements/achievementSystem';

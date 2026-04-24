@@ -1,3 +1,13 @@
+/**
+ * @file roomBridge.ts
+ * @description 房间桥接 - 连接旧系统与新运行时系统的房间操作
+ *
+ * 主要职责:
+ * - 定义 RoomBridgeKind 类型，描述房间类型 (event, rest, shop, reward, combat)
+ * - 定义 RoomBridgeAction 联合类型，描述所有房间操作
+ * - 实现 resolveRoomBridgeAction，根据操作类型路由到旧系统或新运行时
+ * - 支持运行时委托的透明切换
+ */
 import type { GameState } from '@/core/types';
 import type { RuleSnapshot } from '@/runtimeV2/contracts';
 

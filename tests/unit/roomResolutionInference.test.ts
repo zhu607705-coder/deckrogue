@@ -1,3 +1,12 @@
+/**
+ * @file roomResolutionInference.test.ts
+ * @description Unit tests for room resolution kind inference from legacy state.
+ *
+ * 主要职责:
+ * - 测试事件/休息/商店所有权推断
+ * - 测试嵌套屏幕的所有权保留
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file playwright_real_ui_30_rounds.ts
+ * @description 使用 Playwright 运行真实 UI 的 30 回合压力测试。
+ *
+ * 主要职责:
+ * - 启动开发服务器并运行浏览器
+ * - 模拟 30 回合游戏操作
+ * - 验证 UI 稳定性和性能
+ */
+
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

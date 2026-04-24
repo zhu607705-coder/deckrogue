@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file test_destructive.ts
+ * @description 运行破坏性测试验证系统在极端条件下的健壮性。
+ *
+ * 主要职责:
+ * - 执行极端伤害、抽牌、中毒等边界测试
+ * - 验证负值块、能量增益、状态减少等情况
+ * - 报告破坏性测试通过情况
+ */
+
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 

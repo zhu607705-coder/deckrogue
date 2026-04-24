@@ -1,3 +1,13 @@
+/**
+ * @file runtime_v2_parity_report.ts
+ * @description 生成运行时 V2 一致性报告，对比新旧运行时的输出差异。
+ *
+ * 主要职责:
+ * - 运行一致性测试场景
+ * - 对比 Legacy 和 V2 运行时的输出
+ * - 生成详细的一致性分析报告
+ */
+
 import fs from 'node:fs/promises';
 import path from 'node:path';
 

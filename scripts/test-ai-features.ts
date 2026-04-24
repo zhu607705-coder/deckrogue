@@ -1,7 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
- * AI增强系统功能测试脚本
- * 测试所有新实现的AI和游戏系统功能
+ * @file test-ai-features.ts
+ * @description AI-enhanced system feature tests including intent, memory, risk assessment, and difficulty.
+ *
+ * 主要职责:
+ * - 测试意图选择器的行为
+ * - 测试战斗记忆系统
+ * - 测试风险评估算法
+ * - 测试动态难度调整
  */
 
 import { intentSelector } from '../src/core/ai/intentSelector';

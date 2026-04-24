@@ -1,3 +1,13 @@
+/**
+ * @file DamageActions.ts
+ * @description 基础伤害/防御动作 - 实现最基础的战斗动作类型
+ *
+ * 主要职责:
+ * - 实现 DealDamageAction (造成伤害)、GainBlockAction (获得护甲) 等基础动作
+ * - 实现 ApplyStatusAction (施加状态效果)、HealAction (治疗) 等常见动作
+ * - 实现 DrawCardsAction (抽牌)、DiscardCardsAction (弃牌) 等卡牌操作动作
+ * - 与 TargetingService 协作确定动作目标
+ */
 import { GameState, ActionSpec } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { TargetingService, CardTarget, TargetInfo } from '@/core/combat/targetingService';

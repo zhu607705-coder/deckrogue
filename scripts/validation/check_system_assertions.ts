@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_system_assertions.ts
+ * @description 检查系统断言是否正确，验证游戏核心逻辑的关键行为。
+ *
+ * 主要职责:
+ * - 执行单元测试验证核心系统行为
+ * - 检查资源、触发顺序、死亡结算等断言
+ * - 报告系统断言失败情况
+ */
+
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 

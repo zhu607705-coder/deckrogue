@@ -1,3 +1,12 @@
+/**
+ * @file achievementSystem.ts
+ * @description 成就系统 - 管理游戏中成就的定义、条件判定与奖励发放
+ *
+ * 主要职责:
+ * - 定义成就结构（条件、奖励、隐藏标记）
+ * - 在每局结束时评估成就达成情况
+ * - 发放成就奖励（解锁卡池、角色、遗物等）
+ */
 import achievementsData from '@/content/data/achievements.json';
 import type { GameState, MetaProfile, RunSummary } from '@/core';
 

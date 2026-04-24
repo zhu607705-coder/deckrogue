@@ -1,3 +1,12 @@
+/**
+ * @file review_ci.ts
+ * @description CI 评审脚本，执行类型检查、构建、测试和诊断的完整流程
+ *
+ * 主要职责:
+ * - 按顺序执行类型检查、构建、损坏测试、数值诊断和死文件扫描
+ * - 为 CI 流程提供统一的验证入口
+ */
+
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

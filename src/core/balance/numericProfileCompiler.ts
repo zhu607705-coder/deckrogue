@@ -1,3 +1,12 @@
+/**
+ * @file numericProfileCompiler.ts
+ * @description 数值档案编译器 - 编译卡牌、遗物、事件的数值特征档案
+ *
+ * 主要职责:
+ * - 定义 NumericVector 接口，描述数值特征向量 (damage, block, draw, heal, statuses, resources)
+ * - 编译 CompiledCardProfile、CompiledRelicProfile 等档案
+ * - 为数值诊断系统提供预编译的数值特征数据
+ */
 import type { ValuationWeights, VarianceClass } from './valuationKernel';
 import {
   DEFAULT_VALUATION_WEIGHTS,

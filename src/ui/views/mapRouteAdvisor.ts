@@ -1,3 +1,13 @@
+/**
+ * @file mapRouteAdvisor.ts
+ * @description 地图路线顾问 - 基于玩家状态推荐最优地图路线
+ *
+ * 主要职责:
+ * - 分析节点类型和路线权重
+ * - 评估玩家生命值和资源状态
+ * - 提供路线建议和排序
+ */
+
 import type { MapNode } from '@/core';
 import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 

@@ -1,3 +1,14 @@
+/**
+ * @file runStateMachine.ts
+ * @description Run 状态机 - 定义和驱动 Run 生命周期的状态转换
+ *
+ * 主要职责:
+ * - 定义 App/Run/Phase 三层生命周期状态类型
+ * - 定义 RunAction 联合类型，描述所有可触发的状态转换动作
+ * - 实现 transitionRunState，处理状态转换逻辑
+ * - 实现 deriveRunTransitionState，从 GameState 推导当前转换状态
+ * - 提供 screenToRunPhase 和 runPhaseToScreen 双向转换
+ */
 import type { GameState, RoomResolutionKind } from '@/core/types';
 
 export type AppLifecycleState = 'booting' | 'ready' | 'shutting_down';

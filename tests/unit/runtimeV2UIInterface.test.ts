@@ -1,3 +1,12 @@
+/**
+ * @file runtimeV2UIInterface.test.ts
+ * @description Unit tests for runtime v2 UI interface and content service management.
+ *
+ * 主要职责:
+ * - 测试内容服务的重置与获取
+ * - 测试 UI 模型转换器的转换逻辑
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

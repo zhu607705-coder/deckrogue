@@ -1,3 +1,12 @@
+/**
+ * @file RestScene.tsx
+ * @description 休整场景 DOM 组件，渲染休息、升级和附魔等操作按钮
+ *
+ * 主要职责:
+ * - 渲染玩家状态和可用操作按钮（休息、升级、移除、附魔等）
+ * - 处理各操作按钮的点击回调
+ * - 显示路线引导信息
+ */
 import React from 'react';
 import type { RestSceneProps } from '../sceneProps';
 

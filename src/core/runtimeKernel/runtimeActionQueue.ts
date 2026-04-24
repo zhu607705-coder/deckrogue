@@ -1,3 +1,13 @@
+/**
+ * @file runtimeActionQueue.ts
+ * @description 运行时动作队列 - 通用队列实现，管理运行时动作的执行
+ *
+ * 主要职责:
+ * - 定义 RuntimeAction 接口，描述可执行的运行时动作
+ * - 实现 RuntimeActionQueue 类，提供添加、清空、执行等队列操作
+ * - 支持动作序列的顺序执行和提前终止 (stop)
+ * - 为游戏流程编排提供通用队列基础设施
+ */
 export type RuntimeActionResult =
   | { type: 'continue' }
   | { type: 'stop'; handled: boolean; reason?: string };

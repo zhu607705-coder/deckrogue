@@ -1,3 +1,12 @@
+/**
+ * @file check_readme_consistency.ts
+ * @description Verifies that required README files exist in the codebase structure.
+ *
+ * 主要职责:
+ * - 检查各目录的 README 文件是否存在
+ * - 验证项目结构的文档完整性
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 

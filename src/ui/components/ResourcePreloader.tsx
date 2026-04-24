@@ -1,3 +1,13 @@
+/**
+ * @file ResourcePreloader.tsx
+ * @description 资源预加载组件 - 预加载图片和字体资源
+ *
+ * 主要职责:
+ * - 预加载图片资源
+ * - 预加载字体资源
+ * - 支持 Suspense 集成
+ */
+
 import React, { Suspense, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 

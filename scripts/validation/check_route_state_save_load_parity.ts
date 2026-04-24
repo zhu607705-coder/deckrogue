@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * @file check_route_state_save_load_parity.ts
+ * @description 检查路线状态的保存加载一致性，验证序列化/反序列化后状态保持不变。
+ *
+ * 主要职责:
+ * - 运行多角色多种子场景并保存状态
+ * - 重新加载并比较路线状态差异
+ * - 报告保存加载不匹配问题
+ */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 

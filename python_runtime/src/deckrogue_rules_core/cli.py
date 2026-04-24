@@ -1,3 +1,11 @@
+"""
+cli.py - 规则引擎的命令行接口，通过 stdin/stdout JSON 协议与宿主进程通信
+
+主要职责:
+- 从 stdin 逐行读取 JSON 请求并分派到 RuleRuntime
+- 将执行结果以 JSON 格式写入 stdout
+"""
+
 from __future__ import annotations
 
 import json

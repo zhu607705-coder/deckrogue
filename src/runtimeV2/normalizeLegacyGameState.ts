@@ -1,3 +1,12 @@
+/**
+ * @file normalizeLegacyGameState.ts
+ * @description 旧版游戏状态规范化器，将 GameState 转换为 RuleSnapshot 格式
+ *
+ * 主要职责:
+ * - 将旧版 GameState 深度克隆为 RuleSnapshot 结构
+ * - 转换路线状态、表面上下文等嵌套字段
+ * - 集成内容服务解析遗物、药水等定义
+ */
 import type { GameState } from '@/core/types';
 import { screenToRunPhase } from '@/core/events/runStateMachine';
 import { deriveSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';

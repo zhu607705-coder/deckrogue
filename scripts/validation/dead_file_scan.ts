@@ -1,3 +1,13 @@
+/**
+ * @file dead_file_scan.ts
+ * @description 扫描项目中未被引用的死文件，包括源代码、公共资源和脚本。
+ *
+ * 主要职责:
+ * - 扫描源代码目录找出孤立文件
+ * - 扫描公共资源找出未使用文件
+ * - 扫描脚本目录找出未使用脚本
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

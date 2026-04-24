@@ -1,3 +1,12 @@
+/**
+ * @file metricsTracker.ts
+ * @description 指标追踪器 - 收集和追踪游戏运行的统计数据
+ *
+ * 主要职责:
+ * - 定义 RunMetrics、PlayerStats、CombatMetrics、EconomyMetrics 等统计接口
+ * - 实现 MetricsTracker 类，追踪每局游戏的战斗、经济、成就等数据
+ * - 提供运行时指标查询和汇总功能
+ */
 import { GameState } from '@/core/types';
 
 export interface RunMetrics {

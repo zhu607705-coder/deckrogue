@@ -1,3 +1,13 @@
+/**
+ * @file restRouteAdvisor.ts
+ * @description 休息站路线顾问 - 评估休息站选项的优先级
+ *
+ * 主要职责:
+ * - 评估卡牌升级优先级
+ * - 评估遗物升级价值
+ * - 基于路线偏好排序选项
+ */
+
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import type { RouteState, RunCardInstance } from '@/core/types';
 import {

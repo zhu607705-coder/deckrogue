@@ -1,3 +1,12 @@
+/**
+ * @file persistence.ts
+ * @description 存档持久化工具，提供 SaveGameV2 和 ReplayLogV1 的创建、恢复与追加操作
+ *
+ * 主要职责:
+ * - 创建 SaveGameV2 存档并深拷贝快照
+ * - 从存档恢复 RuleSnapshot 快照
+ * - 创建与追加 ReplayLogV1 回放日志
+ */
 import type { ReplayLogV1, RuleCommand, RuleRuntimeAdapter, RuleSnapshot, SaveGameV2 } from '@/runtimeV2/contracts';
 
 export function createSaveGameV2(

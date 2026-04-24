@@ -1,3 +1,12 @@
+/**
+ * @file EventScenePixi.tsx
+ * @description 事件场景 PixiJS 渲染组件，绘制事件描述和选项按钮
+ *
+ * 主要职责:
+ * - 渲染事件标题、描述和路线引导面板
+ * - 绘制事件选项按钮并处理点击回调
+ * - 管理 PixiJS 应用生命周期和点击事件分发
+ */
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import type { EventSceneProps } from '../sceneProps';

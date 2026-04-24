@@ -1,3 +1,11 @@
+"""
+test_content_bundle.py - 内容包构建与校验的单元测试
+
+主要职责:
+- 提供测试用的 build_content_bundle 工厂函数
+- 验证内容包的版本、角色、敌人、卡牌、地图等结构完整性
+"""
+
 import unittest
 
 from deckrogue_rules_core import boot

@@ -1,3 +1,12 @@
+/**
+ * @file relicSystem.ts
+ * @description 遗物系统 - 管理遗物效果、触发逻辑与获取机制
+ *
+ * 主要职责:
+ * - 定义遗物效果接口和触发条件
+ * - 监听战斗事件并执行对应遗物效果
+ * - 处理遗物获取、状态追踪和效果应用
+ */
 import {
   ActionFactoryV2 as ActionFactory,
   GameEvent,

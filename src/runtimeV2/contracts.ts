@@ -1,3 +1,14 @@
+/**
+ * @file contracts.ts
+ * @description 定义 RuntimeV2 的核心数据契约，包括内容包、快照、命令、渲染模型等类型
+ *
+ * 主要职责:
+ * - 定义 ContentBundle 内容包结构（角色、卡牌、遗物、药水、敌人）
+ * - 定义 RuleSnapshot 游戏规则状态快照
+ * - 定义 RuleCommand / RuleRuntimeAdapter 运行时命令与适配器接口
+ * - 定义 RenderModel 渲染模型及房间选择类型
+ * - 定义 SaveGameV2 / ReplayLogV1 存档与回放日志格式
+ */
 import type { GameState } from '@/core/types';
 
 export interface ContentBundleCharacter {

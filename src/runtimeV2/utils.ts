@@ -1,3 +1,12 @@
+/**
+ * @file utils.ts
+ * @description 通用工具函数库，提供深比较和哈希生成等辅助函数
+ *
+ * 主要职责:
+ * - 实现 deepEqual 深度对象/数组比较
+ * - 实现 generateHash 字符串哈希生成
+ * - 为 UI 模型差异检测提供基础工具
+ */
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a == null || b == null) return a === b;

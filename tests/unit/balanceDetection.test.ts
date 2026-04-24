@@ -1,3 +1,12 @@
+/**
+ * @file balanceDetection.test.ts
+ * @description Unit tests for balance regression detection and outlier analysis.
+ *
+ * 主要职责:
+ * - 测试角色生存率与战斗回合回归
+ * - 测试附魔/诅咒贡献度检测
+ */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

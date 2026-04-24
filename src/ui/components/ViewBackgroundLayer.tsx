@@ -1,3 +1,13 @@
+/**
+ * @file ViewBackgroundLayer.tsx
+ * @description 视图背景层组件 - 为各个视图提供统一的背景渲染
+ *
+ * 主要职责:
+ * - 根据场景类型选择背景样式
+ * - 支持背景视觉模式配置
+ * - 提供主题和氛围效果
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import type { BackgroundVisualMode } from '@/ui/components/backgroundVisuals';
 import type { ThemeMode } from '@/ui/theme/ThemeContext';
