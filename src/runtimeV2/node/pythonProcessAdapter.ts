@@ -34,6 +34,16 @@ type PythonResponse = {
 
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
 
+function resolvePythonCommand(): { command: string; argsPrefix: string[] } {
+  if (process.env.PYTHON_BIN) {
+    return { command: process.env.PYTHON_BIN, argsPrefix: [] };
+  }
+  if (process.platform === 'win32') {
+    return { command: 'py', argsPrefix: ['-3'] };
+  }
+  return { command: 'python3', argsPrefix: [] };
+}
+
 function encodeCommand(command: RuleCommand): Record<string, unknown> {
   return convertKeys(command, camelToSnakeKey) as Record<string, unknown>;
 }
@@ -52,7 +62,7 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
   async start(options: EngineHostStartOptions = {}): Promise<RuleSnapshot> {
     this.dispose();
 
-    const pythonPath = process.env.PYTHON_BIN || 'python3';
+    const pythonCommand = resolvePythonCommand();
     const pythonSourcePath = path.resolve(process.cwd(), 'python_runtime/src');
     const env = {
       ...process.env,
@@ -61,7 +71,7 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
         : pythonSourcePath,
     };
 
-    this.process = spawn(pythonPath, ['-m', 'deckrogue_rules_core.cli'], {
+    this.process = spawn(pythonCommand.command, [...pythonCommand.argsPrefix, '-m', 'deckrogue_rules_core.cli'], {
       cwd: process.cwd(),
       env,
       stdio: 'pipe',
