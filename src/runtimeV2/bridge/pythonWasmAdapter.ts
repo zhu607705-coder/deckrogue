@@ -1,8 +1,22 @@
+/**
+ * @file pythonWasmAdapter.ts
+ * @description Pyodide WASM 适配器，在浏览器中通过 Pyodide 执行 Python 规则引擎
+ *
+ * 主要职责:
+ * - 加载 Pyodide 运行时并初始化 Python 规则引擎
+ * - 将 RuleCommand 转换为 Python 调用并返回 RuleSnapshot
+ * - 处理键名 camelCase / snake_case 转换
+ * - 管理适配器生命周期（启动、分发、销毁）
+ */
 import type { EngineHostStartOptions, RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
-import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
-import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
 import { PYTHON_RUNTIME_CODE } from '@/content/narrative/pythonRuntime';
+import {
+  camelToSnakeKey,
+  convertKeys,
+  normalizePythonSnapshot,
+  unwrapPythonSnapshotEnvelope,
+} from '@/runtimeV2/pythonInterop';
 
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
 
@@ -23,183 +37,7 @@ declare global {
 
 const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
 const PYODIDE_SCRIPT_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
-
-function snakeToCamelKey(key: string): string {
-  return key.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
-}
-
-function camelToSnakeKey(key: string): string {
-  return key.replace(/[A-Z]/g, (chr) => `_${chr.toLowerCase()}`);
-}
-
-function convertKeys(value: unknown, keyMapper: (key: string) => string): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => convertKeys(entry, keyMapper));
-  }
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  const result: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-    result[keyMapper(key)] = convertKeys(entry, keyMapper);
-  }
-  return result;
-}
-
-export function unwrapPythonSnapshotEnvelope(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid Python runtime payload');
-  }
-
-  const record = value as Record<string, unknown>;
-  const nestedSnapshot = record.snapshot;
-  if (nestedSnapshot && typeof nestedSnapshot === 'object' && !Array.isArray(nestedSnapshot)) {
-    return nestedSnapshot as Record<string, unknown>;
-  }
-
-  return record;
-}
-
-export function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapshot {
-  const converted = convertKeys(snapshot, snakeToCamelKey) as Partial<RuleSnapshot>;
-  const player = converted.player ?? ({} as RuleSnapshot['player']);
-  const rawPlayer = (snapshot.player as Record<string, unknown> | undefined) ?? {};
-  const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
-    ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
-    ?? {};
-  const normalizedRelicStates = Object.fromEntries(
-    Object.entries(rawRelicStates).map(([key, value]) => [key, convertKeys(value, snakeToCamelKey)]),
-  ) as RuleSnapshot['player']['relicStates'];
-  const map = converted.map ?? { currentNodeId: null, nodes: [] };
-  const combat = converted.combat ?? null;
-  const reward = converted.reward ?? null;
-  const shop = converted.shop ?? null;
-  const activeEvent = converted.activeEvent ?? null;
-  const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
-  const derivedRouteState = (() => {
-    if (converted.routeState) {
-      return converted.routeState;
-    }
-    const characterId = player.characterId ?? null;
-    if (!characterId) {
-      return null;
-    }
-    const knownRouteTags = getKnownRouteTagsForCharacter(characterId);
-    if (knownRouteTags.length === 0) {
-      return null;
-    }
-    const deckCards = (player.deck ?? []).map((cardId) => ({ id: cardId }));
-    const baseRouteState = deriveRouteStateFromDeck(deckCards, knownRouteTags, null);
-    const startingDeckSize =
-      runtimeV2ContentBundle.characters.find((entry) => entry.id === characterId)?.starting_deck.length ?? deckCards.length;
-    if (!baseRouteState.primaryTag || deckCards.length <= startingDeckSize) {
-      return baseRouteState;
-    }
-    const currentNode = (map.nodes ?? []).find((entry) => entry.id === map.currentNodeId);
-    const floor = currentNode ? currentNode.y + 1 : 1;
-    const source =
-      converted.lifecycle?.phase === 'shop'
-        ? 'shop'
-        : converted.lifecycle?.phase === 'event'
-          ? 'event'
-          : converted.lifecycle?.phase === 'rest'
-            ? 'rest'
-            : converted.lifecycle?.phase === 'upgrade'
-              ? 'upgrade'
-              : converted.lifecycle?.phase === 'enchant'
-                ? 'enchant'
-                : converted.lifecycle?.phase === 'relic_upgrade'
-                  ? 'relic_upgrade'
-                  : 'reward';
-    return deriveRouteStateFromDeck(deckCards, knownRouteTags, {
-      ...baseRouteState,
-      recentCommits: [
-        {
-          tag: baseRouteState.primaryTag,
-          source,
-          floor,
-          weight: 12,
-        },
-      ],
-    });
-  })();
-
-  return {
-    schemaVersion: converted.schemaVersion ?? 2,
-    engineVersion: converted.engineVersion ?? 'rules-core-draft',
-    seed: converted.seed ?? 0,
-    lifecycle: converted.lifecycle ?? {
-      screen: 'CharacterSelect',
-      phase: 'character_select',
-      pendingNodeResolution: false,
-    },
-    player: {
-      characterId: player.characterId ?? null,
-      hp: player.hp ?? 0,
-      maxHp: player.maxHp ?? 0,
-      gold: player.gold ?? 0,
-      intel: player.intel ?? 0,
-      devotion: player.devotion ?? 0,
-      corruption: player.corruption ?? 0,
-      deck: player.deck ?? [],
-      relicIds: player.relicIds ?? [],
-      potionIds: player.potionIds ?? [],
-      relicStates: normalizedRelicStates,
-    },
-    map: {
-      currentNodeId: map.currentNodeId ?? null,
-      nodes: map.nodes ?? [],
-    },
-    combat: combat
-      ? {
-          turn: combat.turn ?? 0,
-          isPlayerTurn: combat.isPlayerTurn ?? false,
-          playerBlock: combat.playerBlock ?? 0,
-          playerEnergy: combat.playerEnergy ?? 0,
-          enemyIds: combat.enemyIds ?? [],
-          enemies: combat.enemies ?? [],
-          hand: combat.hand ?? [],
-          drawPileCount: combat.drawPileCount ?? 0,
-          discardPileCount: combat.discardPileCount ?? 0,
-        }
-      : null,
-    reward: reward
-      ? {
-          cardIds: reward.cardIds ?? [],
-          source: reward.source ?? 'combat',
-        }
-      : null,
-    shop: shop
-      ? {
-          cards: shop.cards ?? [],
-          relics: shop.relics ?? [],
-          potions: shop.potions ?? [],
-          cardRemovalCost: shop.cardRemovalCost ?? 75,
-        }
-      : null,
-    activeEvent: activeEvent
-      ? {
-          id: activeEvent.id ?? '',
-          stage: activeEvent.stage,
-          lastChoiceId: activeEvent.lastChoiceId ?? ((activeEvent.data as Record<string, unknown> | undefined)?.lastChoiceId as string | undefined) ?? null,
-          choiceRole: (activeEvent.choiceRole as any) ?? ((activeEvent.data as Record<string, unknown> | undefined)?.choiceRole as any) ?? null,
-          outcomeKind: (activeEvent.outcomeKind as any) ?? ((activeEvent.data as Record<string, unknown> | undefined)?.outcomeKind as any) ?? null,
-          data: activeEvent.data,
-        }
-      : null,
-    routeState: derivedRouteState,
-    surfaceContext: converted.surfaceContext ?? null,
-    roomSession: converted.roomSession ?? null,
-    meta: {
-      runId: meta.runId ?? null,
-      replayLength: meta.replayLength ?? 0,
-      generatedAt: meta.generatedAt ?? new Date().toISOString(),
-      adapter: 'python-wasm',
-      runtimeRngState: meta.runtimeRngState ?? 0,
-    },
-  };
-}
+export { normalizePythonSnapshot, unwrapPythonSnapshotEnvelope } from '@/runtimeV2/pythonInterop';
 
 export class PythonWasmAdapter implements RuleRuntimeAdapter {
   readonly source = 'python-wasm' as const;

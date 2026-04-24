@@ -1,12 +1,21 @@
+/**
+ * @file pythonProcessAdapter.ts
+ * @description Python 子进程适配器，通过 Node.js 子进程与 Python 规则引擎通信
+ *
+ * 主要职责:
+ * - 启动 Python 规则引擎子进程并管理生命周期
+ * - 通过 stdin/stdout JSON 协议发送命令和接收快照
+ * - 处理键名 camelCase / snake_case 转换
+ * - 管理 pending 请求队列和错误处理
+ */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import path from 'node:path';
 import readline from 'node:readline';
 
 import { RunGenerator } from '@/core/events/runGenerator';
-import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
-import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
 import type { EngineHostStartOptions, RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
+import { camelToSnakeKey, convertKeys, normalizePythonSnapshot } from '@/runtimeV2/pythonInterop';
 
 type PendingRequest = {
   resolve: (value: RuleSnapshot) => void;
@@ -24,174 +33,6 @@ type PythonResponse = {
 };
 
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
-
-function snakeToCamelKey(key: string): string {
-  return key.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
-}
-
-function camelToSnakeKey(key: string): string {
-  return key.replace(/[A-Z]/g, (chr) => `_${chr.toLowerCase()}`);
-}
-
-function convertKeys(value: unknown, keyMapper: (key: string) => string): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => convertKeys(entry, keyMapper));
-  }
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  const result: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-    result[keyMapper(key)] = convertKeys(entry, keyMapper);
-  }
-  return result;
-}
-
-function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapshot {
-  const converted = convertKeys(snapshot, snakeToCamelKey) as Partial<RuleSnapshot>;
-  const player = converted.player ?? ({} as RuleSnapshot['player']);
-  const rawPlayer = (snapshot.player as Record<string, unknown> | undefined) ?? {};
-  const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
-    ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
-    ?? {};
-  const normalizedRelicStates = Object.fromEntries(
-    Object.entries(rawRelicStates).map(([key, value]) => [key, convertKeys(value, snakeToCamelKey)]),
-  ) as RuleSnapshot['player']['relicStates'];
-  const map = converted.map ?? { currentNodeId: null, nodes: [] };
-  const combat = converted.combat ?? null;
-  const reward = converted.reward ?? null;
-  const shop = converted.shop ?? null;
-  const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
-  const derivedRouteState = (() => {
-    if (converted.routeState) {
-      return converted.routeState;
-    }
-    const characterId = player.characterId ?? null;
-    if (!characterId) {
-      return null;
-    }
-    const knownRouteTags = getKnownRouteTagsForCharacter(characterId);
-    if (knownRouteTags.length === 0) {
-      return null;
-    }
-    const deckCards = (player.deck ?? []).map((cardId) => ({ id: cardId }));
-    const baseRouteState = deriveRouteStateFromDeck(deckCards, knownRouteTags, null);
-    const startingDeckSize =
-      runtimeV2ContentBundle.characters.find((entry) => entry.id === characterId)?.starting_deck.length ?? deckCards.length;
-    if (!baseRouteState.primaryTag || deckCards.length <= startingDeckSize) {
-      return baseRouteState;
-    }
-    const currentNode = (map.nodes ?? []).find((entry) => entry.id === map.currentNodeId);
-    const floor = currentNode ? currentNode.y + 1 : 1;
-    const source =
-      converted.lifecycle?.phase === 'shop'
-        ? 'shop'
-        : converted.lifecycle?.phase === 'event'
-          ? 'event'
-          : converted.lifecycle?.phase === 'rest'
-            ? 'rest'
-            : converted.lifecycle?.phase === 'upgrade'
-              ? 'upgrade'
-              : converted.lifecycle?.phase === 'enchant'
-                ? 'enchant'
-                : converted.lifecycle?.phase === 'relic_upgrade'
-                  ? 'relic_upgrade'
-                  : 'reward';
-    return deriveRouteStateFromDeck(deckCards, knownRouteTags, {
-      ...baseRouteState,
-      recentCommits: [
-        {
-          tag: baseRouteState.primaryTag,
-          source,
-          floor,
-          weight: 12,
-        },
-      ],
-    });
-  })();
-
-  const activeEventData = converted.activeEvent?.data as Record<string, unknown> | undefined;
-
-  return {
-    schemaVersion: converted.schemaVersion ?? 2,
-    engineVersion: converted.engineVersion ?? 'rules-core-draft',
-    seed: converted.seed ?? 0,
-    lifecycle: converted.lifecycle ?? {
-      screen: 'CharacterSelect',
-      phase: 'character_select',
-      pendingNodeResolution: false,
-    },
-    player: {
-      characterId: player.characterId ?? null,
-      hp: player.hp ?? 0,
-      maxHp: player.maxHp ?? 0,
-      gold: player.gold ?? 0,
-      intel: player.intel ?? 0,
-      devotion: player.devotion ?? 0,
-      corruption: player.corruption ?? 0,
-      deck: player.deck ?? [],
-      relicIds: player.relicIds ?? [],
-      potionIds: player.potionIds ?? [],
-      relicStates: normalizedRelicStates,
-    },
-    map: {
-      currentNodeId: map.currentNodeId ?? null,
-      nodes: map.nodes ?? [],
-    },
-    combat: combat
-      ? {
-          turn: combat.turn ?? 0,
-          isPlayerTurn: combat.isPlayerTurn ?? false,
-          playerBlock: combat.playerBlock ?? 0,
-          playerEnergy: combat.playerEnergy ?? 0,
-          enemyIds: combat.enemyIds ?? [],
-          enemies: combat.enemies ?? [],
-          hand: combat.hand ?? [],
-          drawPileCount: combat.drawPileCount ?? 0,
-          discardPileCount: combat.discardPileCount ?? 0,
-        }
-      : null,
-    reward: reward
-      ? {
-          cardIds: reward.cardIds ?? [],
-          source: reward.source ?? 'combat',
-        }
-      : null,
-    shop: shop
-      ? {
-          cards: shop.cards ?? [],
-          relics: shop.relics ?? [],
-          potions: shop.potions ?? [],
-          cardRemovalCost: shop.cardRemovalCost ?? 75,
-        }
-      : null,
-    activeEvent: converted.activeEvent
-      ? {
-          ...converted.activeEvent,
-          lastChoiceId: (converted.activeEvent.lastChoiceId as string | undefined) ?? (activeEventData?.lastChoiceId as string | undefined) ?? null,
-          choiceRole:
-            (converted.activeEvent.choiceRole as 'confirm' | 'payoff' | 'pivot' | 'support' | undefined)
-            ?? (activeEventData?.choiceRole as 'confirm' | 'payoff' | 'pivot' | 'support' | undefined)
-            ?? null,
-          outcomeKind:
-            (converted.activeEvent.outcomeKind as 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | undefined)
-            ?? (activeEventData?.outcomeKind as 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | undefined)
-            ?? null,
-        }
-      : null,
-    routeState: derivedRouteState,
-    surfaceContext: converted.surfaceContext ?? null,
-    roomSession: converted.roomSession ?? null,
-    meta: {
-      runId: meta.runId ?? null,
-      replayLength: meta.replayLength ?? 0,
-      generatedAt: meta.generatedAt ?? new Date(0).toISOString(),
-      adapter: 'python-wasm',
-      runtimeRngState: meta.runtimeRngState ?? 0,
-    },
-  };
-}
 
 function encodeCommand(command: RuleCommand): Record<string, unknown> {
   return convertKeys(command, camelToSnakeKey) as Record<string, unknown>;
@@ -251,7 +92,9 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
           pending.reject(new Error(response.error || this.stderrBuffer || 'Python runtime returned an invalid response'));
           return;
         }
-        const snapshot = normalizePythonSnapshot(response.snapshot);
+        const snapshot = normalizePythonSnapshot(response.snapshot, {
+          generatedAtFallback: () => new Date(0).toISOString(),
+        });
         this.snapshot = snapshot;
         pending.resolve(snapshot);
       } catch (error) {

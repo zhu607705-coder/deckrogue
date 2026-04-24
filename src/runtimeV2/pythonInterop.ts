@@ -1,7 +1,8 @@
-import type { RuleSnapshot } from '@/runtimeV2/contracts';
-import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
 import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
 import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
+import { readRuleActiveEventOutcome } from '@/runtimeV2/activeEventOutcome';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
+import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
 
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
 
@@ -42,9 +43,76 @@ export function unwrapPythonSnapshotEnvelope(value: unknown): Record<string, unk
   return record;
 }
 
-export function normalizePythonSnapshot(snapshot: Record<string, unknown>): RuleSnapshot {
+function derivePythonRouteState(
+  converted: Partial<RuleSnapshot>,
+  player: Partial<RuleSnapshot['player']>,
+  map: NonNullable<RuleSnapshot['map']>,
+): RuleSnapshot['routeState'] {
+  if (converted.routeState) {
+    return converted.routeState;
+  }
+
+  const characterId = player.characterId ?? null;
+  if (!characterId) {
+    return null;
+  }
+
+  const knownRouteTags = getKnownRouteTagsForCharacter(characterId);
+  if (knownRouteTags.length === 0) {
+    return null;
+  }
+
+  const deckCards = (player.deck ?? []).map((cardId) => ({ id: cardId }));
+  const baseRouteState = deriveRouteStateFromDeck(deckCards, knownRouteTags, null);
+  const startingDeckSize =
+    runtimeV2ContentBundle.characters.find((entry) => entry.id === characterId)?.starting_deck.length ?? deckCards.length;
+  if (!baseRouteState.primaryTag || deckCards.length <= startingDeckSize) {
+    return baseRouteState;
+  }
+
+  const currentNode = (map.nodes ?? []).find((entry) => entry.id === map.currentNodeId);
+  const floor = currentNode ? currentNode.y + 1 : 1;
+  const source =
+    converted.lifecycle?.phase === 'shop'
+      ? 'shop'
+      : converted.lifecycle?.phase === 'event'
+        ? 'event'
+        : converted.lifecycle?.phase === 'rest'
+          ? 'rest'
+          : converted.lifecycle?.phase === 'upgrade'
+            ? 'upgrade'
+            : converted.lifecycle?.phase === 'enchant'
+              ? 'enchant'
+              : converted.lifecycle?.phase === 'relic_upgrade'
+                ? 'relic_upgrade'
+                : 'reward';
+
+  return deriveRouteStateFromDeck(deckCards, knownRouteTags, {
+    ...baseRouteState,
+    recentCommits: [
+      {
+        tag: baseRouteState.primaryTag,
+        source,
+        floor,
+        weight: 12,
+      },
+    ],
+  });
+}
+
+export function normalizePythonSnapshot(
+  snapshot: Record<string, unknown>,
+  options: { generatedAtFallback?: () => string } = {},
+): RuleSnapshot {
   const converted = convertKeys(snapshot, snakeToCamelKey) as Partial<RuleSnapshot>;
   const player = converted.player ?? ({} as RuleSnapshot['player']);
+  const map = converted.map ?? { currentNodeId: null, nodes: [] };
+  const combat = converted.combat ?? null;
+  const reward = converted.reward ?? null;
+  const shop = converted.shop ?? null;
+  const activeEvent = converted.activeEvent ?? null;
+  const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
+  const generatedAtFallback = options.generatedAtFallback ?? (() => new Date().toISOString());
   const rawPlayer = (snapshot.player as Record<string, unknown> | undefined) ?? {};
   const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
     ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
@@ -52,59 +120,7 @@ export function normalizePythonSnapshot(snapshot: Record<string, unknown>): Rule
   const normalizedRelicStates = Object.fromEntries(
     Object.entries(rawRelicStates).map(([key, value]) => [key, convertKeys(value, snakeToCamelKey)]),
   ) as RuleSnapshot['player']['relicStates'];
-  const map = converted.map ?? { currentNodeId: null, nodes: [] };
-  const combat = converted.combat ?? null;
-  const reward = converted.reward ?? null;
-  const shop = converted.shop ?? null;
-  const activeEvent = converted.activeEvent ?? null;
-  const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
-  const derivedRouteState = (() => {
-    if (converted.routeState) {
-      return converted.routeState;
-    }
-    const characterId = player.characterId ?? null;
-    if (!characterId) {
-      return null;
-    }
-    const knownRouteTags = getKnownRouteTagsForCharacter(characterId);
-    if (knownRouteTags.length === 0) {
-      return null;
-    }
-    const deckCards = (player.deck ?? []).map((cardId) => ({ id: cardId }));
-    const baseRouteState = deriveRouteStateFromDeck(deckCards, knownRouteTags, null);
-    const startingDeckSize =
-      runtimeV2ContentBundle.characters.find((entry) => entry.id === characterId)?.starting_deck.length ?? deckCards.length;
-    if (!baseRouteState.primaryTag || deckCards.length <= startingDeckSize) {
-      return baseRouteState;
-    }
-    const currentNode = (map.nodes ?? []).find((entry) => entry.id === map.currentNodeId);
-    const floor = currentNode ? currentNode.y + 1 : 1;
-    const source =
-      converted.lifecycle?.phase === 'shop'
-        ? 'shop'
-        : converted.lifecycle?.phase === 'event'
-          ? 'event'
-          : converted.lifecycle?.phase === 'rest'
-            ? 'rest'
-            : converted.lifecycle?.phase === 'upgrade'
-              ? 'upgrade'
-              : converted.lifecycle?.phase === 'enchant'
-                ? 'enchant'
-                : converted.lifecycle?.phase === 'relic_upgrade'
-                  ? 'relic_upgrade'
-                  : 'reward';
-    return deriveRouteStateFromDeck(deckCards, knownRouteTags, {
-      ...baseRouteState,
-      recentCommits: [
-        {
-          tag: baseRouteState.primaryTag,
-          source,
-          floor,
-          weight: 12,
-        },
-      ],
-    });
-  })();
+  const activeEventOutcome = readRuleActiveEventOutcome(activeEvent);
 
   return {
     schemaVersion: converted.schemaVersion ?? 2,
@@ -161,21 +177,21 @@ export function normalizePythonSnapshot(snapshot: Record<string, unknown>): Rule
       : null,
     activeEvent: activeEvent
       ? {
-          id: activeEvent.id ?? '',
-          stage: activeEvent.stage,
-          lastChoiceId: activeEvent.lastChoiceId ?? ((activeEvent.data as Record<string, unknown> | undefined)?.lastChoiceId as string | undefined) ?? null,
-          choiceRole: (activeEvent.choiceRole as any) ?? ((activeEvent.data as Record<string, unknown> | undefined)?.choiceRole as any) ?? null,
-          outcomeKind: (activeEvent.outcomeKind as any) ?? ((activeEvent.data as Record<string, unknown> | undefined)?.outcomeKind as any) ?? null,
+          id: typeof activeEvent.id === 'string' ? activeEvent.id : '',
+          stage: typeof activeEvent.stage === 'string' ? activeEvent.stage : undefined,
+          lastChoiceId: activeEventOutcome.lastChoiceId,
+          choiceRole: activeEventOutcome.choiceRole,
+          outcomeKind: activeEventOutcome.outcomeKind,
           data: activeEvent.data,
         }
       : null,
-    routeState: derivedRouteState,
+    routeState: derivePythonRouteState(converted, player, map),
     surfaceContext: converted.surfaceContext ?? null,
     roomSession: converted.roomSession ?? null,
     meta: {
       runId: meta.runId ?? null,
       replayLength: meta.replayLength ?? 0,
-      generatedAt: meta.generatedAt ?? new Date().toISOString(),
+      generatedAt: meta.generatedAt ?? generatedAtFallback(),
       adapter: 'python-wasm',
       runtimeRngState: meta.runtimeRngState ?? 0,
     },
