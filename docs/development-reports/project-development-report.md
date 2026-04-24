@@ -279,3 +279,26 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 2. 当前 claim 只能升级到 `PIXI runtime-v2 Playwright covered flow is pointer-covered`，不能写 full pointer-level PIXI parity。
 3. route/balance 下一步应先解释 alchemist/informant/puppeteer 的单一路线集中，再决定是否把 distribution warning 升级成 fail gate。
 4. 当前工作树仍很脏；进入下一轮前应先打包/提交本轮 scoped changes，避免与既有未提交工作继续混杂。
+
+### Step 115: adapt AGENTS contract for Windows
+
+- **操作方向**：把工作区代理说明落成 Windows-native 版本，避免后续执行继续继承 POSIX/tmux/macOS 路径假设。
+- **变更内容**：新增 `E:\deckrogue\AGENTS.md`，明确 PowerShell、Windows 路径、`$env:USERPROFILE\.codex`、OMX runtime gate、Windows 验证命令、Python `PYTHONPATH` 写法和 Lore commit 约定。
+- **边界**：未触碰现有业务源码；`package.json` 中仍存在的 POSIX 脚本只在说明中标记处理方式，未在本步扩大修改。
+- **验证**：检查 `AGENTS.md` 文件存在、关键 Windows 规则和 `$env:USERPROFILE\.codex` 路径可检索；运行文档级 diff whitespace 检查。
+- **剩余风险**：如果后续要让 npm scripts 全量 Windows-native，需要单独修改并验证 `clean`、`test:runtime-v2:py` 等脚本。
+
+### Step 116: run Windows dev server and UI smoke
+
+- **操作方向**：按 Windows 环境真实启动并打开项目，验证不是只停留在文档适配。
+- **变更内容**：修复 `scripts/validation/flow_smoke_helpers.ts` 的 Windows 兼容问题：server check 改为无 shell 的 `curl` 参数调用，dev server 启动在 Windows 下使用 `npm.cmd`。
+- **实跑结果**：Vite 在 `http://127.0.0.1:3000/` 启动成功；Playwright 打开页面得到 HTTP 200，标题为 `DeckRogue - Warp & Chaos`；`npm run test:ui-smoke -- --url=http://127.0.0.1:3000` 通过。
+- **验证证据**：`output/playwright/ui_smoke_report.json` 显示 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，覆盖 launcher、character_select、map、combat、reward、map_after_reward、launcher_after_save、after_continue、after_load_slot。
+- **剩余风险**：`npm install` 首次用于修复 Windows `.bin` shim 时超时，但已生成 `vite.cmd`/`tsx.cmd`；需要后续单独清理依赖安装耗时问题。
+
+### Step 117: review and harden Windows smoke helper
+
+- **操作方向**：对本轮代码改动做 review，并直接修复 review 中发现的 Windows 稳定性问题。
+- **发现与修复**：`checkServer()` 不再依赖外部 `curl`，改用当前 Node 进程执行内置 `fetch` probe；`spawnDevServer()` 不再通过 `cmd.exe/npm.cmd` 间接启动，改为直接启动本地 `node_modules/vite/bin/vite.js`，避免 Windows `spawn EINVAL` 和 smoke 结束后遗留 Vite 子进程。
+- **验证证据**：无现成 dev server 时运行 `npm run test:ui-smoke -- --url=http://127.0.0.1:3000` 通过；完成后 3000 端口释放；`npm run lint --silent`、`npm run build`、scoped `git diff --check` 通过。
+- **剩余风险**：build 仍保留既有 `pixi-vendor` chunk-size warning；不属于本次 Windows smoke helper 修复范围。

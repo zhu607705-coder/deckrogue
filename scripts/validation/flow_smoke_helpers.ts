@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { BrowserContext, Page } from 'playwright';
 
@@ -30,6 +30,15 @@ export function ensureDir(dir: string): void {
 }
 
 const DEFAULT_SMOKE_PORT = process.env.PLAYWRIGHT_SMOKE_PORT || '3200';
+const SERVER_PROBE_SCRIPT = `
+  const url = process.argv[1];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
+  timeout.unref();
+  fetch(url, { signal: controller.signal })
+    .then((response) => process.exit(response.ok ? 0 : 1))
+    .catch(() => process.exit(1));
+`;
 
 export function getDefaultSmokeUrl(): string {
   return process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${DEFAULT_SMOKE_PORT}`;
@@ -46,7 +55,7 @@ function getServerTarget(url: string): { host: string; port: string } {
 
 export function checkServer(url: string): boolean {
   try {
-    execSync(`curl -s --max-time 2 ${url} > /dev/null 2>&1`, { stdio: 'pipe' });
+    execFileSync(process.execPath, ['-e', SERVER_PROBE_SCRIPT, url], { stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -63,7 +72,8 @@ export async function waitForServer(url: string): Promise<void> {
 
 export function spawnDevServer(url: string): ChildProcess {
   const { host, port } = getServerTarget(url);
-  return spawn('npm', ['run', 'dev', '--', '--host', host, '--port', port, '--strictPort'], {
+  const viteBin = path.join(process.cwd(), 'node_modules', 'vite', 'bin', 'vite.js');
+  return spawn(process.execPath, [viteBin, '--host', host, '--port', port, '--strictPort'], {
     cwd: process.cwd(),
     stdio: 'inherit',
     env: {
