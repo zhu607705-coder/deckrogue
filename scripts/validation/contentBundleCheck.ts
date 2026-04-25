@@ -8,8 +8,9 @@
  * - 验证内容项的可触达性
  */
 
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+
+import { RunGenerator } from '@/core/events/runGenerator';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/bundle-check.json`;
@@ -38,58 +39,65 @@ function log(msg: string) {
   console.log(`[content-bundle] ${msg}`);
 }
 
-function checkCharacters(): boolean {
-  try {
-    const output = execSync('grep -r "informant\\|brute\\|tactician" src/content/data/characters.json 2>/dev/null | head -5', { encoding: 'utf-8' });
-    return output.includes('informant');
-  } catch {
-    return false;
+function readJson<T>(path: string): T {
+  return JSON.parse(readFileSync(path, 'utf-8')) as T;
+}
+
+function readText(path: string): string {
+  return readFileSync(path, 'utf-8');
+}
+
+function requireCondition(condition: boolean, message: string): boolean {
+  if (!condition) {
+    throw new Error(message);
   }
+  return true;
+}
+
+function checkCharacters(): boolean {
+  const characters = readJson<Array<{ id: string; secondaryResource?: string; specialResource?: string }>>('src/content/data/characters.json');
+  const ids = new Set(characters.map((character) => character.id));
+  const requiredIds = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
+  const missing = requiredIds.filter((id) => !ids.has(id));
+  return requireCondition(missing.length === 0, `missing characters: ${missing.join(', ')}`);
 }
 
 function checkCards(): boolean {
-  try {
-    const output = execSync('grep -c "planted_witness\\|terminal_verdict\\|glass_marionette" src/content/data/cards.json 2>/dev/null || echo "0"', { encoding: 'utf-8' });
-    return parseInt(output.trim()) > 0;
-  } catch {
-    return false;
-  }
+  const text = readText('src/content/data/cards.json');
+  const requiredCards = ['planted_witness', 'terminal_verdict', 'glass_marionette'];
+  const missing = requiredCards.filter((cardId) => !text.includes(cardId));
+  return requireCondition(missing.length === 0, `missing branch cards: ${missing.join(', ')}`);
 }
 
 function checkRelics(): boolean {
-  try {
-    const output = execSync('grep -c "mirror\\|branch" src/content/data/relics.json 2>/dev/null || echo "0"', { encoding: 'utf-8' });
-    return parseInt(output.trim()) > 0;
-  } catch {
-    return false;
-  }
+  const text = readText('src/content/data/relics.json');
+  return requireCondition(text.includes('mirror') || text.includes('branch'), 'expected mirror or branch relic content');
 }
 
 function checkEvents(): boolean {
-  try {
-    const output = execSync('grep -c "mirror_invitation\\|mirror_zone" src/content/data/mirror_events.json 2>/dev/null || echo "0"', { encoding: 'utf-8' });
-    return parseInt(output.trim()) > 0;
-  } catch {
-    return false;
-  }
+  const text = readText('src/content/data/mirror_events.json');
+  return requireCondition(text.includes('mirror_invitation') || text.includes('mirror_zone'), 'expected mirror event content');
 }
 
 function checkMapStructure(): boolean {
-  try {
-    const output = execSync('grep "26\\|chapter" src/core/events/runGenerator.ts 2>/dev/null | head -3', { encoding: 'utf-8' });
-    return output.includes('26') || output.includes('chapter');
-  } catch {
-    return false;
-  }
+  const nodes = new RunGenerator(1).generateMap(1);
+  const floors = new Set(nodes.map((node) => node.y));
+  const bossCount = nodes.filter((node) => node.type === 'Boss').length;
+  return requireCondition(floors.size === 26 && bossCount >= 3, `expected 26 floors and 3 boss nodes, got floors=${floors.size}, bosses=${bossCount}`);
 }
 
 function checkSecondaryResources(): boolean {
-  try {
-    const output = execSync('grep -r "secondaryResource" src/core/types/actions.ts 2>/dev/null | head -3', { encoding: 'utf-8' });
-    return output.includes('evidence') || output.includes('rage') || output.includes('command');
-  } catch {
-    return false;
-  }
+  const characters = readJson<Array<{ id: string; secondaryResource?: string }>>('src/content/data/characters.json');
+  const resourcesByCharacter = new Map(characters.map((character) => [character.id, character.secondaryResource]));
+  const expected = new Map([
+    ['informant', 'evidence'],
+    ['brute', 'rage'],
+    ['tactician', 'command'],
+  ]);
+  const mismatches = [...expected.entries()]
+    .filter(([characterId, resource]) => resourcesByCharacter.get(characterId) !== resource)
+    .map(([characterId, resource]) => `${characterId}:${resourcesByCharacter.get(characterId) ?? 'missing'}!=${resource}`);
+  return requireCondition(mismatches.length === 0, `secondary resource mismatch: ${mismatches.join(', ')}`);
 }
 
 async function main(): Promise<void> {

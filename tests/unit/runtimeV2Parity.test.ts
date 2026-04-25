@@ -939,6 +939,45 @@ test('runResolvedParityScenario matches stable combat fields for the real Python
   }
 });
 
+test('runResolvedParityScenario keeps combat reward parity stable when native map selection would diverge', async () => {
+  const adapter = new PythonProcessAdapter({ usePrebuiltMapNodes: true });
+  try {
+    const result = await runResolvedParityScenario({
+      legacyAdapter: createLegacyOracleAdapter(),
+      candidateAdapter: adapter,
+      seed: 3,
+      steps: [
+        {
+          label: 'select_character',
+          legacyCommand: { type: 'select_character', characterId: 'informant' },
+          candidateCommand: { type: 'select_character', characterId: 'informant' },
+        },
+        {
+          label: 'enter_node',
+          legacyCommand: (snapshot) => ({ type: 'enter_node', nodeId: findFirstFloorNodeInSnapshot(snapshot, 'Combat') }),
+          candidateCommand: (snapshot) => ({ type: 'enter_node', nodeId: findFirstFloorNodeInSnapshot(snapshot, 'Combat') }),
+        },
+        {
+          label: 'complete_combat',
+          legacyCommand: { type: 'complete_combat' },
+          candidateCommand: { type: 'complete_combat' },
+        },
+        {
+          label: 'skip_reward',
+          legacyCommand: { type: 'skip_reward' },
+          candidateCommand: { type: 'skip_reward' },
+        },
+      ],
+    });
+
+    for (const step of result.steps) {
+      assert.equal(step.diffs.length, 0, `${step.label}: ${JSON.stringify(step.diffs)}`);
+    }
+  } finally {
+    adapter.dispose();
+  }
+});
+
 test('runResolvedParityScenario matches legacy deck content after default reward pickup for the real Python baseline', async () => {
   const { seed } = findSeedWithFirstFloorNode('informant', 'Combat');
   const adapter = new PythonProcessAdapter();

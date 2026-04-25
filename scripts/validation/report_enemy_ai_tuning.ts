@@ -12,6 +12,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
 type CharacterSimulationSummary = {
@@ -39,9 +40,12 @@ type TuningRecommendation = {
 
 const REPORT_DIR = resolve('reports/ai');
 const REPORT_PATH = resolve(REPORT_DIR, 'enemy-ai-tuning.json');
-const ECONOMY_REPORT_PATH = resolve('output/numerics/economy_regression.json');
+const ECONOMY_REPORT_DIR = resolve(REPORT_DIR, '.enemy-ai-tuning-source');
+const ECONOMY_REPORT_PATH = resolve(ECONOMY_REPORT_DIR, 'economy_regression.json');
 const TARGET_MIN = 0.55;
 const TARGET_MAX = 0.92;
+const require = createRequire(import.meta.url);
+const TSX_CLI = require.resolve('tsx/cli');
 
 function parseRuns(): number {
   const flag = process.argv.find((arg) => arg.startsWith('--runs='));
@@ -51,7 +55,12 @@ function parseRuns(): number {
 }
 
 function runSimulation(runs: number): void {
-  execFileSync('npx', ['tsx', 'scripts/analysis/simulate_early_balance.ts', `--runs=${runs}`], {
+  execFileSync(process.execPath, [
+    TSX_CLI,
+    'scripts/analysis/simulate_early_balance.ts',
+    `--runs=${runs}`,
+    `--output-dir=${ECONOMY_REPORT_DIR}`,
+  ], {
     cwd: process.cwd(),
     stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',

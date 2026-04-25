@@ -9,7 +9,6 @@
  */
 
 import type { RouteState, RunCardInstance } from '@/core/types';
-import rawRelicsData from '@/content/data/relics.json';
 import {
   getCardRouteAffinity,
   getCardRouteSignal,
@@ -17,12 +16,11 @@ import {
   getPreferredRouteTagFromState,
   getRelicRouteTags,
   getRouteTaxonomy,
+  relicsData,
   sortCardsByRouteAffinity,
   sortRelicIdsByRouteAffinity,
 } from '@/content/narrative/numericSystem';
-import type { RelicDef } from '@/core/types';
 
-const relicsData = rawRelicsData as unknown as RelicDef[];
 const relicNameById = new Map(relicsData.map((relic) => [relic.id, relic.name]));
 
 export type ShopRouteTargetType = 'card' | 'relic' | 'service';

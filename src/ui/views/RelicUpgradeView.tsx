@@ -10,12 +10,12 @@
  */
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
-import rawRelicsData from '@/content/data/relics.json';
 import {
   getPreferredRouteTagFromState,
   getKnownRouteTagsForCharacter,
   getRelicRouteTags,
   getRouteTaxonomy,
+  relicsData,
   sortRelicIdsByRouteAffinity,
 } from '@/content/narrative/numericSystem';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
@@ -23,8 +23,6 @@ import { Coins, ArrowUp, Star, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import { uiWorldLore } from '@/ui/content/worldLore';
-
-const relicsData = rawRelicsData as typeof rawRelicsData;
 
 interface RelicUpgradeCardProps {
   engine: GameEngine;

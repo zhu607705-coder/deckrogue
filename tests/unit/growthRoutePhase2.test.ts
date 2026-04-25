@@ -11,8 +11,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { GameEngine } from '@/core/events/gameEngine';
-import rawCardsData from '@/content/data/cards.json';
-import rawRelicsData from '@/content/data/relics.json';
 import {
   getCardRouteAffinityTags,
   getCardRouteSignal,
@@ -25,11 +23,8 @@ import {
   resolvePreferredRouteTag,
   sortRelicIdsByRouteAffinity,
 } from '@/content/narrative/routeSignals';
-import { maybeRecordRouteCommit, syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
-import type { CardDef, RelicDef, RunCardInstance } from '@/core/types';
-
-const cardsData = rawCardsData as unknown as CardDef[];
-const relicsData = rawRelicsData as unknown as RelicDef[];
+import { cardsData, maybeRecordRouteCommit, relicsData, syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
+import type { RunCardInstance } from '@/core/types';
 
 function setFloor(engine: GameEngine, floorIndex: number) {
   const node = engine.state.map.find((entry) => entry.y === floorIndex);

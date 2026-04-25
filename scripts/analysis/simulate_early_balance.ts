@@ -118,6 +118,7 @@ const policies: PathPolicy[] = ['balanced', 'aggressive', 'economy'];
 const sleep = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
 const relicPriceById = new Map((relicsData as any[]).map((relic: any) => [relic.id, relic.price || 150]));
 const potionPriceById = new Map((potionsData as any[]).map((potion: any) => [potion.id, potion.price || 75]));
+let outputDir = path.join(process.cwd(), 'output', 'numerics');
 
 function emptyNodeCountRecord(): Record<NodeType, number> {
   return {
@@ -699,7 +700,6 @@ function estimateFirstResourceSpendTurn(characterId: string): number {
   return -1;
 }
 function writeArtifact(filename: string, payload: unknown): void {
-  const outputDir = path.join(process.cwd(), 'output', 'numerics');
   mkdirSync(outputDir, { recursive: true });
   writeFileSync(path.join(outputDir, filename), JSON.stringify(payload, null, 2));
 }
@@ -811,6 +811,11 @@ async function main() {
       runsPerClass = Math.max(1, Math.min(100, Number(arg.split('=')[1]) || 20));
     } else if (arg.startsWith('--class=')) {
       targetClass = arg.split('=')[1].toLowerCase();
+    } else if (arg.startsWith('--output-dir=')) {
+      const rawOutputDir = arg.slice('--output-dir='.length);
+      if (rawOutputDir) {
+        outputDir = path.resolve(rawOutputDir);
+      }
     } else if (!arg.startsWith('--') && !isNaN(Number(arg))) {
       runsPerClass = Math.max(1, Math.min(100, Number(arg)));
     }

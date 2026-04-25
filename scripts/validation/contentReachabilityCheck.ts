@@ -9,8 +9,8 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { execSync } from 'child_process';
-import { REACHABILITY_CONFIG, isBranchCard, isMirrorRelic } from './fixtures/contentReachabilityConfig';
+import { RunGenerator } from '@/core/events/runGenerator';
+import { REACHABILITY_CONFIG } from './fixtures/contentReachabilityConfig';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/reachability.json`;
@@ -140,38 +140,28 @@ function analyzeMirrorFlow(): MirrorFlowAnalysis {
 }
 
 function analyzeChapterPools(): ChapterPoolAnalysis {
+  const mirrorEvents = loadMirrorEventsFromData();
+  const enemies = loadJsonFile('src/content/data/enemies.json');
+  const enemyEntries = Array.isArray(enemies)
+    ? enemies as Array<{ id?: string; chapterUnlock?: number }>
+    : [];
+  const idsForChapter = (chapter: number) => enemyEntries
+    .filter((enemy) => Number(enemy.chapterUnlock ?? 1) === chapter && typeof enemy.id === 'string')
+    .map((enemy) => enemy.id!)
+    .slice(0, 3);
   const analysis: ChapterPoolAnalysis = {
-    chapter1Pool: ['slime', 'goblin', 'cultist'],
-    chapter2Pool: ['snake', 'book', 'champion'],
-    chapter3Pool: ['boss_awakened', 'time_keeper', 'mirror_sentinel'],
-    hasChapterSpecificEnemies: true,
-    hasChapterSpecificEvents: true,
+    chapter1Pool: idsForChapter(1),
+    chapter2Pool: idsForChapter(2),
+    chapter3Pool: idsForChapter(3),
+    hasChapterSpecificEnemies: false,
+    hasChapterSpecificEvents: mirrorEvents.length >= 14,
     brokenEdges: [],
   };
 
-  try {
-    const enemyContent = execSync('grep -rE "chapter.*[123].*enemy|enemy.*chapter.*[123]" src/content/data/ 2>/dev/null | head -10', { encoding: 'utf-8' });
-    if (enemyContent.length > 0) {
-      analysis.hasChapterSpecificEnemies = true;
-    }
-  } catch {}
-
-  try {
-    const eventFiles = execSync('ls src/content/data/*.json 2>/dev/null | xargs grep -l "event\\|Event" 2>/dev/null', { encoding: 'utf-8' });
-    if (eventFiles.includes('mirror_events.json')) {
-      const mirrorEvents = loadMirrorEventsFromData();
-      if (mirrorEvents.length >= 14) {
-        analysis.hasChapterSpecificEvents = true;
-      }
-    }
-  } catch {
-    if (existsSync('src/content/data/mirror_events.json')) {
-      const mirrorEvents = loadMirrorEventsFromData();
-      if (mirrorEvents.length >= 14) {
-        analysis.hasChapterSpecificEvents = true;
-      }
-    }
-  }
+  analysis.hasChapterSpecificEnemies =
+    analysis.chapter1Pool.length > 0 &&
+    analysis.chapter2Pool.length > 0 &&
+    analysis.chapter3Pool.length > 0;
 
   if (!analysis.hasChapterSpecificEnemies) {
     analysis.brokenEdges.push('no_chapter_specific_enemy_definitions');
@@ -184,77 +174,44 @@ function analyzeChapterPools(): ChapterPoolAnalysis {
 }
 
 function analyzeSecondaryResources(): SecondaryResourceAnalysis {
+  const characterContent = readFileSync('src/content/data/characters.json', 'utf-8');
+  const stateContent = readFileSync('src/core/types/combat.ts', 'utf-8');
+  const summaryContent = readFileSync('src/core/events/runSummarySystem.ts', 'utf-8');
+  const saveManagerContent = readFileSync('src/core/events/SaveManager.ts', 'utf-8');
   const analysis: SecondaryResourceAnalysis = {
-    informantEvidence: true,
-    bruteRage: true,
-    tacticianCommand: true,
-    hasSummaryField: true,
-    hasSaveLoadField: true,
+    informantEvidence: characterContent.includes('"secondaryResource": "evidence"'),
+    bruteRage: characterContent.includes('"secondaryResource": "rage"'),
+    tacticianCommand: characterContent.includes('"secondaryResource": "command"'),
+    hasSummaryField: summaryContent.includes('secondaryResourcePeak'),
+    hasSaveLoadField: saveManagerContent.includes('stateSnapshot') || saveManagerContent.includes('serializeState'),
     brokenEdges: [],
   };
 
-  try {
-    const stateContent = execSync('grep -E "secondaryResource|secondaryResourcePeak" src/core/types/combat.ts 2>/dev/null | head -10', { encoding: 'utf-8' });
-    if (!stateContent.includes('secondaryResource')) {
-      analysis.brokenEdges.push('missing_secondary_resource_in_state');
-    }
-  } catch {
-    analysis.brokenEdges.push('cannot_verify_secondary_resource_state');
+  if (!stateContent.includes('secondaryResourcePeak')) {
+    analysis.brokenEdges.push('missing_secondary_resource_in_state');
   }
-
-  try {
-    const summaryContent = execSync('grep -E "secondaryResourcePeak|mirrorZoneVisited|branchCardsTaken" src/core/events/runSummarySystem.ts 2>/dev/null | head -10', { encoding: 'utf-8' });
-    if (!summaryContent.includes('secondaryResourcePeak')) {
-      analysis.brokenEdges.push('missing_secondary_resource_in_summary');
-    }
-  } catch {
-    analysis.brokenEdges.push('cannot_verify_secondary_resource_summary');
+  if (!analysis.hasSummaryField) {
+    analysis.brokenEdges.push('missing_secondary_resource_in_summary');
+  }
+  if (!analysis.hasSaveLoadField) {
+    analysis.brokenEdges.push('missing_secondary_resource_in_save_load');
   }
 
   return analysis;
 }
 
 function analyzeChapterStructure(): ReachabilityReport['chapterStructure'] {
-  try {
-    const content = execSync('grep -E "floors.*26|chapter|bossFloor|restFloor|node_" src/core/events/runGenerator.ts 2>/dev/null | head -30', { encoding: 'utf-8' });
+  const nodes = new RunGenerator(1).generateMap(1);
+  const totalFloors = new Set(nodes.map((node) => node.y)).size;
+  const bossFloors = [...new Set(nodes.filter((node) => node.type === 'Boss').map((node) => node.y + 1))].sort((a, b) => a - b);
+  const restFloors = [...new Set(nodes.filter((node) => node.type === 'Rest').map((node) => node.y + 1))].sort((a, b) => a - b);
 
-    const floor26Match = content.includes('26');
-    const bossFloors: number[] = [];
-    const restFloors: number[] = [];
-
-    const bossMatches = content.match(/Boss.*floor.*(\d+)|floor.*(\d+).*Boss/gi);
-    if (bossMatches) {
-      bossMatches.forEach((m: string) => {
-        const num = m.match(/\d+/);
-        if (num) bossFloors.push(parseInt(num[0]));
-      });
-    }
-
-    const restMatches = content.match(/Rest.*floor.*(\d+)|floor.*(\d+).*Rest/gi);
-    if (restMatches) {
-      restMatches.forEach((m: string) => {
-        const num = m.match(/\d+/);
-        if (num) restFloors.push(parseInt(num[0]));
-      });
-    }
-
-    if (bossFloors.length === 0) bossFloors.push(10, 18, 26);
-    if (restFloors.length === 0) restFloors.push(9, 17, 25);
-
-    return {
-      totalFloors: floor26Match ? 26 : 0,
-      bossFloors: [...new Set(bossFloors)].sort((a, b) => a - b),
-      restFloors: [...new Set(restFloors)].sort((a, b) => a - b),
-      valid: floor26Match && bossFloors.length >= 3,
-    };
-  } catch {
-    return {
-      totalFloors: 26,
-      bossFloors: [10, 18, 26],
-      restFloors: [9, 17, 25],
-      valid: true,
-    };
-  }
+  return {
+    totalFloors,
+    bossFloors,
+    restFloors,
+    valid: totalFloors === 26 && bossFloors.join(',') === '10,18,26' && restFloors.includes(9) && restFloors.includes(17) && restFloors.includes(25),
+  };
 }
 
 function checkBranchCardsRewardReachability(): ReachabilityResult[] {

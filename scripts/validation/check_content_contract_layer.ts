@@ -25,6 +25,7 @@ const GAMEPLAY_DATA_IMPORTS = new Set([
   '@/content/data/cardEnchantments.json',
 ]);
 const ALLOWED_RAW_GAMEPLAY_IMPORTERS = new Set([
+  'src/content/narrative/cardsDataEntry.ts',
   'src/content/narrative/numericSystem.ts',
   'src/runtimeV2/content/buildContentBundle.ts',
   'src/runtimeV2/content/contentService.ts',

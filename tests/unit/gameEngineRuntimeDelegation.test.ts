@@ -12,14 +12,9 @@ import assert from 'node:assert/strict';
 
 import { GameEngine, type GameEngineRuntimeDelegate, type GameEngineRuntimeDelegateDiagnostics } from '@/core/events/gameEngine';
 import type { RuleSnapshot } from '@/runtimeV2';
-import rawCardsData from '@/content/data/cards.json';
-import rawRelicsData from '@/content/data/relics.json';
-import { potionsData } from '@/content/narrative/numericSystem';
+import { cardsData, potionsData, relicsData } from '@/content/narrative/numericSystem';
 import { getCardRouteSignal, getRouteSupportRelicIds } from '@/content/narrative/routeSignals';
-import type { CardDef, RelicDef } from '@/core/types';
-
-const cardsData = rawCardsData as unknown as CardDef[];
-const relicsData = rawRelicsData as unknown as RelicDef[];
+import type { CardDef } from '@/core/types';
 
 function createBootSnapshot(seed: number, overrides: Partial<RuleSnapshot> = {}): RuleSnapshot {
   return {

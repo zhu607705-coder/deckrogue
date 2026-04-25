@@ -10,7 +10,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { execSync } from 'child_process';
+import { RunGenerator } from '@/core/events/runGenerator';
 import { REACHABILITY_CONFIG } from './fixtures/contentReachabilityConfig';
 
 const REPORT_DIR = 'reports/content';
@@ -56,15 +56,20 @@ function loadJsonFile(filepath: string): any {
   }
 }
 
+function loadTextFile(filepath: string): string {
+  return existsSync(filepath) ? readFileSync(filepath, 'utf-8') : '';
+}
+
 function checkBranchCardsRewardPool(): ReachabilityResult[] {
   const results: ReachabilityResult[] = [];
   const branchCards = REACHABILITY_CONFIG.branchCardIds;
 
-  const cardDataContent = execSync('grep -r "branch\\|ChooseCardFromPool\\|rewardPool" src/content/data/ 2>/dev/null | grep -i "card\\|pool" | head -20', { encoding: 'utf-8' });
-  const hasBranchPool = cardDataContent.includes('branch') || cardDataContent.includes('ChooseCardFromPool');
+  const cardsContent = loadTextFile('src/content/data/cards.json');
+  const mirrorEventsContent = loadTextFile('src/content/data/mirror_events.json');
+  const hasBranchPool = mirrorEventsContent.includes('ChooseCardFromPool') && mirrorEventsContent.includes('branch');
 
   for (const cardId of branchCards) {
-    const hasPoolConnection = hasBranchPool;
+    const hasPoolConnection = cardsContent.includes(`"id": "${cardId}"`) && hasBranchPool;
     results.push({
       itemType: 'branch_card',
       itemId: cardId,
@@ -154,11 +159,10 @@ function checkMirrorRelicsDropPool(): ReachabilityResult[] {
   const results: ReachabilityResult[] = [];
   const mirrorRelics = REACHABILITY_CONFIG.mirrorRelicIds;
 
-  const relicDataContent = execSync('grep -l "mirror shard\\|silver locket\\|fractured hourglass" src/content/data/relics.json 2>/dev/null', { encoding: 'utf-8' });
-  const hasMirrorPool = relicDataContent.includes('relics.json');
+  const relicDataContent = loadTextFile('src/content/data/relics.json');
 
   for (const relicId of mirrorRelics) {
-    const hasDropConnection = hasMirrorPool;
+    const hasDropConnection = relicDataContent.includes(`"id": "${relicId}"`);
     results.push({
       itemType: 'mirror_relic',
       itemId: relicId,
@@ -178,10 +182,12 @@ function checkMirrorRelicsDropPool(): ReachabilityResult[] {
 function checkChapterPoolIsolation(): ReachabilityResult[] {
   const results: ReachabilityResult[] = [];
 
-  const runGeneratorContent = execSync('grep -E "chapter|totalFloors.*26|bossFloor" src/core/events/runGenerator.ts 2>/dev/null | head -20', { encoding: 'utf-8' });
-
-  const hasChapterStructure = runGeneratorContent.includes('chapter') && runGeneratorContent.includes('totalFloors');
-  const hasFloorBasedEligibility = execSync('grep -l "isEnemyEligibleForFloorByNumericRules" src/content/narrative/numericSystem.ts 2>/dev/null', { encoding: 'utf-8' }).includes('numericSystem.ts');
+  const generatedMap = new RunGenerator(1).generateMap(1);
+  const totalFloors = new Set(generatedMap.map((node) => node.y)).size;
+  const bossFloors = new Set(generatedMap.filter((node) => node.type === 'Boss').map((node) => node.y + 1));
+  const hasChapterStructure = totalFloors === 26 && bossFloors.has(10) && bossFloors.has(18) && bossFloors.has(26);
+  const numericSystemContent = loadTextFile('src/content/narrative/numericSystem.ts');
+  const hasFloorBasedEligibility = numericSystemContent.includes('isEnemyEligibleForFloorByNumericRules');
 
   const chapters = [
     { id: 'chapter_1', floors: 10, bossFloorRel: 10, expectedBossFloor: 10 },
@@ -190,16 +196,18 @@ function checkChapterPoolIsolation(): ReachabilityResult[] {
   ];
 
   for (const chapter of chapters) {
-    const hasThisChapter = runGeneratorContent.includes(`chapterIndex: ${chapter.id.split('_')[1]}`);
-    const hasCorrectBossFloor = runGeneratorContent.includes(`bossFloor: ${chapter.bossFloorRel}`);
+    const hasCorrectBossFloor = bossFloors.has(chapter.expectedBossFloor);
     results.push({
       itemType: 'chapter_pool',
       itemId: `${chapter.id}_structure`,
-      status: hasChapterStructure && hasThisChapter && hasCorrectBossFloor ? 'reachable' : 'broken_edge',
+      status: hasChapterStructure && hasFloorBasedEligibility && hasCorrectBossFloor ? 'reachable' : 'broken_edge',
       checkType: 'pool_connected',
-      sources: hasChapterStructure ? ['runGenerator.ts chapter config', 'floor-based eligibility'] : [],
-      missingEdges: hasChapterStructure ? [] : ['no_chapter_structure'],
-      evidence: hasChapterStructure && hasThisChapter && hasCorrectBossFloor
+      sources: hasChapterStructure && hasFloorBasedEligibility ? ['RunGenerator chapter map', 'floor-based eligibility'] : [],
+      missingEdges: [
+        ...(hasChapterStructure ? [] : ['no_chapter_structure']),
+        ...(hasFloorBasedEligibility ? [] : ['no_floor_based_enemy_eligibility']),
+      ],
+      evidence: hasChapterStructure && hasFloorBasedEligibility && hasCorrectBossFloor
         ? `${chapter.id} structure exists with ${chapter.floors} floors and boss at relative floor ${chapter.bossFloorRel} (absolute floor ${chapter.expectedBossFloor})`
         : `Chapter structure incomplete for ${chapter.id}`,
     });
@@ -211,29 +219,37 @@ function checkChapterPoolIsolation(): ReachabilityResult[] {
 function checkSecondaryResourceWriteback(): ReachabilityResult[] {
   const results: ReachabilityResult[] = [];
 
-  const stateContent = execSync('grep -r "secondaryResource" src/core/types/combat.ts 2>/dev/null | head -10', { encoding: 'utf-8' });
-  const summaryContent = execSync('grep -r "secondaryResourcePeak\\|mirrorZoneVisited\\|branchCardsTaken" src/core/events/runSummarySystem.ts 2>/dev/null | head -10', { encoding: 'utf-8' });
-  const saveLoadContent = execSync('grep -r "serializeState\\|JSON.stringify\\|saveGame\\|loadGame" src/core/persistence/ 2>/dev/null | head -10', { encoding: 'utf-8' });
+  const stateContent = loadTextFile('src/core/types/combat.ts');
+  const summaryContent = loadTextFile('src/core/events/runSummarySystem.ts');
+  const saveLoadContent = [
+    loadTextFile('src/core/persistence/saveManager.ts'),
+    loadTextFile('src/core/events/SaveManager.ts'),
+  ].join('\n');
   const hasPersistenceLayer = saveLoadContent.includes('serializeState') || saveLoadContent.includes('JSON.stringify');
 
-  const hasStateDefinition = stateContent.includes('secondaryResource');
+  const hasStateDefinition = stateContent.includes('secondaryResourcePeak');
   const hasSummaryField = summaryContent.includes('secondaryResourcePeak');
+  const charactersData = loadJsonFile('src/content/data/characters.json') as Array<{ id?: string; secondaryResource?: string }> | null;
+  const resourcesByCharacter = new Map((charactersData ?? []).map((character) => [character.id, character.secondaryResource]));
 
-  const characters = ['informant', 'brute', 'tactician'];
+  const characters = [
+    { id: 'informant', resource: 'evidence' },
+    { id: 'brute', resource: 'rage' },
+    { id: 'tactician', resource: 'command' },
+  ];
   for (const char of characters) {
-    const charDefContent = execSync(`grep "secondaryResource" src/content/data/characters.json 2>/dev/null`, { encoding: 'utf-8' });
-    const hasCharDef = charDefContent.includes('secondaryResource');
+    const hasCharDef = resourcesByCharacter.get(char.id) === char.resource;
 
     results.push({
       itemType: 'secondary_resource',
-      itemId: `${char}_definition`,
+      itemId: `${char.id}_definition`,
       status: hasCharDef ? 'reachable' : 'broken_edge',
       checkType: 'writeback',
       sources: hasCharDef ? ['characters.json secondaryResource field'] : [],
-      missingEdges: hasCharDef ? [] : [`${char}_no_secondary_resource_in_definition`],
+      missingEdges: hasCharDef ? [] : [`${char.id}_no_secondary_resource_in_definition`],
       evidence: hasCharDef
-        ? `${char} has secondaryResource in characters.json`
-        : `${char} missing secondaryResource in definition - not connected`,
+        ? `${char.id} has ${char.resource} secondaryResource in characters.json`
+        : `${char.id} missing ${char.resource} secondaryResource in definition - not connected`,
     });
   }
 
@@ -242,7 +258,7 @@ function checkSecondaryResourceWriteback(): ReachabilityResult[] {
     itemId: 'summary_writeback',
     status: hasSummaryField ? 'reachable' : 'broken_edge',
     checkType: 'writeback',
-    sources: hasSummaryField ? ['runSummarySystem.ts'] : [],
+    sources: hasStateDefinition && hasSummaryField ? ['combat.ts state field', 'runSummarySystem.ts'] : [],
     missingEdges: hasSummaryField ? [] : ['summary_does_not_write_secondary_resource'],
     evidence: hasSummaryField
       ? 'secondaryResourcePeak field exists in summary'

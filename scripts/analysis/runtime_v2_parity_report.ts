@@ -198,7 +198,7 @@ async function collectMapEntries(seed: number): Promise<ParityReportEntry[]> {
 
 async function collectCombatEntry(seed: number): Promise<ParityReportEntry> {
   const legacyAdapter = createLegacyOracleAdapter();
-  const adapter = new PythonProcessAdapter();
+  const adapter = new PythonProcessAdapter({ usePrebuiltMapNodes: true });
   try {
     const result = await runResolvedParityScenario({
       legacyAdapter,

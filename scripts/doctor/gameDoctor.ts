@@ -56,7 +56,7 @@ function saveLog(name: string, output: string): string {
   return logPath;
 }
 
-function runCommand(name: string, command: string): StageResult {
+function runCommand(name: string, command: string, extraEnv: Record<string, string> = {}): StageResult {
   const start = Date.now();
   log(`Starting: ${name}`);
 
@@ -64,6 +64,10 @@ function runCommand(name: string, command: string): StageResult {
     const output = execSync(command, {
       stdio: ['pipe', 'pipe', 'pipe'],
       encoding: 'utf-8',
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
       maxBuffer: 50 * 1024 * 1024
     });
     const duration = Date.now() - start;
@@ -186,7 +190,7 @@ async function main(): Promise<void> {
   console.log('=== DeckRogue Game Doctor (Expansion Ready) ===');
   console.log('');
 
-  const stages: Array<{ name: string; command: string }> = [
+  const stages: Array<{ name: string; command: string; env?: Record<string, string> }> = [
     { name: 'Lint', command: 'npm run lint --silent' },
     { name: 'Build', command: 'npm run build --silent' },
     { name: 'Desktop Build', command: 'npm run build:desktop 2>&1' },
@@ -233,13 +237,13 @@ async function main(): Promise<void> {
     { name: 'Boss Terminal Flow Smoke', command: 'npm run test:boss-terminal-flow-smoke 2>&1' },
     { name: 'Desktop Smoke', command: 'npm run test:desktop-smoke 2>&1' },
     { name: 'Check Experience Polish', command: 'npm run check:experience-polish 2>&1' },
-    { name: 'Check Release Readiness', command: 'DOCTOR_IN_FLIGHT=1 npm run check:release-readiness 2>&1' },
+    { name: 'Check Release Readiness', command: 'npm run check:release-readiness 2>&1', env: { DOCTOR_IN_FLIGHT: '1' } },
   ];
 
   const results: StageResult[] = [];
 
   for (const stage of stages) {
-    const result = runCommand(stage.name, stage.command);
+    const result = runCommand(stage.name, stage.command, stage.env);
     results.push(result);
     if (failFast && result.status === 'fail') {
       console.log(`\n❌ Stopping on first failure: ${stage.name}`);

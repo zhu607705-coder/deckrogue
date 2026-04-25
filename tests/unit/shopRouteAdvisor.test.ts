@@ -10,12 +10,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import rawCardsData from '@/content/data/cards.json';
-import type { CardDef, RunCardInstance } from '@/core/types';
+import { cardsData } from '@/content/narrative/numericSystem';
+import type { RunCardInstance } from '@/core/types';
 import { getCardRouteSignal, getRouteSupportRelicIds } from '@/content/narrative/routeSignals';
 import { buildShopRouteAdvice } from '@/ui/views/shopRouteAdvisor';
-
-const cardsData = rawCardsData as unknown as CardDef[];
 
 function makeRuntimeCard(cardId: string, instanceId: string): RunCardInstance {
   const card = cardsData.find((entry) => entry.id === cardId);

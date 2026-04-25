@@ -12,6 +12,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import {
@@ -71,6 +72,8 @@ interface RealUiRoundsReport {
 
 const BASE_URL = getDefaultSmokeUrl();
 const DEFAULT_ROUND_COUNT = 30;
+const require = createRequire(import.meta.url);
+const TSX_CLI = require.resolve('tsx/cli');
 
 const SCENARIOS: ScenarioConfig[] = [
   {
@@ -270,13 +273,13 @@ function readScenarioReport(reportPath: string): { reportGenerated: boolean; rep
 
 function runRound(plannedRound: PlannedRound): RoundResult {
   const started = Date.now();
-  const args = ['tsx', plannedRound.scenario.script];
+  const args = [TSX_CLI, plannedRound.scenario.script];
   if (plannedRound.scenario.supportsUrlArg) {
     args.push(`--url=${BASE_URL}`);
   }
 
   try {
-    execFileSync('npx', args, {
+    execFileSync(process.execPath, args, {
       cwd: process.cwd(),
       stdio: 'pipe',
       env: {

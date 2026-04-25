@@ -316,3 +316,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **变更内容**：复核 `714b4a4` 涉及的 `369` 个 TS/TSX/PY 文件头；修正 `BranchingOutcomeModal.tsx` 将“事件结果”改为“战斗分支结果”；补充 `pluginSystem.ts` 的 `VersionManager`/UI 模型版本迁移职责；`vite.config.ts` 对 chunk id 做 Windows 路径归一化，并把 Pixi umbrella vendor 的稳定 508KB 基线纳入 `chunkSizeWarningLimit=550`，避免用内部目录强拆造成 circular chunk warning。
 - **验证证据**：文件头结构检查输出 `reviewedHeaderFiles=369`、`structuralIssues=0`；尝试拆分 Pixi 内部 chunk 时 build 暴露 circular chunk warning，已回退为稳定 vendor chunk；`npm run build` 通过且无 chunk-size/circular warning；生产 `vite preview` 上运行 `npm run test:runtime-v2-entry-smoke -- --url=http://127.0.0.1:4173` 通过，报告中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，覆盖 `python_pixi_map`。
 - **剩余风险**：Pixi vendor 仍是单一 vendor chunk；后续若要进一步降低体积，需要改为更细粒度 Pixi API import 或场景级懒加载，而不是按 `pixi.js/lib/*` 强拆。
+
+### Step 120: review normal game runtime on Windows
+
+- **操作方向**：围绕游戏正常运行链路做代码 review，并直接修复会阻断 Windows 本机 doctor、UI smoke、桌面 smoke 的问题。
+- **发现与修复**：把 `clean` 和 Python runtime 测试从 POSIX 写法改成跨平台入口；将 content bundle/reachability/deep reachability 检查从 `grep/head/xargs` 改为 TypeScript 数据读取与 `RunGenerator` 实例验证；修复 release readiness 的 inline env 写法；修正 runtime-v2 combat parity 报告在不同地图节点上比较奖励的 false negative；修复 `execFileSync('npx')` 在 Windows 下不能稳定启动子脚本的问题；让 enemy AI tuning 使用临时报告源，避免改写已跟踪 numerics 快照；把 UI/tests 中非授权 raw gameplay JSON 读取收敛到 numeric/content adapter。
+- **实际打开结果**：补齐本机 Electron 安装后，`npm run test:desktop-smoke` 能启动生产模式桌面应用并完成 launcher、tutorial、character_select、map、combat 截图链路；完整 `npm run doctor:game` 最终 `47/47` 通过。
+- **验证证据**：`npm run test:runtime-v2:py` 通过；`npx tsx --test tests/unit/runtimeV2Parity.test.ts` 通过；`npm run accept:runtime-v2-parity` 通过；`npm run check:content-bundle`、`check:content-reachability`、`check:deep-reachability`、`check:content-contract-layer` 通过；相关 route advisor/runtime delegation 单测 `35/35` 通过；`npm run lint --silent` 通过；最终 `npm run doctor:game` 通过 `47/47`；`git diff --check` 通过。
+- **剩余风险**：enemy AI tuning 仍给出小样本平衡提示：`informant` 高于目标、`brute` 低于目标；这是调参建议而非运行阻断。本次未进一步重调数值。
