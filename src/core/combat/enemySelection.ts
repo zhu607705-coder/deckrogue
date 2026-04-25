@@ -61,3 +61,26 @@ export function prioritizeEnemyPoolForEncounter(
 
   return basePool;
 }
+
+export function clampEnemyCountForEncounter(
+  requestedCount: number,
+  floor: number,
+  nodeType: EncounterNodeType,
+  prioritizedPool: EnemySelectionDef[]
+): number {
+  const normalizedCount = Number.isFinite(requestedCount) ? Math.floor(requestedCount) : 1;
+  const safeCount = Math.max(1, normalizedCount);
+  if (nodeType === 'Elite' && floor <= 3 && safeCount > 1) {
+    return 1;
+  }
+  if (nodeType !== 'Combat' || floor > 3 || safeCount <= 1 || prioritizedPool.length !== 1) {
+    return safeCount;
+  }
+
+  const onlyEnemy = prioritizedPool[0];
+  if (!hasKeyword(onlyEnemy, `showcase_floor_${floor}`)) {
+    return safeCount;
+  }
+
+  return 1;
+}

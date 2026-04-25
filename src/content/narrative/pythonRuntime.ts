@@ -759,6 +759,16 @@ class RuleRuntime:
             if "id" in entry
         }
         encounter_pool = self._prioritize_encounter_pool(encounter_pool, enemies_by_id, floor, node_type)
+        if node_type == "Elite" and floor <= 3 and enemy_count > 1:
+            enemy_count = 1
+        if (
+            node_type == "Combat"
+            and floor <= 3
+            and enemy_count > 1
+            and len(encounter_pool) == 1
+            and f"showcase_floor_{floor}" in list(enemies_by_id.get(str(encounter_pool[0]), {}).get("keywords", []))
+        ):
+            enemy_count = 1
         enemy_ids: list[str] = []
         enemy_states: list[dict[str, Any]] = []
         for _ in range(enemy_count):

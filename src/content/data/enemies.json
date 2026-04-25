@@ -4327,8 +4327,8 @@
     "name": "Redeemer Bulwark",
     "description": "A lantern-bearing sentinel that alternates shield hymns with punishing redemption strikes.",
     "hp_range": [
-      26,
-      30
+      24,
+      28
     ],
     "intent_policy": [
       {
@@ -4344,14 +4344,14 @@
       "lantern_smite": [
         {
           "type": "DealDamage",
-          "amount": 8,
+          "amount": 7,
           "target": "Enemy"
         }
       ],
       "hymnal_guard": [
         {
           "type": "GainBlock",
-          "amount": 10,
+          "amount": 8,
           "target": "Self"
         },
         {

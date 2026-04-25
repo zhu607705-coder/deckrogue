@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { enemiesData } from '@/content/narrative/numericSystem';
-import { getFloorEligibleEnemyPool, prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
+import { clampEnemyCountForEncounter, getFloorEligibleEnemyPool, prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
 
 const enemies = enemiesData as Array<{ id: string; keywords?: string[]; hp_range?: [number, number] }>;
 
@@ -31,4 +31,19 @@ test('getFloorEligibleEnemyPool keeps combat pool on-node-type and floor-legal',
   assert.ok(floor1Pool.length > 0);
   assert.ok(floor1Pool.every((enemy) => !enemy.keywords?.includes('elite') && !enemy.keywords?.includes('boss')));
   assert.ok(floor1Pool.every((enemy) => enemy.id !== 'fission_small'));
+});
+
+test('clampEnemyCountForEncounter prevents duplicate singleton showcase rooms in the first 3 floors', () => {
+  const floor2 = prioritizeEnemyPoolForEncounter(enemies, 2, 'Combat');
+  const floor3 = prioritizeEnemyPoolForEncounter(enemies, 3, 'Combat');
+  const laterCombatPool = getFloorEligibleEnemyPool(enemies, 4, 'Combat');
+
+  assert.equal(floor2.length, 1);
+  assert.equal(floor3.length, 1);
+  assert.equal(clampEnemyCountForEncounter(2, 2, 'Combat', floor2), 1);
+  assert.equal(clampEnemyCountForEncounter(2, 3, 'Combat', floor3), 1);
+  assert.equal(clampEnemyCountForEncounter(2, 4, 'Combat', laterCombatPool), 2);
+  assert.equal(clampEnemyCountForEncounter(2, 2, 'Elite', floor2), 1);
+  assert.equal(clampEnemyCountForEncounter(2, 4, 'Elite', laterCombatPool), 2);
+  assert.equal(clampEnemyCountForEncounter(Number.NaN, 4, 'Combat', laterCombatPool), 1);
 });

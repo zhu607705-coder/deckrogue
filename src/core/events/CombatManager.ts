@@ -39,7 +39,7 @@ import {
 import { unlockCodexEntry } from '@/core/persistence/codexStore';
 import { safeArrayAccess } from '@/core/utils/safeArray';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
-import { prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
+import { clampEnemyCountForEncounter, prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
 import type { IActionContext } from '@/core/actions/actionQueue';
 import type { ActionManager } from '@/core/actions/actionManager';
 
@@ -265,8 +265,9 @@ export class CombatManager {
   ): any[] {
     const state = this.deps.getState();
     const enemyPool = prioritizeEnemyPoolForEncounter(enemiesData as any[], floor, nodeType);
+    const effectiveCount = clampEnemyCountForEncounter(count, floor, nodeType, enemyPool);
 
-    return Array.from({ length: count }, (_, i) => {
+    return Array.from({ length: effectiveCount }, (_, i) => {
       const def = safeArrayAccess(enemyPool, Math.floor(this.deps.rng() * enemyPool.length));
       if (!def) {
         return null;
@@ -313,7 +314,7 @@ export class CombatManager {
       if (
         slimeBoost.enabled &&
         nodeType === 'Combat' &&
-        count === 1 &&
+        effectiveCount === 1 &&
         floor <= slimeBoost.maxFloor &&
         enemy.defId === 'slime_small'
       ) {

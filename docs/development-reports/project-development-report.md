@@ -324,3 +324,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **实际打开结果**：补齐本机 Electron 安装后，`npm run test:desktop-smoke` 能启动生产模式桌面应用并完成 launcher、tutorial、character_select、map、combat 截图链路；完整 `npm run doctor:game` 最终 `47/47` 通过。
 - **验证证据**：`npm run test:runtime-v2:py` 通过；`npx tsx --test tests/unit/runtimeV2Parity.test.ts` 通过；`npm run accept:runtime-v2-parity` 通过；`npm run check:content-bundle`、`check:content-reachability`、`check:deep-reachability`、`check:content-contract-layer` 通过；相关 route advisor/runtime delegation 单测 `35/35` 通过；`npm run lint --silent` 通过；最终 `npm run doctor:game` 通过 `47/47`；`git diff --check` 通过。
 - **剩余风险**：enemy AI tuning 仍给出小样本平衡提示：`informant` 高于目标、`brute` 低于目标；这是调参建议而非运行阻断。本次未进一步重调数值。
+
+### Step 121: balance early enemy pressure
+
+- **操作方向**：针对早期敌怪强度过高做小范围数值和平衡结构调整，优先修复 brute/chronomancer 在前 3 层被异常高压遭遇击穿的问题。
+- **发现与修复**：早期普通战的 singleton showcase 池会重复生成同一敌怪，导致 `barrier_redeemer+barrier_redeemer`、`goblin_trapper+goblin_trapper` 这类压力过高房间；第 3 层 Elite 可生成双精英，复现到 `gremlin_nob+gremlin_nob`、`gremlin_nob+psychic_infiltrator` 满血击杀 brute。新增 `clampEnemyCountForEncounter()`，将前 3 层普通 singleton showcase 房间和前 3 层 Elite 房间限制为 1 个敌人，并同步到 legacy CombatManager 与 Python runtime。
+- **数值调整**：轻量降低 `barrier_redeemer` 峰值，生命从 `26-30` 调整为 `24-28`，`lantern_smite` 伤害从 `8` 调整为 `7`，`hymnal_guard` 格挡从 `10` 调整为 `8`；对应敌怪回合单测同步验证新格挡值。
+- **验证证据**：`npx tsx --test tests/unit/enemySelection.test.ts` 通过；`npm run check:enemy-first3-exposure` 通过；`npx tsx --test tests/unit/runtimeV2Parity.test.ts` 通过；`npm run test:supplemental-units` 通过 `99/99`；`npm run lint --silent` 通过；`npm run report:enemy-ai-tuning` 通过，结果为 `5/6` 角色在目标区间内，仅 `informant` 高于目标；最终 `npm run doctor:game` 通过 `47/47`。
+- **剩余风险**：`informant` 仍高于早期生存目标，下一轮应单独评估该角色起始牌组和普通怪 anti-stall 压力；本轮 focused 模拟曾出现运行流转日志噪声，但正式 enemy AI tuning 报告 diagnostics 为 `0`。

@@ -160,7 +160,7 @@ test('enemy variants can gain self block and self buffs during the active enemy 
   await engine.executeEnemyTurn();
 
   const bulwark = engine.state.combat?.enemies[0];
-  assert.equal(bulwark?.block, 10);
+  assert.equal(bulwark?.block, 8);
   assert.equal(bulwark?.statuses.Strength, 1);
   engine.dispose();
 });

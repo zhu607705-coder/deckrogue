@@ -18,7 +18,7 @@ import {
 import { unlockCodexEntry } from '@/core/persistence/codexStore';
 import { intentSelector, type IntentCooldownState } from '@/core/ai';
 import { memoryManager } from '@/core/performance/MemoryManager';
-import { prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
+import { clampEnemyCountForEncounter, prioritizeEnemyPoolForEncounter } from '@/core/combat/enemySelection';
 
 export interface CombatManagerDeps {
   getState: () => GameState;
@@ -125,8 +125,9 @@ export class CombatManager {
   ): any[] {
     const state = this.deps.getState();
     const enemyPool = prioritizeEnemyPoolForEncounter(enemiesData as any[], floor, nodeType);
+    const effectiveCount = clampEnemyCountForEncounter(count, floor, nodeType, enemyPool);
 
-    return Array.from({ length: count }, (_, i) => {
+    return Array.from({ length: effectiveCount }, (_, i) => {
       const def = enemyPool[Math.floor(this.deps.rng() * enemyPool.length)];
       if (def?.id) {
         const eliteLike = !!(def as any).keywords?.includes('elite') || !!(def as any).keywords?.includes('boss');
@@ -185,7 +186,7 @@ export class CombatManager {
       if (
         slimeBoost.enabled &&
         nodeType === 'Combat' &&
-        count === 1 &&
+        effectiveCount === 1 &&
         floor <= slimeBoost.maxFloor &&
         enemy.defId === 'slime_small'
       ) {
