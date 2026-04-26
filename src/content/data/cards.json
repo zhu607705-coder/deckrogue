@@ -9209,5 +9209,2827 @@
       }
     ],
     "character": "All"
+  },
+  {
+    "id": "ash_bargain",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "draw",
+      "hp_trade"
+    ],
+    "text": "?? 2 ?????? 1 ???",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 2
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ?????? 1 ???",
+      "actions": [
+        {
+          "type": "LoseHP",
+          "amount": 1
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A hooded survivor trading glowing ash for a sealed card, embers curling around one wounded hand, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "shielded_advance",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "block",
+      "draw"
+    ],
+    "text": "?? 6 ????? 1 ???",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ????? 1 ???",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 8,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A tactical fighter advancing behind a radiant black-iron shield through sparks and smoke, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "rite_breaker",
+    "name": "???",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "debuff",
+      "attack"
+    ],
+    "text": "?? 7 ?????????????????? 3 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 3,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ?????????????????? 5 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "TargetHasAnyDebuff"
+          },
+          "trueActions": [
+            {
+              "type": "DealDamage",
+              "amount": 5,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A ritual circle being split by a silver blade, corrupted glyphs shattering from the impact, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "blackout_round",
+    "name": "???",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "weak",
+      "attack"
+    ],
+    "text": "?? 6 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ?????? 2 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A matte black bullet bursting into a cloud of light-eating smoke around an enemy silhouette, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "grim_tithe",
+    "name": "?????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "energy",
+      "draw",
+      "hp_trade"
+    ],
+    "text": "?? 3 ??????? 1 ????? 1 ???",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 3
+      },
+      {
+        "type": "GainEnergy",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ??????? 1 ????? 1 ???",
+      "actions": [
+        {
+          "type": "LoseHP",
+          "amount": 2
+        },
+        {
+          "type": "GainEnergy",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A grim altar demanding a blood coin while a blue flame of energy rises from the offering, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "sealed_reserve",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "block",
+      "draw"
+    ],
+    "text": "?? 14 ????? 1 ???",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 14,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 18 ????? 1 ???",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 18,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A sealed vault of bronze shields opening in a cold cathedral armory, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "martyr_vector",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "kill",
+      "attack"
+    ],
+    "text": "?? 13 ???????????? 1 ????? 1 ???",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 13,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalEffect",
+        "condition": {
+          "type": "Kill"
+        },
+        "effects": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 17 ???????????? 1 ????? 1 ???",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 17,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalEffect",
+          "condition": {
+            "type": "Kill"
+          },
+          "effects": [
+            {
+              "type": "GainEnergy",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A crimson vector spear piercing through a falling monster as martyr seals ignite, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "oath_of_motion",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "power",
+      "energy",
+      "draw"
+    ],
+    "text": "???????? 0 ?????? 3 ?????? 1 ????????",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "DrawZeroCostCard"
+        },
+        "effect": [
+          {
+            "type": "GainBlock",
+            "amount": 3,
+            "target": "Self"
+          },
+          {
+            "type": "GainResource",
+            "resource": "random",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "???????? 0 ?????? 5 ?????? 1 ????????",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "DrawZeroCostCard"
+          },
+          "effect": [
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "Self"
+            },
+            {
+              "type": "GainResource",
+              "resource": "random",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A warrior stepping through a ring of orbiting zero-cost cards and oath sigils, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "All"
+  },
+  {
+    "id": "forensic_ping",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "informant",
+      "evidence",
+      "intel"
+    ],
+    "text": "?? 1 ?????? 2?",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Scry",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ?????? 3?",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "evidence",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "Scry",
+          "amount": 3,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A masked informant reading glowing forensic ripples from a bloodless crime scene, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "classified_angle",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "evidence",
+      "attack"
+    ],
+    "text": "?? 6 ?????????????? 1 ???????? 6 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasResource",
+          "resource": "evidence",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendResourceEffect",
+            "resource": "evidence",
+            "amount": 1,
+            "effect": {
+              "type": "IgnoreBlock",
+              "amount": 6
+            }
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ?????????????? 1 ???????? 8 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasResource",
+            "resource": "evidence",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendResourceEffect",
+              "resource": "evidence",
+              "amount": 1,
+              "effect": {
+                "type": "IgnoreBlock",
+                "amount": 8
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A detective lining up a classified dossier edge like a blade toward a hidden weak point, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "wiretap_liturgy",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "intel",
+      "evidence"
+    ],
+    "text": "?? 1 ?????? 1 ????? 1 ???",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ?????? 2 ????? 1 ???",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "evidence",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A spy-priest whispering into copper wiretaps while shadowy enemies weaken under signal static, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "ledger_trap",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "evidence",
+      "debuff"
+    ],
+    "text": "?? 2 ?????????? 2 ????? 2 ???",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "ResourceThreshold",
+          "resource": "evidence",
+          "threshold": 2
+        },
+        "amount": 2
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ?????????? 2 ????? 2 ???",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 3,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalDraw",
+          "condition": {
+            "type": "ResourceThreshold",
+            "resource": "evidence",
+            "threshold": 2
+          },
+          "amount": 2
+        }
+      ]
+    },
+    "art_prompt": "A cursed accounting ledger snapping shut on an enemy name with red audit chains, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "silent_subpoena",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "stealth",
+      "evidence"
+    ],
+    "text": "?? 12 ?????? 2 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 16 ?????? 2 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "evidence",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A silent court summons folded into a throwing knife, delivered from deep shadow, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "ghost_briefing",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "informant",
+      "evidence",
+      "power"
+    ],
+    "text": "?? 2 ????????????????? 1 ???",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "evidence",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "SpendResource",
+          "resource": "evidence"
+        },
+        "effect": {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ????????????????? 1 ???",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "evidence",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "SpendResource",
+            "resource": "evidence"
+          },
+          "effect": {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "art_prompt": "A ghostly briefing room with translucent informants pointing at floating evidence strings, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "total_exposure",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "informant",
+      "evidence",
+      "attack"
+    ],
+    "text": "?? 12 ??????????????????? 6 ???????????? 1 ????? 1 ???",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "evidence",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 6,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "ConditionalEffect",
+        "condition": {
+          "type": "Kill"
+        },
+        "effects": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 16 ??????????????????? 7 ???????????? 1 ????? 1 ???",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "evidence",
+          "effect": {
+            "type": "DealDamage",
+            "amount": 7,
+            "target": "Enemy"
+          }
+        },
+        {
+          "type": "ConditionalEffect",
+          "condition": {
+            "type": "Kill"
+          },
+          "effects": [
+            {
+              "type": "GainEnergy",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A wall of secret portraits and evidence threads igniting as the true culprit is exposed, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "informant"
+  },
+  {
+    "id": "blood_knuckle",
+    "name": "???",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "rage",
+      "attack"
+    ],
+    "text": "?? 2 ??????? 5 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 2
+      },
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "rage",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ??????? 7 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "LoseHP",
+          "amount": 1
+        },
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "rage",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A bruised brawler's iron knuckles glowing red as blood sparks turn into rage, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "brace_for_impact",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "block",
+      "shield"
+    ],
+    "text": "?? 8 ????????????????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "EnemyWillAttack"
+        },
+        "resource": "rage",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ????????????????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "ConditionalResourceGain",
+          "condition": {
+            "type": "EnemyWillAttack"
+          },
+          "resource": "rage",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A massive fighter lowering a cracked tower shield before a charging monster, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "rib_breaker",
+    "name": "???",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "strength",
+      "attack"
+    ],
+    "text": "?? 7 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A brutal elbow strike cracking spectral ribs under red torchlight, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "pain_engine",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "rage",
+      "strength"
+    ],
+    "text": "?? 4 ??????? 2 ????? 1 ???",
+    "actions": [
+      {
+        "type": "LoseHP",
+        "amount": 4
+      },
+      {
+        "type": "GainResource",
+        "resource": "rage",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ??????? 2 ????? 1 ???",
+      "actions": [
+        {
+          "type": "LoseHP",
+          "amount": 3
+        },
+        {
+          "type": "GainResource",
+          "resource": "rage",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A chained engine pumping red pain-light into a battle-scarred warrior, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "wall_crusher",
+    "name": "???",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "block",
+      "attack"
+    ],
+    "text": "?? 11 ??????????????????? 8 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 11,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "GainedBlockThisTurn"
+        },
+        "bonus": 8
+      }
+    ],
+    "upgrade": {
+      "text": "?? 14 ??????????????????? 10 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalDamage",
+          "condition": {
+            "type": "GainedBlockThisTurn"
+          },
+          "bonus": 10
+        }
+      ]
+    },
+    "art_prompt": "A brute smashing through a stone wall with shield momentum turning into a hammer blow, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "red_bulwark",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "brute",
+      "block",
+      "power"
+    ],
+    "text": "?? 8 ?????????????? 12 ??????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainBlockThreshold",
+          "threshold": 12
+        },
+        "effect": {
+          "type": "GainResource",
+          "resource": "rage",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "upgrade": {
+      "text": "?? 12 ?????????????? 12 ??????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 12,
+          "target": "Self"
+        },
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "GainBlockThreshold",
+            "threshold": 12
+          },
+          "effect": {
+            "type": "GainResource",
+            "resource": "rage",
+            "amount": 1,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "art_prompt": "A red-hot defensive wall rising from clenched fists and shattered armor plates, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "butcher_zenith",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "brute",
+      "rage",
+      "strength"
+    ],
+    "text": "?? 18 ??????????????????? 5 ???????????????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 18,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "rage",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "ConditionalEffect",
+        "condition": {
+          "type": "TookDamageThisTurn"
+        },
+        "effects": [
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 22 ??????????????????? 6 ???????????????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 22,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "rage",
+          "effect": {
+            "type": "DealDamage",
+            "amount": 6,
+            "target": "Enemy"
+          }
+        },
+        {
+          "type": "ConditionalEffect",
+          "condition": {
+            "type": "TookDamageThisTurn"
+          },
+          "effects": [
+            {
+              "type": "GainEnergy",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A butcher-warrior at the peak of a blood-red arena, axe raised under a crimson eclipse, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "brute"
+  },
+  {
+    "id": "spotter_drone",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "command"
+    ],
+    "text": "?? 1 ?????? 2?",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Scry",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ?????? 2?",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "Scry",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A brass spotter drone projecting tactical command lines over a battlefield, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "crossfire_order",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "command",
+      "attack"
+    ],
+    "text": "?? 7 ???????? 1 ??????? 1 ??? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceUpTo",
+        "resource": "command",
+        "maxAmount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ???????? 1 ??????? 1 ??? 2 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendResourceUpTo",
+          "resource": "command",
+          "maxAmount": 1,
+          "effect": {
+            "type": "ApplyStatus",
+            "status": "Vulnerable",
+            "stacks": 2,
+            "target": "Enemy"
+          }
+        }
+      ]
+    },
+    "art_prompt": "A commander marking intersecting fire lanes with red command glyphs over an enemy, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "smoke_screen_line",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "formation",
+      "block"
+    ],
+    "text": "?? 6 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ?????? 2 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 8,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A disciplined shield line disappearing into blue-gray smoke while enemies lose aim, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "reserve_signal",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "command",
+      "draw"
+    ],
+    "text": "?? 1 ????? 1 ????????? 2 ?????? 5 ????",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalBonusBlock",
+        "condition": {
+          "type": "ResourceThreshold",
+          "resource": "command",
+          "threshold": 2
+        },
+        "bonus": 5
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ????? 1 ????????? 2 ?????? 5 ????",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "ConditionalBonusBlock",
+          "condition": {
+            "type": "ResourceThreshold",
+            "resource": "command",
+            "threshold": 2
+          },
+          "bonus": 5
+        }
+      ]
+    },
+    "art_prompt": "A reserve flare rising above a tactical command board as fresh shields assemble, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "kill_box",
+    "name": "???",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "formation",
+      "attack"
+    ],
+    "text": "?? 12 ????????????????? 8 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDamage",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "bonus": 8
+      }
+    ],
+    "upgrade": {
+      "text": "?? 15 ????????????????? 10 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 15,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalDamage",
+          "condition": {
+            "type": "TargetHasAnyDebuff"
+          },
+          "bonus": 10
+        }
+      ]
+    },
+    "art_prompt": "An enemy trapped inside a glowing tactical kill box of converging firing arcs, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "layered_orders",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "tactician",
+      "command",
+      "power"
+    ],
+    "text": "?? 2 ?????????????????? 4 ????",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "SpendResource",
+          "resource": "command"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
+        }
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ?????????????????? 6 ????",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "SpendResource",
+            "resource": "command"
+          },
+          "effect": {
+            "type": "GainBlock",
+            "amount": 6,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "art_prompt": "Stacked command tablets unfolding into protective tactical layers around a strategist, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "decapitation_plan",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "tactician",
+      "command",
+      "formation"
+    ],
+    "text": "?? 16 ???????? 3 ??????? 1 ????? 5 ??????????? 30%?? 2 ???",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 16,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceUpTo",
+        "resource": "command",
+        "maxAmount": 3,
+        "effect": {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "TargetBelowHP",
+          "percent": 30
+        },
+        "amount": 2
+      }
+    ],
+    "upgrade": {
+      "text": "?? 20 ???????? 3 ??????? 1 ????? 6 ??????????? 30%?? 2 ???",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 20,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendResourceUpTo",
+          "resource": "command",
+          "maxAmount": 3,
+          "effect": {
+            "type": "DealDamage",
+            "amount": 6,
+            "target": "Enemy"
+          }
+        },
+        {
+          "type": "ConditionalDraw",
+          "condition": {
+            "type": "TargetBelowHP",
+            "percent": 30
+          },
+          "amount": 2
+        }
+      ]
+    },
+    "art_prompt": "A strategic map marking the enemy leader with a final execution arrow and command seals, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "tactician"
+  },
+  {
+    "id": "second_hand_cut",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "layer",
+      "attack"
+    ],
+    "text": "?? 6 ?????? 1 ?????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ?????? 1 ?????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "timeLayer",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A razor-thin clock hand carving a luminous cut through frozen air, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "borrowed_minute",
+    "name": "?????",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "layer",
+      "energy"
+    ],
+    "text": "?? 1 ??????????? 1 ???????????? 1 ???",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "DelayedEnergy",
+        "amount": 1,
+        "turns": 1
+      },
+      {
+        "type": "EndOfTurnDrawPenalty",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ??????????? 1 ???????????? 1 ???",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "timeLayer",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "DelayedEnergy",
+          "amount": 1,
+          "turns": 1
+        },
+        {
+          "type": "EndOfTurnDrawPenalty",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A chronomancer stealing one glowing minute from a fractured pocket watch, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "stutter_guard",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "layer",
+      "block"
+    ],
+    "text": "?? 7 ?????????? 2 ?????? 1 ???",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 2
+        },
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ?????????? 2 ?????? 1 ???",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 9,
+          "target": "Self"
+        },
+        {
+          "type": "ConditionalDraw",
+          "condition": {
+            "type": "HasTimeLayer",
+            "amount": 2
+          },
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A shield wall made of repeated frozen frames, each frame offset by a heartbeat, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "echo_cut",
+    "name": "???",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "echo",
+      "attack"
+    ],
+    "text": "?? 7 ?????????????? 1 ?????? 7 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 7,
+            "target": "Enemy"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ?????????????? 1 ?????? 9 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasTimeLayer",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendTimeLayer",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 9,
+              "target": "Enemy"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "Two delayed sword cuts echoing through the same enemy at different moments, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "fixed_point",
+    "name": "???",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "chronomancer",
+      "layer",
+      "power"
+    ],
+    "text": "?? 2 ???????????????????? 4 ????",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainResource",
+          "resource": "timeLayer"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
+        }
+      },
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ???????????????????? 6 ????",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "GainResource",
+            "resource": "timeLayer"
+          },
+          "effect": {
+            "type": "GainBlock",
+            "amount": 6,
+            "target": "Self"
+          }
+        },
+        {
+          "type": "GainResource",
+          "resource": "timeLayer",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A golden fixed point pinning a storm of timelines around a calm chronomancer, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "rift_interleave",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "warp",
+      "delay"
+    ],
+    "text": "?? 12 ???????????? 2 ??????? 2 ???? 1 ????",
+    "actions": [
+      {
+        "type": "DealWarpDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasTimeLayer",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendTimeLayer",
+            "amount": 2,
+            "target": "Self"
+          },
+          {
+            "type": "GainEnergy",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 15 ???????????? 2 ??????? 2 ???? 1 ????",
+      "actions": [
+        {
+          "type": "DealWarpDamage",
+          "amount": 15,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasTimeLayer",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendTimeLayer",
+              "amount": 2,
+              "target": "Self"
+            },
+            {
+              "type": "GainEnergy",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "Interleaved warp rifts folding a blade strike through three overlapping timelines, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "causal_collapse",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "chronomancer",
+      "layer",
+      "warp"
+    ],
+    "text": "?? 15 ????????????????????? 4 ?????? 1 ?????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 15,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "timeLayer",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 4,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "GainResource",
+        "resource": "timeLayer",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 20 ????????????????????? 5 ?????? 1 ?????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 20,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "timeLayer",
+          "effect": {
+            "type": "DealDamage",
+            "amount": 5,
+            "target": "Enemy"
+          }
+        },
+        {
+          "type": "GainResource",
+          "resource": "timeLayer",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A collapsing chain of cause and effect crushing an enemy beneath broken clocks, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "chronomancer"
+  },
+  {
+    "id": "needle_servo",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "summon",
+      "thread"
+    ],
+    "text": "???? 2/2 ???????? 1 ????",
+    "actions": [
+      {
+        "type": "Summon",
+        "id": "needle_servo",
+        "attack": 2,
+        "hp": 2
+      },
+      {
+        "type": "GainResource",
+        "resource": "thread",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "???? 3/3 ???????? 1 ????",
+      "actions": [
+        {
+          "type": "Summon",
+          "id": "needle_servo",
+          "attack": 3,
+          "hp": 3
+        },
+        {
+          "type": "GainResource",
+          "resource": "thread",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A needle-like clockwork puppet unfolding from a spool of glowing thread, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "string_snare",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "puppeteer",
+      "thread",
+      "attack"
+    ],
+    "text": "?? 6 ?????? 1 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "thread",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 8 ?????? 1 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "thread",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A puppet master's silver snare thread tripping a monster mid-strike, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "repair_marionette",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "construct",
+      "block"
+    ],
+    "text": "????????????????????? 7 ????",
+    "actions": [
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConstruct"
+        },
+        "trueActions": [
+          {
+            "type": "HealConstruct",
+            "constructAtkBonus": 0
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainBlock",
+            "amount": 7,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "????????????????????? +1 ???????? 10 ????",
+      "actions": [
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConstruct"
+          },
+          "trueActions": [
+            {
+              "type": "HealConstruct",
+              "constructAtkBonus": 1
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainBlock",
+              "amount": 10,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A cracked marionette being repaired by warm golden thread on a dark workbench, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "overclock_strings",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "thread",
+      "construct"
+    ],
+    "text": "?? 2 ?????????? +1 ????",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "thread",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "BuffConstructs",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ?????????? +1 ????",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "thread",
+          "amount": 3,
+          "target": "Self"
+        },
+        {
+          "type": "BuffConstructs",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "Glowing puppet strings overclocking a row of brass constructs with blue-white sparks, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "puppet_screen",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "summon",
+      "block"
+    ],
+    "text": "??????????? 8 ????",
+    "actions": [
+      {
+        "type": "Summon",
+        "unit": "temp_guard"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "??????????? 11 ????",
+      "actions": [
+        {
+          "type": "Summon",
+          "unit": "temp_guard"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 11,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A wooden guard puppet unfolding into a protective screen of lacquered shields, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "red_thread_contract",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "puppeteer",
+      "thread",
+      "power"
+    ],
+    "text": "?? 2 ?????????????????? 1 ????",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "thread",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "FirstSummon"
+        },
+        "effect": {
+          "type": "GainResource",
+          "resource": "thread",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ?????????????????? 2 ????",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "thread",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "FirstSummon"
+          },
+          "effect": {
+            "type": "GainResource",
+            "resource": "thread",
+            "amount": 2,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "art_prompt": "A puppet master signing a red thread contract with a faceless wooden court, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "theater_of_knives",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "puppeteer",
+      "thread",
+      "sacrifice"
+    ],
+    "text": "??????? 10 ?????????? 2 ?????? 2 ??????????? 5 ????? 1 ???",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasThread",
+          "amount": 2
+        },
+        "trueActions": [
+          {
+            "type": "SpendThread",
+            "amount": 2,
+            "target": "Self"
+          },
+          {
+            "type": "PuppetAttack",
+            "amount": 5
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "??????? 13 ?????????? 2 ?????? 2 ??????????? 7 ????? 1 ???",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "AllEnemies"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasThread",
+            "amount": 2
+          },
+          "trueActions": [
+            {
+              "type": "SpendThread",
+              "amount": 2,
+              "target": "Self"
+            },
+            {
+              "type": "PuppetAttack",
+              "amount": 7
+            },
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A dark puppet theater opening into a storm of suspended knives and glowing strings, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "puppeteer"
+  },
+  {
+    "id": "ember_reagent",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "fire",
+      "concoction"
+    ],
+    "text": "?? 1 ??????? 1 ?????",
+    "actions": [
+      {
+        "type": "AddElement",
+        "element": "Fire"
+      },
+      {
+        "type": "GainResource",
+        "resource": "concoction",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ??????? 2 ?????",
+      "actions": [
+        {
+          "type": "AddElement",
+          "element": "Fire"
+        },
+        {
+          "type": "GainResource",
+          "resource": "concoction",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "An alchemist holding an ember reagent vial with a tiny fire elemental inside, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "acid_measure",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "alchemist",
+      "acid",
+      "poison"
+    ],
+    "text": "?? 5 ?????? 3 ?????? 1 ?????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "AddElement",
+        "element": "Acid"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 7 ?????? 4 ?????? 1 ?????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 4,
+          "target": "Enemy"
+        },
+        {
+          "type": "AddElement",
+          "element": "Acid"
+        }
+      ]
+    },
+    "art_prompt": "A precise glass pipette measuring bright acid into a poison-marked flask, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "coagulate",
+    "name": "??",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "concoction",
+      "block"
+    ],
+    "text": "?? 6 ?????? 1 ?????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "concoction",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ?????? 1 ?????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 9,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "concoction",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A translucent alchemical gel coagulating into a protective shell around a robed chemist, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "volatile_retort",
+    "name": "?????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "alchemist",
+      "fire",
+      "concoction"
+    ],
+    "text": "?? 11 ?????????????? 1 ?????? 10 ?????? 1 ??????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 11,
+        "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasConcoction",
+          "amount": 1
+        },
+        "trueActions": [
+          {
+            "type": "SpendConcoction",
+            "amount": 1,
+            "target": "Self"
+          },
+          {
+            "type": "DealDamage",
+            "amount": 10,
+            "target": "Enemy"
+          },
+          {
+            "type": "AddRandomElement",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "upgrade": {
+      "text": "?? 14 ?????????????? 1 ?????? 12 ?????? 1 ??????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasConcoction",
+            "amount": 1
+          },
+          "trueActions": [
+            {
+              "type": "SpendConcoction",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "DealDamage",
+              "amount": 12,
+              "target": "Enemy"
+            },
+            {
+              "type": "AddRandomElement",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    "art_prompt": "A volatile retort flask boiling over with fire and unstable colored elements, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "base_catalyst",
+    "name": "?????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "alchemist",
+      "acid",
+      "poison"
+    ],
+    "text": "?? 3 ?????????????? 1 ?????",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 3,
+        "target": "Enemy"
+      },
+      {
+        "type": "TriggerPoisonOnTarget",
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "concoction",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 5 ?????????????? 1 ?????",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "TriggerPoisonOnTarget",
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "concoction",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A pale alkaline catalyst pouring into green poison, releasing a controlled toxic flash, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "sealed_alembic",
+    "name": "?????",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "alchemist",
+      "concoction",
+      "power"
+    ],
+    "text": "?? 2 ???????????????????? 4 ????",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainResource",
+          "resource": "concoction"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 4,
+          "target": "Self"
+        }
+      },
+      {
+        "type": "GainResource",
+        "resource": "concoction",
+        "amount": 2,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ???????????????????? 6 ????",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "GainResource",
+            "resource": "concoction"
+          },
+          "effect": {
+            "type": "GainBlock",
+            "amount": 6,
+            "target": "Self"
+          }
+        },
+        {
+          "type": "GainResource",
+          "resource": "concoction",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A sealed glass alembic venting defensive silver vapor around an alchemist, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
+  },
+  {
+    "id": "world_formula",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 3,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "alchemist",
+      "fire",
+      "acid",
+      "concoction",
+      "element"
+    ],
+    "text": "?? 1 ????? 1 ????????????????????????????? 1 ??????????????? 1 ????? 1 ???",
+    "actions": [
+      {
+        "type": "AddElement",
+        "element": "Fire"
+      },
+      {
+        "type": "AddElement",
+        "element": "Acid"
+      },
+      {
+        "type": "TriggerAllReactions",
+        "times": 1
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "concoction",
+        "effect": [
+          {
+            "type": "TriggerRandomElementReaction"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Poison",
+            "stacks": 1,
+            "target": "AllEnemies"
+          }
+        ]
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 1 ????? 1 ????????????? 2 ????????????????? 1 ??????????????? 1 ????? 1 ???",
+      "actions": [
+        {
+          "type": "AddElement",
+          "element": "Fire"
+        },
+        {
+          "type": "AddElement",
+          "element": "Acid"
+        },
+        {
+          "type": "TriggerAllReactions",
+          "times": 2
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "concoction",
+          "effect": [
+            {
+              "type": "TriggerRandomElementReaction"
+            },
+            {
+              "type": "ApplyStatus",
+              "status": "Poison",
+              "stacks": 1,
+              "target": "AllEnemies"
+            }
+          ]
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "An alchemist writing the world formula in fire and acid circles over a cosmic workbench, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
+    "character": "alchemist"
   }
 ]

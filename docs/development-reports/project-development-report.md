@@ -384,3 +384,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **代码功能改动**：商店头图区从小圆头像改为右侧舞台；故事事件按 event id 显示对应 NPC 立绘与台词；战斗背景主题覆盖 50 个非 special 敌怪并按主题 `key` 触发即时背景淡入；预加载列表包含新增视觉资源；战斗 HUD 改为紧凑分区，手牌横向滚动并保留战场中心空间。
 - **验证证据**：`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`npm run test:ui-smoke`、`npm run test:ui-smoke:expansion`、`npm run test:shop-flow-smoke`、`npm run test:event-flow-smoke`、`npm run test:runtime-v2-flow-smoke -- --renderer=dom` 均通过；资源路径/PNG 尺寸检查通过；敌怪背景映射覆盖 `50/50`。
 - **剩余风险**：`npm run test:runtime-v2-flow-smoke -- --renderer=pixi` 在 potion shop 阶段的 debug bridge snapshot 读取处返回失败，但已有 `report_pixi.json` 显示其前序 map/event/rest/combat/reward/shop/relic 流程为 passed；该失败发生在脚本桥接层，未指向本次 DOM 视觉接入。
+### Step 129: add fifty-card build expansion with portraits
+
+- **操作方向**：新增 50 张卡牌，覆盖通用卡与六职业路线，并为每张卡补齐可被运行时读取的立绘资源。
+- **数值与构筑设计**：新增分布为通用 `8` 张、informant/brute/tactician/chronomancer/puppeteer/alchemist 各 `7` 张；稀有度为 `Common=22`、`Uncommon=21`、`Rare=7`。每条职业路线都包含资源入口、资源消耗、一次/回合 Power 与终端 payoff，形成证据、狂怒、指挥、时间层、线程、调和剂/元素等可循环 build。
+- **资源接入**：使用内置生图功能生成 5 张 5x2 卡图联系表，并裁切为 `50` 张独立 PNG，保存到 `public/assets/cards/<card_id>.png`；原始生成图保留在 Codex 生成目录。
+- **回归覆盖**：新增 `tests/unit/cardExpansionPack.test.ts`，锁定新增包数量/分布、动作注册、费用范围、路线识别与立绘文件存在性，并接入 `npm run test:supplemental-units`。
+- **验证证据**：`npx tsx --test tests/unit/cardExpansionPack.test.ts` 通过 `3/3`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run check:content-bundle`、`npm run test:supplemental-units` 通过 `132/132`、`npm run lint --silent`、`npm run build`、`npm run test:ui-smoke`、`npm run accept:expansion-content`、`npm run test:runtime-v2-flow-smoke -- --renderer=dom` 均通过；`git diff --check` 通过，仅输出 Windows CRLF 提示。
+- **剩余风险**：卡图为联系表裁切的生成式方形插画，已适配现有卡面 `object-cover`，但仍建议后续美术人工统一风格；本轮数值按当前动作模型做基线平衡，仍需要后续实战日志微调个别强弱点。
