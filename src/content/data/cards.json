@@ -2782,6 +2782,25 @@
         "type": "DealDamage",
         "amount": 12,
         "target": "Enemy"
+      },
+      {
+        "type": "Conditional",
+        "condition": {
+          "type": "HasPlayerStatus",
+          "status": "Stealth"
+        },
+        "trueActions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          },
+          {
+            "type": "GainIntel",
+            "amount": 2,
+            "target": "Self"
+          }
+        ]
       }
     ],
     "upgrade": {
@@ -2792,6 +2811,25 @@
           "type": "DealDamage",
           "amount": 16,
           "target": "Enemy"
+        },
+        {
+          "type": "Conditional",
+          "condition": {
+            "type": "HasPlayerStatus",
+            "status": "Stealth"
+          },
+          "trueActions": [
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            },
+            {
+              "type": "GainIntel",
+              "amount": 3,
+              "target": "Self"
+            }
+          ]
         }
       ]
     },
@@ -4231,30 +4269,68 @@
     "type": "Skill",
     "targeting": "Self",
     "tags": [],
-    "text": "消灭一个构造体。获得 3 条线程。抽 2 张牌。",
+    "text": "若你控制构造体，获得 3 条线程并抽 2 张牌；否则获得 1 条线程并抽 1 张牌。",
     "actions": [
       {
-        "type": "GainThread",
-        "amount": 3
-      },
-      {
-        "type": "Draw",
-        "amount": 2,
-        "target": "Self"
+        "type": "Conditional",
+        "condition": {
+          "type": "ControlsPuppets"
+        },
+        "trueActions": [
+          {
+            "type": "GainThread",
+            "amount": 3
+          },
+          {
+            "type": "Draw",
+            "amount": 2,
+            "target": "Self"
+          }
+        ],
+        "falseActions": [
+          {
+            "type": "GainThread",
+            "amount": 1
+          },
+          {
+            "type": "Draw",
+            "amount": 1,
+            "target": "Self"
+          }
+        ]
       }
     ],
     "upgrade": {
       "name": "献祭构造+",
-      "text": "消灭一个构造体。获得 4 条线程。抽 2 张牌。",
+      "text": "若你控制构造体，获得 4 条线程并抽 2 张牌；否则获得 2 条线程并抽 1 张牌。",
       "actions": [
         {
-          "type": "GainThread",
-          "amount": 4
-        },
-        {
-          "type": "Draw",
-          "amount": 2,
-          "target": "Self"
+          "type": "Conditional",
+          "condition": {
+            "type": "ControlsPuppets"
+          },
+          "trueActions": [
+            {
+              "type": "GainThread",
+              "amount": 4
+            },
+            {
+              "type": "Draw",
+              "amount": 2,
+              "target": "Self"
+            }
+          ],
+          "falseActions": [
+            {
+              "type": "GainThread",
+              "amount": 2
+            },
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            }
+          ]
         }
       ]
     },

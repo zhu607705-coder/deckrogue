@@ -25,6 +25,9 @@ export interface ContentBundleCard {
   id: string;
   rarity: string;
   character: string;
+  route_tags?: string[];
+  route_signal_strength?: number;
+  early_game_role?: string | null;
 }
 
 export interface ContentBundleRelic {

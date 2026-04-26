@@ -166,6 +166,35 @@ test('committed recent route overrides stale deck dominant route for reward, sho
   }
 });
 
+test('first reward distributes soft starter routes across multiple build openings', () => {
+  const characters = ['informant', 'puppeteer', 'alchemist'];
+
+  for (const characterId of characters) {
+    const pickedTags: string[] = [];
+
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const engine = new GameEngine(seed, null, { enableRuntimeDelegation: false });
+      try {
+        engine.selectCharacter(characterId);
+        setFloor(engine, 0);
+        const reward = engine.generateCardRewards(3, { source: 'combat' });
+        const chosen = reward.find((card) => getCardRouteSignal(card)?.earlyGameRole === 'route_confirm') ?? reward[0];
+        const tag = getCardRouteSignal(chosen)?.routeTags[0];
+        if (tag) pickedTags.push(tag);
+      } finally {
+        engine.dispose();
+      }
+    }
+
+    const counts = new Map<string, number>();
+    for (const tag of pickedTags) counts.set(tag, (counts.get(tag) || 0) + 1);
+    const maxShare = Math.max(...Array.from(counts.values())) / Math.max(1, pickedTags.length);
+
+    assert.ok(counts.size >= 2, `${characterId} should open at least two route tags, got ${Array.from(counts.keys()).join(', ')}`);
+    assert.ok(maxShare <= 0.85, `${characterId} first reward route share collapsed to ${maxShare}`);
+  }
+});
+
 test('growth route distribution summary flags collapsed per-character route tags without failing formation pass', () => {
   const samples: SampleResult[] = [
     { characterId: 'informant', seed: 1, dominantTag: 'informant:intel', reward1: [], reward2: [], formed: true },

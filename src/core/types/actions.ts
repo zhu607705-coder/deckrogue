@@ -19,11 +19,27 @@ export type EarlyGameRole = 'route_confirm' | 'route_payoff' | 'generic_power' |
 export type ActionCondition =
   | { type: 'HasIntel'; amount: number }
   | { type: 'TargetHasStatus'; status: string }
+  | { type: 'TargetHasDebuff' }
+  | { type: 'TargetHasAnyDebuff'; debuffs?: string[] }
+  | { type: 'TargetHasBothDebuffs'; debuffs: string[] }
+  | { type: 'TargetBelowHP'; percent: number }
+  | { type: 'EnemyHasStatus'; status: string }
   | { type: 'HasConstruct' }
+  | { type: 'ControlsPuppets' }
   | { type: 'HasCorruption'; amount: number }
   | { type: 'HasTimeLayer'; amount: number }
   | { type: 'HasThread'; amount: number }
-  | { type: 'HasConcoction'; amount: number };
+  | { type: 'HasConcoction'; amount: number }
+  | { type: 'HasResource'; resource: string; amount?: number }
+  | { type: 'ResourceThreshold'; resource: string; threshold: number }
+  | { type: 'ResourceSpent' }
+  | { type: 'SpendResource'; resource: string; amount: number }
+  | { type: 'Kill' }
+  | { type: 'AddedElementThisTurn' }
+  | { type: 'HasTwoElements' }
+  | { type: 'NoAttackYet' }
+  | { type: 'GainedBlockThisTurn' }
+  | { type: 'HasPlayerStatus'; status: string };
 
 export type ActionScaling =
   | { type: 'DelayedCards'; multiplier?: number }
@@ -39,6 +55,20 @@ export interface ActionSpec {
     | 'Discard'
     | 'GainIntel'
     | 'SpendIntel'
+    | 'GainResource'
+    | 'SpendResourceEffect'
+    | 'SpendAllResourceEffect'
+    | 'SpendResourceUpTo'
+    | 'BonusNextDebuff'
+    | 'BuffNextDebuff'
+    | 'ConditionalApply'
+    | 'ConditionalBonusBlock'
+    | 'ConditionalBonusDamage'
+    | 'ConditionalDelayedDamage'
+    | 'ConditionalDraw'
+    | 'ConditionalHeal'
+    | 'ConditionalDamage'
+    | 'ConditionalRefund'
     | 'ConditionalKill'
     | 'ModifyEnergy'
     | 'Conditional'
@@ -50,13 +80,19 @@ export interface ActionSpec {
     | 'Summon'
     | 'BuffConstructs'
     | 'ConstructOverdrive'
+    | 'ConditionalSummonBonus'
     | 'HealConstruct'
+    | 'PuppetAttack'
+    | 'PuppetBuff'
+    | 'SacrificeAllPuppets'
+    | 'TriggerOnPuppetDeath'
     | 'ForceEnemyAttack'
     | 'SummonMegaConstruct'
     | 'AddRandomElement'
     | 'AddElement'
     | 'TriggerReactions'
     | 'TriggerAllReactions'
+    | 'TriggerRandomElementReaction'
     | 'ElementalOverloadDamage'
     | 'TransmuteElements'
     | 'SolventDamage'
@@ -87,7 +123,10 @@ export interface ActionSpec {
     | 'GainConcoction'
     | 'SpendConcoction'
     | 'TriggerPoisonOnTarget'
-    | 'LoseHp';
+    | 'DelayedDraw'
+    | 'LoseHp'
+    | 'LoseHP'
+    | 'RetainCard';
   amount?: number;
   bonus?: number;
   status?: string;
@@ -119,10 +158,20 @@ export interface ActionSpec {
   name?: string;
   hp?: number;
   atk?: number;
+  id?: string;
+  attack?: number;
+  block?: number;
+  damage?: number;
   taunt?: boolean;
   hpBonus?: number;
   atkBonus?: number;
   times?: number;
+  resource?: string;
+  effect?: ActionSpec | { type: string; amount?: number; status?: string; stacks?: number; target?: CardTarget };
+  stacks?: number;
+  perDebuff?: number;
+  ifTrue?: ActionSpec;
+  ifFalse?: ActionSpec;
 }
 
 export type CardModifierEffect =

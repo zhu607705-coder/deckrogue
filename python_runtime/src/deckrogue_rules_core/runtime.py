@@ -137,6 +137,7 @@ class RuleRuntime:
         self._snapshot["active_event"] = None
         self._snapshot["surface_context"] = None
         self._snapshot["room_session"] = None
+        self._snapshot["route_state"] = self._derive_route_state_from_deck(None)
 
     def _apply_enter_node(self, node_id: str) -> None:
         if self._snapshot["lifecycle"]["phase"] != "map":
@@ -252,11 +253,195 @@ class RuleRuntime:
         current_node = self._get_current_node()
         return int(current_node["y"]) + 1 if current_node is not None else 1
 
-    def _record_route_commit(self, source: str, weight: int) -> None:
+    def _card_route_signal(self, card_id: str) -> dict[str, Any] | None:
+        card = next((entry for entry in self._content_bundle.get("cards", []) if str(entry.get("id")) == str(card_id)), None)
+        if not card:
+            return None
+        route_tags = [str(tag) for tag in card.get("route_tags", []) if tag]
+        if not route_tags:
+            return None
+        return {
+            "route_tags": route_tags,
+            "route_signal_strength": int(card.get("route_signal_strength") or 1),
+        }
+
+    def _known_route_tags_for_character(self, character_id: str | None) -> list[str]:
+        if not character_id:
+            return []
+        tags: list[str] = []
+        for card in self._content_bundle.get("cards", []):
+            if str(card.get("character", "All")) != str(character_id):
+                continue
+            for tag in card.get("route_tags", []) or []:
+                tag = str(tag)
+                if tag not in tags:
+                    tags.append(tag)
+        return tags
+
+    def _derive_route_state_from_deck(self, existing_route_state: dict[str, Any] | None) -> dict[str, Any] | None:
+        character_id = self._snapshot.get("player", {}).get("character_id")
+        known_tags = self._known_route_tags_for_character(str(character_id) if character_id else None)
+        if not known_tags:
+            return None
+
+        score_by_tag: dict[str, int] = {}
+        deck = [str(card_id) for card_id in self._snapshot.get("player", {}).get("deck", [])]
+        for card_id in deck:
+            signal = self._card_route_signal(card_id)
+            if not signal:
+                continue
+            for tag in signal["route_tags"]:
+                if tag in known_tags:
+                    score_by_tag[tag] = score_by_tag.get(tag, 0) + int(signal["route_signal_strength"])
+
+        recent_card_weights = [24, 18, 12, 8, 5]
+        for index, card_id in enumerate(reversed(deck[-len(recent_card_weights):])):
+            signal = self._card_route_signal(card_id)
+            if not signal:
+                continue
+            for tag in signal["route_tags"]:
+                if tag in known_tags:
+                    score_by_tag[tag] = score_by_tag.get(tag, 0) + recent_card_weights[index] + int(signal["route_signal_strength"]) * 3
+
+        existing = existing_route_state or self._snapshot.get("route_state") or {}
+        recent_commits = list(existing.get("recent_commits") or [])[-6:]
+        commit_decay = [1, 0.8, 0.64, 0.5, 0.4, 0.32]
+        for index, commit in enumerate(reversed(recent_commits)):
+            tag = str(commit.get("tag") or "")
+            if tag in known_tags:
+                decay = commit_decay[index] if index < len(commit_decay) else commit_decay[-1]
+                score_by_tag[tag] = score_by_tag.get(tag, 0) + max(1, round(int(commit.get("weight") or 1) * decay))
+
+        latest_commit_tag = str(recent_commits[-1].get("tag")) if recent_commits else None
+        consecutive_latest_commit_count = 0
+        if latest_commit_tag in known_tags:
+            for commit in reversed(recent_commits):
+                if str(commit.get("tag")) != latest_commit_tag:
+                    break
+                consecutive_latest_commit_count += 1
+            score_by_tag[latest_commit_tag] = score_by_tag.get(latest_commit_tag, 0) + 18 + consecutive_latest_commit_count * 12
+
+        existing_primary = existing.get("primary_tag")
+        existing_secondary = existing.get("secondary_tag")
+        existing_confidence = int(existing.get("confidence") or 0)
+        if existing_primary in known_tags:
+            score_by_tag[str(existing_primary)] = score_by_tag.get(str(existing_primary), 0) + max(10, round(existing_confidence * 0.55))
+        if existing_secondary in known_tags:
+            score_by_tag[str(existing_secondary)] = score_by_tag.get(str(existing_secondary), 0) + max(4, round(existing_confidence * 0.22))
+
+        sorted_tags = sorted(
+            [(tag, score) for tag, score in score_by_tag.items() if tag in known_tags],
+            key=lambda item: (-item[1], item[0]),
+        )
+        existing_primary_has_authority = bool(existing_primary and existing_primary in known_tags and latest_commit_tag == existing_primary)
+        repeated_commit_primary_tag = latest_commit_tag if latest_commit_tag in known_tags and consecutive_latest_commit_count >= 2 else None
+        primary_tag = repeated_commit_primary_tag or (str(existing_primary) if existing_primary_has_authority else (sorted_tags[0][0] if sorted_tags else None))
+        secondary_tag = next((tag for tag, _score in sorted_tags if tag != primary_tag), None)
+        top_score = score_by_tag.get(primary_tag, 0) if primary_tag else 0
+        second_score = score_by_tag.get(secondary_tag, 0) if secondary_tag else 0
+        confidence = max(0, min(100, round(min(70, top_score) + min(30, max(0, top_score - second_score) * 2)))) if primary_tag else 0
+        stage = "forming"
+        if primary_tag:
+            if existing_primary and existing_primary != primary_tag and confidence >= 35:
+                stage = "pivoting"
+            elif confidence >= 60:
+                stage = "committed"
+
+        return {
+            "primary_tag": primary_tag,
+            "secondary_tag": secondary_tag,
+            "confidence": confidence,
+            "stage": stage,
+            "recent_commits": recent_commits,
+        }
+
+    def _stable_hash(self, value: str) -> int:
+        hash_value = 2166136261
+        for char in value:
+            hash_value ^= ord(char)
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return hash_value
+
+    def _choose_unique_seeded(self, pool: list[dict[str, Any]], chosen_ids: set[str], seed_key: str, label: str) -> dict[str, Any] | None:
+        filtered = [card for card in pool if str(card.get("id")) not in chosen_ids]
+        if not filtered:
+            return None
+        ids = "|".join(str(card.get("id")) for card in filtered)
+        pick = filtered[self._stable_hash(f"{seed_key}:{label}:{ids}") % len(filtered)]
+        chosen_ids.add(str(pick.get("id")))
+        return pick
+
+    def _generate_planned_reward_cards(self, character_id: str, card_pool: list[dict[str, Any]]) -> list[str]:
+        floor = self._current_floor()
+        if floor > 2:
+            return []
+        route_state = self._snapshot.get("route_state") or self._derive_route_state_from_deck(None)
+        known_tags = self._known_route_tags_for_character(character_id)
+        if not known_tags:
+            return []
+        dominant_tag = route_state.get("primary_tag") if route_state else None
+        seed_key = f"{self._seed}:{character_id}:combat:{floor}:{dominant_tag or 'none'}"
+        sampled_tag = known_tags[self._stable_hash(f"{seed_key}:primary-route") % len(known_tags)]
+        has_explicit_commit = bool(route_state and route_state.get("recent_commits"))
+        starter_route_is_soft = (
+            floor <= 1
+            and bool(dominant_tag)
+            and not has_explicit_commit
+            and (route_state or {}).get("stage") != "pivoting"
+        )
+        primary_tag = sampled_tag if starter_route_is_soft else (dominant_tag or sampled_tag)
+        chosen_ids: set[str] = set()
+
+        def by_role(roles: set[str], route_tag: str | None = None, prefer_different_route: bool = False) -> list[dict[str, Any]]:
+            result: list[dict[str, Any]] = []
+            for card in card_pool:
+                card_tags = [str(tag) for tag in card.get("route_tags", []) or []]
+                role = str(card.get("early_game_role") or "")
+                if role not in roles:
+                    continue
+                if route_tag and route_tag not in card_tags:
+                    continue
+                if prefer_different_route and route_tag and route_tag in card_tags:
+                    continue
+                result.append(card)
+            return result
+
+        neutral_pool = [card for card in card_pool if not card.get("route_tags")]
+        result: list[dict[str, Any]] = []
+        first = self._choose_unique_seeded(by_role({"route_confirm"}, primary_tag), chosen_ids, seed_key, "reward-first")
+        if first:
+            result.append(first)
+        second = self._choose_unique_seeded(neutral_pool, chosen_ids, seed_key, "reward-second-neutral")
+        if second:
+            result.append(second)
+        alt_route_tag = next((tag for tag in known_tags if tag != primary_tag), None)
+        third = None
+        if dominant_tag:
+            third = self._choose_unique_seeded(by_role({"route_payoff"}, primary_tag), chosen_ids, seed_key, "reward-third-primary-payoff")
+        elif alt_route_tag:
+            third = self._choose_unique_seeded(by_role({"route_confirm", "route_payoff"}, alt_route_tag), chosen_ids, seed_key, "reward-third-alt-route")
+        if third is None:
+            third = self._choose_unique_seeded(by_role({"route_payoff"}, primary_tag), chosen_ids, seed_key, "reward-third-primary")
+        if third is None:
+            third = self._choose_unique_seeded(by_role({"route_confirm", "route_payoff"}, primary_tag, True), chosen_ids, seed_key, "reward-third-different")
+        if third is None:
+            third = self._choose_unique_seeded(neutral_pool, chosen_ids, seed_key, "reward-third-generic")
+        if third:
+            result.append(third)
+        return [str(card["id"]) for card in result[:3]]
+
+    def _record_route_commit(self, source: str, weight: int, tag: str | None = None) -> None:
         route_state = self._snapshot.get("route_state")
         if not route_state:
-            return
-        tag = route_state.get("primary_tag")
+            route_state = self._derive_route_state_from_deck(None) or {
+                "primary_tag": None,
+                "secondary_tag": None,
+                "confidence": 0,
+                "stage": "forming",
+                "recent_commits": [],
+            }
+            self._snapshot["route_state"] = route_state
+        tag = tag or route_state.get("primary_tag")
         if not tag:
             return
         recent_commits = list(route_state.get("recent_commits") or [])
@@ -879,6 +1064,11 @@ class RuleRuntime:
             if selected_card_id not in reward["card_ids"]:
                 raise ValueError(f"Reward card is not offered: {selected_card_id}")
             self._snapshot["player"]["deck"].append(selected_card_id)
+            signal = self._card_route_signal(selected_card_id)
+            commit_tag = signal["route_tags"][0] if signal else None
+            if commit_tag:
+                self._record_route_commit("reward", 16, commit_tag)
+            self._snapshot["route_state"] = self._derive_route_state_from_deck(self._snapshot.get("route_state"))
 
         self._snapshot["reward"] = None
         self._snapshot["shop"] = None
@@ -913,6 +1103,14 @@ class RuleRuntime:
         )
         extended_pool = set(str(card_id) for card_id in character.get("extended_pool", []))
         rewards: list[str] = []
+        card_pool_for_character = [
+            entry
+            for entry in self._content_bundle.get("cards", [])
+            if str(entry.get("character", "All")) in {"All", str(character_id)}
+        ]
+        planned_rewards = self._generate_planned_reward_cards(str(character_id), card_pool_for_character)
+        if planned_rewards:
+            return planned_rewards
 
         for _ in range(3):
             rarity_roll = self._next_runtime_random()

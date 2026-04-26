@@ -351,6 +351,9 @@ export class CombatManager {
     }
     combat.player.cardsPlayedThisTurn = 0;
     combat.player.potionsUsedThisTurn = 0;
+    const playerTurnFlags = combat.player as typeof combat.player & { resourceSpentThisTurn?: number; elementsAddedThisTurn?: number };
+    playerTurnFlags.resourceSpentThisTurn = 0;
+    playerTurnFlags.elementsAddedThisTurn = 0;
 
     if (this.processTurnStartDots('player', 'player')) {
       this.deps.notify();
@@ -511,8 +514,7 @@ export class CombatManager {
 
     this.bossPhaseManager.snapshotPlayerTurnForBossPhase();
 
-    combat.discardPile.push(...combat.hand);
-    combat.hand = [];
+    this.discardHandRespectingRetain();
 
     await this.executeEnemyTurn();
 
@@ -525,8 +527,26 @@ export class CombatManager {
     const combat = state.combat;
     if (!combat) return;
 
-    combat.discardPile.push(...combat.hand);
-    combat.hand = [];
+    this.discardHandRespectingRetain();
+  }
+
+  private discardHandRespectingRetain(): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return;
+
+    const retainCount = Math.max(0, Math.floor(combat.player.statuses['RetainCard'] || 0));
+    if (retainCount <= 0) {
+      combat.discardPile.push(...combat.hand);
+      combat.hand = [];
+      return;
+    }
+
+    const retained = combat.hand.slice(0, retainCount);
+    const discarded = combat.hand.slice(retainCount);
+    combat.discardPile.push(...discarded);
+    combat.hand = retained;
+    delete combat.player.statuses['RetainCard'];
   }
 
   private evaluateEnemyActionCondition(condition: Record<string, any> | undefined): boolean {
@@ -784,29 +804,38 @@ export class CombatManager {
       : combat.enemies.find(e => e.id === targetId);
     if (!target || target.hp <= 0) return false;
 
-    const poison = Math.max(0, Math.floor(target.statuses['Poison'] || 0));
-    if (poison <= 0) return false;
+    const damageOverTimeStatuses = [
+      { status: 'Poison', sourceId: 'poison' },
+      { status: 'Burn', sourceId: 'burn' },
+    ];
 
-    const damageContext: DamageContext = {
-      amount: poison,
-      sourceType: 'system',
-      sourceId: 'poison',
-      targetType,
-      targetId,
-      modifiers: [],
-      isTrueDamage: true,
-      ignoreBlock: true
-    };
-    combatSystem.applyDamage(state, damageContext);
+    for (const dot of damageOverTimeStatuses) {
+      const stacks = Math.max(0, Math.floor(target.statuses[dot.status] || 0));
+      if (stacks <= 0) continue;
 
-    const nextPoison = Math.max(0, poison - 1);
-    if (nextPoison > 0) {
-      target.statuses['Poison'] = nextPoison;
-    } else {
-      delete target.statuses['Poison'];
+      const damageContext: DamageContext = {
+        amount: stacks,
+        sourceType: 'system',
+        sourceId: dot.sourceId,
+        targetType,
+        targetId,
+        modifiers: [],
+        isTrueDamage: true,
+        ignoreBlock: true
+      };
+      combatSystem.applyDamage(state, damageContext);
+
+      const nextStacks = Math.max(0, stacks - 1);
+      if (nextStacks > 0) {
+        target.statuses[dot.status] = nextStacks;
+      } else {
+        delete target.statuses[dot.status];
+      }
+
+      if (!state.combat || target.hp <= 0) return true;
     }
 
-    return !state.combat || target.hp <= 0;
+    return false;
   }
 
   tickDelayedCards(): void {

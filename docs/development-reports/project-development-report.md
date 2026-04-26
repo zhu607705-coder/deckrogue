@@ -332,3 +332,16 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **数值调整**：轻量降低 `barrier_redeemer` 峰值，生命从 `26-30` 调整为 `24-28`，`lantern_smite` 伤害从 `8` 调整为 `7`，`hymnal_guard` 格挡从 `10` 调整为 `8`；对应敌怪回合单测同步验证新格挡值。
 - **验证证据**：`npx tsx --test tests/unit/enemySelection.test.ts` 通过；`npm run check:enemy-first3-exposure` 通过；`npx tsx --test tests/unit/runtimeV2Parity.test.ts` 通过；`npm run test:supplemental-units` 通过 `99/99`；`npm run lint --silent` 通过；`npm run report:enemy-ai-tuning` 通过，结果为 `5/6` 角色在目标区间内，仅 `informant` 高于目标；最终 `npm run doctor:game` 通过 `47/47`。
 - **剩余风险**：`informant` 仍高于早期生存目标，下一轮应单独评估该角色起始牌组和普通怪 anti-stall 压力；本轮 focused 模拟曾出现运行流转日志噪声，但正式 enemy AI tuning 报告 diagnostics 为 `0`。
+### Step 122: fill missing enemy standee art
+
+- **操作方向**：补齐当前敌人数据中缺失的战斗立绘，避免新敌人继续回退到默认敌人图。
+- **变更内容**：使用内置 `imagegen` 为 `coolant_hound`、`servo_confessor`、`reactor_thrall`、`data_leech`、`iron_choir_twin_a`、`iron_choir_twin_b`、`scrap_surgeon`、`sanctum_praetor`、`overclocked_abbot`、`fusion_censer`、`cathedral_engine`、`logic_saint`、`spore_wretch`、`rot_hound`、`plague_choir`、`cyst_bearer`、`grave_mender`、`blight_larva`、`mire_guard`、`plague_abbot`、`maggot_reliquary`、`corrupt_titanus`、`catacomb_matron`、`pox_cathedral`、`the_mire_saint`、`mind_peek`、`card_swap`、`psychic_infiltrator` 生成竖版敌人立绘，并保存到 `public/assets/enemies/`。
+- **接入方式**：将新增图片统一后处理为 `1792x2400` PNG；删除 `localEnemyArt()` 的硬编码敌人白名单，改为按敌人 id 直接解析 `/assets/enemies/<id>.png`，继续依赖现有 `onError` fallback 兜底。
+- **验证证据**：复扫 `src/content/data/enemies.json` 的 `52` 个 enemy id，缺失图片数为 `0`；新增 `28` 张图片尺寸均为 `1792x2400`；后续补跑 TypeScript/build 和敌人视觉校验。
+- **剩余风险**：本轮为生成式补图，已做尺寸和缺失校验，但仍需要后续人工美术审阅风格一致性。
+### Step 123: balance route build loops and reward openings
+
+- **操作方向**：把首奖励从 starter deck 单线锁定改为软分流，同时补齐证据、狂怒、指挥、线程、调配、灼烧、傀儡与元素 payoff 的可执行动作，支撑多套可循环 build。
+- **变更内容**：首层奖励对 informant/puppeteer/alchemist 等角色按种子分配多路线；事件遗物掉落优先贴当前路线；`vanishing_strike`、`sacrifice_construct` 等卡牌文本与动作对齐；Burn 现在按回合造成 DoT；RuntimeV2/Python content bundle 同步 route signal，保持领奖后的路线状态 parity。
+- **验证证据**：`npx tsc --noEmit --pretty false --project tsconfig.json` 通过；`npx tsx --test tests/unit/specialActionBehavior.test.ts tests/unit/growthRouteFormation.test.ts` 通过 `12/12`；growth/reward/shop-event 三项报告均为 `100%`，路线分布 `warningCount=0`；DOM/Pixi runtime flow smoke 通过；`npm run doctor:game` 最终通过 `47/47`。
+- **剩余风险**：本轮优先打通循环与路线分布，仍未宣称所有长尾占位动作都完成；少量单卡数值可能需要后续基于实战日志微调。

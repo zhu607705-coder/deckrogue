@@ -14,6 +14,7 @@ import relicsDataRaw from '@/content/data/relics.json';
 import potionsDataRaw from '@/content/data/potions.json';
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
+import { getCardRouteSignal } from '@/content/narrative/routeSignals';
 import type { ContentBundle } from '@/runtimeV2/contracts';
 
 type CharacterEntry = {
@@ -58,11 +59,17 @@ export function buildRuntimeV2ContentBundle(): ContentBundle {
     special_resource: entry.specialResource,
   }));
 
-  const cards = baseCardsData.map((entry) => ({
-    id: entry.id,
-    rarity: String(entry.rarity || 'Common'),
-    character: String(entry.character || 'All'),
-  }));
+  const cards = baseCardsData.map((entry) => {
+    const signal = getCardRouteSignal(entry);
+    return {
+      id: entry.id,
+      rarity: String(entry.rarity || 'Common'),
+      character: String(entry.character || 'All'),
+      route_tags: signal?.routeTags ? [...signal.routeTags] : [],
+      route_signal_strength: signal?.routeSignalStrength ?? 0,
+      early_game_role: signal?.earlyGameRole ?? null,
+    };
+  });
 
   const enemies = (enemiesDataRaw as EnemyEntry[]).map((entry) => {
     const minHp = Math.max(1, Math.floor(Number(entry.hp_range?.[0] ?? 1)));

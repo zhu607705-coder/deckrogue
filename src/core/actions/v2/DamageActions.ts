@@ -35,6 +35,20 @@ interface ActionQueuePrivate {
   _currentContext?: IActionContext;
 }
 
+const DEBUFF_STATUSES = ['Weak', 'Vulnerable', 'Poison', 'Burn', 'Frail', 'Fear'];
+
+function consumeNextDebuffBonus(state: GameState, status: string, targetType: string): number {
+  if (targetType !== 'enemy' || !DEBUFF_STATUSES.includes(status) || !state.combat) return 0;
+  const statuses = state.combat.player.statuses;
+  const specificKey = `BonusNextDebuff:${status}`;
+  const specificBonus = Math.max(0, Math.floor(statuses[specificKey] || 0));
+  const genericBonus = Math.max(0, Math.floor(statuses.BonusNextDebuff || 0));
+  const bonus = specificBonus + genericBonus;
+  if (specificBonus > 0) delete statuses[specificKey];
+  if (genericBonus > 0) delete statuses.BonusNextDebuff;
+  return bonus;
+}
+
 export abstract class BaseAction implements IAction {
   protected spec: ActionSpec;
   protected context: IActionContext = { source: 'player' };
@@ -65,12 +79,14 @@ export abstract class BaseAction implements IAction {
 export class DealDamageAction extends BaseAction {
   private targetType: CardTarget;
   private amount: number;
+  private trueDamage: boolean;
   private scaling?: { type: 'DelayedCards' | 'Constructs' | 'Corruption'; multiplier?: number };
 
   constructor(spec: ActionSpec) {
     super(spec);
     this.targetType = (spec.target as CardTarget) || 'Enemy';
     this.amount = spec.amount || 0;
+    this.trueDamage = !!spec.trueDamage;
     this.scaling = spec.scaling;
   }
 
@@ -107,8 +123,8 @@ export class DealDamageAction extends BaseAction {
         targetType: targetInfo.type,
         targetId: targetInfo.id,
         modifiers: this.buildModifiers(sourceStatuses, targetInfo.entity.statuses),
-        isTrueDamage: !!this.context.isTrueDamage,
-        ignoreBlock: false
+        isTrueDamage: this.trueDamage || !!this.context.isTrueDamage,
+        ignoreBlock: this.trueDamage
       };
 
       if (this.context.doubleDamage) {
@@ -263,13 +279,14 @@ export class ApplyStatusAction extends BaseAction {
 
     targets.forEach(targetInfo => {
       if (targetInfo.entity.hp <= 0) return;
+      const amount = this.amount + consumeNextDebuffBonus(state, this.status, targetInfo.type);
 
       combatSystem.applyStatus(
         state,
         targetInfo.type,
         targetInfo.id,
         this.status,
-        this.amount
+        amount
       );
     });
   }

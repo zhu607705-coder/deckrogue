@@ -236,6 +236,9 @@ export class CombatManager {
     }
     combat.player.cardsPlayedThisTurn = 0;
     combat.player.potionsUsedThisTurn = 0;
+    const playerTurnFlags = combat.player as typeof combat.player & { resourceSpentThisTurn?: number; elementsAddedThisTurn?: number };
+    playerTurnFlags.resourceSpentThisTurn = 0;
+    playerTurnFlags.elementsAddedThisTurn = 0;
 
     if (this.processTurnStartDots('player', 'player')) {
       this.deps.notify();
@@ -366,11 +369,15 @@ export class CombatManager {
     if (!combat) return false;
 
     if (targetType === 'player') {
-      const poison = combat.player.statuses['Poison'] || 0;
-      if (poison > 0) {
-        combat.player.hp = Math.max(0, combat.player.hp - poison);
-        combat.player.statuses['Poison'] = Math.max(0, poison - 1);
-        if (combat.player.statuses['Poison'] <= 0) delete combat.player.statuses['Poison'];
+      const dots = ['Poison', 'Burn'];
+      for (const status of dots) {
+        const stacks = Math.max(0, Math.floor(combat.player.statuses[status] || 0));
+        if (stacks <= 0) continue;
+
+        combat.player.hp = Math.max(0, combat.player.hp - stacks);
+        const nextStacks = Math.max(0, stacks - 1);
+        if (nextStacks > 0) combat.player.statuses[status] = nextStacks;
+        else delete combat.player.statuses[status];
 
         if (combat.player.hp <= 0) {
           this.handlePlayerDefeated();
@@ -381,11 +388,15 @@ export class CombatManager {
       const enemy = combat.enemies.find(e => e.id === targetId);
       if (!enemy) return false;
 
-      const poison = enemy.statuses['Poison'] || 0;
-      if (poison > 0) {
-        enemy.hp = Math.max(0, enemy.hp - poison);
-        enemy.statuses['Poison'] = Math.max(0, poison - 1);
-        if (enemy.statuses['Poison'] <= 0) delete enemy.statuses['Poison'];
+      const dots = ['Poison', 'Burn'];
+      for (const status of dots) {
+        const stacks = Math.max(0, Math.floor(enemy.statuses[status] || 0));
+        if (stacks <= 0) continue;
+
+        enemy.hp = Math.max(0, enemy.hp - stacks);
+        const nextStacks = Math.max(0, stacks - 1);
+        if (nextStacks > 0) enemy.statuses[status] = nextStacks;
+        else delete enemy.statuses[status];
 
         if (enemy.hp <= 0) {
           this.handleEnemyDefeated(targetId);
@@ -444,8 +455,18 @@ export class CombatManager {
     const combat = state.combat;
     if (!combat) return;
 
-    combat.discardPile.push(...combat.hand);
-    combat.hand = [];
+    const retainCount = Math.max(0, Math.floor(combat.player.statuses['RetainCard'] || 0));
+    if (retainCount <= 0) {
+      combat.discardPile.push(...combat.hand);
+      combat.hand = [];
+      return;
+    }
+
+    const retained = combat.hand.slice(0, retainCount);
+    const discarded = combat.hand.slice(retainCount);
+    combat.discardPile.push(...discarded);
+    combat.hand = retained;
+    delete combat.player.statuses['RetainCard'];
   }
 
   async playCard(cardInstanceId: string, targetId?: string): Promise<void> {

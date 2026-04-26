@@ -81,7 +81,23 @@ function makeState(): GameState {
 function makeManager(state: GameState): ActionManager {
   const manager = new ActionManager(state);
   setupActionManager(manager);
+  ActionManager.bindInstance(manager);
   return manager;
+}
+
+function addEnemy(state: GameState, statuses: Record<string, number> = {}) {
+  const enemy = {
+    id: 'enemy_1',
+    defId: 'training_dummy',
+    name: 'Training Dummy',
+    hp: 40,
+    maxHp: 40,
+    block: 0,
+    statuses: { ...statuses },
+    nextIntent: 'Attack',
+  } as NonNullable<GameState['combat']>['enemies'][number];
+  state.combat!.enemies = [enemy];
+  return enemy;
 }
 
 test('ReturnLastCard creates a valid run-card instance and preserves temp cost override', () => {
@@ -120,4 +136,99 @@ test('MutateCard creates a normalized run-card instance in discard and deck', ()
   assert.equal(deckCard.baseCardId, 'paranoia');
   assert.ok(Array.isArray(discardCard.persistentEnchantments));
   assert.ok(Array.isArray(discardCard.combatAfflictions));
+});
+
+test('route resource actions enable evidence draw loops against debuffed targets', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  addEnemy(state, { Weak: 1 });
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_card'));
+
+  manager.enqueueAll(
+    [
+      { type: 'GainResource', resource: 'evidence', amount: 1 },
+      { type: 'ConditionalDraw', condition: { type: 'TargetHasDebuff' }, amount: 1 },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  const player = state.player as typeof state.player & { evidence?: number; secondaryResources?: Record<string, number> };
+  assert.equal(player.evidence, 1);
+  assert.equal(player.secondaryResources?.evidence, 1);
+  assert.equal(state.combat!.hand.length, 1);
+});
+
+test('resource spend effects consume route resources and apply payoff status', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state);
+  const player = state.player as typeof state.player & { rage?: number; secondaryResources?: Record<string, number> };
+  player.rage = 1;
+  player.secondaryResources = { rage: 1 };
+
+  manager.enqueue(
+    {
+      type: 'SpendResourceEffect',
+      resource: 'rage',
+      amount: 1,
+      effect: { type: 'ApplyStatus', status: 'Vulnerable', stacks: 1 },
+    } as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(player.rage, 0);
+  assert.equal(player.secondaryResources?.rage, 0);
+  assert.equal(enemy.statuses.Vulnerable, 1);
+});
+
+test('conditional payoff damage and next-debuff bonuses execute through the queue', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state, { Weak: 1, Vulnerable: 1 });
+
+  manager.enqueue(
+    {
+      type: 'ConditionalDamage',
+      condition: { type: 'TargetHasBothDebuffs', debuffs: ['Weak', 'Vulnerable'] },
+      bonus: 12,
+      target: 'Enemy',
+    } as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+  assert.ok(enemy.hp <= 28, `expected payoff damage, got enemy hp ${enemy.hp}`);
+
+  enemy.statuses = {};
+  manager.enqueueAll(
+    [
+      { type: 'BonusNextDebuff', status: 'Weak', bonus: 1 },
+      { type: 'ApplyStatus', status: 'Weak', amount: 1, target: 'Enemy' },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+  assert.equal(enemy.statuses.Weak, 2);
+});
+
+test('puppet summon loops gain thread mastery and summon bonuses', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+
+  manager.enqueueAll(
+    [
+      { type: 'ApplyStatus', status: 'ThreadMastery', amount: 1, target: 'Self' },
+      { type: 'Summon', id: 'mirror_puppet', attack: 3, hp: 1 },
+      { type: 'ConditionalSummonBonus', condition: { type: 'HasResource', resource: 'thread' }, attack: 2 },
+    ] as any,
+    { source: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.player.thread, 1);
+  assert.equal(state.combat!.player.constructs.length, 1);
+  assert.equal(state.combat!.player.constructs[0].atk, 5);
 });

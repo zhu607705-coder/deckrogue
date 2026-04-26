@@ -34,6 +34,7 @@ import {
   getKnownRouteTagsForCharacter,
   getPreferredRouteTagFromState,
   getRelicRouteTags,
+  getRouteSupportRelicIds,
   maybeRecordRouteCommit,
   relicsData,
   potionsData,
@@ -569,7 +570,11 @@ export class EventManager {
       const warpPool = pool.filter(r => String(r.id).includes('warp') || !!r.corrupted || String(r.name || '').toLowerCase().includes('chaos'));
       if (warpPool.length > 0) pool = warpPool;
     }
-    const sourcePool = pool;
+    const routeTagsForCharacter = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
+    const preferredRouteTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
+    const supportRelicIds = new Set(preferredRouteTag ? getRouteSupportRelicIds(preferredRouteTag) : []);
+    const routePool = pool.filter((relic) => supportRelicIds.has(relic.id));
+    const sourcePool = routePool.length > 0 ? routePool : pool;
     const relic = safeArrayAccess(sourcePool, Math.floor(this.deps.rng() * Math.max(1, sourcePool.length)));
     if (relic?.id) this.grantRelicDirect(relic.id);
   }
@@ -633,10 +638,20 @@ export class EventManager {
     const pickEarlyRewardCards = (): CardDef[] => {
       const result: CardDef[] = [];
       const availableRouteTags = routeTagsForCharacter.length > 0 ? routeTagsForCharacter : routeProfile.activeTags;
-      const primaryTag = dominantTag ?? safeArrayAccess(
+      const sampledRouteTag = safeArrayAccess(
         availableRouteTags,
         availableRouteTags.length > 0 ? stableHash(`${seedKey}:primary-route`) % availableRouteTags.length : 0
       ) ?? null;
+      const hasExplicitRouteCommit = (state.routeState?.recentCommits?.length ?? 0) > 0;
+      const starterRouteIsOnlySoftSignal =
+        source === 'combat' &&
+        floor <= 1 &&
+        !!dominantTag &&
+        !hasExplicitRouteCommit &&
+        state.routeState?.stage !== 'pivoting';
+      const primaryTag = starterRouteIsOnlySoftSignal
+        ? (sampledRouteTag ?? dominantTag)
+        : (dominantTag ?? sampledRouteTag);
 
       const byRole = (roles: string[], routeTag?: string | null, preferDifferentRoute = false) =>
         cardPool.filter((card) => {
