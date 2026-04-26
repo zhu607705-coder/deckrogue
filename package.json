@@ -79,6 +79,7 @@
     "test:shop-flow-smoke": "tsx scripts/validation/playwright_shop_flow_smoke.ts",
     "test:event-flow-smoke": "tsx scripts/validation/playwright_event_flow_smoke.ts",
     "test:boss-terminal-flow-smoke": "tsx scripts/validation/playwright_boss_terminal_flow_smoke.ts",
+    "test:manual-victory-run": "tsx scripts/validation/playwright_manual_victory_run.ts",
     "test:rest-flow-smoke": "tsx scripts/validation/playwright_rest_flow_smoke.ts",
     "test:upgrade-flow-smoke": "tsx scripts/validation/playwright_upgrade_flow_smoke.ts",
     "test:remove-card-flow-smoke": "tsx scripts/validation/playwright_remove_card_flow_smoke.ts",

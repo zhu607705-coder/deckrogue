@@ -376,6 +376,12 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **回归覆盖**：新增击杀奖励正反例、攻击牌计数版 `NoAttackYet`、指挥分支单抽、纯 `NextCardCostDown`、下一张牌费用消耗一次、watcher 非 0 费不触发/每回合一次/专用资源获得/实际资源消耗金额、携带格挡不误判新增格挡、死亡敌人不耗牌与全死亡结算、敌方阵营目标解析测试；修复 `conditionalKillAction.test.ts` 独立运行缺少 ActionManager 绑定的问题。
 - **验证证据**：`node --test --import tsx tests/unit/specialActionBehavior.test.ts` -> `26/26`；`node --test --import tsx tests/unit/enemyVariantEnemyTurn.test.ts` -> `9/9`；`node --test --import tsx tests/unit/conditionalKillAction.test.ts` -> `2/2`；`npm run check:enemy-variant-behavior` -> OK；`npm run test:supplemental-units` -> `129/129`；`npm run test:runtime-v2:ts` -> `146 pass / 1 skip`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`git diff --check` 均通过，`git diff --check` 仅输出 Windows CRLF 提示。
 - **剩余风险**：本轮没有处理素材/UI 立绘工作区改动，也没有重构整个 watcher 注册系统；当前 watcher 覆盖现有卡牌数据使用的触发类型，后续新增 trigger 类型仍需同步扩展 `triggerMatchesStoredEffect()` 与事件级回归测试。
+### Step 128: upload remaining workspace validation script
+
+- **操作方向**：按用户要求将当前文件夹剩余未提交项目文件纳入 GitHub 分支，不强行提交 `.gitignore` 下的构建产物、报告输出和依赖目录。
+- **变更内容**：新增 `test:manual-victory-run` npm 入口和 `scripts/validation/playwright_manual_victory_run.ts`，用于通过真实浏览器 UI 从 launcher、角色选择、地图、战斗、奖励、事件、休整一路运行到 Victory；脚本补充 late-run 药剂使用逻辑，并在报告中记录 `potionsUsed`。
+- **验证证据**：`npx tsc --noEmit --pretty false --project tsconfig.json` 通过；`npm run lint --silent` 通过；`npm run test:manual-victory-run` 通过，生成 `reports/flows/manual-victory-run.json`，结果为 `victory=true`、`roomsVisited=10`、`combatsWon=7`、`rewardsTaken=7`、`eventsResolved=1`、`restsUsed=2`、`finalScreen=Victory`。
+- **剩余风险**：该脚本是长流程 UI dogfood，仍可能受随机路线和战斗策略影响；本次验证已证明默认命令在当前工作区可跑通，后续若改动平衡或 UI 选择器需要重新运行。
 
 ### Step 128: fill scene art and fit combat UI surfaces
 
@@ -400,3 +406,12 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **三轮微调结果**：第一轮修复事件覆盖和未知动作；第二轮削弱过早 boss/elite 压力并提高弱路线生存；第三轮微调路线牌与构筑牌组抽样，最终仅保留 `alchemist:concoction` 偏稳的中风险提示。
 - **验证证据**：`npm run report:longform-balance -- --pass=12 --runs-per-build=3` 覆盖 `characters=6/6`、`routeBuilds=18/18`、`cards=308/308`、`relics=92/92`、`events=87/87`，18 个 build 全部存活；平均剩余血量区间约 `0.257-0.939`，仅 `alchemist:concoction` 触发 medium safe-build warning。
 - **剩余风险**：自动化 GameEngine bot 已覆盖长线构筑真实动作执行，但仍不是人类手动全流程通关；后续若改动卡牌池、事件、遗物触发或 boss 池，需要重跑 `report:longform-balance`。
+
+### Step 131: simulated manual browser victory run
+
+- **操作方向**：补上接近真实玩家点击路径的 UI 通关证明，避免只依赖 GameEngine bot、terminal fixture 或 combat-complete shortcut。
+- **变更内容**：新增 `scripts/validation/playwright_manual_victory_run.ts` 与 `npm run test:manual-victory-run`，脚本从 Launcher 开始，点击新局、选择角色、走地图节点、逐张出牌并点选敌人、拿奖励、进商店购买、休整/升级，最后要求真实 `Victory` 终局。
+- **策略修正**：角色选择兼容“点击角色后直接进地图”和“先显示开始按钮”两种旧 UI 行为；地图节点改成坐标点击以避开动效稳定等待；屏幕识别用 locator 与 Unicode 转义识别商店、事件、升级、休整、终局，避免中文编码和商店文本误判；路线权重调整为优先 Combat/Shop，其次 Rest/Event，商店会购买最多 4 个可负担收益项后离开。
+- **实跑结果**：`reports/flows/manual-victory-run.json` 显示 `victory=true`、`roomsVisited=10`、`combatsWon=7`、`rewardsTaken=7`、`shopsVisited=1`、`restsUsed=2`、`cardsClicked=111`、`turnsEnded=25`、`consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，终局截图为 `output/playwright/manual-victory-run/32_Victory_victory_reached.png`。
+- **验证证据**：`npm run test:manual-victory-run` 通过；`npx tsc --noEmit --pretty false --project tsconfig.json` 通过。
+- **剩余风险**：这是 deterministic browser automation，不等同于人工长时间主观试玩；如果后续改地图可达性、战斗手牌交互、奖励、商店、事件、休整或终局 UI，需要重跑 `npm run test:manual-victory-run`。
