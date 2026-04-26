@@ -67,6 +67,7 @@
     "test:destructive": "tsx scripts/validation/test_destructive.ts",
     "report:ecosystem-balance": "tsx scripts/validation/report_ecosystem_balance.ts",
     "report:enemy-ai-tuning": "tsx scripts/validation/report_enemy_ai_tuning.ts",
+    "report:longform-balance": "tsx scripts/validation/longform_balance_playtest.ts",
     "check:release-readiness": "tsx scripts/validation/check_release_readiness.ts",
     "report:numeric-diff": "tsx scripts/validation/report_numeric_diff.ts",
     "report:growth-route-formation": "tsx scripts/analysis/report_growth_route_formation.ts",

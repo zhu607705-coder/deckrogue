@@ -14,7 +14,7 @@
  * 2. 玩家选择选项 -> EventManager 应用结果
  * 3. 结果应用 -> 更新玩家状态 (HP/金币/卡牌/遗物等)
  */
-import type { GameState, RunCardInstance, CardDef, ActiveEventState, RelicDef, PotionDef } from '@/core/types';
+import type { GameState, RunCardInstance, CardDef, ActiveEventState, RelicDef, PotionDef, EventOption } from '@/core/types';
 import { globalEventBus } from '@/core/events/eventBus';
 import { metricsTracker } from '@/core/events/metricsTracker';
 import { economySystem } from '@/features/progression/economySystem';
@@ -485,6 +485,160 @@ export class EventManager {
         }
         break;
       }
+    }
+
+    const storyEventDef = getStoryEventDef(event.id);
+    const option = storyEventDef?.options.find((entry) => entry.id === choice);
+    if (option) {
+      this.resolveGenericStoryEventChoice(option);
+    }
+  }
+
+  private resolveGenericStoryEventChoice(option: EventOption): void {
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return;
+
+    const gainText = [...(option.gains ?? []), option.description ?? '', option.id].join(' ');
+    const costText = [...(option.costs ?? []), option.description ?? '', option.id].join(' ');
+    const allText = `${gainText} ${costText}`.toLowerCase();
+    const runEffects = this.deps.ensureRunEffects();
+
+    const dangerHpLossRatio = option.danger === 'high' ? 0.18 : option.danger === 'medium' ? 0.1 : 0.04;
+    const explicitMaxHpLoss = this.extractNumber(costText, /(?:-|loss|lose)\s*(\d+)\s*(?:max hp|最大生命|maxHp)/i)
+      ?? this.extractNumber(costText, /(?:max hp|最大生命|maxHp)\s*(?:-|loss|lose)\s*(\d+)/i);
+    if (explicitMaxHpLoss !== null) {
+      state.player.maxHp = Math.max(1, state.player.maxHp - explicitMaxHpLoss);
+      state.player.hp = Math.min(state.player.hp, state.player.maxHp);
+    }
+
+    const explicitHpLoss = this.extractNumber(costText, /(?:lose|loss|失去|受到)\s*(\d+)\s*(?:hp|current|生命)/i)
+      ?? this.extractNumber(costText, /(\d+)\s*(?:hp|current hp|当前生命)/i);
+    const shouldApplyDangerDamage =
+      option.danger !== 'low' &&
+      (allText.includes('steal') ||
+        allText.includes('fight') ||
+        allText.includes('sacrifice') ||
+        allText.includes('enter') ||
+        allText.includes('drink') ||
+        allText.includes('inhale') ||
+        allText.includes('join') ||
+        allText.includes('accept') ||
+        allText.includes('plunder'));
+    const hpLoss = explicitHpLoss ?? (shouldApplyDangerDamage ? Math.max(3, Math.floor(state.player.maxHp * dangerHpLossRatio)) : 0);
+    if (hpLoss > 0) {
+      state.player.hp = Math.max(1, state.player.hp - hpLoss);
+    }
+
+    if (allText.includes('curse') || allText.includes('诅咒')) {
+      const curseId = allText.includes('perjury') ? 'perjury_stigma' : allText.includes('paranoia') ? 'paranoia' : 'greed_sin';
+      this.addCardByIdToDeck(cardsData.some((card) => card.id === curseId) ? curseId : 'greed_sin');
+    }
+
+    const explicitCorruption = this.extractNumber(costText, /(?:corruption|腐化)\s*(?:\+|gain)?\s*(\d+)/i)
+      ?? this.extractNumber(gainText, /(?:corruption|腐化)\s*(?:\+|gain)?\s*(\d+)/i);
+    if (explicitCorruption !== null || allText.includes('warp') || allText.includes('corruption')) {
+      state.player.corruption = Math.min(100, (state.player.corruption || 0) + (explicitCorruption ?? (option.danger === 'high' ? 18 : 8)));
+    }
+
+    const goldGain = this.extractNumber(gainText, /(\d+)\s*(?:gold|金币|金)/i);
+    if (goldGain !== null) {
+      state.player.gold += goldGain;
+    }
+
+    const healPercent = this.extractNumber(gainText, /(?:heal|恢复)\s*(\d+)%/i);
+    if (healPercent !== null) {
+      const heal = Math.max(1, Math.floor(state.player.maxHp * (healPercent / 100)));
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
+    } else if (allText.includes('heal') || allText.includes('purify') || allText.includes('reignite')) {
+      const heal = Math.max(2, Math.floor(state.player.maxHp * 0.16));
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
+    }
+
+    const maxHpGain = this.extractNumber(gainText, /(?:\+|gain)?\s*(\d+)\s*(?:max hp|最大生命|maxHp)/i);
+    if (maxHpGain !== null && !costText.toLowerCase().includes('max hp')) {
+      state.player.maxHp += maxHpGain;
+      state.player.hp += maxHpGain;
+    }
+
+    const explicitRelicId = (relicsData as RelicDef[]).find((relic) => allText.includes(String(relic.id).toLowerCase()))?.id;
+    if (explicitRelicId) {
+      this.grantRelicDirect(explicitRelicId);
+    } else if (allText.includes('relic') || allText.includes('遗物')) {
+      this.grantRandomRelic({ normalOnly: option.danger !== 'high', warpBiased: allText.includes('warp') || allText.includes('corruption') });
+    }
+
+    if (allText.includes('potion') || allText.includes('药水')) {
+      this.grantRandomPotions(option.danger === 'high' ? 2 : 1, option.danger !== 'low');
+    }
+
+    if (allText.includes('remove 1 card') || allText.includes('remove 1') || allText.includes('移除')) {
+      this.removeFirstBasicOrCurseCard();
+    }
+
+    if (allText.includes('card') || allText.includes('牌')) {
+      if (!allText.includes('remove 1 card') && !allText.includes('移除')) {
+        this.grantRouteBiasedCard();
+      }
+    }
+
+    if (allText.includes('intel') || allText.includes('consult') || allText.includes('interrogate') || allText.includes('copy')) {
+      state.player.intel += option.danger === 'high' ? 18 : 10;
+    }
+
+    if (allText.includes('devotion') || allText.includes('pray') || allText.includes('seal') || allText.includes('purify') || allText.includes('reject')) {
+      state.player.devotion = (state.player.devotion || 0) + (option.danger === 'high' ? 16 : 10);
+    }
+
+    if (allText.includes('frail') || allText.includes('weak')) {
+      runEffects.warpDebuffCombatsRemaining = Math.max(runEffects.warpDebuffCombatsRemaining || 0, 1);
+    }
+    if (allText.includes('fight')) {
+      runEffects.eliteTrapWeakStacks = Math.max(runEffects.eliteTrapWeakStacks || 0, 1);
+    }
+
+    event.data = {
+      ...(event.data || {}),
+      genericResolved: true,
+      resolvedChoiceId: option.id,
+      danger: option.danger ?? 'medium',
+    };
+    state.activeEvent = null;
+    this.deps.leaveCurrentRoomToMap();
+  }
+
+  private extractNumber(text: string, pattern: RegExp): number | null {
+    const match = pattern.exec(text);
+    if (!match) return null;
+    const value = Number(match[1]);
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : null;
+  }
+
+  private removeFirstBasicOrCurseCard(): void {
+    const state = this.deps.getState();
+    const index = state.player.deck.findIndex((card) =>
+      ['strike', 'defend', 'greed_sin', 'paranoia', 'perjury_stigma', 'psychic_backlash'].includes(card.id)
+    );
+    if (index >= 0) {
+      state.player.deck.splice(index, 1);
+    }
+  }
+
+  private grantRouteBiasedCard(): void {
+    const state = this.deps.getState();
+    const characterId = state.character?.id;
+    const routeTagsForCharacter = characterId ? getKnownRouteTagsForCharacter(characterId) : [];
+    const preferredRouteTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
+    const pool = cardsData.filter((card) =>
+      card.rarity !== 'Starter' &&
+      ((card.character ?? 'All') === 'All' || card.character === characterId) &&
+      (!preferredRouteTag || getCardRouteAffinityTags(card).includes(preferredRouteTag) || getCardRouteAffinityTags(card).length === 0)
+    );
+    const fallback = cardsData.filter((card) => card.rarity !== 'Starter' && ((card.character ?? 'All') === 'All' || card.character === characterId));
+    const sourcePool = pool.length > 0 ? pool : fallback;
+    const card = safeArrayAccess(sourcePool, Math.floor(this.deps.rng() * Math.max(1, sourcePool.length)));
+    if (card) {
+      this.addCardByIdToDeck(card.id);
     }
   }
 

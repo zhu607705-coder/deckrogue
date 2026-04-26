@@ -925,9 +925,10 @@
     "trigger": "StartCombat",
     "description": "战斗开始对所有异端施加 1 中毒",
     "effect": {
-      "type": "ApplyStatusAllEnemies",
+      "type": "ApplyStatus",
       "status": "Poison",
-      "amount": 1
+      "amount": 1,
+      "target": "AllEnemies"
     },
     "inscription": "孢子灯笼在战斗开始时释放有毒孢子。",
     "flavorText": "照亮黑暗，也照亮死亡。"
@@ -1100,9 +1101,10 @@
     "trigger": "StartCombat",
     "description": "全体异端获得 1 虚弱",
     "effect": {
-      "type": "ApplyStatusAllEnemies",
+      "type": "ApplyStatus",
       "status": "Weak",
-      "amount": 1
+      "amount": 1,
+      "target": "AllEnemies"
     },
     "inscription": "病斑香炉在战斗开始时释放虚弱之烟。",
     "flavorText": "所有生命都有弱点。"
@@ -1511,13 +1513,10 @@
     "trigger": "StartCombat",
     "description": "战斗开始时，对 1 名随机异端施加 1 层虚弱。",
     "effect": {
-      "type": "StartCombatEffect",
-      "effect": {
-        "type": "ApplyStatus",
-        "status": "Weak",
-        "stacks": 1,
-        "target": "RandomEnemy"
-      }
+      "type": "ApplyStatus",
+      "status": "Weak",
+      "amount": 1,
+      "target": "RandomEnemy"
     },
     "isStartingRelic": false,
     "flavorText": "灯光会照出阴影刻意遮掩的东西。"
@@ -1563,11 +1562,8 @@
     "trigger": "StartCombat",
     "description": "战斗开始时获得 1 点能量。每经过 3 回合失去 5 点生命。",
     "effect": {
-      "type": "StartCombatEffect",
-      "effect": {
-        "type": "GainEnergy",
-        "amount": 1
-      }
+      "type": "GainEnergy",
+      "amount": 1
     },
     "isStartingRelic": false,
     "flavorText": "朝廷总会拿走它应得的那一份。"

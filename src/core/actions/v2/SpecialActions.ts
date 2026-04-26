@@ -817,15 +817,15 @@ export class SummonConstructAction extends BaseAction {
 
     switch (this.unit) {
       case 'scrap_golem':
-        return { id, name: 'Scrap Golem', hp: 8, maxHp: 8, atk: 3, taunt: false, damageSharePct: 0.5 };
+        return { id, name: 'Scrap Golem', hp: 12, maxHp: 12, atk: 6, taunt: false, damageSharePct: 0.6 };
       case 'temp_guard':
         return { id, name: 'Temp Guard', hp: 5, maxHp: 5, atk: 0, taunt: true, overflowDamageToPlayer: true };
       case 'mega_construct':
         return { id, name: 'Mega Construct', hp: 50, maxHp: 50, atk: 10, taunt: true };
       case 'reinforced_golem':
-        return { id, name: 'Reinforced Golem', hp: 12, maxHp: 12, atk: 5, taunt: true };
+        return { id, name: 'Reinforced Golem', hp: 16, maxHp: 16, atk: 8, taunt: true };
       case 'reinforced_golem_plus':
-        return { id, name: 'Reinforced Golem', hp: 16, maxHp: 16, atk: 6, taunt: true };
+        return { id, name: 'Reinforced Golem', hp: 20, maxHp: 20, atk: 9, taunt: true };
       default:
         if ((this.spec as any).id || (this.spec as any).attack || this.spec.hp) {
           const name = String((this.spec as any).id || this.unit || 'puppet');

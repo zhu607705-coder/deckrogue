@@ -99,6 +99,7 @@ export interface NumericConfig {
     runtime?: {
       earlyCombatHpSoftCaps?: Record<string, number>;
       earlyEliteHpSoftCaps?: Record<string, number>;
+      bossHpSoftCaps?: Record<string, number>;
       singleSlimeRoomBoost?: {
         enabled?: boolean;
         maxFloor?: number;
@@ -584,7 +585,7 @@ export function rollEnemyBaseHp(enemyDef: { hp_range?: [number, number]; minHp?:
 }
 
 export function isEnemyEligibleForFloorByNumericRules(
-  enemyDef: { id: string; hp_range?: [number, number]; minHp?: number; maxHp?: number; keywords?: string[] },
+  enemyDef: { id: string; hp_range?: [number, number]; minHp?: number; maxHp?: number; keywords?: string[]; chapterUnlock?: number },
   floor: number,
   nodeType: 'Combat' | 'Elite' | 'Boss'
 ): boolean {
@@ -594,7 +595,11 @@ export function isEnemyEligibleForFloorByNumericRules(
   const maxHp = enemyDef.hp_range?.[1] ?? enemyDef.maxHp ?? 0;
   const keywords = enemyDef.keywords || [];
 
-  if (nodeType === 'Boss') return true;
+  if (nodeType === 'Boss') {
+    if (floor <= 10) return ['slime_boss', 'hexaghost'].includes(enemyDef.id);
+    if (floor <= 18) return Number(enemyDef.chapterUnlock ?? 1) <= 2 && !keywords.includes('phase_boss');
+    return true;
+  }
 
   if (nodeType === 'Elite') {
     const floor3Max = Number(eliteRules.floor_3_maxHp ?? 95);
@@ -628,7 +633,13 @@ export function applyEnemyHpTuningByNumericRules(
   hpMultiplier: number
 ): number {
   const raw = Math.max(1, Math.floor(baseHp * hpMultiplier));
-  if (nodeType === 'Boss') return raw;
+  if (nodeType === 'Boss') {
+    const bossCaps = numericConfig.enemies?.runtime?.bossHpSoftCaps || {};
+    const bossFloor10 = Number(bossCaps.floor_10 ?? 175);
+    const bossFloor16 = Number(bossCaps.floor_16 ?? 300);
+    const softCap = floor <= 10 ? bossFloor10 : floor <= 16 ? bossFloor16 : Infinity;
+    return Math.max(1, Math.min(raw, softCap));
+  }
 
   const combatCaps = numericConfig.enemies?.runtime?.earlyCombatHpSoftCaps || {};
   const eliteCaps = numericConfig.enemies?.runtime?.earlyEliteHpSoftCaps || {};

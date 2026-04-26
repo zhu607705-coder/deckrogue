@@ -392,3 +392,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **回归覆盖**：新增 `tests/unit/cardExpansionPack.test.ts`，锁定新增包数量/分布、动作注册、费用范围、路线识别与立绘文件存在性，并接入 `npm run test:supplemental-units`。
 - **验证证据**：`npx tsx --test tests/unit/cardExpansionPack.test.ts` 通过 `3/3`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run check:content-bundle`、`npm run test:supplemental-units` 通过 `132/132`、`npm run lint --silent`、`npm run build`、`npm run test:ui-smoke`、`npm run accept:expansion-content`、`npm run test:runtime-v2-flow-smoke -- --renderer=dom` 均通过；`git diff --check` 通过，仅输出 Windows CRLF 提示。
 - **剩余风险**：卡图为联系表裁切的生成式方形插画，已适配现有卡面 `object-cover`，但仍建议后续美术人工统一风格；本轮数值按当前动作模型做基线平衡，仍需要后续实战日志微调个别强弱点。
+### Step 130: longform balance playtest and three-pass tuning
+
+- **操作方向**：按“真实实战覆盖全角色、全 build、遗物、事件、卡牌”标准建立长线平衡验证，并连续做三轮微调。
+- **变更内容**：新增 `scripts/validation/longform_balance_playtest.ts` 和 `npm run report:longform-balance`；覆盖 6 个角色、18 条路线 build、308 张卡牌、92 个遗物、87 个事件选项，并输出 `reports/balance/longform-balance-pass-N.json`。
+- **数值与运行时修正**：补齐通用 story event 结算兜底；修正遗物启动动作类型；限制早期 boss 池和 boss HP 软上限；下调 `gremlin_nob`、`psychic_infiltrator`、`slime_boss`、`hexaghost` 的早期压迫；加强 puppeteer construct、chronomancer delay、informant intel、brute rage/alchemist sustain 等路线可循环 payoff。
+- **三轮微调结果**：第一轮修复事件覆盖和未知动作；第二轮削弱过早 boss/elite 压力并提高弱路线生存；第三轮微调路线牌与构筑牌组抽样，最终仅保留 `alchemist:concoction` 偏稳的中风险提示。
+- **验证证据**：`npm run report:longform-balance -- --pass=12 --runs-per-build=3` 覆盖 `characters=6/6`、`routeBuilds=18/18`、`cards=308/308`、`relics=92/92`、`events=87/87`，18 个 build 全部存活；平均剩余血量区间约 `0.257-0.939`，仅 `alchemist:concoction` 触发 medium safe-build warning。
+- **剩余风险**：自动化 GameEngine bot 已覆盖长线构筑真实动作执行，但仍不是人类手动全流程通关；后续若改动卡牌池、事件、遗物触发或 boss 池，需要重跑 `report:longform-balance`。
