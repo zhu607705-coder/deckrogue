@@ -58,6 +58,8 @@ export interface CombatState {
     potionToxicity: number;
     potionsUsedThisTurn: number;
     cardsPlayedThisTurn: number;
+    attacksPlayedThisTurn?: number;
+    blockGainedThisTurn?: number;
     damageTakenThisTurn?: number;
     damageTakenLastTurn?: number;
     intel?: number;

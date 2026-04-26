@@ -15,6 +15,7 @@ import { cardsData, getCardDefById } from '@/content/narrative/numericSystem';
 import { createRunCardInstance } from '@/core/combat/runCardInstance';
 import { ActionManager } from '@/core/actions/actionManager';
 import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
+import { GameEngine } from '@/core/events/gameEngine';
 
 function makeState(): GameState {
   return {
@@ -330,4 +331,400 @@ test('cost and delayed loop actions attach visible runtime state', () => {
   assert.equal(state.combat!.player.statuses.DrawPenaltyNextTurn, 1);
   assert.equal(state.combat!.player.statuses.DelayNextCardEffectPercent, 50);
   assert.equal(state.combat!.player.statuses.DoubleDamageThisTurn, 2);
+});
+
+test('kill conditions can inspect the just defeated target', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state);
+  enemy.hp = 5;
+
+  manager.enqueueAll(
+    [
+      { type: 'DealDamage', amount: 10, target: 'Enemy' },
+      { type: 'ConditionalResourceGain', condition: { type: 'Kill' }, resource: 'evidence', amount: 1 },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  const player = state.player as typeof state.player & { evidence?: number; secondaryResources?: Record<string, number> };
+  assert.equal(enemy.hp, 0);
+  assert.equal(player.evidence, 1);
+  assert.equal(player.secondaryResources?.evidence, 1);
+});
+
+test('kill conditions do not trigger when the target survives', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state);
+  enemy.hp = 20;
+
+  manager.enqueueAll(
+    [
+      { type: 'DealDamage', amount: 5, target: 'Enemy' },
+      { type: 'ConditionalResourceGain', condition: { type: 'Kill' }, resource: 'evidence', amount: 1 },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  const player = state.player as typeof state.player & { evidence?: number; secondaryResources?: Record<string, number> };
+  assert.equal(enemy.hp, 15);
+  assert.equal(player.evidence, undefined);
+  assert.equal(player.secondaryResources?.evidence, undefined);
+});
+
+test('NoAttackYet checks attacks rather than all cards played this turn', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_card'));
+  state.combat!.player.cardsPlayedThisTurn = 1;
+  state.combat!.player.attacksPlayedThisTurn = 0;
+
+  manager.enqueue(
+    { type: 'ConditionalDraw', condition: { type: 'NoAttackYet' }, amount: 1 } as any,
+    { source: 'player', card: { type: 'Skill' } }
+  );
+  manager.executeAllSync();
+  assert.equal(state.combat!.hand.length, 1);
+
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_card_2'));
+  state.combat!.player.attacksPlayedThisTurn = 1;
+  manager.enqueue(
+    { type: 'ConditionalDraw', condition: { type: 'NoAttackYet' }, amount: 1 } as any,
+    { source: 'player', card: { type: 'Skill' } }
+  );
+  manager.executeAllSync();
+  assert.equal(state.combat!.hand.length, 1);
+});
+
+test('NoAttackYet allows the first attack action but not later attack actions', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_card'));
+  state.combat!.player.attacksPlayedThisTurn = 1;
+
+  manager.enqueue(
+    { type: 'ConditionalDraw', condition: { type: 'NoAttackYet' }, amount: 1 } as any,
+    { source: 'player', card: { type: 'Attack' } }
+  );
+  manager.executeAllSync();
+  assert.equal(state.combat!.hand.length, 1);
+
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_card_2'));
+  state.combat!.player.attacksPlayedThisTurn = 2;
+  manager.enqueue(
+    { type: 'ConditionalDraw', condition: { type: 'NoAttackYet' }, amount: 1 } as any,
+    { source: 'player', card: { type: 'Attack' } }
+  );
+  manager.executeAllSync();
+  assert.equal(state.combat!.hand.length, 1);
+});
+
+test('command line adjustment branch draws once without leaving a cost discount', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.drawPile.push(
+    createRunCardInstance(drawCard!, 'draw_card_1'),
+    createRunCardInstance(drawCard!, 'draw_card_2')
+  );
+  const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
+  player.command = 1;
+  player.secondaryResources = { command: 1 };
+
+  manager.enqueueAll(
+    [
+      {
+        type: 'ConditionalEffect',
+        condition: { type: 'NoResource', resource: 'command' },
+        effects: [{ type: 'NextCardCostDown', amount: 1 }],
+      },
+      { type: 'ConditionalDraw', condition: { type: 'HasResource', resource: 'command' }, amount: 1 },
+    ] as any,
+    { source: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.hand.length, 1);
+  assert.equal(state.combat!.drawPile.length, 1);
+  assert.equal(state.combat!.player.statuses.NextCardCostDown, undefined);
+});
+
+test('next-card cost reduction remains a pure cost action when command exists', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const defend = getCardDefById('defend');
+  assert.ok(defend);
+  state.combat!.hand.push(createRunCardInstance(defend!, 'defend_in_hand'));
+  const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
+  player.command = 1;
+  player.secondaryResources = { command: 1 };
+
+  manager.enqueue({ type: 'NextCardCostDown', amount: 1 } as any, { source: 'player' });
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.hand[0].tempCost, 0);
+  assert.equal(state.combat!.player.statuses.NextCardCostDown, undefined);
+});
+
+test('pending next-card cost discount is consumed by one actual card play', async () => {
+  const engine = new GameEngine(406, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const power = getCardDefById('palace_signal');
+  const defend = getCardDefById('defend');
+  assert.ok(power);
+  assert.ok(defend);
+  addEnemy(state);
+  state.combat!.hand = [
+    createRunCardInstance(power!, 'discounted_power'),
+    createRunCardInstance(defend!, 'normal_defend'),
+  ];
+  state.combat!.player.statuses.NextCardCostDown = 1;
+  state.combat!.player.energy = 3;
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('discounted_power');
+  assert.equal(state.combat!.player.energy, 2);
+  assert.equal(state.combat!.player.statuses.NextCardCostDown, undefined);
+
+  await engine.playCard('normal_defend');
+  assert.equal(state.combat!.player.energy, 1);
+  engine.dispose();
+});
+
+test('stored start-of-turn effects fire from their runtime trigger', async () => {
+  const engine = new GameEngine(407, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const power = getCardDefById('palace_signal');
+  const zeroCostCard = getCardDefById('briefing_order');
+  assert.ok(power);
+  assert.ok(zeroCostCard);
+  addEnemy(state);
+  state.combat!.hand = [createRunCardInstance(power!, 'palace_signal_in_hand')];
+  state.combat!.drawPile = [createRunCardInstance(zeroCostCard!, 'zero_cost_draw')];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('palace_signal_in_hand');
+  assert.equal(state.combat!.player.statuses['Watcher:DrawZeroCostCard'], 1);
+
+  state.combat!.turn = 2;
+  state.combat!.player.block = 0;
+  engine.startTurn();
+
+  assert.equal(state.combat!.player.block, 3);
+  engine.dispose();
+});
+
+test('stored draw watchers fire when Draw actions draw zero-cost cards', async () => {
+  const engine = new GameEngine(409, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const power = getCardDefById('palace_signal');
+  const zeroCostCard = getCardDefById('briefing_order');
+  assert.ok(power);
+  assert.ok(zeroCostCard);
+  addEnemy(state);
+  state.combat!.hand = [createRunCardInstance(power!, 'palace_signal_in_hand')];
+  state.combat!.drawPile = [createRunCardInstance(zeroCostCard!, 'zero_cost_draw')];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('palace_signal_in_hand');
+  state.combat!.player.block = 0;
+
+  (engine as any).actionManager.enqueue({ type: 'Draw', amount: 1 }, { source: 'player' });
+  (engine as any).actionManager.executeAll();
+
+  assert.equal(state.combat!.hand.length, 1);
+  assert.equal(state.combat!.player.block, 3);
+  engine.dispose();
+});
+
+test('stored draw watchers ignore non-zero-cost drawn cards', async () => {
+  const engine = new GameEngine(410, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const power = getCardDefById('palace_signal');
+  const oneCostCard = getCardDefById('calculated_strike');
+  assert.ok(power);
+  assert.ok(oneCostCard);
+  addEnemy(state);
+  state.combat!.hand = [createRunCardInstance(power!, 'palace_signal_in_hand')];
+  state.combat!.drawPile = [createRunCardInstance(oneCostCard!, 'one_cost_draw')];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('palace_signal_in_hand');
+  state.combat!.player.block = 0;
+
+  (engine as any).actionManager.enqueue({ type: 'Draw', amount: 1 }, { source: 'player' });
+  (engine as any).actionManager.executeAll();
+
+  assert.equal(state.combat!.hand.length, 1);
+  assert.equal(state.combat!.player.block, 0);
+  engine.dispose();
+});
+
+test('stored draw watchers trigger once per turn', async () => {
+  const engine = new GameEngine(411, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const power = getCardDefById('palace_signal');
+  const zeroCostCard = getCardDefById('briefing_order');
+  assert.ok(power);
+  assert.ok(zeroCostCard);
+  addEnemy(state);
+  state.combat!.hand = [createRunCardInstance(power!, 'palace_signal_in_hand')];
+  state.combat!.drawPile = [
+    createRunCardInstance(zeroCostCard!, 'zero_cost_draw_1'),
+    createRunCardInstance(zeroCostCard!, 'zero_cost_draw_2'),
+  ];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('palace_signal_in_hand');
+  state.combat!.player.block = 0;
+
+  (engine as any).actionManager.enqueue({ type: 'Draw', amount: 1 }, { source: 'player' });
+  (engine as any).actionManager.executeAll();
+  (engine as any).actionManager.enqueue({ type: 'Draw', amount: 1 }, { source: 'player' });
+  (engine as any).actionManager.executeAll();
+
+  assert.equal(state.combat!.hand.length, 2);
+  assert.equal(state.combat!.player.block, 3);
+  engine.dispose();
+});
+
+test('stored resource gain watchers fire from specialized resource actions', () => {
+  const engine = new GameEngine(413, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.player.hp = 10;
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  (engine as any).actionManager.enqueueAll(
+    [
+      {
+        type: 'StartOfTurnEffect',
+        trigger: { type: 'GainResource', resource: 'concoction', amount: 2 },
+        effect: { type: 'Heal', amount: 2, target: 'Self' },
+      },
+      { type: 'GainConcoction', amount: 2 },
+    ] as any,
+    { source: 'player' }
+  );
+  (engine as any).actionManager.executeAll();
+
+  assert.equal(state.combat!.player.concoction, 2);
+  assert.equal(state.combat!.player.hp, 12);
+  engine.dispose();
+});
+
+test('stored resource spend watchers use the actual spent amount', () => {
+  const engine = new GameEngine(414, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
+  player.command = 2;
+  player.secondaryResources = { command: 2 };
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  (engine as any).actionManager.enqueueAll(
+    [
+      {
+        type: 'StartOfTurnEffect',
+        trigger: { type: 'SpendResource', resource: 'command', amount: 2 },
+        effect: { type: 'GainBlock', amount: 4, target: 'Self' },
+      },
+      { type: 'SpendResourceUpTo', resource: 'command', maxAmount: 2 },
+    ] as any,
+    { source: 'player' }
+  );
+  (engine as any).actionManager.executeAll();
+
+  assert.equal(player.command, 0);
+  assert.equal(state.combat!.player.block, 4);
+  engine.dispose();
+});
+
+test('GainedBlockThisTurn ignores carried block and tracks new block gains', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.player.block = 5;
+  state.combat!.player.blockGainedThisTurn = 0;
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'blocked_draw_1'));
+
+  manager.enqueue(
+    { type: 'ConditionalDraw', condition: { type: 'GainedBlockThisTurn' }, amount: 1 } as any,
+    { source: 'player' }
+  );
+  manager.executeAllSync();
+  assert.equal(state.combat!.hand.length, 0);
+
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'blocked_draw_2'));
+  manager.enqueueAll(
+    [
+      { type: 'GainBlock', amount: 2, target: 'Self' },
+      { type: 'ConditionalDraw', condition: { type: 'GainedBlockThisTurn' }, amount: 1 },
+    ] as any,
+    { source: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.player.blockGainedThisTurn, 2);
+  assert.equal(state.combat!.hand.length, 1);
+});
+
+test('dead enemy targets do not consume targeted cards', async () => {
+  const engine = new GameEngine(408, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const attack = getCardDefById('calculated_strike');
+  assert.ok(attack);
+  const deadEnemy = addEnemy(state);
+  deadEnemy.hp = 0;
+  state.combat!.enemies.push({
+    ...deadEnemy,
+    id: 'enemy_2',
+    hp: 20,
+    maxHp: 20,
+  });
+  state.combat!.hand = [createRunCardInstance(attack!, 'attack_in_hand')];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('attack_in_hand', 'enemy_1');
+
+  assert.equal(state.combat!.hand.length, 1);
+  assert.equal(state.combat!.discardPile.length, 0);
+  assert.equal(state.combat!.player.energy, 3);
+  assert.equal(state.combat!.enemies[1].hp, 20);
+  engine.dispose();
+});
+
+test('dead enemy targets resolve combat when no alive enemies remain', async () => {
+  const engine = new GameEngine(412, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const attack = getCardDefById('calculated_strike');
+  assert.ok(attack);
+  const deadEnemy = addEnemy(state);
+  deadEnemy.hp = 0;
+  state.screen = 'Combat';
+  state.pendingNodeResolution = true;
+  state.combat!.hand = [createRunCardInstance(attack!, 'attack_in_hand')];
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  await engine.playCard('attack_in_hand', 'enemy_1');
+
+  assert.equal(engine.state.screen, 'Reward');
+  assert.equal(engine.state.combat, null);
+  engine.dispose();
 });

@@ -80,20 +80,21 @@ export const EnemyStandee = React.memo(function EnemyStandee({
       className={[
         'enemy-standee grimdark-enemy-standee',
         standeeClass,
-        selectedCard ? 'is-targetable' : '',
-        selectedCard ? 'is-targeting' : '',
+        selectedCard && !isDead ? 'is-targetable' : '',
+        selectedCard && !isDead ? 'is-targeting' : '',
         isDead ? 'is-dead' : '',
         enemy.autonomyState === 'ChaosEgg' ? 'grimdark-enemy--chaos-egg' : '',
         enemy.autonomyState === 'Martyr' ? 'grimdark-enemy--martyr' : ''
       ].filter(Boolean).join(' ')}
       style={{ transition: 'all 0.2s ease-in-out' }}
-      onClick={onClick}
+      onClick={isDead ? undefined : onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       role="button"
-      tabIndex={0}
-      data-keyboard-focus="true"
-      data-keyboard-target="true"
+      tabIndex={isDead ? -1 : 0}
+      aria-disabled={isDead}
+      data-keyboard-focus={isDead ? undefined : 'true'}
+      data-keyboard-target={isDead ? undefined : 'true'}
       data-keyboard-enemy-id={enemy.id}
       aria-label={`目标: ${enemy.name}, 生命值: ${enemyHpNow}/${enemyMaxHpNow}`}
       aria-describedby={`enemy-intent-${enemy.id}`}
@@ -135,7 +136,7 @@ export const EnemyStandee = React.memo(function EnemyStandee({
             <span>{enemy.block}</span>
           </div>
         )}
-        {selectedCard && <div className="enemy-standee__targetRing grimdark-target-ring" />}
+        {selectedCard && !isDead && <div className="enemy-standee__targetRing grimdark-target-ring" />}
       </div>
 
       {/* 敌人HUD */}

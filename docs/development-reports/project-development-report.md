@@ -353,3 +353,26 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **变更内容**：首层奖励对 informant/puppeteer/alchemist 等角色按种子分配多路线；事件遗物掉落优先贴当前路线；`vanishing_strike`、`sacrifice_construct` 等卡牌文本与动作对齐；Burn 现在按回合造成 DoT；RuntimeV2/Python content bundle 同步 route signal，保持领奖后的路线状态 parity。
 - **验证证据**：`npx tsc --noEmit --pretty false --project tsconfig.json` 通过；`npx tsx --test tests/unit/specialActionBehavior.test.ts tests/unit/growthRouteFormation.test.ts` 通过 `12/12`；growth/reward/shop-event 三项报告均为 `100%`，路线分布 `warningCount=0`；DOM/Pixi runtime flow smoke 通过；`npm run doctor:game` 最终通过 `47/47`。
 - **剩余风险**：本轮优先打通循环与路线分布，仍未宣称所有长尾占位动作都完成；少量单卡数值可能需要后续基于实战日志微调。
+
+### Step 125: close review blockers for combat action triggers and dead targets
+
+- **操作方向**：根据 review findings 修复合入前阻断项，并补上敌人死亡后仍能被攻击牌选中的运行时问题。
+- **变更内容**：`Kill` 条件现在可读取上下文里的刚死亡目标；`StartOfTurnEffect` 接入抽到 0 费牌、获得护盾阈值、首次召唤、延迟触发、资源获得/消耗事件；敌方 `AllEnemies` 状态/格挡动作解析到敌方阵营；`NextCardCostDown` 不再在拥有指挥时重复抽牌；`NoAttackYet` 改用本回合攻击牌计数；事件版与 legacy CombatManager 都拦截死亡敌人目标，UI 死亡立绘不再显示可选目标环、响应点击或暴露键盘目标标记。
+- **回归覆盖**：新增 Kill 击杀奖励、NoAttackYet、指挥分支单抽、StartOfTurnEffect 运行时触发、死亡目标不耗牌、敌方 AllEnemies 状态/格挡阵营解析测试。
+- **验证证据**：`node --test --import tsx tests/unit/specialActionBehavior.test.ts` 通过 `15/15`；`node --test --import tsx tests/unit/enemyVariantEnemyTurn.test.ts` 通过 `8/8`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`git diff --check` 均通过，`git diff --check` 仅输出 Windows CRLF 提示。
+- **剩余风险**：当前 watcher 触发器已覆盖现有卡牌数据使用的触发类型；如果后续继续加入新的 trigger 类型，需要同步扩展 `triggerMatchesStoredEffect()` 并补事件级回归测试。
+
+### Step 126: reinforce draw-action watcher dispatch
+
+- **操作方向**：按 Ralph 单 owner 完成循环复查 Finding 2，补强 `DrawZeroCostCard` watcher 在普通 `Draw` action 抽牌时的触发路径。
+- **变更内容**：`DrawCardsAction` 现在发布携带卡牌实例的 `CardDrawn` 事件；事件版 `CombatManager` 改为统一订阅 `CardDrawn` 后判断 0 费牌并触发 `DrawZeroCostCard`，避免只有回合开始抽牌能触发 watcher。
+- **回归覆盖**：新增 `stored draw watchers fire when Draw actions draw zero-cost cards`，验证 Power 设置 watcher 后，由 `Draw` action 抽到 0 费牌会立即结算护盾效果。
+- **验证证据**：`node --test --import tsx tests/unit/specialActionBehavior.test.ts` 通过 `16/16`；`node --test --import tsx tests/unit/enemyVariantEnemyTurn.test.ts` 通过 `8/8`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`git diff --check` 均通过，`git diff --check` 仅输出 Windows CRLF 提示。
+- **剩余风险**：资产接入和未跟踪图片属于独立工作区状态，本步未继续扩展美术资源逻辑。
+### Step 127: optimize combat mechanism runtime logic after review
+
+- **操作方向**：只处理游戏机制运行逻辑，按 subagent 分层结果收拢 review blockers 和同层功能风险。
+- **代码功能改动**：`Kill` 条件保持上下文目标可见，死亡目标不再回退到其他存活敌人；`StartOfTurnEffect` watcher 覆盖抽到 0 费牌、获得格挡阈值、首次召唤、延迟触发、获得/消耗资源；专用资源动作统一走 `gainRouteResource()` 和实际消耗金额事件；`GainedBlockThisTurn` 改用本回合新增格挡统计；敌方 `AllEnemies`、`AllAllies`、显式 enemy id/defId 通过同一个敌方阵营目标解析器；`NextCardCostDown` 恢复为纯费用动作，`line_adjustment` 改用 `NoResource(command)` 条件表达“无指挥时减费、有指挥时抽 1 张”；legacy/potion 直接加格挡路径同步 `blockGainedThisTurn` 和 `BlockGained` 事件。
+- **回归覆盖**：新增击杀奖励正反例、攻击牌计数版 `NoAttackYet`、指挥分支单抽、纯 `NextCardCostDown`、下一张牌费用消耗一次、watcher 非 0 费不触发/每回合一次/专用资源获得/实际资源消耗金额、携带格挡不误判新增格挡、死亡敌人不耗牌与全死亡结算、敌方阵营目标解析测试；修复 `conditionalKillAction.test.ts` 独立运行缺少 ActionManager 绑定的问题。
+- **验证证据**：`node --test --import tsx tests/unit/specialActionBehavior.test.ts` -> `26/26`；`node --test --import tsx tests/unit/enemyVariantEnemyTurn.test.ts` -> `9/9`；`node --test --import tsx tests/unit/conditionalKillAction.test.ts` -> `2/2`；`npm run check:enemy-variant-behavior` -> OK；`npm run test:supplemental-units` -> `129/129`；`npm run test:runtime-v2:ts` -> `146 pass / 1 skip`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`git diff --check` 均通过，`git diff --check` 仅输出 Windows CRLF 提示。
+- **剩余风险**：本轮没有处理素材/UI 立绘工作区改动，也没有重构整个 watcher 注册系统；当前 watcher 覆盖现有卡牌数据使用的触发类型，后续新增 trigger 类型仍需同步扩展 `triggerMatchesStoredEffect()` 与事件级回归测试。

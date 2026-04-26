@@ -64,6 +64,7 @@ export class CombatManager {
         potionToxicity: 0,
         potionsUsedThisTurn: 0,
         cardsPlayedThisTurn: 0,
+        attacksPlayedThisTurn: 0,
         damageTakenThisTurn: 0,
         damageTakenLastTurn: 0,
         intel: state.player.intel,
@@ -235,6 +236,8 @@ export class CombatManager {
       combat.player.block = 0;
     }
     combat.player.cardsPlayedThisTurn = 0;
+    combat.player.attacksPlayedThisTurn = 0;
+    combat.player.blockGainedThisTurn = 0;
     combat.player.potionsUsedThisTurn = 0;
     const playerTurnFlags = combat.player as typeof combat.player & { resourceSpentThisTurn?: number; elementsAddedThisTurn?: number };
     playerTurnFlags.resourceSpentThisTurn = 0;
@@ -483,6 +486,11 @@ export class CombatManager {
 
     const card = combat.hand[cardIndex];
 
+    if (card.targeting === 'Enemy') {
+      const target = targetId ? combat.enemies.find(e => e.id === targetId) : null;
+      if (!target || target.hp <= 0) return;
+    }
+
     if (combat.player.energy < (card.cost || 0)) {
       this.deps.appendVoxLog('能量不足，无法使用此指令。');
       return;
@@ -491,6 +499,9 @@ export class CombatManager {
     combat.player.energy -= card.cost || 0;
     combat.hand.splice(cardIndex, 1);
     combat.player.cardsPlayedThisTurn++;
+    if (card.type === 'Attack') {
+      combat.player.attacksPlayedThisTurn = Math.max(0, Number(combat.player.attacksPlayedThisTurn || 0)) + 1;
+    }
 
     const cardName = card.name || card.id;
 
@@ -547,6 +558,8 @@ export class CombatManager {
         const amount = actionSpec.amount || 0;
         if (amount > 0) {
           combat.player.block += amount;
+          combat.player.blockGainedThisTurn = Math.max(0, Number(combat.player.blockGainedThisTurn || 0)) + amount;
+          globalEventBus.publish({ type: 'BlockGained', targetType: 'player', targetId: 'player', amount } as any);
           this.deps.appendVoxLog(`${cardName} 为执行体部署 ${amount} 点护盾。`);
         }
         break;

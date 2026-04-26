@@ -1397,6 +1397,10 @@ export class GameEngine {
         break;
       case 'GainBlock':
         combat.player.block += effect.amount ?? 0;
+        combat.player.blockGainedThisTurn = Math.max(0, Number(combat.player.blockGainedThisTurn || 0)) + Math.max(0, Number(effect.amount ?? 0));
+        if ((effect.amount ?? 0) > 0) {
+          globalEventBus.publish({ type: 'BlockGained', targetType: 'player', targetId: 'player', amount: effect.amount ?? 0 } as any);
+        }
         break;
       case 'GainEnergy':
         combat.player.energy += effect.amount ?? 0;
@@ -1428,6 +1432,8 @@ export class GameEngine {
       case 'MutagenicDraft':
         combat.player.energy += 2;
         combat.player.block += 8;
+        combat.player.blockGainedThisTurn = Math.max(0, Number(combat.player.blockGainedThisTurn || 0)) + 8;
+        globalEventBus.publish({ type: 'BlockGained', targetType: 'player', targetId: 'player', amount: 8 } as any);
         combat.player.statuses['Strength'] = (combat.player.statuses['Strength'] || 0) + 2;
         combat.player.statuses['Poison'] = (combat.player.statuses['Poison'] || 0) + 2;
         break;

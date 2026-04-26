@@ -67,6 +67,7 @@ export class CombatManager {
   private playerDeathInProgress = false;
   private readonly disposables: Array<() => void> = [];
   private readonly bossPhaseManager: BossPhaseManager;
+  private deferStoredEffectFlushDepth = 0;
 
   constructor(private deps: CombatManagerDeps, private actionManager: ActionManager) {
     this.bossPhaseManager = new BossPhaseManager({
@@ -86,6 +87,31 @@ export class CombatManager {
       globalEventBus.subscribe('EnemyDeath', (event: any) => {
         if (!event?.enemyId) return;
         this.handleEnemyDefeated(event.enemyId);
+      }),
+      globalEventBus.subscribe('CardDrawn', (event: any) => {
+        const card = event?.card;
+        if (!card || Math.max(0, Number(card.tempCost ?? card.cost ?? 0)) !== 0) return;
+        this.triggerStartOfTurnEffects('DrawZeroCostCard', { card });
+      }),
+      globalEventBus.subscribe('BlockGained', (event: any) => {
+        if (event?.targetType && event.targetType !== 'player') return;
+        if (event?.targetId && event.targetId !== 'player') return;
+        this.triggerStartOfTurnEffects('GainBlockThreshold', { amount: Number(event?.amount || 0) });
+      }),
+      globalEventBus.subscribe('ConstructCreated', () => {
+        this.triggerStartOfTurnEffects('FirstSummon');
+      }),
+      globalEventBus.subscribe('RouteResourceGained', (event: any) => {
+        this.triggerStartOfTurnEffects('GainResource', {
+          resource: String(event?.resource || ''),
+          amount: Number(event?.amount || 0),
+        });
+      }),
+      globalEventBus.subscribe('RouteResourceSpent', (event: any) => {
+        this.triggerStartOfTurnEffects('SpendResource', {
+          resource: String(event?.resource || ''),
+          amount: Number(event?.amount || 0),
+        });
       }),
     );
   }
@@ -137,6 +163,7 @@ export class CombatManager {
         potionToxicity: 0,
         potionsUsedThisTurn: 0,
         cardsPlayedThisTurn: 0,
+        attacksPlayedThisTurn: 0,
         damageTakenThisTurn: 0,
         damageTakenLastTurn: 0,
         intel: state.player.intel,
@@ -356,6 +383,8 @@ export class CombatManager {
       combat.player.block = 0;
     }
     combat.player.cardsPlayedThisTurn = 0;
+    combat.player.attacksPlayedThisTurn = 0;
+    combat.player.blockGainedThisTurn = 0;
     combat.player.potionsUsedThisTurn = 0;
     const playerTurnFlags = combat.player as typeof combat.player & {
       resourceSpentThisTurn?: number;
@@ -383,11 +412,16 @@ export class CombatManager {
       combat.warpPulse = { text: '时序债务生效：本回合跳过抽牌阶段', tone: 'warp' };
     }
     this.processStatusDecay(combat.player.statuses);
-    this.tickDelayedCards();
-    if (!skipDrawThisTurn) {
-      const drawPenalty = Math.max(0, Math.floor(Number(combat.player.statuses.DrawPenaltyNextTurn || 0)));
-      if (drawPenalty > 0) delete combat.player.statuses.DrawPenaltyNextTurn;
-      this.drawCards(Math.max(0, 5 - drawPenalty));
+    this.deferStoredEffectFlushDepth += 1;
+    try {
+      this.tickDelayedCards();
+      if (!skipDrawThisTurn) {
+        const drawPenalty = Math.max(0, Math.floor(Number(combat.player.statuses.DrawPenaltyNextTurn || 0)));
+        if (drawPenalty > 0) delete combat.player.statuses.DrawPenaltyNextTurn;
+        this.drawCards(Math.max(0, 5 - drawPenalty));
+      }
+    } finally {
+      this.deferStoredEffectFlushDepth = Math.max(0, this.deferStoredEffectFlushDepth - 1);
     }
 
     this.actionManager.updateState(state);
@@ -462,6 +496,7 @@ export class CombatManager {
       if (combat.drawPile.length > 0) {
         const card = combat.drawPile.pop()!;
         combat.hand.push(card);
+        globalEventBus.publish({ type: 'CardDrawn', cardId: card.id, cardInstanceId: card.instanceId, card } as any);
       }
     }
   }
@@ -577,6 +612,56 @@ export class CombatManager {
     if (combatResult) delete player.combatResult;
   }
 
+  private triggerMatchesStoredEffect(trigger: unknown, triggerType: string, payload: Record<string, unknown>): boolean {
+    const triggerDef = trigger as { type?: string; threshold?: number; resource?: string; amount?: number } | undefined;
+    if (!triggerDef?.type || triggerDef.type !== triggerType) return false;
+
+    if (typeof triggerDef.resource === 'string' && triggerDef.resource.length > 0) {
+      if (String(payload.resource || '') !== triggerDef.resource) return false;
+    }
+
+    if (triggerType === 'GainBlockThreshold') {
+      return Number(payload.amount || 0) >= Math.max(1, Number(triggerDef.threshold || 1));
+    }
+
+    if (typeof triggerDef.amount === 'number') {
+      return Number(payload.amount || 0) >= Math.max(1, Number(triggerDef.amount || 1));
+    }
+
+    return true;
+  }
+
+  private triggerStartOfTurnEffects(triggerType: string, payload: Record<string, unknown> = {}): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return;
+
+    const player = combat.player as typeof combat.player & {
+      startOfTurnEffects?: Array<{ actions: ActionSpec[]; trigger?: unknown; usedTurn?: number }>;
+    };
+    const entries = player.startOfTurnEffects || [];
+    if (entries.length === 0) return;
+
+    let queued = false;
+    for (const entry of entries) {
+      if (entry.usedTurn === combat.turn) continue;
+      if (!this.triggerMatchesStoredEffect(entry.trigger, triggerType, payload)) continue;
+      if (!entry.actions?.length) continue;
+
+      entry.usedTurn = combat.turn;
+      this.actionManager.enqueueAll(entry.actions, {
+        source: 'player',
+        sourceId: 'player',
+        targetId: 'player',
+      }, 0, 'system');
+      queued = true;
+    }
+
+    if (queued && this.deferStoredEffectFlushDepth === 0 && !this.actionManager.isProcessing()) {
+      this.actionManager.executeAll();
+    }
+  }
+
   async playCard(cardInstanceId: string, targetId?: string): Promise<void> {
     const state = this.deps.getState();
     const combat = state.combat;
@@ -592,6 +677,17 @@ export class CombatManager {
     }
 
     let card = combat.hand[cardIndex];
+
+    if (card.targeting === 'Enemy') {
+      const target = targetId ? combat.enemies.find(e => e.id === targetId) : null;
+      if (!target || target.hp <= 0) {
+        if (!combat.enemies.some(e => e.hp > 0)) {
+          globalEventBus.publish({ type: 'CombatVictory' } as any);
+        }
+        return;
+      }
+    }
+
     card = this.consumePendingCostDiscount(card);
     combat.hand[cardIndex] = card;
 
@@ -605,6 +701,9 @@ export class CombatManager {
     combat.hand.splice(cardIndex, 1);
     combat.discardPile.push(card);
     combat.player.cardsPlayedThisTurn++;
+    if (card.type === 'Attack') {
+      combat.player.attacksPlayedThisTurn = Math.max(0, Number(combat.player.attacksPlayedThisTurn || 0)) + 1;
+    }
     combat.player.lastPlayedCard = card;
     this.consumeDelayNextCardEffect(card, targetId);
 
@@ -725,6 +824,43 @@ export class CombatManager {
     }
   }
 
+  private resolveEnemySideTargets(enemy: any, target: unknown, fallback: 'self' | 'player' = 'self'): any[] {
+    const combat = this.deps.getState().combat;
+    if (!combat) return [];
+
+    const targetKey = String(target || (fallback === 'self' ? 'Self' : 'Enemy'));
+    if (targetKey === 'Self') {
+      return enemy?.hp > 0 ? [enemy] : [];
+    }
+    if (targetKey === 'AllEnemies') {
+      return combat.enemies.filter(entry => entry.hp > 0);
+    }
+    if (targetKey === 'AllAllies') {
+      return combat.enemies.filter(entry => entry.hp > 0 && entry.id !== enemy?.id);
+    }
+
+    const explicitEnemy = combat.enemies.find(entry => entry.id === targetKey || entry.defId === targetKey);
+    return explicitEnemy && explicitEnemy.hp > 0 ? [explicitEnemy] : [];
+  }
+
+  private applyEnemyActionStatus(enemy: any, actionSpec: Record<string, any>, status: string, amount: number): boolean {
+    const state = this.deps.getState();
+    if (!state.combat || !status || amount <= 0) return false;
+
+    const targetKey = String(actionSpec.target || 'Enemy');
+    if (targetKey !== 'Enemy' && targetKey !== 'Player') {
+      const targets = this.resolveEnemySideTargets(enemy, targetKey, 'self');
+      if (targets.length === 0) return false;
+      for (const target of targets) {
+        combatSystem.applyStatus(state, 'enemy', target.id, status, amount);
+      }
+      return true;
+    }
+
+    combatSystem.applyStatus(state, 'player', 'player', status, amount);
+    return true;
+  }
+
   private executeEnemyActionSpec(enemy: any, actionSpec: Record<string, any>): boolean {
     const state = this.deps.getState();
     const combat = state.combat;
@@ -771,12 +907,11 @@ export class CombatManager {
       case 'GainBlock': {
         const amount = Number(actionSpec.amount || 0);
         if (amount <= 0) return false;
-        const targetKey = String(actionSpec.target || 'Self');
-        const targetEnemy = targetKey && targetKey !== 'Self'
-          ? combat.enemies.find(entry => entry.id === targetKey || entry.defId === targetKey)
-          : enemy;
-        if (!targetEnemy) return false;
-        combatSystem.gainBlock(state, 'enemy', targetEnemy.id, amount);
+        const targets = this.resolveEnemySideTargets(enemy, actionSpec.target, 'self');
+        if (targets.length === 0) return false;
+        for (const targetEnemy of targets) {
+          combatSystem.gainBlock(state, 'enemy', targetEnemy.id, amount);
+        }
         this.deps.appendVoxLog(`${enemy.name} 获得 ${amount} 点护盾。`);
         return true;
       }
@@ -784,30 +919,30 @@ export class CombatManager {
         const status = String(actionSpec.status || '');
         const amount = Number(actionSpec.amount || 0);
         if (!status || amount <= 0) return false;
-        const targetType = actionSpec.target === 'Self' ? 'enemy' : 'player';
-        const targetId = targetType === 'enemy' ? enemy.id : 'player';
-        combatSystem.applyStatus(state, targetType, targetId, status, amount);
+        const targetKey = String(actionSpec.target || 'Enemy');
+        const targetType = targetKey !== 'Enemy' && targetKey !== 'Player' ? 'enemy' : 'player';
+        const applied = this.applyEnemyActionStatus(enemy, actionSpec, status, amount);
         this.deps.appendVoxLog(
           targetType === 'enemy'
             ? `${enemy.name} 获得 ${amount} 层 ${status}。`
             : `${enemy.name} 对玩家施加 ${amount} 层 ${status}。`
         );
-        return true;
+        return applied;
       }
       case 'ConditionalApply': {
         const passed = this.evaluateEnemyActionCondition(actionSpec.condition, enemy);
         const status = String(actionSpec.applyStatus || actionSpec.status || '');
         const amount = Number(actionSpec.amount || 0);
         if (!passed || !status || amount <= 0) return false;
-        const targetType = actionSpec.target === 'Self' ? 'enemy' : 'player';
-        const targetId = targetType === 'enemy' ? enemy.id : 'player';
-        combatSystem.applyStatus(state, targetType, targetId, status, amount);
+        const targetKey = String(actionSpec.target || 'Enemy');
+        const targetType = targetKey !== 'Enemy' && targetKey !== 'Player' ? 'enemy' : 'player';
+        const applied = this.applyEnemyActionStatus(enemy, actionSpec, status, amount);
         this.deps.appendVoxLog(
           targetType === 'enemy'
             ? `${enemy.name} 在条件成立时获得 ${amount} 层 ${status}。`
             : `${enemy.name} 在条件成立时对玩家施加 ${amount} 层 ${status}。`
         );
-        return true;
+        return applied;
       }
       case 'RemoveStatus': {
         const amount = Math.max(1, Number(actionSpec.amount || 1));
@@ -921,9 +1056,7 @@ export class CombatManager {
       case 'Heal': {
         const amount = Number(actionSpec.amount || 0);
         if (amount <= 0) return false;
-        const targets = actionSpec.target === 'AllEnemies'
-          ? combat.enemies.filter(entry => entry.hp > 0)
-          : [enemy];
+        const targets = this.resolveEnemySideTargets(enemy, actionSpec.target, 'self');
         for (const target of targets) {
           target.hp = Math.min(target.maxHp, target.hp + amount);
         }
@@ -1243,6 +1376,7 @@ export class CombatManager {
     }
 
     if (ready.length > 0) {
+      this.triggerStartOfTurnEffects('DelayEffectTrigger', { amount: ready.length });
       combat.warpPulse = {
         text: `${ready.length > 1 ? `${ready.length} delayed effects` : (ready[0]?.card?.name || 'Delayed effect')} triggers`,
         tone: 'warp'

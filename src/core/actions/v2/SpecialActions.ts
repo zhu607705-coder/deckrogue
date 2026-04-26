@@ -131,17 +131,26 @@ function gainRouteResource(state: GameState, resource: string, amount: number): 
   const current = getRouteResource(state, resource);
   const next = current + Math.max(0, Math.floor(amount));
   setRouteResource(state, resource, next);
-  return getRouteResource(state, resource) - current;
+  const gained = getRouteResource(state, resource) - current;
+  if (gained > 0) {
+    globalEventBus.publish({ type: 'RouteResourceGained', resource, amount: gained } as any);
+  }
+  return gained;
 }
 
-function markResourceSpent(state: GameState, resource?: string): void {
+function markResourceSpent(state: GameState, resource?: string, amount = 1): void {
   if (!state.combat) return;
   const player = state.combat.player as typeof state.combat.player & {
     resourceSpentThisTurn?: number;
     resourceRefundPending?: number;
     resourceRefundUsedThisTurn?: number;
   };
-  player.resourceSpentThisTurn = Math.max(0, Math.floor(player.resourceSpentThisTurn || 0)) + 1;
+  const spent = Math.max(0, Math.floor(amount));
+  if (spent <= 0) return;
+  player.resourceSpentThisTurn = Math.max(0, Math.floor(player.resourceSpentThisTurn || 0)) + spent;
+  if (resource) {
+    globalEventBus.publish({ type: 'RouteResourceSpent', resource, amount: spent } as any);
+  }
   if (!resource || (player.resourceRefundPending || 0) <= 0 || (player.resourceRefundUsedThisTurn || 0) > 0) return;
 
   const refund = Math.max(0, Math.floor(player.resourceRefundPending || 0));
@@ -156,7 +165,7 @@ function spendRouteResource(state: GameState, resource: string, amount: number):
   const current = getRouteResource(state, resource);
   if (current < cost) return false;
   setRouteResource(state, resource, current - cost);
-  if (cost > 0) markResourceSpent(state, resource);
+  if (cost > 0) markResourceSpent(state, resource, cost);
   return true;
 }
 
@@ -166,7 +175,8 @@ function getContextTarget(state: GameState, context: IActionContext): { type: 'p
   if (context.targetId === 'player') {
     return { type: 'player', id: 'player', entity: combat.player };
   }
-  const enemy = combat.enemies.find(e => e.id === context.targetId && e.hp > 0) ?? combat.enemies.find(e => e.hp > 0);
+  const exactEnemy = context.targetId ? combat.enemies.find(e => e.id === context.targetId) : null;
+  const enemy = exactEnemy ?? combat.enemies.find(e => e.hp > 0);
   return enemy ? { type: 'enemy', id: enemy.id, entity: enemy } : null;
 }
 
@@ -228,14 +238,19 @@ function evaluateActionCondition(state: GameState, context: IActionContext, cond
       return getRouteResource(state, 'concoction') >= Math.max(0, Number(condition.amount || 0));
     case 'HasResource':
       return getRouteResource(state, String(condition.resource || '')) >= Math.max(1, Number(condition.amount || 1));
+    case 'NoResource':
+      return getRouteResource(state, String(condition.resource || '')) < Math.max(1, Number(condition.amount || 1));
     case 'ResourceThreshold':
       return getRouteResource(state, String(condition.resource || '')) >= Math.max(0, Number(condition.threshold || 0));
     case 'ResourceSpent':
       return Number((combat?.player as { resourceSpentThisTurn?: number } | undefined)?.resourceSpentThisTurn || 0) > 0;
-    case 'NoAttackYet':
-      return (combat?.player.cardsPlayedThisTurn || 0) <= 1;
+    case 'NoAttackYet': {
+      const attacksPlayed = Number((combat?.player as { attacksPlayedThisTurn?: number } | undefined)?.attacksPlayedThisTurn || 0);
+      const currentCardIsAttack = context.card?.type === 'Attack';
+      return attacksPlayed <= (currentCardIsAttack ? 1 : 0);
+    }
     case 'GainedBlockThisTurn':
-      return Number(combat?.player.block || 0) > 0;
+      return Number((combat?.player as { blockGainedThisTurn?: number } | undefined)?.blockGainedThisTurn || 0) > 0;
     default:
       return false;
   }
@@ -1461,9 +1476,8 @@ export class GainIntelAction extends BaseAction {
 
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
-    state.player.intel += this.amount;
+    gainRouteResource(state, 'intel', this.amount);
     if (state.combat) {
-      state.combat.player.intel = state.player.intel;
       state.combat.warpPulse = { text: `情报 +${this.amount}（当前 ${state.player.intel}）`, tone: 'faith' };
     }
   }
@@ -1481,7 +1495,7 @@ export class SpendIntelAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = state.player.intel;
     state.player.intel = Math.max(0, state.player.intel - this.amount);
-    if (before > state.player.intel) markResourceSpent(state, 'intel');
+    if (before > state.player.intel) markResourceSpent(state, 'intel', before - state.player.intel);
     if (state.combat) {
       state.combat.player.intel = state.player.intel;
       state.combat.warpPulse = { text: `情报 -${this.amount}（当前 ${state.player.intel}）`, tone: 'neutral' };
@@ -2181,10 +2195,6 @@ export class NextCardCostDownAction extends BaseAction {
 
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
-    if (getRouteResource(state, 'command') > 0) {
-      queueActionSpecs(queue, [{ type: 'Draw', amount: 1 } as ActionSpec], this.context);
-      return;
-    }
     const combat = state.combat;
     if (!combat) return;
     if (reduceHandCardCost(state, this.amount, () => true)) return;
@@ -2328,7 +2338,7 @@ export class GainTimeLayerAction extends BaseAction {
     if (!combat) return;
 
     this.context = this.getContextFromQueue(queue);
-    combat.player.timeLayer = Math.min(10, (combat.player.timeLayer || 0) + this.amount);
+    gainRouteResource(state, 'timeLayer', this.amount);
     combat.warpPulse = { text: `时间层 +${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'warp' };
   }
 }
@@ -2348,7 +2358,7 @@ export class SpendTimeLayerAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.timeLayer || 0;
     combat.player.timeLayer = Math.max(0, before - this.amount);
-    if (before > combat.player.timeLayer) markResourceSpent(state, 'timeLayer');
+    if (before > combat.player.timeLayer) markResourceSpent(state, 'timeLayer', before - combat.player.timeLayer);
     combat.warpPulse = { text: `时间层 -${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'neutral' };
   }
 }
@@ -2366,7 +2376,7 @@ export class GainThreadAction extends BaseAction {
     if (!combat) return;
 
     this.context = this.getContextFromQueue(queue);
-    combat.player.thread = Math.min(10, (combat.player.thread || 0) + this.amount);
+    gainRouteResource(state, 'thread', this.amount);
     combat.warpPulse = { text: `丝线 +${this.amount}（当前 ${combat.player.thread}）`, tone: 'faith' };
   }
 }
@@ -2386,7 +2396,7 @@ export class SpendThreadAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.thread || 0;
     combat.player.thread = Math.max(0, before - this.amount);
-    if (before > combat.player.thread) markResourceSpent(state, 'thread');
+    if (before > combat.player.thread) markResourceSpent(state, 'thread', before - combat.player.thread);
     combat.warpPulse = { text: `丝线 -${this.amount}（当前 ${combat.player.thread}）`, tone: 'neutral' };
   }
 }
@@ -2404,7 +2414,7 @@ export class GainConcoctionAction extends BaseAction {
     if (!combat) return;
 
     this.context = this.getContextFromQueue(queue);
-    combat.player.concoction = Math.min(10, (combat.player.concoction || 0) + this.amount);
+    gainRouteResource(state, 'concoction', this.amount);
     combat.warpPulse = { text: `调配 +${this.amount}（当前 ${combat.player.concoction}）`, tone: 'faith' };
   }
 }
@@ -2424,7 +2434,7 @@ export class SpendConcoctionAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.concoction || 0;
     combat.player.concoction = Math.max(0, before - this.amount);
-    if (before > combat.player.concoction) markResourceSpent(state, 'concoction');
+    if (before > combat.player.concoction) markResourceSpent(state, 'concoction', before - combat.player.concoction);
     combat.warpPulse = { text: `调配 -${this.amount}（当前 ${combat.player.concoction}）`, tone: 'neutral' };
   }
 }
@@ -2441,7 +2451,7 @@ export class SpendAllIntelAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const intelSpent = state.player.intel || 0;
     state.player.intel = 0;
-    if (intelSpent > 0) markResourceSpent(state, 'intel');
+    if (intelSpent > 0) markResourceSpent(state, 'intel', intelSpent);
     combat.warpPulse = { text: `情报消耗 ${intelSpent}`, tone: 'neutral' };
   }
 }
@@ -2458,7 +2468,7 @@ export class SpendAllConcoctionAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const concoctionSpent = combat.player.concoction || 0;
     combat.player.concoction = 0;
-    if (concoctionSpent > 0) markResourceSpent(state, 'concoction');
+    if (concoctionSpent > 0) markResourceSpent(state, 'concoction', concoctionSpent);
     combat.warpPulse = { text: `调配消耗 ${concoctionSpent}`, tone: 'neutral' };
   }
 }

@@ -12,6 +12,7 @@ import { GameState, ActionSpec } from '@/core/types';
 import { IAction, IActionContext, ActionQueue } from '@/core/actions/actionQueue';
 import { TargetingService, CardTarget, TargetInfo } from '@/core/combat/targetingService';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
+import { globalEventBus } from '@/core/events/eventBus';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { stateRandomId, stateRandomInt, stateShuffle } from '@/infrastructure/rng/stateRandom';
 
@@ -319,6 +320,7 @@ export class DrawCardsAction extends BaseAction {
       const card = combat.drawPile.pop();
       if (card) {
         combat.hand.push(card);
+        globalEventBus.publish({ type: 'CardDrawn', cardId: card.id, cardInstanceId: card.instanceId, card } as any);
       }
     }
   }

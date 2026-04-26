@@ -250,3 +250,105 @@ test('enemy variants can cleanse debuffs before applying self damage boosts', as
   assert.equal(officer?.statuses.Strength, 4);
   engine.dispose();
 });
+
+test('enemy AllEnemies status actions apply to the enemy side instead of the player', async () => {
+  const engine = new GameEngine(407, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.player.statuses = {};
+  state.combat!.enemies = [{
+    ...state.combat!.enemies[0],
+    id: 'plague_choir_1',
+    defId: 'plague_choir',
+    name: 'Plague Choir',
+    statuses: {},
+    nextIntent: 'chant',
+  }];
+  (engine as any).state = state;
+
+  await engine.executeEnemyTurn();
+
+  assert.equal(engine.state.combat?.player.statuses.Poison, undefined);
+  assert.equal(engine.state.combat?.enemies[0]?.statuses.Poison, 1);
+  engine.dispose();
+});
+
+test('enemy AllEnemies block actions apply to the enemy side', async () => {
+  const engine = new GameEngine(408, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.enemies = [{
+    ...state.combat!.enemies[0],
+    id: 'spore_wretch_1',
+    defId: 'spore_wretch',
+    name: 'Spore Wretch',
+    statuses: {},
+    nextIntent: 'shed',
+  }];
+  (engine as any).state = state;
+
+  await engine.executeEnemyTurn();
+
+  assert.equal(engine.state.combat?.enemies[0]?.block, 4);
+  engine.dispose();
+});
+
+test('enemy target resolver separates all enemies, allies, and explicit enemy ids', () => {
+  const engine = new GameEngine(409, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.player.statuses = {};
+  state.combat!.enemies = [
+    {
+      ...state.combat!.enemies[0],
+      id: 'caster',
+      defId: 'caster_def',
+      hp: 12,
+      maxHp: 20,
+      block: 0,
+      statuses: {},
+    },
+    {
+      ...state.combat!.enemies[1],
+      id: 'ally',
+      defId: 'ally_def',
+      hp: 8,
+      maxHp: 20,
+      block: 0,
+      statuses: {},
+    },
+    {
+      ...state.combat!.enemies[2],
+      id: 'dead_ally',
+      defId: 'dead_def',
+      hp: 0,
+      maxHp: 20,
+      block: 0,
+      statuses: {},
+    },
+  ];
+  (engine as any).state = state;
+  const manager = (engine as any).combatManager;
+  const caster = state.combat!.enemies[0];
+  const ally = state.combat!.enemies[1];
+  const dead = state.combat!.enemies[2];
+
+  manager.executeEnemyActionSpec(caster, { type: 'ApplyStatus', target: 'AllEnemies', status: 'Poison', amount: 1 });
+  assert.equal(state.combat!.player.statuses.Poison, undefined);
+  assert.equal(caster.statuses.Poison, 1);
+  assert.equal(ally.statuses.Poison, 1);
+  assert.equal(dead.statuses.Poison, undefined);
+
+  manager.executeEnemyActionSpec(caster, { type: 'ApplyStatus', target: 'AllAllies', status: 'Strength', amount: 2 });
+  assert.equal(caster.statuses.Strength, undefined);
+  assert.equal(ally.statuses.Strength, 2);
+
+  manager.executeEnemyActionSpec(caster, { type: 'ApplyStatus', target: 'ally', status: 'Weak', amount: 1 });
+  assert.equal(state.combat!.player.statuses.Weak, undefined);
+  assert.equal(ally.statuses.Weak, 1);
+
+  manager.executeEnemyActionSpec(caster, { type: 'GainBlock', target: 'AllAllies', amount: 3 });
+  assert.equal(caster.block, 0);
+  assert.equal(ally.block, 3);
+
+  manager.executeEnemyActionSpec(caster, { type: 'Heal', target: 'ally', amount: 4 });
+  assert.equal(ally.hp, 12);
+  engine.dispose();
+});

@@ -37,6 +37,7 @@ export type ActionCondition =
   | { type: 'HasThread'; amount: number }
   | { type: 'HasConcoction'; amount: number }
   | { type: 'HasResource'; resource: string; amount?: number }
+  | { type: 'NoResource'; resource: string; amount?: number }
   | { type: 'ResourceThreshold'; resource: string; threshold: number }
   | { type: 'ResourceSpent' }
   | { type: 'SpendResource'; resource: string; amount: number }

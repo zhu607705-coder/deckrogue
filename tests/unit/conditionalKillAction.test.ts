@@ -12,7 +12,8 @@ import assert from 'node:assert/strict';
 
 import type { GameState, ActionSpec } from '@/core/types';
 import { ActionQueue } from '@/core/actions/actionQueue';
-import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
+import { ActionManager } from '@/core/actions/actionManager';
+import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
 
 function makeState(): GameState {
   return {
@@ -99,10 +100,13 @@ test('conditional kill action should be registered in the action factory', () =>
 
 test('conditional kill action should execute trueActions when target is dead', () => {
   const state = makeState();
+  const manager = new ActionManager(state);
+  setupActionManager(manager);
+  ActionManager.bindInstance(manager);
   const queue = new ActionQueue();
   (queue as any)._currentContext = { source: 'player', targetId: 'e1' };
 
-  const action = ActionFactoryV2.createAction({
+  const action = manager.createAction({
     type: 'ConditionalKill',
     trueActions: [{ type: 'GainEnergy', amount: 1, target: 'Self' }]
   } as ActionSpec);

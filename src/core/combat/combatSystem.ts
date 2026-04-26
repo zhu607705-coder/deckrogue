@@ -292,6 +292,7 @@ export class CombatSystem {
 
     if (!target) return;
 
+    const previousBlock = Math.max(0, Math.floor(Number(target.block || 0)));
     const nextBlock = Math.max(0, Math.floor((target.block || 0) + amount));
     if (nextBlock !== (target.block || 0) + amount) {
       console.warn('[CombatSystem] Clamped block mutation', {
@@ -303,8 +304,11 @@ export class CombatSystem {
       });
     }
     target.block = nextBlock;
+    if (targetType === 'player') {
+      target.blockGainedThisTurn = Math.max(0, Number(target.blockGainedThisTurn || 0)) + Math.max(0, nextBlock - previousBlock);
+    }
 
-    globalEventBus.publish({ type: 'BlockGained', amount });
+    globalEventBus.publish({ type: 'BlockGained', amount, targetType, targetId } as any);
   }
 
   public processTurnEnd(state: GameState, playerTurn: boolean): void {
