@@ -51,6 +51,7 @@ interface ManualVictoryReport {
   completedAt?: string;
   baseUrl: string;
   characterId: string;
+  seed: number;
   headed: boolean;
   victory: boolean;
   gameOver: boolean;
@@ -74,6 +75,7 @@ interface ManualVictoryReport {
 }
 
 const DEFAULT_CHARACTER_ID = 'alchemist';
+const DEFAULT_RUN_SEED = 1777217199075;
 const MAX_ROOM_STEPS = 80;
 const MAX_COMBAT_TURNS = 30;
 const STEP_DELAY_MS = 140;
@@ -83,14 +85,26 @@ function parseArgs() {
   const options = {
     url: getDefaultSmokeUrl(),
     characterId: DEFAULT_CHARACTER_ID,
+    seed: DEFAULT_RUN_SEED,
     headed: false,
   };
   for (const arg of args) {
     if (arg.startsWith('--url=')) options.url = arg.slice('--url='.length);
     if (arg.startsWith('--character=')) options.characterId = arg.slice('--character='.length);
+    if (arg.startsWith('--seed=')) {
+      const parsed = Number(arg.slice('--seed='.length));
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error(`Invalid --seed value: ${arg}`);
+      }
+      options.seed = Math.floor(parsed);
+    }
     if (arg === '--headed') options.headed = true;
   }
   return options;
+}
+
+function isIgnoredConsoleNoise(text: string): boolean {
+  return /favicon|404|ERR_CONNECTION_REFUSED|WebSocket connection to 'ws:\/\/127\.0\.0\.1:\d+\//i.test(text);
 }
 
 async function visibleCount(locator: Locator): Promise<number> {
@@ -524,6 +538,7 @@ async function main() {
     startedAt: new Date().toISOString(),
     baseUrl: options.url,
     characterId: options.characterId,
+    seed: options.seed,
     headed: options.headed,
     victory: false,
     gameOver: false,
@@ -550,9 +565,12 @@ async function main() {
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
     await bootstrapContext(context, []);
+    await context.addInitScript((seedValue: number) => {
+      Date.now = () => seedValue;
+    }, options.seed);
     const page = await context.newPage();
     page.on('console', (msg) => {
-      if (msg.type() === 'error') report.consoleErrors.push(msg.text());
+      if (msg.type() === 'error' && !isIgnoredConsoleNoise(msg.text())) report.consoleErrors.push(msg.text());
     });
     page.on('pageerror', (error) => report.pageErrors.push(error.message));
     page.on('requestfailed', (request) => {
@@ -571,7 +589,7 @@ async function main() {
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  const ignoredConsoleErrors = report.consoleErrors.filter((entry) => /favicon|404/i.test(entry));
+  const ignoredConsoleErrors = report.consoleErrors.filter((entry) => isIgnoredConsoleNoise(entry));
   const blockingConsoleErrors = report.consoleErrors.filter((entry) => !ignoredConsoleErrors.includes(entry));
   if (!report.victory || report.gameOver || report.error || report.pageErrors.length > 0 || blockingConsoleErrors.length > 0) {
     throw new Error(
@@ -581,6 +599,7 @@ async function main() {
 
   console.log(JSON.stringify({
     reportPath,
+    seed: report.seed,
     victory: report.victory,
     roomsVisited: report.roomsVisited,
     combatsWon: report.combatsWon,

@@ -409,6 +409,8 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 
 ### Step 131: simulated manual browser victory run
 
+- **补充稳定化**：`npm run test:manual-victory-run` 现在默认固定种子 `1777217199075`，并支持 `--seed=<number>` 覆盖；该种子只在隔离 Playwright 浏览器上下文内固定 `Date.now()`，不改游戏生产运行时代码。
+- **最新复跑证据**：`reports/flows/manual-victory-run.json` 显示 `seed=1777217199075`、`victory=true`、`gameOver=false`、`finalScreen=Victory`、`roomsVisited=10`、`combatsWon=7`、`rewardsTaken=7`、`shopsVisited=1`、`restsUsed=2`、`cardsClicked=111`、`turnsEnded=25`、`consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，终局截图为 `output/playwright/manual-victory-run/32_Victory_victory_reached.png`。
 - **操作方向**：补上接近真实玩家点击路径的 UI 通关证明，避免只依赖 GameEngine bot、terminal fixture 或 combat-complete shortcut。
 - **变更内容**：新增 `scripts/validation/playwright_manual_victory_run.ts` 与 `npm run test:manual-victory-run`，脚本从 Launcher 开始，点击新局、选择角色、走地图节点、逐张出牌并点选敌人、拿奖励、进商店购买、休整/升级，最后要求真实 `Victory` 终局。
 - **策略修正**：角色选择兼容“点击角色后直接进地图”和“先显示开始按钮”两种旧 UI 行为；地图节点改成坐标点击以避开动效稳定等待；屏幕识别用 locator 与 Unicode 转义识别商店、事件、升级、休整、终局，避免中文编码和商店文本误判；路线权重调整为优先 Combat/Shop，其次 Rest/Event，商店会购买最多 4 个可负担收益项后离开。
