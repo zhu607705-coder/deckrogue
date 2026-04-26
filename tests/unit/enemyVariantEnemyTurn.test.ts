@@ -12,6 +12,8 @@ import assert from 'node:assert/strict';
 
 import type { GameState } from '@/core/types';
 import { GameEngine } from '@/core/events/gameEngine';
+import { createRunCardInstance } from '@/core/combat/runCardInstance';
+import { getCardDefById } from '@/content/narrative/numericSystem';
 
 function makeState(): GameState {
   return {
@@ -184,5 +186,67 @@ test('enemy variants can buff allied enemies during the active enemy turn path',
 
   assert.equal(engine.state.combat?.enemies[0]?.statuses.Strength, 1);
   assert.equal(engine.state.combat?.enemies[1]?.statuses.Strength, 1);
+  engine.dispose();
+});
+
+test('enemy variants can apply draw penalties and hand cost disruption', async () => {
+  const engine = new GameEngine(404, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  const card = getCardDefById('calculated_strike');
+  assert.ok(card);
+  state.combat!.hand = [createRunCardInstance(card!, 'hand_attack')];
+  state.combat!.enemies = [{
+    ...state.combat!.enemies[0],
+    id: 'data_leech_1',
+    defId: 'data_leech',
+    name: 'Data Leech',
+    nextIntent: 'scramble',
+  }];
+  (engine as any).state = state;
+
+  await engine.executeEnemyTurn();
+
+  assert.equal(engine.state.combat?.hand[0]?.cost, card!.cost + 1);
+  engine.dispose();
+});
+
+test('enemy variants can summon allies through generic summon moves', async () => {
+  const engine = new GameEngine(405, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.enemies = [{
+    ...state.combat!.enemies[0],
+    id: 'fusion_censer_1',
+    defId: 'fusion_censer',
+    name: 'Fusion Censer',
+    nextIntent: 'stoke',
+  }];
+  (engine as any).state = state;
+
+  await engine.executeEnemyTurn();
+
+  assert.ok((engine.state.combat?.enemies.length || 0) >= 2);
+  assert.ok(engine.state.combat?.enemies.some(enemy => enemy.defId === 'coolant_hound'));
+  engine.dispose();
+});
+
+test('enemy variants can cleanse debuffs before applying self damage boosts', async () => {
+  const engine = new GameEngine(406, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.enemies = [{
+    ...state.combat!.enemies[0],
+    id: 'intelligence_officer_1',
+    defId: 'intelligence_officer',
+    name: 'Intelligence Officer',
+    statuses: { Weak: 1, Vulnerable: 1 },
+    nextIntent: 'counter_surveillance',
+  }];
+  (engine as any).state = state;
+
+  await engine.executeEnemyTurn();
+
+  const officer = engine.state.combat?.enemies[0];
+  assert.equal(officer?.statuses.Weak, undefined);
+  assert.equal(officer?.statuses.Vulnerable, undefined);
+  assert.equal(officer?.statuses.Strength, 4);
   engine.dispose();
 });

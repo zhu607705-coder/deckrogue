@@ -251,6 +251,14 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **验证**：`npm run test:ui-smoke` 通过，`output/playwright/ui_smoke_report.json` 中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`；`npm run lint --silent` 通过；3200/3000 dev server 端口无遗留进程。
 - **升级候选**：角色/内容文案可继续本地化，但自动化 proof 必须绑定稳定 id 或 telemetry target，不能绑定玩家可见文案。
 
+### Step 124: close long-tail card and enemy runtime action gaps
+
+- **操作方向**：再次验证并优化正常游戏运行链路，重点清理卡牌与敌怪内容中会落入空动作或未解释分支的长尾动作类型。
+- **变更内容**：补齐 `ReplayLastCard`、`Scry`、`TriggerPoisonAllEnemies`、`DealDamagePiercing`、`RemoveStatus`、`RemoveAnyDebuff`、`RemovePoisonAndDealDamage`、`CopyLeftmostSkill`、`DelayedEnergy`、`ResourceRefund`、`StartOfTurnEffect`、`ConditionalResourceGain`、`NextAttackCostDown`、`ConditionalEffect`、`NextCardCostDown`、`DelayNextCardEffect`、`EndOfTurnDrawPenalty`、`SelectCardForReplay`、`ModifyNextCardCost`、`EndOfCombatEffect`、`EndOfTurnEffect`、`MultiplyDamage`、`IgnoreBlock`、`ExtendDuration` 等卡牌动作；同时补齐敌怪回合解释器中的 `DamageBoost`、`HealSelf`、`SummonEnemy`、`Summon`、`Conditional`、`PredictorAction`、`Heal`、`LoseHP`、`PlayerDrawLess`、`RandomCardCostIncrease`、`OnDeath`、`RevealHand`、`SwapCards`。
+- **运行时优化**：回合开始现在处理延迟能量与抽牌惩罚；回合结束/战斗结束可执行存储的后续效果；本回合伤害翻倍进入统一伤害管线；费用折扣会直接反映到手牌运行时实例；延迟重放会构造可被现有 delayed-card tick 消费的运行时卡牌。
+- **验证证据**：卡牌动作注册扫描 `unknownCardActionTypeCount=0`；敌怪专用动作扫描 `enemyUnknown=0`；`npx tsx --test tests/unit/specialActionBehavior.test.ts tests/unit/enemyVariantEnemyTurn.test.ts` 通过 `16/16`；`npm run test:supplemental-units` 通过 `110/110`；`npm run test:runtime-v2:ts` 通过 `146 pass / 1 skip`；`npm run check:growth-route-formation`、`check:reward-tradeoff-quality`、`check:shop-event-growth-nodes` 均为 `100%`；`npm run lint --silent`、`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run build` 通过，且 build 无 chunk-size warning；最终 `npm run doctor:game` 通过 `47/47`。
+- **剩余风险**：部分 `StartOfTurnEffect` 仍属于轻量 watcher/存储式接入，尚未扩展成完整事件总线级一次性触发系统；后续若要做更深的遗物/事件被动循环，应把当前 watcher 状态升级为明确的 trigger registry 并补事件级回归。
+
 ## 历史索引
 
 ### Runtime V2 主线
@@ -337,7 +345,7 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **操作方向**：补齐当前敌人数据中缺失的战斗立绘，避免新敌人继续回退到默认敌人图。
 - **变更内容**：使用内置 `imagegen` 为 `coolant_hound`、`servo_confessor`、`reactor_thrall`、`data_leech`、`iron_choir_twin_a`、`iron_choir_twin_b`、`scrap_surgeon`、`sanctum_praetor`、`overclocked_abbot`、`fusion_censer`、`cathedral_engine`、`logic_saint`、`spore_wretch`、`rot_hound`、`plague_choir`、`cyst_bearer`、`grave_mender`、`blight_larva`、`mire_guard`、`plague_abbot`、`maggot_reliquary`、`corrupt_titanus`、`catacomb_matron`、`pox_cathedral`、`the_mire_saint`、`mind_peek`、`card_swap`、`psychic_infiltrator` 生成竖版敌人立绘，并保存到 `public/assets/enemies/`。
 - **接入方式**：将新增图片统一后处理为 `1792x2400` PNG；删除 `localEnemyArt()` 的硬编码敌人白名单，改为按敌人 id 直接解析 `/assets/enemies/<id>.png`，继续依赖现有 `onError` fallback 兜底。
-- **验证证据**：复扫 `src/content/data/enemies.json` 的 `52` 个 enemy id，缺失图片数为 `0`；新增 `28` 张图片尺寸均为 `1792x2400`；后续补跑 TypeScript/build 和敌人视觉校验。
+- **验证证据**：复扫 `src/content/data/enemies.json` 的 `52` 个 enemy id，缺失图片数为 `0`；新增 `28` 张图片尺寸均为 `1792x2400`；`npm run check:enemy-visual-identity`、`npm run lint --silent`、`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run build` 通过；`npm run test:ui-smoke` 初次在角色选择等待点超时，立即复跑通过且报告中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`。
 - **剩余风险**：本轮为生成式补图，已做尺寸和缺失校验，但仍需要后续人工美术审阅风格一致性。
 ### Step 123: balance route build loops and reward openings
 

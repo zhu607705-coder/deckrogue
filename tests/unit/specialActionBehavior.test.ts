@@ -11,10 +11,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { GameState } from '@/core/types';
-import { getCardDefById } from '@/content/narrative/numericSystem';
+import { cardsData, getCardDefById } from '@/content/narrative/numericSystem';
 import { createRunCardInstance } from '@/core/combat/runCardInstance';
 import { ActionManager } from '@/core/actions/actionManager';
-import { setupActionManager } from '@/core/actions/v2/ActionFactory';
+import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
 
 function makeState(): GameState {
   return {
@@ -231,4 +231,103 @@ test('puppet summon loops gain thread mastery and summon bonuses', () => {
   assert.equal(state.combat!.player.thread, 1);
   assert.equal(state.combat!.player.constructs.length, 1);
   assert.equal(state.combat!.player.constructs[0].atk, 5);
+});
+
+test('all card action specs are registered with the v2 action factory', () => {
+  const registered = new Set(ActionFactoryV2.getRegisteredTypes());
+  const unknown = new Map<string, string[]>();
+
+  const walk = (actions: any[] | undefined, owner: string) => {
+    for (const action of actions || []) {
+      if (!registered.has(action.type)) {
+        unknown.set(action.type, [...(unknown.get(action.type) || []), owner]);
+      }
+      walk(action.actions, owner);
+      walk(action.trueActions, owner);
+      walk(action.falseActions, owner);
+      if (action.ifTrue) walk([action.ifTrue], owner);
+      if (action.ifFalse) walk([action.ifFalse], owner);
+      if (Array.isArray(action.effects)) walk(action.effects, owner);
+      if (Array.isArray(action.effect)) walk(action.effect, owner);
+      else if (action.effect?.type) walk([action.effect], owner);
+    }
+  };
+
+  for (const card of cardsData) {
+    walk((card as any).actions, card.id);
+    walk((card as any).upgrade?.actions, `${card.id}:upgrade`);
+  }
+
+  assert.deepEqual([...unknown.entries()], []);
+});
+
+test('resource refund enables first spend loop without losing the payoff', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state);
+  const player = state.player as typeof state.player & { evidence?: number; secondaryResources?: Record<string, number> };
+  player.evidence = 1;
+  player.secondaryResources = { evidence: 1 };
+
+  manager.enqueueAll(
+    [
+      { type: 'ResourceRefund', amount: 1, target: 'Self' },
+      { type: 'SpendResourceEffect', resource: 'evidence', amount: 1, effect: { type: 'ApplyStatus', status: 'Weak', amount: 1 } },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(player.evidence, 1);
+  assert.equal(player.secondaryResources?.evidence, 1);
+  assert.equal(enemy.statuses.Weak, 1);
+});
+
+test('cleanup and poison trigger actions remove debuffs and convert poison to damage', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state, { Poison: 4, Strength: 3, Ritual: 2 });
+  state.combat!.player.statuses = { Weak: 2, Vulnerable: 1 };
+
+  manager.enqueueAll(
+    [
+      { type: 'RemoveStatus', status: ['Strength', 'Ritual'], amount: 2, target: 'Enemy' },
+      { type: 'RemoveAnyDebuff', amount: 1, target: 'Self' },
+      { type: 'TriggerPoisonAllEnemies' },
+    ] as any,
+    { source: 'player', targetId: 'enemy_1' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(enemy.statuses.Strength, 1);
+  assert.equal(enemy.statuses.Ritual, 2);
+  assert.equal(state.combat!.player.statuses.Weak, 1);
+  assert.equal(enemy.statuses.Poison, undefined);
+  assert.equal(enemy.hp, 36);
+});
+
+test('cost and delayed loop actions attach visible runtime state', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const attack = getCardDefById('calculated_strike');
+  assert.ok(attack);
+  state.combat!.hand.push(createRunCardInstance(attack!, 'attack_in_hand'));
+
+  manager.enqueueAll(
+    [
+      { type: 'NextAttackCostDown', amount: 1 },
+      { type: 'DelayedEnergy', amount: 1 },
+      { type: 'EndOfTurnDrawPenalty', amount: 1 },
+      { type: 'DelayNextCardEffect', percent: 50 },
+      { type: 'MultiplyDamage', amount: 2 },
+    ] as any,
+    { source: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.hand[0].cost, Math.max(0, attack!.cost - 1));
+  assert.equal(state.combat!.player.statuses.DelayedEnergy, 1);
+  assert.equal(state.combat!.player.statuses.DrawPenaltyNextTurn, 1);
+  assert.equal(state.combat!.player.statuses.DelayNextCardEffectPercent, 50);
+  assert.equal(state.combat!.player.statuses.DoubleDamageThisTurn, 2);
 });

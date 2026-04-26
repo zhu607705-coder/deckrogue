@@ -19,11 +19,17 @@ export type EarlyGameRole = 'route_confirm' | 'route_payoff' | 'generic_power' |
 export type ActionCondition =
   | { type: 'HasIntel'; amount: number }
   | { type: 'TargetHasStatus'; status: string }
+  | { type: 'TargetHasPoison' }
   | { type: 'TargetHasDebuff' }
   | { type: 'TargetHasAnyDebuff'; debuffs?: string[] }
   | { type: 'TargetHasBothDebuffs'; debuffs: string[] }
+  | { type: 'TargetHasBlock' }
+  | { type: 'TargetFullHp' }
   | { type: 'TargetBelowHP'; percent: number }
   | { type: 'EnemyHasStatus'; status: string }
+  | { type: 'EnemyWillAttack' }
+  | { type: 'TookDamageThisTurn' }
+  | { type: 'CombatResult' }
   | { type: 'HasConstruct' }
   | { type: 'ControlsPuppets' }
   | { type: 'HasCorruption'; amount: number }
@@ -123,6 +129,31 @@ export interface ActionSpec {
     | 'GainConcoction'
     | 'SpendConcoction'
     | 'TriggerPoisonOnTarget'
+    | 'TriggerPoisonAllEnemies'
+    | 'DealDamagePiercing'
+    | 'IgnoreBlock'
+    | 'ExtendDuration'
+    | 'RemoveStatus'
+    | 'RemoveAnyDebuff'
+    | 'RemovePoisonAndDealDamage'
+    | 'ReplayLastCard'
+    | 'Scry'
+    | 'CopyLeftmostSkill'
+    | 'DelayedEnergy'
+    | 'RemoveSelfDebuff'
+    | 'ResourceRefund'
+    | 'StartOfTurnEffect'
+    | 'ConditionalResourceGain'
+    | 'NextAttackCostDown'
+    | 'ConditionalEffect'
+    | 'NextCardCostDown'
+    | 'DelayNextCardEffect'
+    | 'EndOfTurnDrawPenalty'
+    | 'SelectCardForReplay'
+    | 'ModifyNextCardCost'
+    | 'EndOfCombatEffect'
+    | 'EndOfTurnEffect'
+    | 'MultiplyDamage'
     | 'DelayedDraw'
     | 'LoseHp'
     | 'LoseHP'
@@ -137,7 +168,16 @@ export interface ActionSpec {
   scaling?: ActionScaling;
   turns?: number;
   actions?: ActionSpec[];
+  effects?: ActionSpec[];
   costModifier?: number;
+  costReduction?: number;
+  armorIgnore?: number;
+  maxPoisonRemoval?: number;
+  damagePerPoison?: number;
+  effectPercent?: number;
+  percent?: number;
+  trigger?: { type: string; threshold?: number; resource?: string };
+  debuffs?: string[];
   unit?: string;
   element?: string;
   alpha?: number;

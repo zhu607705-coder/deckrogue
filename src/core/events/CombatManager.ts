@@ -16,10 +16,11 @@
  * 3. 敌人回合 -> 敌人行动、意图计算
  * 4. 回合结束 -> 清理状态、准备下一回合
  */
-import { GameState, CardDef, RunCardInstance } from '@/core/types';
+import { GameState, CardDef, RunCardInstance, ActionSpec } from '@/core/types';
 import { combatSystem, DamageContext } from '@/core/combat/combatSystem';
 import {
   applyCombatAfflictionToInstance,
+  deriveRunCardInstance,
   normalizeRunCardInstance,
 } from '@/core/combat/runCardInstance';
 import { economySystem } from '@/features/progression/economySystem';
@@ -346,14 +347,26 @@ export class CombatManager {
     combat.player.damageTakenLastTurn = Math.max(0, Math.floor(combat.player.damageTakenThisTurn || 0));
     combat.player.damageTakenThisTurn = 0;
     combat.player.energy = state.player.maxEnergy;
+    const delayedEnergy = Math.max(0, Math.floor(Number(combat.player.statuses.DelayedEnergy || 0)));
+    if (delayedEnergy > 0) {
+      combat.player.energy += delayedEnergy;
+      delete combat.player.statuses.DelayedEnergy;
+    }
     if (combat.turn > 1) {
       combat.player.block = 0;
     }
     combat.player.cardsPlayedThisTurn = 0;
     combat.player.potionsUsedThisTurn = 0;
-    const playerTurnFlags = combat.player as typeof combat.player & { resourceSpentThisTurn?: number; elementsAddedThisTurn?: number };
+    const playerTurnFlags = combat.player as typeof combat.player & {
+      resourceSpentThisTurn?: number;
+      elementsAddedThisTurn?: number;
+      resourceRefundPending?: number;
+      resourceRefundUsedThisTurn?: number;
+    };
     playerTurnFlags.resourceSpentThisTurn = 0;
     playerTurnFlags.elementsAddedThisTurn = 0;
+    playerTurnFlags.resourceRefundPending = 0;
+    playerTurnFlags.resourceRefundUsedThisTurn = 0;
 
     if (this.processTurnStartDots('player', 'player')) {
       this.deps.notify();
@@ -372,7 +385,9 @@ export class CombatManager {
     this.processStatusDecay(combat.player.statuses);
     this.tickDelayedCards();
     if (!skipDrawThisTurn) {
-      this.drawCards(5);
+      const drawPenalty = Math.max(0, Math.floor(Number(combat.player.statuses.DrawPenaltyNextTurn || 0)));
+      if (drawPenalty > 0) delete combat.player.statuses.DrawPenaltyNextTurn;
+      this.drawCards(Math.max(0, 5 - drawPenalty));
     }
 
     this.actionManager.updateState(state);
@@ -451,6 +466,117 @@ export class CombatManager {
     }
   }
 
+  private consumePendingCostDiscount(card: RunCardInstance): RunCardInstance {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return card;
+
+    const statuses = combat.player.statuses;
+    let discount = Math.max(0, Math.floor(Number(statuses.NextCardCostDown || 0)));
+    if (discount > 0) delete statuses.NextCardCostDown;
+
+    if (card.type === 'Attack') {
+      const attackDiscount = Math.max(0, Math.floor(Number(statuses.NextAttackCostDown || 0)));
+      if (attackDiscount > 0) {
+        discount += attackDiscount;
+        delete statuses.NextAttackCostDown;
+      }
+    }
+
+    if (discount <= 0) return card;
+    const normalized = normalizeRunCardInstance(card, () => this.deps.generateId());
+    const currentCost = Math.max(0, Math.floor(Number(normalized.tempCost ?? normalized.cost ?? 0)));
+    return deriveRunCardInstance({
+      ...normalized,
+      tempCost: Math.max(0, currentCost - discount),
+    });
+  }
+
+  private scaleActionSpecForReplay(action: ActionSpec, percent: number): ActionSpec {
+    const ratio = Math.max(1, Math.min(100, Math.floor(percent))) / 100;
+    const next = { ...action } as ActionSpec & Record<string, unknown>;
+    for (const key of ['amount', 'bonus', 'stacks', 'damage', 'block', 'attack', 'hp', 'atk']) {
+      if (typeof next[key] === 'number' && (next[key] as number) > 0) {
+        next[key] = Math.max(1, Math.floor((next[key] as number) * ratio));
+      }
+    }
+    if (next.actions) next.actions = next.actions.map(child => this.scaleActionSpecForReplay(child, percent));
+    if (next.trueActions) next.trueActions = next.trueActions.map(child => this.scaleActionSpecForReplay(child, percent));
+    if (next.falseActions) next.falseActions = next.falseActions.map(child => this.scaleActionSpecForReplay(child, percent));
+    return next;
+  }
+
+  private queueDelayedReplayForNextTurn(card: RunCardInstance, percent: number, targetId?: string): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return;
+
+    const normalized = normalizeRunCardInstance(card, () => this.deps.generateId());
+    const delayedActions = normalized.actions
+      .filter(action => action.type !== 'Delay' && action.type !== 'DelayNextCardEffect')
+      .map(action => this.scaleActionSpecForReplay(action, percent));
+    if (delayedActions.length === 0) return;
+
+    const runtimeBase = {
+      ...normalized.runtimeBase,
+      id: `${normalized.baseCardId || normalized.id}_delayed_replay`,
+      name: `${normalized.name} Replay`,
+      cost: 0,
+      actions: [{
+        type: 'Delay',
+        turns: 1,
+        actions: delayedActions,
+      } as ActionSpec],
+    };
+
+    const delayedCard = deriveRunCardInstance({
+      ...normalized,
+      instanceId: this.deps.generateId(),
+      baseCardId: runtimeBase.id,
+      runtimeBase,
+      tempCost: 0,
+    });
+    combat.player.delayedCards.push({ card: delayedCard, turns: 1, targetId });
+  }
+
+  private consumeDelayNextCardEffect(card: RunCardInstance, targetId?: string): void {
+    const combat = this.deps.getState().combat;
+    if (!combat) return;
+    const percent = Math.max(0, Math.floor(Number(combat.player.statuses.DelayNextCardEffectPercent || 0)));
+    if (percent <= 0) return;
+    delete combat.player.statuses.DelayNextCardEffectPercent;
+    this.queueDelayedReplayForNextTurn(card, percent, targetId);
+  }
+
+  private executeStoredCombatEffects(
+    key: 'endOfTurnEffects' | 'endOfCombatEffects',
+    combatResult?: 'victory' | 'defeat'
+  ): void {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (!combat) return;
+    const player = combat.player as typeof combat.player & {
+      combatResult?: 'victory' | 'defeat';
+      endOfTurnEffects?: Array<{ actions: ActionSpec[] }>;
+      endOfCombatEffects?: Array<{ actions: ActionSpec[] }>;
+    };
+    const entries = player[key] || [];
+    if (entries.length === 0) return;
+    delete player[key];
+    if (combatResult) player.combatResult = combatResult;
+
+    for (const entry of entries) {
+      if (!entry.actions?.length) continue;
+      this.actionManager.enqueueAll(entry.actions, {
+        source: 'player',
+        sourceId: 'player',
+        targetId: 'player',
+      }, 0, 'system');
+    }
+    this.actionManager.executeAll();
+    if (combatResult) delete player.combatResult;
+  }
+
   async playCard(cardInstanceId: string, targetId?: string): Promise<void> {
     const state = this.deps.getState();
     const combat = state.combat;
@@ -465,7 +591,9 @@ export class CombatManager {
       return;
     }
 
-    const card = combat.hand[cardIndex];
+    let card = combat.hand[cardIndex];
+    card = this.consumePendingCostDiscount(card);
+    combat.hand[cardIndex] = card;
 
     unlockCodexEntry('cards', card.id);
 
@@ -478,6 +606,7 @@ export class CombatManager {
     combat.discardPile.push(card);
     combat.player.cardsPlayedThisTurn++;
     combat.player.lastPlayedCard = card;
+    this.consumeDelayNextCardEffect(card, targetId);
 
     this.bossPhaseManager.recordBossPhasePlayedCard(card);
 
@@ -514,6 +643,11 @@ export class CombatManager {
 
     this.bossPhaseManager.snapshotPlayerTurnForBossPhase();
 
+    this.executeStoredCombatEffects('endOfTurnEffects');
+    delete combat.player.statuses.DoubleDamageThisTurn;
+    delete combat.player.statuses.NextCardCostDown;
+    delete combat.player.statuses.NextAttackCostDown;
+
     this.discardHandRespectingRetain();
 
     await this.executeEnemyTurn();
@@ -549,7 +683,7 @@ export class CombatManager {
     delete combat.player.statuses['RetainCard'];
   }
 
-  private evaluateEnemyActionCondition(condition: Record<string, any> | undefined): boolean {
+  private evaluateEnemyActionCondition(condition: Record<string, any> | undefined, enemy?: any): boolean {
     if (!condition) return false;
 
     switch (condition.type) {
@@ -560,6 +694,31 @@ export class CombatManager {
         const requiredStatuses = Array.isArray(condition.statuses) ? condition.statuses : [];
         if (requiredStatuses.length === 0) return false;
         return requiredStatuses.every((status) => Number(combat.player.statuses?.[status] || 0) > 0);
+      }
+      case 'PlayerPlayed3CardsThisTurn': {
+        const combat = this.deps.getState().combat;
+        return Number(combat?.player.cardsPlayedThisTurn || 0) >= 3;
+      }
+      case 'SurvivedNConsecutiveTurns': {
+        const combat = this.deps.getState().combat;
+        return Number(combat?.turn || 1) >= Math.max(1, Number(condition.turns || 1));
+      }
+      case 'TwinAlive': {
+        const combat = this.deps.getState().combat;
+        const twinId = String(condition.twinId || '');
+        return !!combat?.enemies.some(entry => (entry.id === twinId || entry.defId === twinId) && entry.hp > 0);
+      }
+      case 'TwinDied': {
+        const combat = this.deps.getState().combat;
+        const twinId = String(condition.twinId || '');
+        return !!combat && !combat.enemies.some(entry => (entry.id === twinId || entry.defId === twinId) && entry.hp > 0);
+      }
+      case 'TotalAllyPoisonThreshold': {
+        const combat = this.deps.getState().combat;
+        const totalPoison = (combat?.enemies || [])
+          .filter(entry => !enemy || entry.id !== enemy.id)
+          .reduce((sum, entry) => sum + Math.max(0, Number(entry.statuses?.Poison || 0)), 0);
+        return totalPoison >= Math.max(1, Number(condition.threshold || 1));
       }
       default:
         return false;
@@ -589,7 +748,7 @@ export class CombatManager {
         return actualDamage > 0;
       }
       case 'ConditionalDamage': {
-        const passed = this.evaluateEnemyActionCondition(actionSpec.condition);
+        const passed = this.evaluateEnemyActionCondition(actionSpec.condition, enemy);
         const amount = Number(passed ? actionSpec.trueDamage : actionSpec.falseDamage);
         if (amount <= 0) return false;
         const actualDamage = combatSystem.applyDamage(state, {
@@ -612,7 +771,12 @@ export class CombatManager {
       case 'GainBlock': {
         const amount = Number(actionSpec.amount || 0);
         if (amount <= 0) return false;
-        combatSystem.gainBlock(state, 'enemy', enemy.id, amount);
+        const targetKey = String(actionSpec.target || 'Self');
+        const targetEnemy = targetKey && targetKey !== 'Self'
+          ? combat.enemies.find(entry => entry.id === targetKey || entry.defId === targetKey)
+          : enemy;
+        if (!targetEnemy) return false;
+        combatSystem.gainBlock(state, 'enemy', targetEnemy.id, amount);
         this.deps.appendVoxLog(`${enemy.name} 获得 ${amount} 点护盾。`);
         return true;
       }
@@ -631,7 +795,7 @@ export class CombatManager {
         return true;
       }
       case 'ConditionalApply': {
-        const passed = this.evaluateEnemyActionCondition(actionSpec.condition);
+        const passed = this.evaluateEnemyActionCondition(actionSpec.condition, enemy);
         const status = String(actionSpec.applyStatus || actionSpec.status || '');
         const amount = Number(actionSpec.amount || 0);
         if (!passed || !status || amount <= 0) return false;
@@ -645,8 +809,187 @@ export class CombatManager {
         );
         return true;
       }
+      case 'RemoveStatus': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        const statuses = Array.isArray(actionSpec.status)
+          ? actionSpec.status.map(String)
+          : [String(actionSpec.status || '')].filter(Boolean);
+        if (statuses.length === 0) return false;
+        let remaining = amount;
+        let removed = 0;
+        for (const status of statuses) {
+          if (remaining <= 0) break;
+          const current = Math.max(0, Number(enemy.statuses[status] || 0));
+          const delta = Math.min(current, remaining);
+          if (delta <= 0) continue;
+          const next = current - delta;
+          if (next > 0) enemy.statuses[status] = next;
+          else delete enemy.statuses[status];
+          remaining -= delta;
+          removed += delta;
+        }
+        return removed > 0;
+      }
+      case 'RemoveAnyDebuff': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        const debuffs = ['Weak', 'Vulnerable', 'Poison', 'Burn', 'Frail', 'Fear'];
+        let remaining = amount;
+        let removed = 0;
+        for (const status of debuffs) {
+          if (remaining <= 0) break;
+          const current = Math.max(0, Number(enemy.statuses[status] || 0));
+          const delta = Math.min(current, remaining);
+          if (delta <= 0) continue;
+          const next = current - delta;
+          if (next > 0) enemy.statuses[status] = next;
+          else delete enemy.statuses[status];
+          remaining -= delta;
+          removed += delta;
+        }
+        return removed > 0;
+      }
+      case 'DamageBoost': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        combatSystem.applyStatus(state, 'enemy', enemy.id, 'Strength', amount);
+        this.deps.appendVoxLog(`${enemy.name} damage boost +${amount}.`);
+        return true;
+      }
+      case 'HealSelf': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        const before = enemy.hp;
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+        this.deps.appendVoxLog(`${enemy.name} restores ${enemy.hp - before} HP.`);
+        return enemy.hp > before;
+      }
+      case 'SummonEnemy': {
+        const unit = String(actionSpec.unit || actionSpec.enemyId || '');
+        const def = enemiesData.find(entry => entry.id === unit);
+        if (!def || combat.enemies.length >= 5) return false;
+        const baseHp = rollEnemyBaseHp(def, this.deps.rng);
+        combat.enemies.push({
+          id: `enemy_summon_${this.deps.generateId()}`,
+          defId: def.id,
+          name: def.name,
+          hp: baseHp,
+          maxHp: baseHp,
+          block: 0,
+          statuses: {},
+          nextIntent: selectEnemyIntentForCombat(
+            state,
+            def,
+            {
+              id: 'enemy_summon_preview',
+              hp: baseHp,
+              maxHp: baseHp,
+              block: 0,
+              statuses: {},
+              lastUsedIntent: null,
+              nonAttackIntentStreak: 0,
+            },
+            combat.turn,
+            this.deps.rng,
+            {},
+          ),
+          lastUsedIntent: null,
+          intentCooldowns: {},
+          nonAttackIntentStreak: 0,
+          summoned: true,
+          devotion: 0,
+          corruptionAxis: 0,
+          axisDisposition: 'balanced',
+        } as any);
+        this.deps.appendVoxLog(`${enemy.name} summons ${def.name}.`);
+        return true;
+      }
+      case 'Summon': {
+        return this.executeEnemyActionSpec(enemy, { ...actionSpec, type: 'SummonEnemy', unit: actionSpec.enemyId || actionSpec.unit });
+      }
+      case 'Conditional': {
+        if (!this.evaluateEnemyActionCondition(actionSpec.condition, enemy)) return false;
+        let executed = false;
+        for (const nested of actionSpec.trueActions || []) {
+          executed = this.executeEnemyActionSpec(enemy, nested) || executed;
+        }
+        return executed;
+      }
+      case 'PredictorAction': {
+        enemy.statuses.Predictor = Math.max(0, Number(enemy.statuses.Predictor || 0)) + 1;
+        return true;
+      }
+      case 'Heal': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        const targets = actionSpec.target === 'AllEnemies'
+          ? combat.enemies.filter(entry => entry.hp > 0)
+          : [enemy];
+        for (const target of targets) {
+          target.hp = Math.min(target.maxHp, target.hp + amount);
+        }
+        return targets.length > 0;
+      }
+      case 'LoseHP':
+      case 'LoseHp': {
+        const amount = Number(actionSpec.amount || 0);
+        if (amount <= 0) return false;
+        enemy.hp = Math.max(0, enemy.hp - amount);
+        if (enemy.hp <= 0) {
+          globalEventBus.publish({ type: 'EnemyDeath', enemyId: enemy.id } as any);
+        }
+        return true;
+      }
+      case 'PlayerDrawLess': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        combat.player.statuses.DrawPenaltyNextTurn = Math.max(0, Number(combat.player.statuses.DrawPenaltyNextTurn || 0)) + amount;
+        this.deps.appendVoxLog(`${enemy.name} reduces next draw by ${amount}.`);
+        return true;
+      }
+      case 'RandomCardCostIncrease': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        if (combat.hand.length === 0) return false;
+        const index = Math.floor(this.deps.rng() * combat.hand.length);
+        const card = normalizeRunCardInstance(combat.hand[index], () => this.deps.generateId());
+        const currentCost = Math.max(0, Math.floor(Number(card.tempCost ?? card.cost ?? 0)));
+        combat.hand[index] = deriveRunCardInstance({ ...card, tempCost: currentCost + amount });
+        this.deps.appendVoxLog(`${enemy.name} increases a hand card cost by ${amount}.`);
+        return true;
+      }
+      case 'OnDeath': {
+        const effects = Array.isArray(actionSpec.effects)
+          ? actionSpec.effects
+          : actionSpec.effect
+            ? [actionSpec.effect]
+            : [];
+        if (effects.length === 0) return false;
+        (enemy as any).onDeathEffects = [...((enemy as any).onDeathEffects || []), ...effects];
+        return true;
+      }
+      case 'RevealHand': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        combat.player.statuses.HandRevealed = Math.max(0, Number(combat.player.statuses.HandRevealed || 0)) + amount;
+        return true;
+      }
+      case 'SwapCards': {
+        const amount = Math.max(1, Number(actionSpec.amount || 1));
+        let swapped = 0;
+        for (let i = 0; i < amount; i += 1) {
+          if (combat.hand.length === 0) break;
+          const handIndex = Math.floor(this.deps.rng() * combat.hand.length);
+          const [removed] = combat.hand.splice(handIndex, 1);
+          if (removed) combat.discardPile.push(removed);
+          if (combat.drawPile.length === 0 && combat.discardPile.length > 0) {
+            combat.drawPile = this.deps.shuffleDeck(combat.discardPile);
+            combat.discardPile = [];
+          }
+          const replacement = combat.drawPile.pop();
+          if (replacement) combat.hand.push(replacement);
+          swapped += 1;
+        }
+        return swapped > 0;
+      }
       case 'BuffAllEnemies': {
-        const status = String(actionSpec.status || '');
+        const status = String(actionSpec.status || 'Strength');
         const amount = Number(actionSpec.amount || 0);
         if (!status || amount <= 0) return false;
         for (const ally of combat.enemies.filter((entry) => entry.hp > 0)) {
@@ -734,6 +1077,17 @@ export class CombatManager {
     const enemy = combat.enemies.find(e => e.id === enemyId);
     if (!enemy) return;
 
+    const onDeathEffects = (enemy as any).onDeathEffects;
+    if (Array.isArray(onDeathEffects) && onDeathEffects.length > 0 && !(enemy as any).deathProcessed) {
+      (enemy as any).deathProcessed = true;
+      this.actionManager.enqueueAll(onDeathEffects, {
+        source: enemy.id,
+        sourceId: enemy.id,
+        targetId: 'player',
+      }, 0, 'system');
+      this.actionManager.executeAll();
+    }
+
     metricsTracker.recordEnemyDefeated(enemy.defId);
 
     const allEnemiesDefeated = combat.enemies.every(e => e.hp <= 0);
@@ -749,6 +1103,7 @@ export class CombatManager {
 
     this.combatVictoryInProgress = true;
     try {
+      this.executeStoredCombatEffects('endOfCombatEffects', 'victory');
       this.deps.syncPlayerStateFromCombat();
 
       const floor = this.deps.getCurrentFloorNumber();
@@ -781,6 +1136,7 @@ export class CombatManager {
 
     this.playerDeathInProgress = true;
     try {
+      this.executeStoredCombatEffects('endOfCombatEffects', 'defeat');
       this.deps.clearCombatAfflictionsForRunCards();
       state.combatRestartCheckpoint = undefined;
       metricsTracker.recordRunEnd(false, this.deps.getCurrentFloorNumber());

@@ -23,7 +23,7 @@ import { globalEventBus } from '@/core/events/eventBus';
 import { getActionManager } from '@/core/actions/actionManager';
 import { getEnemyDefById, getCardDefById } from '@/content/narrative/numericSystem';
 import { createRunCardInstance, deriveRunCardInstance, normalizeRunCardInstance } from '@/core/combat/runCardInstance';
-import { stateRandomChoice, stateRandomId, stateRandomInt } from '@/infrastructure/rng/stateRandom';
+import { stateRandomChoice, stateRandomId, stateRandomInt, stateShuffle } from '@/infrastructure/rng/stateRandom';
 
 interface ActionQueuePrivate {
   _currentContext?: IActionContext;
@@ -59,9 +59,27 @@ export abstract class BaseAction implements IAction {
 const DEBUFF_STATUSES = ['Weak', 'Vulnerable', 'Poison', 'Burn', 'Frail', 'Fear'];
 const SPECIAL_RESOURCES = ['timeLayer', 'thread', 'concoction'] as const;
 const SECONDARY_RESOURCES = ['evidence', 'rage', 'command'] as const;
+const ROUTE_RESOURCES = ['intel', ...SPECIAL_RESOURCES, ...SECONDARY_RESOURCES] as const;
+const SCALABLE_ACTION_NUMBERS = [
+  'amount',
+  'bonus',
+  'stacks',
+  'damage',
+  'block',
+  'attack',
+  'hp',
+  'atk',
+  'baseHp',
+  'baseAtk',
+  'hpBonus',
+  'atkBonus',
+  'constructAtkBonus',
+  'damagePerPoison',
+] as const;
 
 type SpecialResourceName = typeof SPECIAL_RESOURCES[number];
 type SecondaryResourceName = typeof SECONDARY_RESOURCES[number];
+type StoredActionListKey = 'startOfTurnEffects' | 'endOfTurnEffects' | 'endOfCombatEffects';
 
 function isSpecialResource(resource: string): resource is SpecialResourceName {
   return (SPECIAL_RESOURCES as readonly string[]).includes(resource);
@@ -116,10 +134,21 @@ function gainRouteResource(state: GameState, resource: string, amount: number): 
   return getRouteResource(state, resource) - current;
 }
 
-function markResourceSpent(state: GameState): void {
+function markResourceSpent(state: GameState, resource?: string): void {
   if (!state.combat) return;
-  const player = state.combat.player as typeof state.combat.player & { resourceSpentThisTurn?: number };
+  const player = state.combat.player as typeof state.combat.player & {
+    resourceSpentThisTurn?: number;
+    resourceRefundPending?: number;
+    resourceRefundUsedThisTurn?: number;
+  };
   player.resourceSpentThisTurn = Math.max(0, Math.floor(player.resourceSpentThisTurn || 0)) + 1;
+  if (!resource || (player.resourceRefundPending || 0) <= 0 || (player.resourceRefundUsedThisTurn || 0) > 0) return;
+
+  const refund = Math.max(0, Math.floor(player.resourceRefundPending || 0));
+  if (refund <= 0) return;
+  gainRouteResource(state, resource, refund);
+  player.resourceRefundUsedThisTurn = 1;
+  player.resourceRefundPending = 0;
 }
 
 function spendRouteResource(state: GameState, resource: string, amount: number): boolean {
@@ -127,7 +156,7 @@ function spendRouteResource(state: GameState, resource: string, amount: number):
   const current = getRouteResource(state, resource);
   if (current < cost) return false;
   setRouteResource(state, resource, current - cost);
-  if (cost > 0) markResourceSpent(state);
+  if (cost > 0) markResourceSpent(state, resource);
   return true;
 }
 
@@ -162,6 +191,8 @@ function evaluateActionCondition(state: GameState, context: IActionContext, cond
     case 'TargetHasStatus':
     case 'EnemyHasStatus':
       return !!condition.status && Number(targetStatuses[condition.status] || 0) > 0;
+    case 'TargetHasPoison':
+      return Number(targetStatuses.Poison || 0) > 0;
     case 'TargetHasDebuff':
       return hasAnyDebuff(targetStatuses);
     case 'TargetHasAnyDebuff':
@@ -176,6 +207,13 @@ function evaluateActionCondition(state: GameState, context: IActionContext, cond
       return !!target?.entity && Number(target.entity.hp || 0) >= Number(target.entity.maxHp || 0);
     case 'Kill':
       return !!target?.entity && Number(target.entity.hp || 0) <= 0;
+    case 'CombatResult':
+      return (combat?.player as { combatResult?: string } | undefined)?.combatResult === 'victory'
+        || !!combat?.enemies.every(enemy => enemy.hp <= 0);
+    case 'EnemyWillAttack':
+      return String(target?.entity?.nextIntent || '').toLowerCase().includes('attack');
+    case 'TookDamageThisTurn':
+      return Number(combat?.player.damageTakenThisTurn || 0) > 0;
     case 'AddedElementThisTurn':
       return Number((combat?.player as { elementsAddedThisTurn?: number } | undefined)?.elementsAddedThisTurn || 0) > 0;
     case 'HasTwoElements':
@@ -210,6 +248,154 @@ function queueActionSpecs(queue: ActionQueue, actions: ActionSpec[], context: IA
   }
 }
 
+function toActionList(value: unknown): ActionSpec[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value as ActionSpec[] : [value as ActionSpec];
+}
+
+function collectSpecActions(spec: ActionSpec & Record<string, unknown>, key: 'effect' | 'effects'): ActionSpec[] {
+  return toActionList(spec[key]);
+}
+
+function scaleNumber(value: number, percent: number): number {
+  if (value <= 0) return value;
+  return Math.max(1, Math.floor(value * percent / 100));
+}
+
+function scaleActionSpec(spec: ActionSpec, percent: number): ActionSpec {
+  const next = { ...spec } as ActionSpec & Record<string, unknown>;
+  for (const key of SCALABLE_ACTION_NUMBERS) {
+    if (typeof next[key] === 'number') {
+      next[key] = scaleNumber(next[key] as number, percent);
+    }
+  }
+  if (next.actions) next.actions = toActionList(next.actions).map(action => scaleActionSpec(action, percent));
+  if (next.trueActions) next.trueActions = toActionList(next.trueActions).map(action => scaleActionSpec(action, percent));
+  if (next.falseActions) next.falseActions = toActionList(next.falseActions).map(action => scaleActionSpec(action, percent));
+  if (next.effect && typeof next.effect === 'object') {
+    (next as Record<string, unknown>).effect = Array.isArray(next.effect)
+      ? (next.effect as ActionSpec[]).map(action => scaleActionSpec(action, percent))
+      : scaleActionSpec(next.effect as ActionSpec, percent);
+  }
+  if (next.effects && typeof next.effects === 'object') {
+    next.effects = toActionList(next.effects).map(action => scaleActionSpec(action, percent));
+  }
+  return next;
+}
+
+function scaleActionSpecs(actions: ActionSpec[], percent: number): ActionSpec[] {
+  const bounded = Math.max(1, Math.min(200, Math.floor(percent)));
+  return actions.map(action => scaleActionSpec(action, bounded));
+}
+
+function drawCardsFromPiles(state: GameState, amount: number): number {
+  const combat = state.combat;
+  if (!combat) return 0;
+  let drawn = 0;
+  for (let i = 0; i < Math.max(0, Math.floor(amount)); i += 1) {
+    if (combat.drawPile.length === 0) {
+      if (combat.discardPile.length === 0) break;
+      combat.drawPile = stateShuffle(state, combat.discardPile);
+      combat.discardPile = [];
+    }
+    const card = combat.drawPile.pop();
+    if (!card) break;
+    combat.hand.push(card);
+    drawn += 1;
+  }
+  return drawn;
+}
+
+function removeStacksFromStatuses(statuses: Record<string, number>, candidates: string[], amount: number): number {
+  let remaining = Math.max(0, Math.floor(amount));
+  let removed = 0;
+  for (const status of candidates) {
+    if (remaining <= 0) break;
+    const current = Math.max(0, Math.floor(Number(statuses[status] || 0)));
+    if (current <= 0) continue;
+    const delta = Math.min(current, remaining);
+    const next = current - delta;
+    if (next > 0) statuses[status] = next;
+    else delete statuses[status];
+    remaining -= delta;
+    removed += delta;
+  }
+  return removed;
+}
+
+function reduceHandCardCost(
+  state: GameState,
+  amount: number,
+  predicate: (card: RunCardInstance) => boolean
+): boolean {
+  const combat = state.combat;
+  if (!combat) return false;
+  const reduction = Math.max(0, Math.floor(amount));
+  if (reduction <= 0) return false;
+  const index = combat.hand.findIndex(predicate);
+  if (index < 0) return false;
+
+  const card = normalizeRunCardInstance(combat.hand[index], () => stateRandomId(state, 'cost_card'));
+  const currentCost = Math.max(0, Math.floor(Number(card.tempCost ?? card.cost ?? 0)));
+  combat.hand[index] = deriveRunCardInstance({
+    ...card,
+    tempCost: Math.max(0, currentCost - reduction),
+  });
+  return true;
+}
+
+function createDelayedReplayCard(
+  state: GameState,
+  sourceCard: RunCardInstance,
+  turns: number,
+  percent = 100
+): RunCardInstance {
+  const normalized = normalizeRunCardInstance(sourceCard, () => stateRandomId(state, 'replay_source'));
+  const delayedActions = scaleActionSpecs(
+    normalized.actions.filter(action => action.type !== 'Delay' && action.type !== 'ReplayLastCard'),
+    percent
+  );
+  const runtimeBase = {
+    ...normalized.runtimeBase,
+    id: `${normalized.baseCardId || normalized.id}_delayed_replay`,
+    name: `${normalized.name} Replay`,
+    cost: 0,
+    actions: [{
+      type: 'Delay',
+      turns: Math.max(1, Math.floor(turns)),
+      actions: delayedActions,
+    } as ActionSpec],
+  };
+
+  return deriveRunCardInstance({
+    ...normalized,
+    instanceId: stateRandomId(state, 'delayed_replay'),
+    baseCardId: runtimeBase.id,
+    runtimeBase,
+    tempCost: 0,
+  });
+}
+
+function findPreviousPlayedCard(state: GameState, context: IActionContext): RunCardInstance | null {
+  const combat = state.combat;
+  if (!combat) return null;
+  const currentInstanceId = context.cardInstanceId || context.card?.instanceId;
+  const discardCandidate = [...combat.discardPile]
+    .reverse()
+    .find(card => card.instanceId !== currentInstanceId);
+  if (discardCandidate) return discardCandidate;
+  const lastPlayed = combat.player.lastPlayedCard;
+  if (lastPlayed && lastPlayed.instanceId !== currentInstanceId) return lastPlayed;
+  return null;
+}
+
+function storeActionList(state: GameState, key: StoredActionListKey, actions: ActionSpec[], trigger?: unknown): void {
+  const combat = state.combat;
+  if (!combat || actions.length === 0) return;
+  const player = combat.player as typeof combat.player & Record<StoredActionListKey, Array<{ actions: ActionSpec[]; trigger?: unknown }>>;
+  player[key] = [...(player[key] || []), { actions, trigger }];
+}
+
 export class DelayAction extends BaseAction {
   private turns: number;
 
@@ -242,7 +428,9 @@ export class ConditionalAction extends BaseAction {
 
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);
-    const actions = this.evaluateCondition(state) ? (this.spec.trueActions || []) : (this.spec.falseActions || []);
+    const actions = this.evaluateCondition(state)
+      ? [...(this.spec.trueActions || []), ...(this.spec.ifTrue ? [this.spec.ifTrue] : [])]
+      : [...(this.spec.falseActions || []), ...(this.spec.ifFalse ? [this.spec.ifFalse] : [])];
     if (actions.length === 0) return;
 
     queueActionSpecs(queue, actions, this.context);
@@ -594,6 +782,12 @@ export class SummonConstructAction extends BaseAction {
     const threadMastery = Math.max(0, Math.floor(combat.player.statuses['ThreadMastery'] || 0));
     if (threadMastery > 0) {
       combat.player.thread = Math.min(10, (combat.player.thread || 0) + threadMastery);
+    }
+
+    const durationBonus = Math.max(0, Math.floor(Number(combat.player.statuses.ExtendNextSummonDuration || 0)));
+    if (durationBonus > 0) {
+      (construct as Record<string, unknown>).duration = Math.max(0, Number((construct as Record<string, unknown>).duration || 0)) + durationBonus;
+      delete combat.player.statuses.ExtendNextSummonDuration;
     }
 
     globalEventBus.publish({
@@ -1287,7 +1481,7 @@ export class SpendIntelAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = state.player.intel;
     state.player.intel = Math.max(0, state.player.intel - this.amount);
-    if (before > state.player.intel) markResourceSpent(state);
+    if (before > state.player.intel) markResourceSpent(state, 'intel');
     if (state.combat) {
       state.combat.player.intel = state.player.intel;
       state.combat.warpPulse = { text: `情报 -${this.amount}（当前 ${state.player.intel}）`, tone: 'neutral' };
@@ -1627,6 +1821,500 @@ export class TriggerPoisonOnTargetAction extends BaseAction {
   }
 }
 
+export class TriggerPoisonAllEnemiesAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, 'AllEnemies');
+
+    for (const targetInfo of targets) {
+      const poisonAmount = targetInfo.entity.statuses.Poison || 0;
+      if (poisonAmount <= 0) continue;
+
+      combatSystem.applyDamage(state, {
+        amount: poisonAmount,
+        sourceType: 'system',
+        sourceId: 'poison_trigger_all',
+        targetType: targetInfo.type,
+        targetId: targetInfo.id,
+        modifiers: [],
+        isTrueDamage: true,
+        ignoreBlock: true,
+      });
+      delete targetInfo.entity.statuses.Poison;
+    }
+  }
+}
+
+export class DealDamagePiercingAction extends BaseAction {
+  private amount: number;
+  private armorIgnore: number;
+  private target: CardTarget;
+
+  constructor(spec: ActionSpec & { armorIgnore?: number }) {
+    super(spec);
+    this.amount = spec.amount || 0;
+    this.armorIgnore = Math.max(0, Number(spec.armorIgnore || spec.amount || 0));
+    this.target = (spec.target as CardTarget) || 'Enemy';
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+
+    for (const targetInfo of targets) {
+      if (targetInfo.type !== 'enemy' || targetInfo.entity.hp <= 0) continue;
+      const piercingAmount = Math.min(this.amount, this.armorIgnore);
+      const normalAmount = Math.max(0, this.amount - piercingAmount);
+
+      if (piercingAmount > 0) {
+        combatSystem.applyDamage(state, {
+          amount: piercingAmount,
+          sourceType: 'player',
+          sourceId: 'player',
+          targetType: 'enemy',
+          targetId: targetInfo.id,
+          modifiers: [],
+          isTrueDamage: false,
+          ignoreBlock: true,
+        });
+      }
+
+      if (normalAmount > 0) {
+        combatSystem.applyDamage(state, {
+          amount: normalAmount,
+          sourceType: 'player',
+          sourceId: 'player',
+          targetType: 'enemy',
+          targetId: targetInfo.id,
+          modifiers: [],
+          isTrueDamage: false,
+          ignoreBlock: false,
+        });
+      }
+    }
+  }
+}
+
+export class IgnoreBlockAction extends BaseAction {
+  private amount: number;
+  private target: CardTarget;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(0, Number(spec.amount || 0));
+    this.target = (spec.target as CardTarget) || 'Enemy';
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    if (this.amount <= 0) return;
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+    for (const targetInfo of targets) {
+      if (targetInfo.type !== 'enemy') continue;
+      combatSystem.applyDamage(state, {
+        amount: this.amount,
+        sourceType: 'player',
+        sourceId: 'player',
+        targetType: 'enemy',
+        targetId: targetInfo.id,
+        modifiers: [],
+        isTrueDamage: true,
+        ignoreBlock: true,
+      });
+    }
+  }
+}
+
+export class ExtendDurationAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const newestConstruct = combat.player.constructs[combat.player.constructs.length - 1] as Record<string, unknown> | undefined;
+    if (newestConstruct) {
+      newestConstruct.duration = Math.max(0, Number(newestConstruct.duration || 0)) + this.amount;
+      return;
+    }
+    combat.player.statuses.ExtendNextSummonDuration = Math.max(0, Number(combat.player.statuses.ExtendNextSummonDuration || 0)) + this.amount;
+  }
+}
+
+export class RemoveStatusAction extends BaseAction {
+  private target: CardTarget;
+  private statuses: string[];
+  private amount: number;
+
+  constructor(spec: ActionSpec & Record<string, unknown>) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Enemy';
+    this.statuses = Array.isArray(spec.status) ? spec.status.map(String) : [String(spec.status || '')].filter(Boolean);
+    this.amount = Math.max(1, Number(spec.amount || spec.stacks || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    if (this.statuses.length === 0) return;
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+    for (const targetInfo of targets) {
+      removeStacksFromStatuses(targetInfo.entity.statuses || {}, this.statuses, this.amount);
+    }
+  }
+}
+
+export class RemoveAnyDebuffAction extends BaseAction {
+  private target: CardTarget;
+  private amount: number;
+
+  constructor(spec: ActionSpec & { debuffs?: string[] }) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Self';
+    this.amount = Math.max(1, Number(spec.amount || spec.stacks || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+    const debuffs = Array.isArray((this.spec as ActionSpec & { debuffs?: string[] }).debuffs)
+      ? (this.spec as ActionSpec & { debuffs?: string[] }).debuffs!
+      : DEBUFF_STATUSES;
+    for (const targetInfo of targets) {
+      removeStacksFromStatuses(targetInfo.entity.statuses || {}, debuffs, this.amount);
+    }
+  }
+}
+
+export class RemoveSelfDebuffAction extends RemoveAnyDebuffAction {
+  constructor(spec: ActionSpec) {
+    super({ ...spec, target: 'Self', amount: spec.amount || spec.stacks || 1 });
+  }
+}
+
+export class RemovePoisonAndDealDamageAction extends BaseAction {
+  private target: CardTarget;
+  private maxPoisonRemoval: number;
+  private damagePerPoison: number;
+
+  constructor(spec: ActionSpec & { maxPoisonRemoval?: number; damagePerPoison?: number }) {
+    super(spec);
+    this.target = (spec.target as CardTarget) || 'Enemy';
+    this.maxPoisonRemoval = Math.max(1, Number(spec.maxPoisonRemoval || spec.amount || 1));
+    this.damagePerPoison = Math.max(1, Number(spec.damagePerPoison || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const targets = this.resolveTargets(state, this.target);
+    for (const targetInfo of targets) {
+      if (targetInfo.type !== 'enemy') continue;
+      const poison = Math.max(0, Math.floor(Number(targetInfo.entity.statuses.Poison || 0)));
+      const removed = Math.min(poison, this.maxPoisonRemoval);
+      if (removed <= 0) continue;
+      const nextPoison = poison - removed;
+      if (nextPoison > 0) targetInfo.entity.statuses.Poison = nextPoison;
+      else delete targetInfo.entity.statuses.Poison;
+      combatSystem.applyDamage(state, {
+        amount: removed * this.damagePerPoison,
+        sourceType: 'player',
+        sourceId: 'player',
+        targetType: 'enemy',
+        targetId: targetInfo.id,
+        modifiers: [],
+        isTrueDamage: false,
+        ignoreBlock: false,
+      });
+    }
+  }
+}
+
+export class ReplayLastCardAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const replayCard = findPreviousPlayedCard(state, this.context);
+    if (!replayCard) return;
+    const actions = replayCard.actions.filter(action => action.type !== 'ReplayLastCard');
+    if (actions.length === 0) return;
+    queueActionSpecs(queue, actions, {
+      ...this.context,
+      card: replayCard,
+      cardId: replayCard.id,
+      cardInstanceId: replayCard.instanceId,
+    });
+  }
+}
+
+export class ScryAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const player = combat.player as typeof combat.player & { scryPreview?: string[] };
+    player.scryPreview = combat.drawPile.slice(-this.amount).map(card => card.id);
+    combat.warpPulse = { text: `Scry ${player.scryPreview.length}`, tone: 'warp' };
+  }
+}
+
+export class CopyLeftmostSkillAction extends BaseAction {
+  private percent: number;
+
+  constructor(spec: ActionSpec & { effectPercent?: number }) {
+    super(spec);
+    this.percent = Math.max(1, Math.min(100, Number(spec.effectPercent || 50)));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const currentInstanceId = this.context.cardInstanceId;
+    const source = combat.hand.find(card => card.instanceId !== currentInstanceId && card.type === 'Skill');
+    if (!source) return;
+
+    const normalized = normalizeRunCardInstance(source, () => stateRandomId(state, 'copied_skill_source'));
+    const runtimeBase = {
+      ...normalized.runtimeBase,
+      actions: scaleActionSpecs(normalized.actions, this.percent),
+      text: `${normalized.runtimeBase.text} (${this.percent}% copy)`,
+    };
+    combat.hand.unshift(deriveRunCardInstance({
+      ...normalized,
+      instanceId: stateRandomId(state, 'copied_skill'),
+      runtimeBase,
+      tempCost: normalized.tempCost,
+    }));
+  }
+}
+
+export class DelayedEnergyAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    combat.player.statuses.DelayedEnergy = Math.max(0, Number(combat.player.statuses.DelayedEnergy || 0)) + this.amount;
+  }
+}
+
+export class ResourceRefundAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const player = combat.player as typeof combat.player & { resourceRefundPending?: number };
+    player.resourceRefundPending = Math.max(player.resourceRefundPending || 0, this.amount);
+  }
+}
+
+export class ConditionalResourceGainAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    if (!evaluateActionCondition(state, this.context, this.spec.condition)) return;
+
+    const resource = this.spec.resource === 'random'
+      ? stateRandomChoice(state, [...ROUTE_RESOURCES])
+      : String(this.spec.resource || '');
+    const amount = Math.max(1, Number(this.spec.amount || 1));
+    if (!resource) return;
+    gainRouteResource(state, resource, amount);
+  }
+}
+
+export class ConditionalEffectAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    if (!evaluateActionCondition(state, this.context, this.spec.condition)) return;
+    const actions = collectSpecActions(this.spec as ActionSpec & Record<string, unknown>, 'effects');
+    queueActionSpecs(queue, actions, this.context);
+  }
+}
+
+export class NextAttackCostDownAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    if (reduceHandCardCost(state, this.amount, card => card.type === 'Attack')) return;
+    combat.player.statuses.NextAttackCostDown = Math.max(0, Number(combat.player.statuses.NextAttackCostDown || 0)) + this.amount;
+  }
+}
+
+export class NextCardCostDownAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    if (getRouteResource(state, 'command') > 0) {
+      queueActionSpecs(queue, [{ type: 'Draw', amount: 1 } as ActionSpec], this.context);
+      return;
+    }
+    const combat = state.combat;
+    if (!combat) return;
+    if (reduceHandCardCost(state, this.amount, () => true)) return;
+    combat.player.statuses.NextCardCostDown = Math.max(0, Number(combat.player.statuses.NextCardCostDown || 0)) + this.amount;
+  }
+}
+
+export class ModifyNextCardCostAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Math.abs(Number(spec.amount || 1)));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    if (reduceHandCardCost(state, this.amount, () => true)) return;
+    combat.player.statuses.NextCardCostDown = Math.max(0, Number(combat.player.statuses.NextCardCostDown || 0)) + this.amount;
+  }
+}
+
+export class DelayNextCardEffectAction extends BaseAction {
+  private percent: number;
+
+  constructor(spec: ActionSpec & { percent?: number }) {
+    super(spec);
+    this.percent = Math.max(1, Math.min(100, Number(spec.percent || 50)));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    combat.player.statuses.DelayNextCardEffectPercent = this.percent;
+  }
+}
+
+export class EndOfTurnDrawPenaltyAction extends BaseAction {
+  private amount: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.amount = Math.max(1, Number(spec.amount || 1));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    combat.player.statuses.DrawPenaltyNextTurn = Math.max(0, Number(combat.player.statuses.DrawPenaltyNextTurn || 0)) + this.amount;
+  }
+}
+
+export class SelectCardForReplayAction extends BaseAction {
+  private turns: number;
+  private costReduction: number;
+
+  constructor(spec: ActionSpec & { costReduction?: number }) {
+    super(spec);
+    this.turns = Math.max(1, Number(spec.turns || 1));
+    this.costReduction = Math.max(0, Number(spec.costReduction || 0));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    const replayCard = findPreviousPlayedCard(state, this.context);
+    if (!replayCard) return;
+    const adjustedCard = this.costReduction > 0
+      ? deriveRunCardInstance({ ...normalizeRunCardInstance(replayCard, () => stateRandomId(state, 'selected_replay_source')), tempCost: 0 })
+      : replayCard;
+    combat.player.delayedCards.push({
+      card: createDelayedReplayCard(state, adjustedCard, this.turns, 100),
+      turns: this.turns,
+      targetId: this.context.targetId,
+    });
+  }
+}
+
+export class StartOfTurnEffectAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const actions = collectSpecActions(this.spec as ActionSpec & Record<string, unknown>, 'effect');
+    storeActionList(state, 'startOfTurnEffects', actions, (this.spec as ActionSpec & { trigger?: unknown }).trigger);
+    if (state.combat) {
+      const triggerType = String((this.spec as ActionSpec & { trigger?: { type?: string } }).trigger?.type || 'StartOfTurnEffect');
+      state.combat.player.statuses[`Watcher:${triggerType}`] = 1;
+    }
+  }
+}
+
+export class EndOfTurnEffectAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const actions = collectSpecActions(this.spec as ActionSpec & Record<string, unknown>, 'effect');
+    storeActionList(state, 'endOfTurnEffects', actions);
+  }
+}
+
+export class EndOfCombatEffectAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const actions = collectSpecActions(this.spec as ActionSpec & Record<string, unknown>, 'effect');
+    storeActionList(state, 'endOfCombatEffects', actions);
+  }
+}
+
+export class MultiplyDamageAction extends BaseAction {
+  private multiplier: number;
+
+  constructor(spec: ActionSpec) {
+    super(spec);
+    this.multiplier = Math.max(1, Number(spec.amount || spec.multiplier || 2));
+  }
+
+  execute(state: GameState, queue: ActionQueue): void {
+    const combat = state.combat;
+    if (!combat) return;
+    this.context = this.getContextFromQueue(queue);
+    combat.player.statuses.DoubleDamageThisTurn = Math.max(
+      Number(combat.player.statuses.DoubleDamageThisTurn || 1),
+      this.multiplier
+    );
+  }
+}
+
 export class GainTimeLayerAction extends BaseAction {
   private amount: number;
 
@@ -1660,7 +2348,7 @@ export class SpendTimeLayerAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.timeLayer || 0;
     combat.player.timeLayer = Math.max(0, before - this.amount);
-    if (before > combat.player.timeLayer) markResourceSpent(state);
+    if (before > combat.player.timeLayer) markResourceSpent(state, 'timeLayer');
     combat.warpPulse = { text: `时间层 -${this.amount}（当前 ${combat.player.timeLayer}）`, tone: 'neutral' };
   }
 }
@@ -1698,7 +2386,7 @@ export class SpendThreadAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.thread || 0;
     combat.player.thread = Math.max(0, before - this.amount);
-    if (before > combat.player.thread) markResourceSpent(state);
+    if (before > combat.player.thread) markResourceSpent(state, 'thread');
     combat.warpPulse = { text: `丝线 -${this.amount}（当前 ${combat.player.thread}）`, tone: 'neutral' };
   }
 }
@@ -1736,7 +2424,7 @@ export class SpendConcoctionAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const before = combat.player.concoction || 0;
     combat.player.concoction = Math.max(0, before - this.amount);
-    if (before > combat.player.concoction) markResourceSpent(state);
+    if (before > combat.player.concoction) markResourceSpent(state, 'concoction');
     combat.warpPulse = { text: `调配 -${this.amount}（当前 ${combat.player.concoction}）`, tone: 'neutral' };
   }
 }
@@ -1753,7 +2441,7 @@ export class SpendAllIntelAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const intelSpent = state.player.intel || 0;
     state.player.intel = 0;
-    if (intelSpent > 0) markResourceSpent(state);
+    if (intelSpent > 0) markResourceSpent(state, 'intel');
     combat.warpPulse = { text: `情报消耗 ${intelSpent}`, tone: 'neutral' };
   }
 }
@@ -1770,7 +2458,7 @@ export class SpendAllConcoctionAction extends BaseAction {
     this.context = this.getContextFromQueue(queue);
     const concoctionSpent = combat.player.concoction || 0;
     combat.player.concoction = 0;
-    if (concoctionSpent > 0) markResourceSpent(state);
+    if (concoctionSpent > 0) markResourceSpent(state, 'concoction');
     combat.warpPulse = { text: `调配消耗 ${concoctionSpent}`, tone: 'neutral' };
   }
 }

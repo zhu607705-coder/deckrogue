@@ -130,6 +130,12 @@ export class DealDamageAction extends BaseAction {
       if (this.context.doubleDamage) {
         damageContext.amount *= 2;
       }
+      if (this.context.source === 'player') {
+        const turnMultiplier = Math.max(1, Number(combat.player.statuses.DoubleDamageThisTurn || 1));
+        if (turnMultiplier > 1) {
+          damageContext.amount *= turnMultiplier;
+        }
+      }
 
       this.handleTauntAndSoulLink(state, damageContext, targetInfo);
 
