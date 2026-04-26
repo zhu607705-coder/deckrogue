@@ -376,3 +376,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **回归覆盖**：新增击杀奖励正反例、攻击牌计数版 `NoAttackYet`、指挥分支单抽、纯 `NextCardCostDown`、下一张牌费用消耗一次、watcher 非 0 费不触发/每回合一次/专用资源获得/实际资源消耗金额、携带格挡不误判新增格挡、死亡敌人不耗牌与全死亡结算、敌方阵营目标解析测试；修复 `conditionalKillAction.test.ts` 独立运行缺少 ActionManager 绑定的问题。
 - **验证证据**：`node --test --import tsx tests/unit/specialActionBehavior.test.ts` -> `26/26`；`node --test --import tsx tests/unit/enemyVariantEnemyTurn.test.ts` -> `9/9`；`node --test --import tsx tests/unit/conditionalKillAction.test.ts` -> `2/2`；`npm run check:enemy-variant-behavior` -> OK；`npm run test:supplemental-units` -> `129/129`；`npm run test:runtime-v2:ts` -> `146 pass / 1 skip`；`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`git diff --check` 均通过，`git diff --check` 仅输出 Windows CRLF 提示。
 - **剩余风险**：本轮没有处理素材/UI 立绘工作区改动，也没有重构整个 watcher 注册系统；当前 watcher 覆盖现有卡牌数据使用的触发类型，后续新增 trigger 类型仍需同步扩展 `triggerMatchesStoredEffect()` 与事件级回归测试。
+
+### Step 128: fill scene art and fit combat UI surfaces
+
+- **操作方向**：按当前视觉需求补齐商店、指定事件 NPC/背景、敌怪类型战斗背景，并收紧战斗 HUD/手牌/战场区布局。
+- **资源接入**：新增商店背景与商人头像；新增医疗伺服、神龛守卫、审判官、亚空间先知 NPC；新增腐朽医疗间、殉道者神龛事件背景；新增反应堆圣堂、疫病墓窟、灵能档案三类战斗背景。
+- **代码功能改动**：商店头图区从小圆头像改为右侧舞台；故事事件按 event id 显示对应 NPC 立绘与台词；战斗背景主题覆盖 50 个非 special 敌怪并按主题 `key` 触发即时背景淡入；预加载列表包含新增视觉资源；战斗 HUD 改为紧凑分区，手牌横向滚动并保留战场中心空间。
+- **验证证据**：`npx tsc --noEmit --pretty false --project tsconfig.json`、`npm run lint --silent`、`npm run build`、`npm run test:ui-smoke`、`npm run test:ui-smoke:expansion`、`npm run test:shop-flow-smoke`、`npm run test:event-flow-smoke`、`npm run test:runtime-v2-flow-smoke -- --renderer=dom` 均通过；资源路径/PNG 尺寸检查通过；敌怪背景映射覆盖 `50/50`。
+- **剩余风险**：`npm run test:runtime-v2-flow-smoke -- --renderer=pixi` 在 potion shop 阶段的 debug bridge snapshot 读取处返回失败，但已有 `report_pixi.json` 显示其前序 map/event/rest/combat/reward/shop/relic 流程为 passed；该失败发生在脚本桥接层，未指向本次 DOM 视觉接入。

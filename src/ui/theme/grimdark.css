@@ -2969,3 +2969,397 @@
   color: #f3e8ff;
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
 }
+
+/* Scene art staging and combat UI fit pass */
+.shop-merchant-stage {
+  position: relative;
+  display: none;
+  justify-self: end;
+  width: min(240px, 26vw);
+  min-height: 210px;
+  overflow: hidden;
+  border: 1px solid rgba(234, 179, 8, 0.36);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(234, 179, 8, 0.16), transparent 48%),
+    linear-gradient(180deg, rgba(14, 12, 10, 0.18), rgba(10, 8, 8, 0.78));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48);
+}
+
+.shop-merchant-stage::after {
+  content: '';
+  position: absolute;
+  inset: auto 10% 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, rgba(5, 4, 4, 0.88));
+  pointer-events: none;
+}
+
+.shop-merchant-stage__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 26%;
+  filter: saturate(1.05) contrast(1.08);
+}
+
+.event-story-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.event-npc-stage {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(226, 232, 240, 0.10), transparent 40%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(7, 8, 12, 0.86));
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
+}
+
+.event-npc-stage--medicae {
+  border-color: rgba(20, 184, 166, 0.32);
+}
+
+.event-npc-stage--shrine {
+  border-color: rgba(245, 158, 11, 0.34);
+}
+
+.event-npc-stage--inquisitor {
+  border-color: rgba(239, 68, 68, 0.36);
+}
+
+.event-npc-stage--warp {
+  border-color: rgba(168, 85, 247, 0.36);
+}
+
+.event-npc-stage__image {
+  position: absolute;
+  inset: 0 0 56px;
+  width: 100%;
+  height: calc(100% - 42px);
+  object-fit: cover;
+  object-position: center 18%;
+  filter: saturate(1.05) contrast(1.08);
+}
+
+.event-npc-stage__line {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 42%;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(244, 244, 245, 0.10);
+  border-radius: 8px;
+  background: rgba(7, 8, 12, 0.72);
+  color: rgba(244, 244, 245, 0.9);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  font-style: italic;
+  backdrop-filter: blur(10px);
+}
+
+.combat-root {
+  --combat-panel-bg: rgba(7, 8, 12, 0.70);
+  --combat-panel-border: rgba(214, 211, 209, 0.14);
+  min-height: 0;
+}
+
+.combat-hud {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--combat-panel-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(24, 18, 16, 0.74), rgba(7, 8, 12, 0.78)),
+    radial-gradient(circle at 18% 0%, rgba(180, 83, 9, 0.13), transparent 42%);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(12px);
+}
+
+.combat-hud__left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.combat-hud__deckBtn {
+  min-height: 36px;
+  flex: 0 0 auto;
+}
+
+.combat-hud__resourceBands {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 720px);
+}
+
+.combat-hud__resourceBand {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.combat-hud__resourceBand--secondary {
+  opacity: 0.86;
+}
+
+.combat-hud__bandLabel {
+  color: rgba(214, 211, 209, 0.62);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.combat-hud__resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.combat-hud__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  max-width: 230px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border: 1px solid rgba(214, 211, 209, 0.13);
+  border-radius: 999px;
+  background: rgba(10, 12, 18, 0.68);
+  white-space: nowrap;
+}
+
+.combat-hud__pill .grimdark-label,
+.combat-hud__pill .grimdark-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-hud__pill .grimdark-label {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 11px;
+}
+
+.combat-hud__pill .grimdark-value {
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.combat-hud__potions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.combat-hud__potionsLabel {
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.combat-hud__potionSlot,
+.combat-hud__relicSlot {
+  flex: 0 0 auto;
+}
+
+.combat-hud__turn {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 126px;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 8px;
+  background: rgba(10, 8, 8, 0.68);
+}
+
+.combat-hud__turnLabel,
+.combat-hud__turnValue {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.grimdark-relics-section {
+  min-width: 0;
+}
+
+.grimdark-relic-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 260px;
+}
+
+.grimdark-relic-descriptions {
+  max-height: 42px;
+  overflow: hidden;
+}
+
+.grimdark-battlefield {
+  min-height: 0;
+  padding-top: 6px;
+  padding-bottom: 8px;
+}
+
+.grimdark-player-section,
+.grimdark-enemies-section {
+  flex: 1 1 0;
+  min-width: 190px;
+}
+
+.grimdark-enemies-section {
+  align-content: center;
+  max-width: 48vw;
+}
+
+.grimdark-frontline-zone {
+  min-width: 220px;
+  max-width: min(32vw, 420px);
+  min-height: 260px;
+}
+
+.grimdark-action-hand {
+  height: auto !important;
+  min-height: clamp(188px, 25vh, 252px);
+  padding-top: 42px;
+  border-top: 1px solid rgba(214, 211, 209, 0.12);
+  background: linear-gradient(180deg, transparent, rgba(7, 8, 12, 0.58) 18%, rgba(7, 8, 12, 0.84));
+}
+
+.grimdark-end-turn-container {
+  z-index: 30;
+}
+
+.grimdark-hand {
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 0 12px 10px;
+  scroll-snap-type: x proximity;
+}
+
+.grimdark-card-wrapper {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+
+.grimdark-pile-controls {
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 4px;
+}
+
+.grimdark-pile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  border-radius: 8px;
+  background: rgba(10, 12, 18, 0.70);
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.grimdark-pile-count {
+  min-width: 22px;
+  text-align: center;
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+@media (min-width: 768px) {
+  .shop-merchant-stage {
+    display: block;
+  }
+
+  .event-story-layout--with-npc {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.66fr) minmax(0, 0.95fr);
+  }
+
+  .grimdark-hand {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1100px) {
+  .combat-hud {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .combat-hud__turn {
+    grid-auto-flow: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .grimdark-enemies-section {
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .combat-root {
+    padding: 8px !important;
+  }
+
+  .combat-hud__resourceBand {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-hud__bandLabel {
+    display: none;
+  }
+
+  .combat-hud__potionsLabel,
+  .grimdark-relic-descriptions {
+    display: none;
+  }
+
+  .grimdark-battlefield {
+    gap: 12px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .grimdark-frontline-zone {
+    width: 100%;
+    max-width: none;
+    min-height: 200px;
+  }
+
+  .event-npc-stage {
+    min-height: 220px;
+  }
+
+  .event-npc-stage__image {
+    object-position: center 12%;
+  }
+}

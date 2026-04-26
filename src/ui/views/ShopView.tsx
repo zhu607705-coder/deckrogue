@@ -110,7 +110,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
     VIEW_BACKGROUNDS.shop.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.shop.length) : 0
   );
   const backgroundSrc = VIEW_BACKGROUNDS.shop[backgroundIndex]?.desktop || '';
-  const merchantImage = '/assets/shop/shop_merchant.png';
+  const merchantImage = '/assets/shop/shop_merchant_salvager.png';
   const [merchantLine] = useState(() => {
     const lines = (WORLD_LORE?.npcDialogueTemplates?.merchant || []) as string[];
     if (!lines.length) return '货在这，命也在这。风险自负。';
@@ -122,21 +122,12 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
     <BackgroundImage 
       src={backgroundSrc} 
       className="campaign-shell flex h-full flex-col items-center overflow-y-auto px-4 py-8 text-slate-200 md:px-8"
-      overlayOpacity={0.68}
+      overlayOpacity={0.62}
     >
       <div className="relative z-10 flex h-full w-full max-w-6xl flex-col items-center">
-      <div className="absolute right-4 top-5 h-16 w-16 overflow-hidden rounded-full border-4 border-yellow-600/50 bg-slate-900/80 shadow-2xl sm:h-24 sm:w-24 lg:h-32 lg:w-32">
-        <img
-          src={merchantImage}
-          alt="商贩"
-          className="w-full h-full object-cover object-center"
-          onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.merchant)}
-        />
-      </div>
-      
       <div className="mb-8 w-full border-b border-white/10 pb-8 text-left">
         <div className="campaign-kicker">{getUiLabelZh('Scavenger Exchange')}</div>
-        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto_240px] lg:items-end">
           <div className="max-w-3xl">
             <h1 className="campaign-title campaign-poster-title text-[clamp(2.4rem,4vw,4.4rem)] leading-[0.94] text-yellow-100">
               黑市拾荒者
@@ -149,6 +140,14 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <Coins size={18} className="text-yellow-400" />
             <span className="text-lg font-semibold">{playerGold}</span>
             <span className="text-xs uppercase tracking-[0.18em] text-stone-400">信用筹码</span>
+          </div>
+          <div className="shop-merchant-stage" aria-label="Shop merchant">
+            <img
+              src={merchantImage}
+              alt="Shop merchant"
+              className="shop-merchant-stage__image"
+              onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.merchant)}
+            />
           </div>
         </div>
       </div>

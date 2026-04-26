@@ -297,6 +297,8 @@ export function CombatView({
 
   const handleEnemyClick = (enemyId: string) => {
     if (selectedCard) {
+      const target = state.enemies.find((enemy: any) => enemy.id === enemyId);
+      if (!target || target.hp <= 0) return;
       engine.playCard(selectedCard, enemyId);
       setSelectedCard(null);
     }
@@ -455,10 +457,12 @@ export function CombatView({
     <ErrorBoundary>
       <div
         className={`campaign-shell flex flex-col h-full text-slate-200 p-4 relative combat-root warp-tier-${warpTier} ${isWarpBoiling ? 'is-warp-boiling' : ''} ${shouldHighlightTutorial ? 'combat-root--guide' : ''}`}
+        data-battle-theme={battleTheme?.key || 'fallback'}
         style={{ backgroundColor: '#07080b' }}
       >
       {/* Background Layers */}
       <div
+        key={battleTheme?.key || battleBackground}
         className="absolute inset-0 bg-cover bg-center pointer-events-none"
         style={{
           backgroundImage: `url(${battleBackground})`,

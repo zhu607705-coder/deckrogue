@@ -89,6 +89,33 @@
         "a": "rgba(180, 83, 9, 0.20)",
         "b": "rgba(34, 197, 94, 0.12)"
       }
+    },
+    "reactor_cathedral": {
+      "name": "Reactor Cathedral",
+      "image": "/assets/backgrounds/bg_reactor_cathedral.png",
+      "palette": "blue-white reactor core, red hazard lamps",
+      "tints": {
+        "a": "rgba(37, 99, 235, 0.20)",
+        "b": "rgba(220, 38, 38, 0.14)"
+      }
+    },
+    "plague_catacombs": {
+      "name": "Plague Catacombs",
+      "image": "/assets/backgrounds/bg_plague_catacombs.png",
+      "palette": "sickly green vapor, black ossuary water",
+      "tints": {
+        "a": "rgba(34, 197, 94, 0.20)",
+        "b": "rgba(113, 63, 18, 0.14)"
+      }
+    },
+    "psychic_archive": {
+      "name": "Psychic Archive",
+      "image": "/assets/backgrounds/bg_psychic_archive.png",
+      "palette": "cold violet-blue psychic light",
+      "tints": {
+        "a": "rgba(99, 102, 241, 0.20)",
+        "b": "rgba(168, 85, 247, 0.14)"
+      }
     }
   },
   "enemyIdToTheme": {
@@ -115,17 +142,53 @@
     "goblin_trapper": "goblin_mine",
     "barrier_redeemer": "mech_factory",
     "cultist_herald": "cultist_altar",
-    "jaw_worm_burrower": "worm_nest"
+    "jaw_worm_burrower": "worm_nest",
+    "coolant_hound": "reactor_cathedral",
+    "servo_confessor": "reactor_cathedral",
+    "reactor_thrall": "reactor_cathedral",
+    "data_leech": "psychic_archive",
+    "iron_choir_twin_a": "reactor_cathedral",
+    "iron_choir_twin_b": "reactor_cathedral",
+    "scrap_surgeon": "reactor_cathedral",
+    "sanctum_praetor": "reactor_cathedral",
+    "overclocked_abbot": "reactor_cathedral",
+    "fusion_censer": "reactor_cathedral",
+    "cathedral_engine": "reactor_cathedral",
+    "logic_saint": "reactor_cathedral",
+    "spore_wretch": "plague_catacombs",
+    "rot_hound": "plague_catacombs",
+    "plague_choir": "plague_catacombs",
+    "cyst_bearer": "plague_catacombs",
+    "grave_mender": "plague_catacombs",
+    "blight_larva": "plague_catacombs",
+    "mire_guard": "plague_catacombs",
+    "plague_abbot": "plague_catacombs",
+    "maggot_reliquary": "plague_catacombs",
+    "corrupt_titanus": "plague_catacombs",
+    "catacomb_matron": "plague_catacombs",
+    "pox_cathedral": "plague_catacombs",
+    "the_mire_saint": "plague_catacombs",
+    "psychic_infiltrator": "psychic_archive"
   },
   "keywordFallbackToTheme": {
     "boss": "ancient_ruins",
     "elite": "mech_factory",
     "symbiote": "symbiote_lab",
     "splits": "mech_factory",
-    "starts_with_block": "mech_factory"
+    "starts_with_block": "mech_factory",
+    "mechanical": "reactor_cathedral",
+    "explosive": "reactor_cathedral",
+    "poison": "plague_catacombs",
+    "poison_removal": "plague_catacombs",
+    "psychic": "psychic_archive",
+    "card_manipulation": "psychic_archive",
+    "resource_drain": "psychic_archive"
   },
   "fallbackThemePool": [
     "ancient_ruins",
+    "reactor_cathedral",
+    "plague_catacombs",
+    "psychic_archive",
     "mech_factory",
     "goblin_mine",
     "cultist_altar",
@@ -141,6 +204,9 @@
     "ancient_ruins": "Ancient ruins battlefield, broken stone pillars, glowing runes, dust beams, mysterious blue light, weathered stone gray palette, dark fantasy card game combat background, no characters, wide composition.",
     "time_rift": "Time rift battleground, shattered clocks, floating fragments, silver white and temporal blue energy, cracked space reality, surreal cinematic combat background, no characters, wide composition.",
     "puppet_theater": "Creepy puppet theater stage, curtains, strings, spotlights, dark red and gold palette, eerie performance hall, grimdark card game combat background, no characters, wide composition.",
-    "alchemy_lab": "Medieval alchemy laboratory combat background, apparatus, potion bottles, books, amber firelight and potion green glow, bubbling liquids, grim card game battle scene, no characters, wide composition."
+    "alchemy_lab": "Medieval alchemy laboratory combat background, apparatus, potion bottles, books, amber firelight and potion green glow, bubbling liquids, grim card game battle scene, no characters, wide composition.",
+    "reactor_cathedral": "Mechanicus reactor cathedral combat background, giant glowing core, brass gantries, servo cables, cold blue-white core light, red warning lamps, no characters, wide composition with clear center lane.",
+    "plague_catacombs": "Plague catacombs combat background, flooded ossuary under diseased cathedral, bone arches, fungal growth, sickly green vapor, no characters, wide composition with clear lower center.",
+    "psychic_archive": "Forbidden psychic archive combat background, black iron shelves, broken mirrors, floating index cards, cold violet-blue mind-rift light, no characters, wide composition with clear targeting lane."
   }
 }

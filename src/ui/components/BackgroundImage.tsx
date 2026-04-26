@@ -150,6 +150,11 @@ export const VIEW_BACKGROUNDS = {
   ],
   shop: [
     {
+      desktop: '/assets/shop/shop_salvage_exchange.png',
+      tablet: '/assets/shop/shop_salvage_exchange.png',
+      mobile: '/assets/shop/shop_salvage_exchange.png'
+    },
+    {
       desktop: '/assets/shop/shop_forge.png',
       tablet: '/assets/shop/shop_forge.png',
       mobile: '/assets/shop/shop_forge.png'
@@ -184,7 +189,9 @@ export const VIEW_BACKGROUNDS = {
   },
   events: {
     forge: '/assets/events/event_forge.png',
+    rustingMedicae: '/assets/events/event_rusting_medicae.png',
     shrine: '/assets/events/event_shrine.png',
+    martyrShrine: '/assets/events/event_martyr_shrine.png',
     warp: '/assets/events/event_warp.png',
     trial: '/assets/events/event_trial.png',
     hereticAltar: '/assets/events/event_heretic_altar.png',

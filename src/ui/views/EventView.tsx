@@ -34,16 +34,57 @@ type EventOptionVm = {
   danger?: 'low' | 'medium' | 'high';
 };
 
+type EventNpcArt = {
+  image: string;
+  label: string;
+  tone: 'medicae' | 'shrine' | 'inquisitor' | 'warp';
+};
+
 function getEventBackground(eventId: string): string {
   switch (eventId) {
-    case 'rusting_medicae': return VIEW_BACKGROUNDS.events.forge;
-    case 'nameless_martyr_shrine': return VIEW_BACKGROUNDS.events.shrine;
+    case 'rusting_medicae': return VIEW_BACKGROUNDS.events.rustingMedicae;
+    case 'nameless_martyr_shrine': return VIEW_BACKGROUNDS.events.martyrShrine;
     case 'warp_tear_whispers': return VIEW_BACKGROUNDS.events.warp;
     case 'inquisitor_legacy': return VIEW_BACKGROUNDS.events.trial;
     case 'heretic_altar': return VIEW_BACKGROUNDS.events.hereticAltar;
     case 'chaos_gate': return VIEW_BACKGROUNDS.events.chaosGate;
     default: return VIEW_BACKGROUNDS.events.shrine;
   }
+}
+
+function getEventNpcArt(eventId: string): EventNpcArt | null {
+  switch (eventId) {
+    case 'rusting_medicae':
+      return { image: '/assets/events/npc_medicae_servitor.png', label: 'Rusting medicae servitor', tone: 'medicae' };
+    case 'nameless_martyr_shrine':
+      return { image: '/assets/events/npc_shrine_warden.png', label: 'Nameless shrine warden', tone: 'shrine' };
+    case 'inquisitor_legacy':
+      return { image: '/assets/events/npc_inquisitor_interrogator.png', label: 'Inquisitor interrogator', tone: 'inquisitor' };
+    case 'warp_tear_whispers':
+    case 'heretic_altar':
+    case 'chaos_gate':
+      return { image: '/assets/events/npc_warp_oracle.png', label: 'Warp oracle', tone: 'warp' };
+    default:
+      return null;
+  }
+}
+
+function EventNpcStage({ art, line }: { art: EventNpcArt; line?: string }) {
+  return (
+    <aside className={`event-npc-stage event-npc-stage--${art.tone}`} aria-label={art.label}>
+      <img
+        src={art.image}
+        alt={art.label}
+        className="event-npc-stage__image"
+        onError={(e) => bindImgFallback(e, ASSET_PLACEHOLDERS.character)}
+      />
+      {line && (
+        <div className="event-npc-stage__line">
+          {'“'}<GlossaryText text={line} />{'”'}
+        </div>
+      )}
+    </aside>
+  );
 }
 
 function getFloorLabel(engine: GameEngine): string {
@@ -243,6 +284,7 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
   const options = buildStoryEventOptions(engine);
   const backgroundSrc = getEventBackground(event.id);
   const npcLine = getEventNpcLine(engine, event.id, event.stage);
+  const npcArt = getEventNpcArt(event.id);
 
   return (
     <BackgroundImage
@@ -268,11 +310,11 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-4 md:gap-6 flex-1 min-h-0">
+        <div className={`event-story-layout ${npcArt ? 'event-story-layout--with-npc' : ''}`}>
           <div className="campaign-section min-h-0 overflow-y-auto p-4 md:p-6 shadow-2xl">
             <div className="campaign-kicker mb-3">{getUiLabelZh('Field Record')}</div>
             <div className="space-y-4">
-              {npcLine && (
+              {npcLine && !npcArt && (
                 <div className="rounded-xl border border-fuchsia-700/25 bg-fuchsia-950/10 p-3 text-sm italic text-fuchsia-100/85">
                   {'“'}<GlossaryText text={npcLine} />{'”'}
                 </div>
@@ -289,6 +331,8 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
               )}
             </div>
           </div>
+
+          {npcArt && <EventNpcStage art={npcArt} line={npcLine} />}
 
           <div className="campaign-section campaign-decision-column min-h-0 overflow-y-auto p-4 md:p-5 shadow-2xl md:pl-5">
             <div className="campaign-kicker mb-3">{getUiLabelZh('Decision')}</div>
@@ -370,18 +414,21 @@ export function EventView({ engine }: { engine: GameEngine }) {
     const relicIconSrc = relic ? `/assets/relics/${relic.id}.png` : '';
     const bgImage = getEventBackground(event.id);
     const npcLine = getEventNpcLine(engine, event.id, event.stage);
+    const npcArt = getEventNpcArt(event.id);
     return (
       <BackgroundImage
         src={bgImage}
         className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
         overlayOpacity={0.7}
       >
-        <div className="relative z-10 flex w-full max-w-4xl flex-col items-center">
+        <div className="relative z-10 grid w-full max-w-5xl gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
+          {npcArt && <EventNpcStage art={npcArt} line={npcLine} />}
+          <div className="flex w-full flex-col items-center">
           <div className="w-full border-b border-white/10 pb-6 text-center">
             <div className="campaign-kicker">禁忌契约</div>
             <h1 className="campaign-title campaign-poster-title mt-4 text-[clamp(2.3rem,4vw,4rem)] text-red-200">异端祭坛</h1>
           </div>
-          {npcLine && (
+          {npcLine && !npcArt && (
             <div className="campaign-section mt-6 w-full p-3 text-sm italic text-fuchsia-100/85">
               “{npcLine}”
             </div>
@@ -418,6 +465,7 @@ export function EventView({ engine }: { engine: GameEngine }) {
               <span className="text-slate-400 text-sm block mt-1">不触碰祭坛，立即离开</span>
             </button>
           </div>
+          </div>
         </div>
       </BackgroundImage>
     );
@@ -425,18 +473,21 @@ export function EventView({ engine }: { engine: GameEngine }) {
 
   const bgImage = getEventBackground(event.id);
   const shrineLine = getEventNpcLine(engine, event.id, event.stage);
+  const npcArt = getEventNpcArt(event.id);
   return (
     <BackgroundImage
       src={bgImage}
       className="campaign-shell flex h-full flex-col items-center justify-center px-4 py-8 text-slate-200 md:px-8"
       overlayOpacity={0.68}
     >
-      <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
+      <div className="relative z-10 grid w-full max-w-5xl gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
+        {npcArt && <EventNpcStage art={npcArt} line={shrineLine} />}
+        <div className="flex w-full flex-col items-center">
         <div className="w-full border-b border-white/10 pb-6 text-center">
           <div className="campaign-kicker">Field Omen</div>
           <h1 className="campaign-title campaign-poster-title mt-4 text-[clamp(2.3rem,4vw,4rem)] text-blue-200">无名神龛</h1>
         </div>
-        {shrineLine && (
+        {shrineLine && !npcArt && (
           <div className="campaign-section mt-6 w-full p-3 text-sm italic text-amber-100/85">
             “{shrineLine}”
           </div>
@@ -453,6 +504,7 @@ export function EventView({ engine }: { engine: GameEngine }) {
             <span className="font-bold">离开</span>
             <span className="text-slate-400 text-sm block mt-1">不发生任何事</span>
           </button>
+        </div>
         </div>
       </div>
     </BackgroundImage>
