@@ -97,6 +97,7 @@ export class RunFlowManager {
 
   applyRunTransition(action: RunAction): void {
     const state = this.deps.getState();
+    if (action.type === 'COMBAT_WON' && state.screen === 'Reward') return;
     try {
       const next = transitionRunState(deriveRunTransitionState(state), action);
       state.screen = runPhaseToScreen(next.phase);

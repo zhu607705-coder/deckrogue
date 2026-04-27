@@ -6,6 +6,11 @@
 
 ## Completed
 
+- 追加平衡与 review 收口：
+  - `ConditionalEnergyGain` 与 `DrawAndHeal` 已注册为可执行动作，避免遗物效果落入 NullAction。
+  - `void_sanctioner:suppression` 压制链补强护盾与基础伤害，并把 `nullglass_lens` 纳入路线支援遗物。
+  - `penitent_judge:verdict` 判令链削弱最后拘票爆发，降低过快清场风险。
+  - 战斗胜利转场改为幂等处理，重复 `COMBAT_WON` 不再污染 Reward 阶段日志。
 - 新增 2 个原创角色：
   - `penitent_judge`：判令资源，围绕易伤、处刑、供述和判令消耗构筑。
   - `void_sanctioner`：封印资源，围绕虚弱、群体压制、零费抽牌和封印消耗构筑。
@@ -47,6 +52,8 @@
 - `npm run check:content-authoring`
 - `npm run accept:expansion-content`
 - `npm run build`
+- `npm run report:longform-balance -- --pass=17 --runs-per-build=10`
+- `npx tsx scripts/validation/playwright_real_ui_30_rounds.ts --rounds=10`
 - `git diff --check`
 - Asset scan: `missingCards=0`, `missingRelics=0`, `badCards=0`, `badRelics=0`
 - Build output confirmed no `pixi-vendor` chunk-size warning; `pixi-vendor` remains split at 508.41 kB.
@@ -54,4 +61,4 @@
 ## Remaining Risks
 
 - 批量补齐的旧卡图和旧遗物图是本地生成的风格化 PNG，占位质量稳定，但没有逐张手绘精修。
-- 本轮未做长局数平衡仿真，强度先通过费用、稀有度、资源门槛和路线测试约束。
+- 长局数平衡已用 10 runs/build 覆盖 24 条路线，当前无脚本级 findings；仍未做人工长时间手动调参。

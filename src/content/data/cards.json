@@ -12470,11 +12470,11 @@
       "execution",
       "finisher"
     ],
-    "text": "造成 10 点伤害。消耗全部判令，每点判令额外造成 5 点伤害。若击杀，抽 2 张牌。",
+    "text": "造成 8 点伤害。消耗全部判令，每点判令额外造成 4 点伤害。若击杀，抽 2 张牌。",
     "actions": [
       {
         "type": "DealDamage",
-        "amount": 10,
+        "amount": 8,
         "target": "Enemy"
       },
       {
@@ -12482,7 +12482,7 @@
         "resource": "verdict",
         "effect": {
           "type": "DealDamage",
-          "amount": 5,
+          "amount": 4,
           "target": "Enemy"
         }
       },
@@ -12496,11 +12496,11 @@
     ],
     "art_prompt": "A final arrest warrant burning like a red comet above an execution sword, gothic sci-fi card art, no text.",
     "upgrade": {
-      "text": "造成 12 点伤害。消耗全部判令，每点判令额外造成 6 点伤害。若击杀，抽 2 张牌。",
+      "text": "造成 11 点伤害。消耗全部判令，每点判令额外造成 5 点伤害。若击杀，抽 2 张牌。",
       "actions": [
         {
           "type": "DealDamage",
-          "amount": 12,
+          "amount": 11,
           "target": "Enemy"
         },
         {
@@ -12508,7 +12508,7 @@
           "resource": "verdict",
           "effect": {
             "type": "DealDamage",
-            "amount": 6,
+            "amount": 5,
             "target": "Enemy"
           }
         },
@@ -12647,11 +12647,11 @@
       "suppression",
       "void"
     ],
-    "text": "造成 6 点伤害。若你拥有封印，施加 1 层虚弱。",
+    "text": "造成 7 点伤害。若你拥有封印，施加 1 层虚弱。",
     "actions": [
       {
         "type": "DealDamage",
-        "amount": 6,
+        "amount": 7,
         "target": "Enemy"
       },
       {
@@ -12668,11 +12668,11 @@
     ],
     "art_prompt": "A blue-white void lance piercing a black armored target, gothic sci-fi card art, no text.",
     "upgrade": {
-      "text": "造成 9 点伤害。若你拥有封印，施加 2 层虚弱。",
+      "text": "造成 10 点伤害。若你拥有封印，施加 2 层虚弱。",
       "actions": [
         {
           "type": "DealDamage",
-          "amount": 9,
+          "amount": 10,
           "target": "Enemy"
         },
         {
@@ -12823,11 +12823,11 @@
       "suppression",
       "attack"
     ],
-    "text": "造成 5 点伤害。若目标处于虚弱，获得 1 点封印。",
+    "text": "造成 6 点伤害。若目标处于虚弱，获得 1 点封印。",
     "actions": [
       {
         "type": "DealDamage",
-        "amount": 5,
+        "amount": 6,
         "target": "Enemy"
       },
       {
@@ -12842,11 +12842,11 @@
     ],
     "art_prompt": "A silent blue-white censure sigil crushing a target silhouette, gothic sci-fi card art, no text.",
     "upgrade": {
-      "text": "造成 8 点伤害。若目标处于虚弱，获得 1 点封印。",
+      "text": "造成 9 点伤害。若目标处于虚弱，获得 1 点封印。",
       "actions": [
         {
           "type": "DealDamage",
-          "amount": 8,
+          "amount": 9,
           "target": "Enemy"
         },
         {
@@ -13046,7 +13046,7 @@
       "suppression",
       "aoe"
     ],
-    "text": "最多消耗 2 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧。",
+    "text": "最多消耗 2 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧，并获得 3 点护盾。",
     "actions": [
       {
         "type": "SpendResourceUpTo",
@@ -13064,13 +13064,18 @@
             "status": "Fear",
             "stacks": 1,
             "target": "AllEnemies"
+          },
+          {
+            "type": "GainBlock",
+            "amount": 3,
+            "target": "Self"
           }
         ]
       }
     ],
     "art_prompt": "A brass gravity cage folding blue-white bars around several enemies, gothic sci-fi card art, no text.",
     "upgrade": {
-      "text": "最多消耗 3 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧。",
+      "text": "最多消耗 3 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧，并获得 4 点护盾。",
       "actions": [
         {
           "type": "SpendResourceUpTo",
@@ -13084,10 +13089,15 @@
               "target": "AllEnemies"
             },
             {
-              "type": "ApplyStatus",
-              "status": "Fear",
-              "stacks": 1,
-              "target": "AllEnemies"
+            "type": "ApplyStatus",
+            "status": "Fear",
+            "stacks": 1,
+            "target": "AllEnemies"
+            },
+            {
+              "type": "GainBlock",
+              "amount": 4,
+              "target": "Self"
             }
           ]
         }
@@ -13164,7 +13174,7 @@
       "seal",
       "cost"
     ],
-    "text": "施加 2 层虚弱。若目标意图攻击，获得 2 点封印并使下一张牌费用减少 1。",
+    "text": "施加 2 层虚弱。若目标意图攻击，获得 2 点封印、4 点护盾，并使下一张牌费用减少 1。",
     "actions": [
       {
         "type": "ApplyStatus",
@@ -13184,6 +13194,11 @@
             "amount": 2
           },
           {
+            "type": "GainBlock",
+            "amount": 4,
+            "target": "Self"
+          },
+          {
             "type": "NextCardCostDown",
             "amount": 1
           }
@@ -13192,7 +13207,7 @@
     ],
     "art_prompt": "A silent brass bell wrapped in blue null chains above an attacking silhouette, gothic sci-fi card art, no text.",
     "upgrade": {
-      "text": "施加 3 层虚弱。若目标意图攻击，获得 2 点封印并使下一张牌费用减少 1。",
+      "text": "施加 3 层虚弱。若目标意图攻击，获得 2 点封印、5 点护盾，并使下一张牌费用减少 1。",
       "actions": [
         {
           "type": "ApplyStatus",
@@ -13210,6 +13225,11 @@
               "type": "GainResource",
               "resource": "seal",
               "amount": 2
+            },
+            {
+              "type": "GainBlock",
+              "amount": 5,
+              "target": "Self"
             },
             {
               "type": "NextCardCostDown",

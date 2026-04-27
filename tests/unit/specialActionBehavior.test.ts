@@ -220,6 +220,36 @@ test('new secondary resources share route resource gain and spend storage', () =
   assert.equal(state.combat!.player.block, 3);
 });
 
+test('legacy relic utility actions draw, heal, and gain conditional energy', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const drawCard = getCardDefById('calculated_strike');
+  assert.ok(drawCard);
+  state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_heal_card'));
+  state.combat!.player.hp = 10;
+  const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
+  player.command = 1;
+  player.secondaryResources = { command: 1 };
+
+  manager.enqueueAll(
+    [
+      { type: 'DrawAndHeal', drawAmount: 1, healAmount: 3, target: 'Self' },
+      {
+        type: 'ConditionalEnergyGain',
+        condition: { type: 'ResourceThreshold', resource: 'command', threshold: 1 },
+        amount: 1,
+        target: 'Self',
+      },
+    ] as any,
+    { source: 'player', targetId: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.hand.length, 1);
+  assert.equal(state.combat!.player.hp, 13);
+  assert.equal(state.combat!.player.energy, 4);
+});
+
 test('route resource relic events resolve against the active game state', () => {
   const state = makeState();
   const manager = makeManager(state);

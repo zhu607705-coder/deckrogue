@@ -297,6 +297,7 @@ export class GameEngine {
 
     this.subscribeToGlobalEvent(RuntimeEventType.CombatVictory, () => {
       if (this.state.screen === 'GameOver' || this.state.screen === 'Victory') return;
+      if (this.state.screen !== 'Combat' || !this.state.combat) return;
       this.appendVoxLog('战区清空。回收小队可推进。');
       this.snapshotCombatVoxLog();
       this.handleCombatVictory();
@@ -728,6 +729,7 @@ export class GameEngine {
 
   private applyRunTransition(action: import('@/core/events/runStateMachine').RunAction): void {
     try {
+      if (action.type === 'COMBAT_WON' && this.state.screen !== 'Combat') return;
       this.runFlowManager.applyRunTransition(action);
     } catch (error) {
       console.error('[GameEngine] Failed to apply run transition:', error);
@@ -1269,6 +1271,7 @@ export class GameEngine {
   }
 
   handleCombatVictory(): void {
+    if (this.state.screen !== 'Combat' || !this.state.combat) return;
     if (this.supportsBootAndMapDelegation()) {
       try {
         const snapshot = this.runtimeDelegate!.completeCombat();

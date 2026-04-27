@@ -365,7 +365,7 @@ const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
     routeTag: 'void_sanctioner:suppression',
     characterId: 'void_sanctioner',
     label: '压制链',
-    supportRelicIds: ['cage_bell_clapper', 'void_anchor_litany', 'anchor'],
+    supportRelicIds: ['cage_bell_clapper', 'void_anchor_litany', 'nullglass_lens', 'anchor'],
   },
   'void_sanctioner:risk': {
     routeTag: 'void_sanctioner:risk',

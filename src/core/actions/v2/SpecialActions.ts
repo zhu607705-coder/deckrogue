@@ -664,6 +664,27 @@ export class ConditionalHealAction extends BaseAction {
   }
 }
 
+export class ConditionalEnergyGainAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    if (!evaluateActionCondition(state, this.context, this.spec.condition)) return;
+    queueActionSpecs(queue, [{ type: 'GainEnergy', amount: Math.max(1, Number(this.spec.amount || 1)), target: 'Self' }], this.context);
+  }
+}
+
+export class DrawAndHealAction extends BaseAction {
+  execute(state: GameState, queue: ActionQueue): void {
+    this.context = this.getContextFromQueue(queue);
+    const spec = this.spec as unknown as Record<string, unknown>;
+    const drawAmount = Math.max(0, Number(spec.drawAmount ?? this.spec.amount ?? 0));
+    const healAmount = Math.max(0, Number(spec.healAmount ?? 0));
+    const actions: ActionSpec[] = [];
+    if (drawAmount > 0) actions.push({ type: 'Draw', amount: drawAmount, target: 'Self' });
+    if (healAmount > 0) actions.push({ type: 'Heal', amount: healAmount, target: 'Self' });
+    queueActionSpecs(queue, actions, this.context);
+  }
+}
+
 export class ElementalOverloadDamageAction extends BaseAction {
   execute(state: GameState, queue: ActionQueue): void {
     this.context = this.getContextFromQueue(queue);

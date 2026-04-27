@@ -198,3 +198,65 @@ test('handleCombatVictory preserves room contract metadata through reward transi
     engine.dispose();
   }
 });
+
+test('duplicate combat victory signals are ignored after reward transition', () => {
+  const engine = new GameEngine(8642, null, { enableRuntimeDelegation: false });
+  engine.selectCharacter('informant');
+  engine.state.map = [{ id: 'combat-node', type: 'Combat', revealed: true, next: [], x: 0, y: 0 }];
+  engine.state.currentNodeId = 'combat-node';
+  engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'room_combat_token';
+  engine.state.roomResolutionKind = 'combat';
+  engine.state.screen = 'Combat';
+  engine.state.combat = {
+    player: {
+      hp: 10,
+      maxHp: 10,
+      block: 0,
+      energy: 3,
+      statuses: {},
+      delayedCards: [],
+      constructs: [],
+      elements: [],
+      potionToxicity: 0,
+      potionsUsedThisTurn: 0,
+      cardsPlayedThisTurn: 0,
+      damageTakenThisTurn: 0,
+      damageTakenLastTurn: 0,
+      intel: 0,
+      devotion: 0,
+      corruptionAxis: 0,
+      axisDisposition: 'balanced',
+    },
+    enemies: [],
+    drawPile: [],
+    hand: [],
+    discardPile: [],
+    exhaustPile: [],
+    turn: 1,
+    isPlayerTurn: true,
+    warpTide: 0,
+    warpAlpha: 0.5,
+    warpPerilK: 0.05,
+  } as any;
+
+  const errors: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+  };
+
+  try {
+    (engine as any).handleCombatVictory();
+    (engine as any).handleCombatVictory();
+    (engine as any).runFlowManager.applyRunTransition({ type: 'COMBAT_WON' });
+
+    assert.equal(engine.state.screen, 'Reward');
+    assert.equal(engine.state.pendingNodeResolution, true);
+    assert.equal(engine.state.roomResolutionToken, 'room_combat_token');
+    assert.equal(errors.some((entry) => entry.includes('Illegal run transition')), false);
+  } finally {
+    console.error = originalError;
+    engine.dispose();
+  }
+});

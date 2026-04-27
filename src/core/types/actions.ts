@@ -77,6 +77,7 @@ export interface ActionSpec {
     | 'ConditionalDraw'
     | 'ConditionalHeal'
     | 'ConditionalDamage'
+    | 'ConditionalEnergyGain'
     | 'ConditionalRefund'
     | 'ConditionalKill'
     | 'ModifyEnergy'
@@ -158,10 +159,13 @@ export interface ActionSpec {
     | 'EndOfTurnEffect'
     | 'MultiplyDamage'
     | 'DelayedDraw'
+    | 'DrawAndHeal'
     | 'LoseHp'
     | 'LoseHP'
     | 'RetainCard';
   amount?: number;
+  drawAmount?: number;
+  healAmount?: number;
   bonus?: number;
   status?: string;
   target?: CardTarget;

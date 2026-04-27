@@ -1232,6 +1232,7 @@ export class CombatManager {
   handleCombatVictory(): void {
     if (this.combatVictoryInProgress) return;
     const state = this.deps.getState();
+    if (state.screen !== 'Combat') return;
     if (!state.combat) return;
 
     this.combatVictoryInProgress = true;
