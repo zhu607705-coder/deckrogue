@@ -35,6 +35,11 @@ type TuningRecommendation = {
   characterId: string;
   status: 'within_target' | 'below_target' | 'above_target';
   survivalRateFirst3: number;
+  confidenceInterval: {
+    lower: number;
+    upper: number;
+    confidence: number;
+  };
   note: string;
 };
 
@@ -46,6 +51,22 @@ const TARGET_MIN = 0.55;
 const TARGET_MAX = 0.92;
 const require = createRequire(import.meta.url);
 const TSX_CLI = require.resolve('tsx/cli');
+
+function wilsonInterval(successes: number, trials: number, z = 1.96): { lower: number; upper: number; confidence: number } {
+  if (trials <= 0) {
+    return { lower: 0, upper: 0, confidence: 0.95 };
+  }
+  const phat = successes / trials;
+  const z2 = z * z;
+  const denominator = 1 + z2 / trials;
+  const center = phat + z2 / (2 * trials);
+  const margin = z * Math.sqrt((phat * (1 - phat) + z2 / (4 * trials)) / trials);
+  return {
+    lower: Math.max(0, (center - margin) / denominator),
+    upper: Math.min(1, (center + margin) / denominator),
+    confidence: 0.95,
+  };
+}
 
 function parseRuns(): number {
   const flag = process.argv.find((arg) => arg.startsWith('--runs='));
@@ -70,19 +91,23 @@ function runSimulation(runs: number): void {
 
 function buildRecommendation(summary: CharacterSimulationSummary): TuningRecommendation {
   const rate = summary.survivalRateFirst3;
-  if (rate < TARGET_MIN) {
+  const successes = Math.round(rate * summary.runs);
+  const confidenceInterval = wilsonInterval(successes, summary.runs);
+  if (confidenceInterval.upper < TARGET_MIN) {
     return {
       characterId: summary.characterId,
       status: 'below_target',
       survivalRateFirst3: rate,
+      confidenceInterval,
       note: '早期生存率低于目标区间。下一轮优先降低普通怪攻击型 ai_profile 乘区，或提高该角色早期防御/资源稳定性。',
     };
   }
-  if (rate > TARGET_MAX) {
+  if (confidenceInterval.lower > TARGET_MAX) {
     return {
       characterId: summary.characterId,
       status: 'above_target',
       survivalRateFirst3: rate,
+      confidenceInterval,
       note: '早期生存率高于目标区间。下一轮优先检查该角色起始牌组输出与普通怪 anti-stall 压力。',
     };
   }
@@ -90,6 +115,7 @@ function buildRecommendation(summary: CharacterSimulationSummary): TuningRecomme
     characterId: summary.characterId,
     status: 'within_target',
     survivalRateFirst3: rate,
+    confidenceInterval,
     note: '早期生存率处于当前目标区间，暂不建议按小样本调参。',
   };
 }
@@ -126,7 +152,9 @@ function main(): void {
       withinTarget: recommendations.filter((entry) => entry.status === 'within_target').length,
       belowTarget: recommendations.filter((entry) => entry.status === 'below_target').length,
       aboveTarget: recommendations.filter((entry) => entry.status === 'above_target').length,
-      overallStatus: illegalRunTransitions === 0 && unknownActionTypes === 0 ? 'pass_with_tuning_notes' : 'fail',
+      overallStatus: illegalRunTransitions === 0 && unknownActionTypes === 0
+        ? (needsTuning.length > 0 ? 'pass_with_tuning_notes' : 'pass')
+        : 'fail',
     },
   };
 

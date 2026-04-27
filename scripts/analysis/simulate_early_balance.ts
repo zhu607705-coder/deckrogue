@@ -14,8 +14,9 @@ import { EconomySystem } from '../../src/features/progression/economySystem';
 import { balanceSystem } from '../../src/core/balance/balanceSystem';
 import { goldToEVU } from '../../src/core/balance/numericsFormulas';
 import { relicsData, potionsData } from '../../src/content/narrative/numericSystem';
+import { STORY_EVENTS } from '../../src/content/narrative/storyEvents';
 import charactersData from '../../src/content/data/characters.json';
-import type { CardDef, GameState, MapNode } from '../../src/core/types';
+import type { CardDef, EventOption, GameState, MapNode, RunCardInstance } from '../../src/core/types';
 
 type Screen =
   | 'CharacterSelect'
@@ -26,6 +27,7 @@ type Screen =
   | 'Rest'
   | 'Upgrade'
   | 'RemoveCard'
+  | 'Enchant'
   | 'Event'
   | 'GameOver'
   | 'Victory';
@@ -118,6 +120,7 @@ const policies: PathPolicy[] = ['balanced', 'aggressive', 'economy'];
 const sleep = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
 const relicPriceById = new Map((relicsData as any[]).map((relic: any) => [relic.id, relic.price || 150]));
 const potionPriceById = new Map((potionsData as any[]).map((potion: any) => [potion.id, potion.price || 75]));
+const storyEventById = new Map(STORY_EVENTS.map(event => [event.id, event]));
 let outputDir = path.join(process.cwd(), 'output', 'numerics');
 
 function emptyNodeCountRecord(): Record<NodeType, number> {
@@ -402,13 +405,16 @@ function countGeneratedNodes(map: MapNode[], floorCount = 3) {
 }
 function pushResolvedSnapshot(
   engine: GameEngine,
+  resolvedNodeIds: Set<string>,
   resolvedNodes: Array<{ floor: number; type: NodeType }>,
   assetSnapshots: AssetSnapshot[]
-) {
+): number | null {
   const current = engine.state.map.find(n => n.id === engine.state.currentNodeId);
-  if (!current) return;
+  if (!current || resolvedNodeIds.has(current.id)) return null;
+  resolvedNodeIds.add(current.id);
   resolvedNodes.push({ floor: current.y + 1, type: current.type });
   assetSnapshots.push(buildAssetSnapshot(engine.state, current.y + 1, current.type));
+  return current.y;
 }
 function normalizeCounts(record: Record<NodeType, number>): Record<NodeType, number> {
   const total = TRACKED_NODE_TYPES.reduce((sum, type) => sum + (record[type] || 0), 0);
@@ -421,6 +427,83 @@ function normalizeCounts(record: Record<NodeType, number>): Record<NodeType, num
 function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
 }
+
+function isEventOptionAvailable(option: EventOption, state: GameState): boolean {
+  try {
+    return !option.condition || option.condition(state);
+  } catch {
+    return false;
+  }
+}
+
+function scoreEventOption(engine: GameEngine, policy: PathPolicy, option: EventOption): number {
+  const hpRatio = engine.state.player.hp / Math.max(1, engine.state.player.maxHp);
+  const danger = option.danger ?? 'medium';
+  const dangerScoreByPolicy: Record<PathPolicy, Record<NonNullable<EventOption['danger']>, number>> = {
+    balanced: {
+      low: 36,
+      medium: hpRatio >= 0.45 ? 44 : 18,
+      high: hpRatio >= 0.75 ? 30 : -35
+    },
+    aggressive: {
+      low: 20,
+      medium: hpRatio >= 0.35 ? 36 : 14,
+      high: hpRatio >= 0.6 ? 54 : 6
+    },
+    economy: {
+      low: 48,
+      medium: hpRatio >= 0.5 ? 38 : 16,
+      high: hpRatio >= 0.8 ? 22 : -42
+    }
+  };
+  let score = dangerScoreByPolicy[policy][danger];
+  const searchable = [
+    option.id,
+    option.text,
+    option.description,
+    ...(option.gains ?? []),
+    ...(option.costs ?? [])
+  ].join(' ').toLowerCase();
+
+  if (/(gold|relic|potion|card|remove|salvage|extract|wealth|bargain|explore)/.test(searchable)) score += 8;
+  if (/(heal|restore|purify|seal|guard|ignore)/.test(searchable)) score += hpRatio < 0.7 ? 12 : 4;
+  if (/(curse|corruption|max hp|blood|embrace|desecrate|implant|open_casket)/.test(searchable)) score -= 10;
+  if (/(inscribe|enchant)/.test(searchable)) score -= 24;
+  if (option.id === 'medicae_salvage') score += policy === 'economy' ? 8 : -6;
+  if (option.id === 'martyr_offer_wealth' && engine.state.player.gold >= 50) score += policy === 'economy' ? 10 : 2;
+  if (option.id === 'secret_passage_ignore') score += hpRatio < 0.45 ? 18 : 0;
+  if (option.id === 'legacy_read_codex' && engine.state.character?.id === 'informant') score += 8;
+  return score;
+}
+
+function chooseEventChoice(engine: GameEngine, policy: PathPolicy): string | null {
+  const event = engine.state.activeEvent;
+  if (!event) return null;
+  if (event.id === 'rusting_medicae' && event.stage === 'salvage_aftermath') {
+    return 'medicae_salvage_flee';
+  }
+  const eventDef = storyEventById.get(event.id);
+  if (!eventDef) return null;
+
+  const options = eventDef.options.filter(option => isEventOptionAvailable(option, engine.state));
+  if (options.length === 0) return null;
+
+  return [...options].sort((a, b) => {
+    const scoreDiff = scoreEventOption(engine, policy, b) - scoreEventOption(engine, policy, a);
+    if (scoreDiff !== 0) return scoreDiff;
+    return a.id.localeCompare(b.id);
+  })[0].id;
+}
+
+function chooseCardForRemoval(engine: GameEngine): RunCardInstance | undefined {
+  const removablePriority = ['greed_sin', 'paranoia', 'perjury_stigma', 'psychic_backlash', 'strike', 'defend'];
+  for (const cardId of removablePriority) {
+    const card = engine.state.player.deck.find(entry => entry.id === cardId && entry.instanceId);
+    if (card) return card;
+  }
+  return engine.state.player.deck.find(entry => !!entry.instanceId);
+}
+
 function buildPolicySnapshot(runs: RunSummary[]): PolicySummary {
   const economy = new EconomySystem();
   const floors = [1, 2, 3];
@@ -708,7 +791,9 @@ async function runSingle(characterId: string, seed: number, policy: PathPolicy):
   engine.selectCharacter(characterId);
   const generated = countGeneratedNodes(engine.state.map, 3);
   const resolvedNodes: Array<{ floor: number; type: NodeType }> = [];
+  const resolvedNodeIds = new Set<string>();
   const assetSnapshots: AssetSnapshot[] = [buildAssetSnapshot(engine.state, 0, 'Start')];
+  const unknownActionTypes = new Set<string>();
   let nodesResolved = 0;
   let maxFloorResolved = -1;
   const combats: CombatSummary[] = [];
@@ -736,37 +821,59 @@ async function runSingle(characterId: string, seed: number, policy: PathPolicy):
       const first = engine.state.rewardCards[0];
       if (first) engine.pickRewardCard(first.instanceId!);
       else engine.skipReward();
-      nodesResolved += 1;
-      const current = engine.state.map.find(n => n.id === engine.state.currentNodeId);
-      if (current) maxFloorResolved = Math.max(maxFloorResolved, current.y);
-      pushResolvedSnapshot(engine, resolvedNodes, assetSnapshots);
+      const resolvedFloor = pushResolvedSnapshot(engine, resolvedNodeIds, resolvedNodes, assetSnapshots);
+      if (resolvedFloor !== null) {
+        nodesResolved += 1;
+        maxFloorResolved = Math.max(maxFloorResolved, resolvedFloor);
+      }
       await sleep(0);
       continue;
     }
     if (screen === 'Rest') {
       engine.restHeal();
-      nodesResolved += 1;
-      const current = engine.state.map.find(n => n.id === engine.state.currentNodeId);
-      if (current) maxFloorResolved = Math.max(maxFloorResolved, current.y);
-      pushResolvedSnapshot(engine, resolvedNodes, assetSnapshots);
+      const resolvedFloor = pushResolvedSnapshot(engine, resolvedNodeIds, resolvedNodes, assetSnapshots);
+      if (resolvedFloor !== null) {
+        nodesResolved += 1;
+        maxFloorResolved = Math.max(maxFloorResolved, resolvedFloor);
+      }
       await sleep(0);
       continue;
     }
     if (screen === 'Event') {
-      engine.makeEventChoice('decline');
-      nodesResolved += 1;
-      const current = engine.state.map.find(n => n.id === engine.state.currentNodeId);
-      if (current) maxFloorResolved = Math.max(maxFloorResolved, current.y);
-      pushResolvedSnapshot(engine, resolvedNodes, assetSnapshots);
+      const eventId = engine.state.activeEvent?.id ?? 'unknown';
+      const eventStage = engine.state.activeEvent?.stage ?? null;
+      const choice = chooseEventChoice(engine, policy);
+      if (choice) engine.resolveEventChoice(choice);
+      else engine.makeEventChoice('decline');
+      await sleep(0);
+      if (engine.state.screen === 'Event' && !engine.state.activeEvent) {
+        engine.leaveCurrentRoomToMap();
+      }
+      if (engine.state.screen === 'Map' || !engine.state.activeEvent) {
+        const resolvedFloor = pushResolvedSnapshot(engine, resolvedNodeIds, resolvedNodes, assetSnapshots);
+        if (resolvedFloor !== null) {
+          nodesResolved += 1;
+          maxFloorResolved = Math.max(maxFloorResolved, resolvedFloor);
+        }
+      } else if (engine.state.screen === 'Event') {
+        const activeEvent = engine.state.activeEvent;
+        if (activeEvent?.id === eventId && (activeEvent.stage ?? null) !== eventStage) {
+          await sleep(0);
+          continue;
+        }
+        unknownActionTypes.add(`unresolved_event_choice:${eventId}:${choice ?? 'decline'}`);
+        break;
+      }
       await sleep(0);
       continue;
     }
     if (screen === 'Shop') {
       engine.leaveCurrentRoomToMap();
-      nodesResolved += 1;
-      const current = engine.state.map.find(n => n.id === engine.state.currentNodeId);
-      if (current) maxFloorResolved = Math.max(maxFloorResolved, current.y);
-      pushResolvedSnapshot(engine, resolvedNodes, assetSnapshots);
+      const resolvedFloor = pushResolvedSnapshot(engine, resolvedNodeIds, resolvedNodes, assetSnapshots);
+      if (resolvedFloor !== null) {
+        nodesResolved += 1;
+        maxFloorResolved = Math.max(maxFloorResolved, resolvedFloor);
+      }
       await sleep(0);
       continue;
     }
@@ -778,14 +885,34 @@ async function runSingle(characterId: string, seed: number, policy: PathPolicy):
       continue;
     }
     if (screen === 'RemoveCard') {
-      engine.state.screen = 'Shop';
+      const removable = chooseCardForRemoval(engine);
+      if (removable?.instanceId) engine.removeCard(removable.instanceId);
+      else engine.cancelCardRemoval();
+      const resolvedFloor = engine.state.screen === 'Map'
+        ? pushResolvedSnapshot(engine, resolvedNodeIds, resolvedNodes, assetSnapshots)
+        : null;
+      if (resolvedFloor !== null) {
+        nodesResolved += 1;
+        maxFloorResolved = Math.max(maxFloorResolved, resolvedFloor);
+      }
+      await sleep(0);
+      continue;
+    }
+    if (screen === 'Enchant') {
+      const target = engine.state.player.deck.find(card => card.instanceId && !card.persistentEnchantments?.length);
+      if (target?.instanceId) engine.applyEnchantment(target.instanceId);
+      else engine.cancelEnchant();
+      if (engine.state.screen === 'Event') {
+        unknownActionTypes.add(`unresolved_event_enchant:${engine.state.activeEvent?.id ?? 'unknown'}`);
+        break;
+      }
       await sleep(0);
       continue;
     }
     await sleep(0);
   }
   const survivedFirst3Floors = engine.state.screen !== 'GameOver' && maxFloorResolved >= 2;
-  return {
+  const summary: RunSummary = {
     characterId,
     policy,
     survivedFirst3Floors,
@@ -798,9 +925,11 @@ async function runSingle(characterId: string, seed: number, policy: PathPolicy):
     assetSnapshots,
     diagnostics: {
       illegalRunTransitions: (engine as any).getIllegalTransitions?.() || [],
-      unknownActionTypes: []
+      unknownActionTypes: [...unknownActionTypes]
     }
   };
+  engine.dispose();
+  return summary;
 }
 async function main() {
   const args = process.argv.slice(2);
@@ -835,6 +964,7 @@ async function main() {
   }
   console.log('');
   const allSummaries = [];
+  const allRunDiagnostics: RunSummary[] = [];
   for (const [classIndex, characterId] of characters.entries()) {
     const runsByPolicy: Map<PathPolicy, RunSummary[]> = new Map();
     for (const policy of policies) {
@@ -849,6 +979,7 @@ async function main() {
     for (const policy of policies) {
       allRuns.push(...(runsByPolicy.get(policy)!));
     }
+    allRunDiagnostics.push(...allRuns);
     const summary = buildFullSummary(characterId, allRuns);
     allSummaries.push(summary);
     const balancedSummary = summary.resolvedByPolicy?.balanced;
@@ -857,15 +988,8 @@ async function main() {
     );
   }
   console.log('\nJSON:');
-  const allRunsWithDiagnostics = allSummaries.flatMap((s: any) => {
-    const allPolicyRuns: any[] = [];
-    if (s.resolvedByPolicy?.aggressive?.runs) allPolicyRuns.push(...s.resolvedByPolicy.aggressive.runs);
-    if (s.resolvedByPolicy?.economy?.runs) allPolicyRuns.push(...s.resolvedByPolicy.economy.runs);
-    if (s.resolvedByPolicy?.balanced?.runs) allPolicyRuns.push(...s.resolvedByPolicy.balanced.runs);
-    return allPolicyRuns;
-  });
-  const allIllegalTransitions = allRunsWithDiagnostics.flatMap((r: any) => r.diagnostics?.illegalRunTransitions || []);
-  const allUnknownActionTypes = allRunsWithDiagnostics.flatMap((r: any) => r.diagnostics?.unknownActionTypes || []);
+  const allIllegalTransitions = allRunDiagnostics.flatMap((r: any) => r.diagnostics?.illegalRunTransitions || []);
+  const allUnknownActionTypes = allRunDiagnostics.flatMap((r: any) => r.diagnostics?.unknownActionTypes || []);
   const hasIllegalTransitions = allIllegalTransitions.length > 0;
   const hasUnknownActions = allUnknownActionTypes.length > 0;
 

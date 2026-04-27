@@ -426,3 +426,11 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **回归覆盖**：新增敌人感知测试，覆盖“能量不足时高费攻击降权”和“低费可斩杀牌升为高威胁”；新增战斗视图模型测试，锁定 tempCost、Unplayable、能量不足和非玩家回合的禁用态。
 - **验证证据**：`node --test --import tsx tests/unit/enemyIntentFacade.test.ts` 通过 `10/10`；`node --test --import tsx tests/unit/combatViewModel.test.ts` 通过 `4/4`；`npx tsc --noEmit --pretty false --project tsconfig.json` 通过；`npm run test:supplemental-units` 通过 `135/135`；`npm run lint --silent` 通过；`npm run build` 通过；`npm run report:enemy-ai-tuning` 通过，结果为 `pass_with_tuning_notes`、`5/6` 角色在目标区间内，仅 `informant` 早期生存率偏高；`npm run test:ui-smoke` 通过；`npm run test:manual-victory-run` 通过，`seed=1777217199075`、`victory=true`、`finalScreen=Victory`、`cardsClicked=111`、`turnsEnded=25`。
 - **剩余风险**：本轮是第一轮高收益切面优化，未宣称全项目每个功能都已完成逐一优化；后续 Ralph 迭代应继续按可验证切面推进，例如事件/商店实时结算、遗物触发聚合、长线 balance bot 与 UI 表现联动。
+
+### Step 133: repair early balance simulation fidelity
+
+- **操作方向**：继续 Ralph 优化闭环，先处理 Step 132 保留的 early balance tuning 告警，确认 `informant` 早期生存率偏高是实战数值问题还是模拟器/报告误判。
+- **发现与修复**：`simulate_early_balance.ts` 原先对故事事件统一调用 `makeEventChoice('decline')`，该选项对 story event 无效，可能导致同一事件在 Event 屏反复计入 resolved node；同时每次模拟创建的 `GameEngine` 未释放全局事件监听，后续 run 会触发旧引擎的胜利监听并污染非法迁移日志。本轮改为按事件真实选项、danger、策略和当前血量选择事件选项，支持多阶段 `rusting_medicae` 后续选择，节点结算按 node id 去重，`RemoveCard`/`Enchant` 屏做显式处理，并在 run summary 返回前 `dispose()` 引擎。
+- **报告优化**：`report_enemy_ai_tuning.ts` 不再用小样本裸 survival rate 直接判定 above/below target，改用 95% Wilson 区间；只有区间整体越界才生成 tuning note。默认 `--runs=3` 在修复模拟污染后不再把 9 次小样本全生存误判为必须调参，`overallStatus` 在无诊断失败且无 tuning note 时返回 `pass`。
+- **验证证据**：`npx tsx scripts\analysis\simulate_early_balance.ts --class=informant --runs=1 --output-dir=reports\ai\.debug-after-sim-fix` 通过，`illegalRunTransitions=0`、`unknownActionTypes=0`；`npx tsx scripts\analysis\simulate_early_balance.ts --class=informant --runs=10 --output-dir=reports\ai\.debug-informant-runs10` 通过，覆盖 30 个 informant policy runs 且诊断为 0；`npm run report:enemy-ai-tuning -- --runs=3` 通过，`tuningNotes=0`。
+- **剩余风险**：当前修复的是模拟和报告可信度，不等同于证明所有长样本都不会暴露 early-game 过稳问题；若后续把 `--runs` 提升到更高样本且 Wilson 区间整体超过上界，再做全局早期压力或具体角色数值调整。
