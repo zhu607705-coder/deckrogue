@@ -170,6 +170,36 @@ function makeState(): GameState {
   } as GameState;
 }
 
+function makeTestCard(
+  id: string,
+  type: 'Attack' | 'Skill',
+  cost: number,
+  actions: Array<{ type: string; amount?: number }>
+) {
+  return {
+    id,
+    name: id.replace(/_/g, ' '),
+    type,
+    rarity: 'Common',
+    cost,
+    text: '',
+    actions,
+    instanceId: `${id}_1`,
+    baseCardId: id,
+    runtimeBase: {
+      id,
+      name: id.replace(/_/g, ' '),
+      type,
+      rarity: 'Common',
+      cost,
+      text: '',
+      actions,
+    },
+    persistentEnchantments: [],
+    combatAfflictions: [],
+  } as any;
+}
+
 test('selectEnemyIntentForCombat returns a policy intent through the unified AI entry', () => {
   const state = makeState();
   const enemyDef = {
@@ -192,6 +222,7 @@ test('buildEnemyPerceptionSnapshot converts live hand state into fuzzy intent ba
     id: 'test_enemy',
     keywords: ['elite'],
     intent_policy: [],
+    ai_profile: { perceptionAccuracy: 1 },
   };
 
   const perception = buildEnemyPerceptionSnapshot(state, enemyDef, state.combat!.enemies[0]);
@@ -200,6 +231,50 @@ test('buildEnemyPerceptionSnapshot converts live hand state into fuzzy intent ba
   assert.equal(perception.comboThreatBand, 'high');
   assert.equal(perception.playerHpBand, 'pressured');
   assert.ok(perception.perceptionAccuracy >= 0.6);
+});
+
+test('buildEnemyPerceptionSnapshot discounts attacks the player cannot pay for this turn', () => {
+  const state = makeState();
+  state.combat!.player.energy = 1;
+  state.combat!.hand = [
+    makeTestCard('expensive_burst_a', 'Attack', 3, [{ type: 'DealDamage', amount: 30 }]),
+    makeTestCard('expensive_burst_b', 'Attack', 3, [{ type: 'DealDamage', amount: 30 }]),
+    makeTestCard('guard_protocol', 'Skill', 1, [{ type: 'GainBlock', amount: 8 }]),
+  ];
+  const enemyDef = {
+    id: 'test_enemy',
+    keywords: ['elite'],
+    intent_policy: [],
+    ai_profile: { perceptionAccuracy: 1 },
+  };
+
+  const perception = buildEnemyPerceptionSnapshot(state, enemyDef, state.combat!.enemies[0]);
+
+  assert.equal(perception.attackIntentBand, 'low');
+  assert.equal(perception.comboThreatBand, 'none');
+  assert.equal(perception.defenseIntentBand, 'medium');
+});
+
+test('buildEnemyPerceptionSnapshot promotes cheap lethal hand damage even when attack count is low', () => {
+  const state = makeState();
+  state.combat!.player.energy = 1;
+  state.combat!.enemies[0].hp = 16;
+  state.combat!.enemies[0].maxHp = 30;
+  state.combat!.hand = [
+    makeTestCard('needle_execution', 'Attack', 1, [{ type: 'DealDamage', amount: 18 }]),
+    makeTestCard('minor_guard', 'Skill', 1, [{ type: 'GainBlock', amount: 5 }]),
+    makeTestCard('minor_guard_two', 'Skill', 1, [{ type: 'GainBlock', amount: 5 }]),
+  ];
+  const enemyDef = {
+    id: 'test_enemy',
+    keywords: ['elite'],
+    intent_policy: [],
+  };
+
+  const perception = buildEnemyPerceptionSnapshot(state, enemyDef, state.combat!.enemies[0]);
+
+  assert.equal(perception.attackIntentBand, 'high');
+  assert.equal(perception.comboThreatBand, 'high');
 });
 
 test('cooldownsReducer decays previous cooldowns and records the used intent', () => {

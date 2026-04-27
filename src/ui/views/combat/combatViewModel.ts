@@ -14,6 +14,7 @@ import type { IntentDisplay } from '@/types';
 
 type RuntimeCombat = NonNullable<GameEngine['state']['combat']>;
 type RuntimePlayer = RuntimeCombat['player'];
+type RuntimeCard = RuntimeCombat['hand'][number];
 
 export type CharacterResourceId =
   | 'informant'
@@ -35,6 +36,13 @@ export interface CharacterResourceSnapshot {
   tone: 'grimdark-pill--resource';
 }
 
+export interface CardPlayabilitySnapshot {
+  cost: number;
+  remainingEnergy: number;
+  isUnplayable: boolean;
+  isDisabled: boolean;
+}
+
 export function clampCombatInteger(value: unknown, minimum = 0, maximum = Number.MAX_SAFE_INTEGER): number {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return minimum;
@@ -43,6 +51,23 @@ export function clampCombatInteger(value: unknown, minimum = 0, maximum = Number
 
 export function clampCombatPercent(value: unknown): number {
   return clampCombatInteger(value, 0, 100);
+}
+
+export function getCardPlayabilitySnapshot(
+  card: Pick<RuntimeCard, 'cost' | 'tempCost' | 'tags'>,
+  playerEnergy: unknown,
+  isPlayerTurn: boolean,
+): CardPlayabilitySnapshot {
+  const cost = clampCombatInteger(card.tempCost ?? card.cost);
+  const energy = clampCombatInteger(playerEnergy);
+  const isUnplayable = (card.tags || []).includes('Unplayable');
+
+  return {
+    cost,
+    remainingEnergy: clampCombatInteger(energy - cost),
+    isUnplayable,
+    isDisabled: !isPlayerTurn || isUnplayable || energy < cost,
+  };
 }
 
 export function getCharacterResourceSnapshot(

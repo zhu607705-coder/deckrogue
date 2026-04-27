@@ -417,3 +417,12 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 - **实跑结果**：`reports/flows/manual-victory-run.json` 显示 `victory=true`、`roomsVisited=10`、`combatsWon=7`、`rewardsTaken=7`、`shopsVisited=1`、`restsUsed=2`、`cardsClicked=111`、`turnsEnded=25`、`consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，终局截图为 `output/playwright/manual-victory-run/32_Victory_victory_reached.png`。
 - **验证证据**：`npm run test:manual-victory-run` 通过；`npx tsc --noEmit --pretty false --project tsconfig.json` 通过。
 - **剩余风险**：这是 deterministic browser automation，不等同于人工长时间主观试玩；如果后续改地图可达性、战斗手牌交互、奖励、商店、事件、休整或终局 UI，需要重跑 `npm run test:manual-victory-run`。
+
+### Step 132: optimize live hand-aware enemy AI and combat card playability UI
+
+- **操作方向**：按 Ralph 第一轮优化要求，优先处理敌人 AI 基于当前手牌调节和战斗 UI 与功能结算的结合点，避免大范围无证据重构。
+- **AI 结算改动**：`buildEnemyPerceptionSnapshot()` 从“可见手牌类型/数量”升级为“可支付手牌的即时数值潜力”分档，会读取当前能量、临时费用、可见卡牌动作、即时伤害/格挡/治疗潜力和敌人当前生命值。不可支付的高费攻击不再把 `attackIntentBand`/`comboThreatBand` 抬高；低费可斩杀牌即使攻击牌数量少，也会被提升为高威胁。
+- **UI 结合改动**：新增 `getCardPlayabilitySnapshot()`，统一计算卡牌展示费用、剩余能量、不可打出标签和禁用态；`ActionHand` 的卡牌禁用态改走该视图模型，减少 UI 与实际费用预览逻辑分叉。
+- **回归覆盖**：新增敌人感知测试，覆盖“能量不足时高费攻击降权”和“低费可斩杀牌升为高威胁”；新增战斗视图模型测试，锁定 tempCost、Unplayable、能量不足和非玩家回合的禁用态。
+- **验证证据**：`node --test --import tsx tests/unit/enemyIntentFacade.test.ts` 通过 `10/10`；`node --test --import tsx tests/unit/combatViewModel.test.ts` 通过 `4/4`；`npx tsc --noEmit --pretty false --project tsconfig.json` 通过；`npm run test:supplemental-units` 通过 `135/135`；`npm run lint --silent` 通过；`npm run build` 通过；`npm run report:enemy-ai-tuning` 通过，结果为 `pass_with_tuning_notes`、`5/6` 角色在目标区间内，仅 `informant` 早期生存率偏高；`npm run test:ui-smoke` 通过；`npm run test:manual-victory-run` 通过，`seed=1777217199075`、`victory=true`、`finalScreen=Victory`、`cardsClicked=111`、`turnsEnded=25`。
+- **剩余风险**：本轮是第一轮高收益切面优化，未宣称全项目每个功能都已完成逐一优化；后续 Ralph 迭代应继续按可验证切面推进，例如事件/商店实时结算、遗物触发聚合、长线 balance bot 与 UI 表现联动。

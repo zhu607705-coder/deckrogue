@@ -14,6 +14,7 @@ import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';
 import { getCardNameZh } from '@/ui/content/terminology';
 import { grimdarkTerminology } from '@/ui/theme';
+import { getCardPlayabilitySnapshot } from './combatViewModel';
 
 interface ActionHandProps {
   engine: GameEngine;
@@ -63,28 +64,35 @@ export function ActionHand({
       
       {/* 手牌区域 */}
       <div className={`flex justify-center gap-2 mb-4 grimdark-hand ${tutorialHighlightActive ? 'grimdark-hand--guided' : ''}`}>
-        {state.hand.map((card: any, index: number) => (
-          <div
-            key={card.instanceId}
-            className={`grimdark-card-wrapper ${selectedCard === card.instanceId ? 'grimdark-card-wrapper--selected' : ''}`}
-          >
-            <CardView 
-              card={card} 
-              displayText={getDynamicCardText(card)}
-              warpTide={state.warpTide}
-              selected={selectedCard === card.instanceId}
-              disabled={!state.isPlayerTurn || (card.tags || []).includes('Unplayable') || player.energy < getPreviewCost(card)}
-              onClick={() => handleCardClick(card)}
-              rootProps={{
-                'data-keyboard-option': String(index + 1),
-                'data-keyboard-focus': 'true',
-                'data-keyboard-card-index': String(index + 1),
-                'data-keyboard-card': card.instanceId,
-                'aria-label': `${index + 1}. ${getCardNameZh(card)}`
-              }}
-            />
-          </div>
-        ))}
+        {state.hand.map((card: any, index: number) => {
+          const playability = getCardPlayabilitySnapshot(
+            { ...card, tempCost: getPreviewCost(card) },
+            player.energy,
+            state.isPlayerTurn,
+          );
+          return (
+            <div
+              key={card.instanceId}
+              className={`grimdark-card-wrapper ${selectedCard === card.instanceId ? 'grimdark-card-wrapper--selected' : ''}`}
+            >
+              <CardView
+                card={card}
+                displayText={getDynamicCardText(card)}
+                warpTide={state.warpTide}
+                selected={selectedCard === card.instanceId}
+                disabled={playability.isDisabled}
+                onClick={() => handleCardClick(card)}
+                rootProps={{
+                  'data-keyboard-option': String(index + 1),
+                  'data-keyboard-focus': 'true',
+                  'data-keyboard-card-index': String(index + 1),
+                  'data-keyboard-card': card.instanceId,
+                  'aria-label': `${index + 1}. ${getCardNameZh(card)}`
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
       
       {/* 牌堆按钮 */}

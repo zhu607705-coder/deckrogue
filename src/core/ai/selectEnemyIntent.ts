@@ -8,7 +8,7 @@
  * - 实现基于感知、记忆、群体协作的意图选择流程
  * - 输出最终意图选择结果
  */
-import type { GameState, RunCardInstance } from '@/core/types';
+import type { ActionSpec, GameState, RunCardInstance } from '@/core/types';
 
 import { combatMemory, type PlayerPatternAnalysis } from './combatMemory';
 import { handKnowledgeSystem } from './handKnowledge';
@@ -107,6 +107,89 @@ function isComboThreatCard(card: RunCardInstance): boolean {
   return card.cost >= 2 || (card.actions?.length || 0) >= 2;
 }
 
+function strongestIntentBand(a: IntentBand, b: IntentBand): IntentBand {
+  const rank: Record<IntentBand, number> = { low: 0, medium: 1, high: 2 };
+  return rank[a] >= rank[b] ? a : b;
+}
+
+function nonNegativeNumber(value: unknown): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+}
+
+function getPlayableCost(card: RunCardInstance): number {
+  return Math.max(0, Math.floor(nonNegativeNumber(card.tempCost ?? card.cost)));
+}
+
+function isActionDamage(action: ActionSpec): boolean {
+  return action.type === 'DealDamage'
+    || action.type === 'DealDamagePiercing'
+    || action.type === 'ConditionalDamage'
+    || action.type === 'ConditionalBonusDamage'
+    || action.type === 'ConditionalDelayedDamage'
+    || action.type === 'ElementalOverloadDamage'
+    || action.type === 'PrecisionThrowDamage'
+    || action.type === 'SolventDamage'
+    || action.type === 'RemovePoisonAndDealDamage'
+    || action.type === 'PuppetAttack';
+}
+
+function isActionDefense(action: ActionSpec): boolean {
+  return action.type === 'GainBlock'
+    || action.type === 'ConditionalBonusBlock'
+    || action.type === 'EmergencyBlock'
+    || action.type === 'Heal'
+    || action.type === 'HealSelf'
+    || action.type === 'ConditionalHeal';
+}
+
+function getActionMagnitude(action: ActionSpec): number {
+  const direct = Math.max(
+    nonNegativeNumber(action.amount),
+    nonNegativeNumber(action.damage),
+    nonNegativeNumber(action.block),
+    nonNegativeNumber(action.bonus),
+  );
+  const repeats = Math.max(1, Math.floor(nonNegativeNumber((action as ActionSpec & { hits?: number }).hits || action.times || 1)));
+  return direct * repeats;
+}
+
+function accumulateActionPotential(actions: ActionSpec[] | undefined): { damage: number; defense: number; actionCount: number } {
+  const totals = { damage: 0, defense: 0, actionCount: 0 };
+  if (!actions) return totals;
+
+  const visit = (action: ActionSpec): void => {
+    totals.actionCount += 1;
+    if (isActionDamage(action)) totals.damage += getActionMagnitude(action);
+    if (isActionDefense(action)) totals.defense += getActionMagnitude(action);
+
+    for (const nested of [action.actions, action.effects, action.trueActions, action.falseActions]) {
+      for (const child of nested || []) visit(child);
+    }
+    if (action.effect && 'type' in action.effect) {
+      visit(action.effect as ActionSpec);
+    }
+    if (action.ifTrue) visit(action.ifTrue);
+    if (action.ifFalse) visit(action.ifFalse);
+  };
+
+  for (const action of actions) visit(action);
+  return totals;
+}
+
+function classifyDamagePotentialBand(damagePotential: number, enemyHp: number): IntentBand {
+  if (damagePotential <= 0) return 'low';
+  if (damagePotential >= Math.max(12, enemyHp)) return 'high';
+  if (damagePotential >= Math.max(6, enemyHp * 0.35)) return 'medium';
+  return 'low';
+}
+
+function classifyDefensePotentialBand(defensePotential: number): IntentBand {
+  if (defensePotential >= 12) return 'high';
+  if (defensePotential >= 6) return 'medium';
+  return 'low';
+}
+
 export function buildEnemyPerceptionSnapshot(
   state: GameState,
   enemyDef: EnemyDefBase,
@@ -119,22 +202,40 @@ export function buildEnemyPerceptionSnapshot(
 
   const visibleCount = Math.min(hand.length, Math.max(1, Math.ceil(hand.length * perceptionAccuracy)));
   const visibleCards = hand.slice(0, visibleCount);
-  const attackCount = visibleCards.filter((card) => card.type === 'Attack').length;
-  const defenseCount = visibleCards.filter((card) => isDefensiveCard(card)).length;
-  const comboThreatCount = visibleCards.filter((card) => isComboThreatCard(card)).length;
+  const playerEnergy = state.combat?.player.energy ?? state.player.energy ?? state.player.maxEnergy ?? 0;
+  const playableCards = visibleCards.filter((card) => getPlayableCost(card) <= playerEnergy);
+  const playableAttackCount = playableCards.filter((card) => card.type === 'Attack').length;
+  const playableDefenseCount = playableCards.filter((card) => isDefensiveCard(card)).length;
+  const comboThreatCount = playableCards.filter((card) => isComboThreatCard(card)).length;
+  const immediatePotential = playableCards.reduce((totals, card) => {
+    const cardPotential = accumulateActionPotential(card.actions);
+    return {
+      damage: totals.damage + cardPotential.damage,
+      defense: totals.defense + cardPotential.defense,
+      actionCount: totals.actionCount + cardPotential.actionCount,
+    };
+  }, { damage: 0, defense: 0, actionCount: 0 });
 
   const dangerousKnownCards = handKnowledgeSystem.getDangerousCardCount();
+  const attackIntentBand = strongestIntentBand(
+    classifyIntentBand(playableAttackCount, Math.max(1, visibleCards.length)),
+    classifyDamagePotentialBand(immediatePotential.damage, enemyState.hp),
+  );
+  const defenseIntentBand = strongestIntentBand(
+    classifyIntentBand(playableDefenseCount, Math.max(1, visibleCards.length)),
+    classifyDefensePotentialBand(immediatePotential.defense),
+  );
   const comboThreatBand: ComboThreatBand =
-    comboThreatCount >= 2 || dangerousKnownCards >= 3
+    immediatePotential.damage >= enemyState.hp || comboThreatCount >= 2 || dangerousKnownCards >= 3
       ? 'high'
-      : comboThreatCount >= 1 || dangerousKnownCards >= 1
+      : immediatePotential.damage >= Math.max(10, enemyState.hp * 0.45) || comboThreatCount >= 1 || dangerousKnownCards >= 1
         ? 'suspected'
         : 'none';
 
   return {
     perceptionAccuracy,
-    attackIntentBand: classifyIntentBand(attackCount, Math.max(1, visibleCards.length)),
-    defenseIntentBand: classifyIntentBand(defenseCount, Math.max(1, visibleCards.length)),
+    attackIntentBand,
+    defenseIntentBand,
     comboThreatBand,
     playerHpBand: classifyHpBand(state.combat?.player.hp ?? state.player.hp, state.combat?.player.maxHp ?? state.player.maxHp),
     enemyHpBand: classifyHpBand(enemyState.hp, enemyState.maxHp),

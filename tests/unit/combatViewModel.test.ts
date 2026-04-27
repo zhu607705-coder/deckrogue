@@ -14,6 +14,7 @@ import type { IntentDisplay } from '@/types';
 import {
   clampCombatInteger,
   clampCombatPercent,
+  getCardPlayabilitySnapshot,
   getCharacterResourceSnapshot,
   getIntentThreatLevel
 } from '@/ui/views/combat/combatViewModel';
@@ -38,6 +39,31 @@ test('combat view model: clamp helpers keep values in display-safe range', () =>
   assert.equal(clampCombatPercent(125), 100);
   assert.equal(clampCombatPercent(-3), 0);
   assert.equal(clampCombatPercent(Number.NaN), 0);
+});
+
+test('combat view model: card playability snapshot centralizes cost and disabled state', () => {
+  assert.deepEqual(
+    getCardPlayabilitySnapshot({ cost: 2, tempCost: 1, tags: [] } as any, 3, true),
+    {
+      cost: 1,
+      remainingEnergy: 2,
+      isUnplayable: false,
+      isDisabled: false,
+    }
+  );
+
+  assert.deepEqual(
+    getCardPlayabilitySnapshot({ cost: 1, tags: ['Unplayable'] } as any, 3, true),
+    {
+      cost: 1,
+      remainingEnergy: 2,
+      isUnplayable: true,
+      isDisabled: true,
+    }
+  );
+
+  assert.equal(getCardPlayabilitySnapshot({ cost: 4, tags: [] } as any, 2, true).isDisabled, true);
+  assert.equal(getCardPlayabilitySnapshot({ cost: 0, tags: [] } as any, 2, false).isDisabled, true);
 });
 
 test('combat view model: intent threat level prefers lethal and control signals', () => {
