@@ -22,6 +22,19 @@
 - Ran `npm run report:longform-balance -- --pass=4 --runs-per-build=3`: covered 8/8 characters, 24/24 route builds, 330/330 cards, 98/98 relics, 87/87 event options, with `findingCount=0`.
 - Observed two non-blocking harsh-seed deaths on alternate seeds before the three pass set: `penitent_judge` seed `2777217199075` died to early floor-4 elite pressure; `void_sanctioner` seed `3777217199075` died to floor-6 elite pressure. Treat as future tuning data, not a runtime blocker.
 
+## Manual Victory Runs - Additional 10 Passes
+
+- Re-ran the real browser UI victory workflow through `scripts/validation/playwright_manual_victory_run.ts`.
+- Completed 10 additional Victory runs from the extended batch:
+  - `brute` x2, `puppeteer` x1, `chronomancer` x2, `alchemist` x1, `penitent_judge` x2, `void_sanctioner` x2.
+  - Every successful run reached `roomsVisited=10`, `combatsWon=7`, `rewardsTaken=7`, and final screen `Victory`.
+- Preserved the additional per-run evidence under `reports/flows/manual-victory-run-05-brute.json` through `reports/flows/manual-victory-run-15-chronomancer.json`, with matching `output/playwright/manual-victory-run-*` screenshot folders.
+- Wrote aggregate evidence to `reports/flows/manual-victory-run-15-attempt-summary.json`: 15 total stored reports, 13 Victory runs, 2 GameOver samples.
+- Harsh-seed tuning samples from this batch:
+  - `informant`, seed `1777217199075`: reached 10 rooms and 6 combat wins, then GameOver before Victory.
+  - `tactician`, seed `1777217199075`: reached 10 rooms and 6 combat wins, then GameOver before Victory.
+- Interpretation: the requested 10 additional successful long UI clears are complete; the two failures should be treated as future balance/route-choice tuning data for final-boss or late-route pressure.
+
 ## Completed
 
 - 追加平衡与 review 收口：
