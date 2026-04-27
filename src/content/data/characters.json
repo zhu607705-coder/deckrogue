@@ -35,7 +35,13 @@
       "newCardBonus": 0.2,
       "controlCardBonus": 0.2,
       "sharedSynergyBonus": 0.2
-    }
+    },
+    "background": "情报员从报废圣堂舰的监听井中醒来，姓名被从全部档案中刮除，只留下能换命的情报债。",
+    "mechanicNarrative": "情报与证据形成双轨：情报推动即时战术判断，证据在敌人被削弱或击杀时兑现为处决收益。",
+    "loreFragments": [
+      "黑账本记得每一次供述，但从不记得供述者的脸。"
+    ],
+    "specialMechanic": "证据与情报双轴：通过调查标记和资源循环换取抽牌、处刑窗口与路线掌控。"
   },
   {
     "id": "brute",
@@ -74,7 +80,13 @@
       "measuredBreachBonus": 0.15,
       "surgicalLensBonus": 0.15,
       "blackLedgerBonus": 0.15
-    }
+    },
+    "background": "蛮战士曾是刑罚甲胄的试验载体，骨钉把痛觉导回反应炉，让每一次受伤都变成可燃燃料。",
+    "mechanicNarrative": "怒气、力量和自损形成高压循环，越接近崩溃越能把伤口转成输出或护甲。",
+    "loreFragments": [
+      "他的盔甲没有卸甲扣，只有更多焊死的祷钉。"
+    ],
+    "specialMechanic": "怒气压血：主动承受或转化伤害，在高压回合用怒气爆发和护盾反推节奏。"
   },
   {
     "id": "tactician",
@@ -111,7 +123,13 @@
     "rewardWeights": {
       "attritionPlanBonus": 0.15,
       "wiretapRosaryBonus": 0.15
-    }
+    },
+    "background": "战术家保存着一座失陷要塞的最后三十七秒战报，并在每场战斗中复演那次失败。",
+    "mechanicNarrative": "指令与阵列奖励精确出牌顺序，护盾、抽牌和减费构成稳态控制链。",
+    "loreFragments": [
+      "沙盘上的旗帜从未代表士兵，只代表还可以牺牲几次。"
+    ],
+    "specialMechanic": "指挥调度：积累指挥点降低关键牌费用，并用阵线牌把抽牌、防御和点杀绑定。"
   },
   {
     "id": "puppeteer",
@@ -149,7 +167,13 @@
       "venomAlembicBonus": 0.1,
       "attritionEngineBonus": 0.1,
       "concoctionRelicPenalty": 0.5
-    }
+    },
+    "background": "操控师把阵亡者的神经线封进铁偶，声称那不是复活，只是让遗愿继续执行命令。",
+    "mechanicNarrative": "线程与构造体构成召唤、承伤、献祭三角，玩家在保全与引爆之间选择节奏。",
+    "loreFragments": [
+      "每一根银线都绕过心脏，因为心脏最先学会背叛。"
+    ],
+    "specialMechanic": "丝线操控：利用傀儡、召唤与丝线资源维持场面，并把多次触发转成伤害和防护。"
   },
   {
     "id": "chronomancer",
@@ -186,7 +210,13 @@
     "rewardWeights": {
       "coolingRetortBonus": 0.12,
       "blackLedgerBonus": 0.12
-    }
+    },
+    "background": "织时者从一次未发生的处决中逃离，身后每一道裂隙都在追讨被偷走的分钟。",
+    "mechanicNarrative": "时间层与延迟牌让收益跨回合结算，强度来自提前布置和风险窗口管理。",
+    "loreFragments": [
+      "他的钟从不报时，只报错过死亡的次数。"
+    ],
+    "specialMechanic": "时间层折叠：延迟伤害、回放上一张牌，并用时间层调整爆发时点。"
   },
   {
     "id": "alchemist",
@@ -225,6 +255,104 @@
       "concoctionCardBonus": 0.15,
       "elementCardBonus": 0.15,
       "sharedSynergyBonus": 0.2
-    }
+    },
+    "background": "炼金术士在废炉深处寻找物质的忏悔形态，最终确认血、酸与火只是同一条公式的不同注脚。",
+    "mechanicNarrative": "调配、元素和毒素构成反应链，前期铺设元素，后期用转化与催化收束战斗。",
+    "loreFragments": [
+      "试管没有撒谎，撒谎的是仍把自己称为人的手。"
+    ],
+    "specialMechanic": "调剂反应：用调剂资源驱动药剂、毒性和元素反应，在爆发与自损之间找平衡。"
+  },
+  {
+    "id": "penitent_judge",
+    "name": "忏罪裁断官",
+    "description": "以判令标记罪证，再用处刑牌兑现斩杀。",
+    "maxHp": 68,
+    "maxEnergy": 3,
+    "secondaryResource": "verdict",
+    "startingDeck": [
+      "judgement_cut",
+      "judgement_cut",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "edict_mark",
+      "absolution_guard",
+      "excommunication_bolt",
+      "sentence_cache"
+    ],
+    "portraitPrompt": "Original dark gothic sci-fi penitent judge in cracked bone armor, red wax seals, iron halo, execution sword, cathedral warship shadows, no logos.",
+    "complexity": "medium",
+    "archetype": [
+      "verdict",
+      "execution",
+      "confession"
+    ],
+    "extendedPool": [
+      "confession_chain",
+      "black_trial",
+      "last_warrant",
+      "burning_crossfile",
+      "seal_the_sin"
+    ],
+    "background": "忏罪裁断官来自一支被抹除番号的巡回审判团。她把死者姓名钉在甲胄内侧，认为每一次判决都必须先割伤自己。",
+    "mechanicNarrative": "判令是罪证化成的资源。先通过易伤、虚弱和供述牌建立判令，再用处刑牌穿透护盾、追加伤害或触发击杀奖励。",
+    "loreFragments": [
+      "第一枚判令写着她自己的名字，但墨迹每晚都会被新的罪名覆盖。",
+      "她的遗物都像判案证物：能增强处刑，也会提醒玩家每次收益都来自某个被擦除的人。"
+    ],
+    "rewardWeights": {
+      "controlCardBonus": 0.15,
+      "verdictCardBonus": 0.22,
+      "executionCardBonus": 0.18
+    },
+    "specialMechanic": "判令审判：先标记罪证，再消耗判令进行处刑、抽牌或防御回响。"
+  },
+  {
+    "id": "void_sanctioner",
+    "name": "虚空封印师",
+    "description": "以生命与封印压制敌意，在裂隙失控前完成收束。",
+    "maxHp": 64,
+    "maxEnergy": 3,
+    "secondaryResource": "seal",
+    "startingDeck": [
+      "void_lance",
+      "void_lance",
+      "strike",
+      "strike",
+      "defend",
+      "defend",
+      "containment_ward",
+      "seal_siphon",
+      "void_censure",
+      "null_protocol"
+    ],
+    "portraitPrompt": "Original dark gothic sci-fi void sanctioner in black containment armor, brass null-seal apparatus, blue white void glyphs, gravity coils, no logos.",
+    "complexity": "high",
+    "archetype": [
+      "seal",
+      "suppression",
+      "risk"
+    ],
+    "extendedPool": [
+      "rift_pin",
+      "hollow_vow",
+      "gravetic_cage",
+      "event_horizon",
+      "anti_miracle"
+    ],
+    "background": "虚空封印师守过一扇不该存在的门。门后没有怪物，只有安静；所有听见那份安静的人都会开始少一拍心跳。",
+    "mechanicNarrative": "封印来自自损、护持和压制。它可以换成抽牌、群体虚弱、额外伤害和防护，但资源积累往往伴随生命或节奏代价。",
+    "loreFragments": [
+      "他的钟铃没有声音，只有附近敌人的祷文会突然断句。",
+      "封印遗物像门闩碎片：每一件都能关上一条裂缝，也可能把持有者一起关进去。"
+    ],
+    "rewardWeights": {
+      "controlCardBonus": 0.2,
+      "sealCardBonus": 0.22,
+      "riskCardBonus": 0.16
+    },
+    "specialMechanic": "封印压制：获得封印稳定防线，消耗封印制造虚弱、群体压制和高风险虚空爆发。"
   }
 ]

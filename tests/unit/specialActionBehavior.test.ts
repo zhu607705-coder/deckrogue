@@ -16,6 +16,8 @@ import { createRunCardInstance } from '@/core/combat/runCardInstance';
 import { ActionManager } from '@/core/actions/actionManager';
 import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
 import { GameEngine } from '@/core/events/gameEngine';
+import { globalEventBus } from '@/core/events/eventBus';
+import { relicSystem } from '@/features/relics/relicSystem';
 
 function makeState(): GameState {
   return {
@@ -184,6 +186,80 @@ test('resource spend effects consume route resources and apply payoff status', (
   assert.equal(player.rage, 0);
   assert.equal(player.secondaryResources?.rage, 0);
   assert.equal(enemy.statuses.Vulnerable, 1);
+});
+
+test('new secondary resources share route resource gain and spend storage', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const player = state.player as typeof state.player & {
+    verdict?: number;
+    seal?: number;
+    secondaryResources?: Record<string, number>;
+  };
+  player.seal = 2;
+  player.secondaryResources = { seal: 2 };
+
+  manager.enqueueAll(
+    [
+      { type: 'GainResource', resource: 'verdict', amount: 2 },
+      {
+        type: 'SpendResourceEffect',
+        resource: 'seal',
+        amount: 1,
+        effect: { type: 'GainBlock', amount: 3, target: 'Self' },
+      },
+    ] as any,
+    { source: 'player', targetId: 'player' }
+  );
+  manager.executeAllSync();
+
+  assert.equal(player.verdict, 2);
+  assert.equal(player.secondaryResources?.verdict, 2);
+  assert.equal(player.seal, 1);
+  assert.equal(player.secondaryResources?.seal, 1);
+  assert.equal(state.combat!.player.block, 3);
+});
+
+test('route resource relic events resolve against the active game state', () => {
+  const state = makeState();
+  const manager = makeManager(state);
+  const enemy = addEnemy(state);
+  const player = state.player as typeof state.player & {
+    verdict?: number;
+    secondaryResources?: Record<string, number>;
+  };
+  player.relics = ['nullglass_lens', 'blackened_gavel'];
+  player.verdict = 1;
+  player.secondaryResources = { verdict: 1 };
+  relicSystem.bindStateTracker(() => state);
+
+  manager.enqueueAll(
+    [
+      { type: 'GainResource', resource: 'seal', amount: 1 },
+      {
+        type: 'SpendResourceEffect',
+        resource: 'verdict',
+        amount: 1,
+        effect: { type: 'GainBlock', amount: 1, target: 'Self' },
+      },
+    ] as any,
+    { source: 'player', targetId: enemy.id }
+  );
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.player.block, 3);
+  assert.equal(enemy.hp, 37);
+});
+
+test('card-played relic events flush queued effects immediately', () => {
+  const state = makeState();
+  makeManager(state);
+  state.player.relics = ['confessor_sigil'];
+  relicSystem.bindStateTracker(() => state);
+
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
+
+  assert.equal(state.combat!.player.block, 2);
 });
 
 test('conditional payoff damage and next-debuff bonuses execute through the queue', () => {
@@ -650,6 +726,22 @@ test('stored resource spend watchers use the actual spent amount', () => {
 
   assert.equal(player.command, 0);
   assert.equal(state.combat!.player.block, 4);
+  engine.dispose();
+});
+
+test('combat manager triggers start-turn relic effects in active combat', () => {
+  const engine = new GameEngine(415, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.player.relics = ['ruined_reactor'];
+  state.player.relicStates = { ruined_reactor: { level: 0, progress: 0, corrupted: true } };
+  state.combat!.player.energy = 0;
+  (engine as any).state = state;
+  (engine as any).actionManager.updateState(state);
+
+  (engine as any).combatManager.startPlayerTurn();
+
+  assert.equal(state.combat!.player.energy, 4);
+  assert.equal(state.player.relicStates.ruined_reactor.progress, 1);
   engine.dispose();
 });
 

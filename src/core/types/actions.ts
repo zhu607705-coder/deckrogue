@@ -15,6 +15,8 @@ export type CardType = 'Attack' | 'Skill' | 'Power';
 export type CardTarget = 'Enemy' | 'Self' | 'AllEnemies' | 'RandomEnemy' | 'None';
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Starter';
 export type EarlyGameRole = 'route_confirm' | 'route_payoff' | 'generic_power' | 'generic_fallback';
+export type SpecialResourceName = 'timeLayer' | 'thread' | 'concoction';
+export type SecondaryResourceName = 'evidence' | 'rage' | 'command' | 'verdict' | 'seal';
 
 export type ActionCondition =
   | { type: 'HasIntel'; amount: number }
@@ -177,7 +179,7 @@ export interface ActionSpec {
   damagePerPoison?: number;
   effectPercent?: number;
   percent?: number;
-  trigger?: { type: string; threshold?: number; resource?: string };
+  trigger?: { type: string; threshold?: number; resource?: string; amount?: number };
   debuffs?: string[];
   unit?: string;
   element?: string;
@@ -220,7 +222,7 @@ export type CardModifierEffect =
   | { type: 'block'; amount: number }
   | { type: 'cost'; amount: number }
   | { type: 'draw'; amount: number }
-  | { type: 'professionResource'; amount: number; resource: 'intel' | 'timeLayer' | 'thread' | 'concoction' };
+  | { type: 'professionResource'; amount: number; resource: 'intel' | SpecialResourceName | SecondaryResourceName };
 
 export interface CardModifierDef {
   id: string;
@@ -258,6 +260,8 @@ export interface CardDef {
   artUrl?: string;
   character?: string;
   lastWords?: string;
+  background?: string;
+  loreText?: string;
   routeTags?: string[];
   routeSignalStrength?: number;
   earlyGameRole?: EarlyGameRole;
@@ -294,8 +298,11 @@ export interface CharacterDef {
   complexity?: 'low' | 'medium' | 'high';
   archetype?: string[];
   extendedPool?: string[];
-  specialResource?: 'timeLayer' | 'thread' | 'concoction';
-  secondaryResource?: 'evidence' | 'rage' | 'command';
+  background?: string;
+  mechanicNarrative?: string;
+  loreFragments?: string[];
+  specialResource?: SpecialResourceName;
+  secondaryResource?: SecondaryResourceName;
 }
 
 export interface PotionDef {
@@ -314,6 +321,8 @@ export interface RelicDef {
   description: string;
   inscription?: string;
   flavorText?: string;
+  background?: string;
+  loreText?: string;
   price: number;
   trigger: 'StartCombat' | 'EndCombat' | 'StartTurn' | 'EndTurn' | 'Passive';
   tags?: string[];

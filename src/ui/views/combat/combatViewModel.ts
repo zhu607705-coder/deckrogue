@@ -22,12 +22,16 @@ export type CharacterResourceId =
   | 'tactician'
   | 'chronomancer'
   | 'puppeteer'
-  | 'alchemist';
+  | 'alchemist'
+  | 'penitent_judge'
+  | 'void_sanctioner';
 
 export interface SecondaryResourceState {
   evidence?: number;
   rage?: number;
   command?: number;
+  verdict?: number;
+  seal?: number;
 }
 
 export interface CharacterResourceSnapshot {
@@ -82,6 +86,10 @@ export function getCharacterResourceSnapshot(
       return { label: '狂怒', value: clampCombatInteger(secondaryResources.rage), tone: 'grimdark-pill--resource' };
     case 'tactician':
       return { label: '指令', value: clampCombatInteger(secondaryResources.command), tone: 'grimdark-pill--resource' };
+    case 'penitent_judge':
+      return { label: '判令', value: clampCombatInteger(secondaryResources.verdict), tone: 'grimdark-pill--resource' };
+    case 'void_sanctioner':
+      return { label: '封印', value: clampCombatInteger(secondaryResources.seal), tone: 'grimdark-pill--resource' };
     case 'chronomancer':
       return { label: '时层', value: clampCombatInteger(player.timeLayer), tone: 'grimdark-pill--resource' };
     case 'puppeteer':

@@ -22,6 +22,7 @@ test('runtime v2 content bundle projects real character and enemy content for th
     maxEnergy: number;
     startingDeck: string[];
     extendedPool?: string[];
+    secondaryResource?: string;
   }>;
   const enemiesData = enemiesDataRaw as Array<{
     id: string;
@@ -49,6 +50,15 @@ test('runtime v2 content bundle projects real character and enemy content for th
   assert.equal(informant.starting_deck.length, informantSource.startingDeck.length);
   assert.deepEqual(informant.starting_deck, informantSource.startingDeck);
   assert.deepEqual(informant.extended_pool, informantSource.extendedPool ?? []);
+  assert.equal(informant.secondary_resource, informantSource.secondaryResource);
+
+  for (const characterId of ['brute', 'tactician', 'penitent_judge', 'void_sanctioner']) {
+    const bundled = bundle.characters.find((entry) => entry.id === characterId);
+    const source = charactersData.find((entry) => entry.id === characterId);
+    assert.ok(bundled, `${characterId} should be bundled`);
+    assert.ok(source, `${characterId} should exist in source data`);
+    assert.equal(bundled!.secondary_resource, source!.secondaryResource);
+  }
 
   const gremlinNob = bundle.enemies.find((entry) => entry.id === 'gremlin_nob');
   const gremlinNobSource = enemiesData.find((entry) => entry.id === 'gremlin_nob');

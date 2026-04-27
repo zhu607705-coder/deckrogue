@@ -58,6 +58,7 @@ import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
 import { calculateRewardRuntime } from '@/core/balance/numericsRuntime';
 import { combatSystem } from '@/core/combat/combatSystem';
 import { cloneJsonValue } from '@/core/utils/safeJson';
+import { relicSystem } from '@/features/relics/relicSystem';
 import type { RunPhaseState } from '@/core/events/runStateMachine';
 import {
   createRoomSessionForNode,
@@ -331,6 +332,14 @@ export class GameEngine {
       ...this.runtimeDelegateDiagnostics,
       delegatedSlices: [...this.runtimeDelegateDiagnostics.delegatedSlices],
     };
+  }
+
+  private enqueueRelicAction(actionOrSpec: any, ctx: IActionContext): void {
+    if (actionOrSpec && typeof actionOrSpec.execute === 'function') {
+      this.actionManager.enqueueUrgentAction(actionOrSpec, ctx, 'relic');
+    } else {
+      this.actionManager.enqueueUrgent(actionOrSpec, ctx, 'relic');
+    }
   }
 
   private supportsBootAndMapDelegation(): boolean {
@@ -1292,6 +1301,10 @@ export class GameEngine {
         this.recordDelegationFallback(error);
       }
     }
+    relicSystem.trigger('CombatEnd', this.state, (actionOrSpec: any, ctx: IActionContext) => this.enqueueRelicAction(actionOrSpec, ctx), {
+      victory: true,
+    });
+    this.actionManager.executeAll();
     this.state.rewardCards = this.eventManager.generateCardRewards(3, { source: 'combat' });
     const currentNode = this.getCurrentNode();
     const floor = currentNode ? currentNode.y + 1 : 1;

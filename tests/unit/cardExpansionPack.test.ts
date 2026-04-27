@@ -63,8 +63,39 @@ const EXPANSION_CARD_IDS = [
 
 const expansionIdSet = new Set<string>(EXPANSION_CARD_IDS);
 
+const JUDGMENT_AND_SEAL_CARD_IDS = [
+  'judgement_cut',
+  'edict_mark',
+  'absolution_guard',
+  'excommunication_bolt',
+  'sentence_cache',
+  'confession_chain',
+  'seal_the_sin',
+  'black_trial',
+  'last_warrant',
+  'burning_crossfile',
+  'redacted_saint',
+  'void_lance',
+  'containment_ward',
+  'seal_siphon',
+  'void_censure',
+  'null_protocol',
+  'rift_pin',
+  'hollow_vow',
+  'gravetic_cage',
+  'event_horizon',
+  'quietus_bell',
+  'anti_miracle',
+] as const;
+
+const judgmentAndSealIdSet = new Set<string>(JUDGMENT_AND_SEAL_CARD_IDS);
+
 function expansionCards(): CardDef[] {
   return cardsData.filter((card) => expansionIdSet.has(card.id));
+}
+
+function judgmentAndSealCards(): CardDef[] {
+  return cardsData.filter((card) => judgmentAndSealIdSet.has(card.id));
 }
 
 function collectActionTypes(actions: ActionSpec[] = [], out = new Set<string>()): Set<string> {
@@ -124,6 +155,30 @@ test('new profession cards remain visible to route affinity and card art lookup'
     assert.ok(existsSync(resolve('public/assets/cards', `${card.id}.png`)), `${card.id} art is missing`);
     if (card.character && card.character !== 'All') {
       assert.ok(getCardRouteAffinityTags(card).length > 0, `${card.id} must map to at least one route tag`);
+    }
+  }
+});
+
+test('judgment and seal profession cards are route-visible and executable', () => {
+  const cards = judgmentAndSealCards();
+  const registeredActions = new Set(ActionFactoryV2.getRegisteredTypes());
+  assert.equal(cards.length, JUDGMENT_AND_SEAL_CARD_IDS.length);
+  assert.deepEqual(
+    cards.reduce<Record<string, number>>((acc, card) => {
+      acc[card.character || ''] = (acc[card.character || ''] || 0) + 1;
+      return acc;
+    }, {}),
+    { penitent_judge: 11, void_sanctioner: 11 },
+  );
+
+  for (const card of cards) {
+    assert.ok(card.art_prompt, `${card.id} should provide an art prompt`);
+    assert.ok(getCardRouteAffinityTags(card).length > 0, `${card.id} must map to at least one route tag`);
+    for (const type of collectActionTypes(card.actions)) {
+      assert.ok(registeredActions.has(type), `${card.id} uses unregistered action ${type}`);
+    }
+    for (const type of collectActionTypes(card.upgrade?.actions ?? [])) {
+      assert.ok(registeredActions.has(type), `${card.id}+ uses unregistered action ${type}`);
     }
   }
 });

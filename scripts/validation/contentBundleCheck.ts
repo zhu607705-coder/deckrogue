@@ -14,6 +14,7 @@ import { RunGenerator } from '@/core/events/runGenerator';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/bundle-check.json`;
+const REQUIRED_CHARACTER_IDS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'];
 
 interface BundleCheckResult {
   name: string;
@@ -57,9 +58,13 @@ function requireCondition(condition: boolean, message: string): boolean {
 function checkCharacters(): boolean {
   const characters = readJson<Array<{ id: string; secondaryResource?: string; specialResource?: string }>>('src/content/data/characters.json');
   const ids = new Set(characters.map((character) => character.id));
-  const requiredIds = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
-  const missing = requiredIds.filter((id) => !ids.has(id));
+  const missing = REQUIRED_CHARACTER_IDS.filter((id) => !ids.has(id));
   return requireCondition(missing.length === 0, `missing characters: ${missing.join(', ')}`);
+}
+
+function checkCharacterPortraits(): boolean {
+  const missing = REQUIRED_CHARACTER_IDS.filter((id) => !existsSync(`public/assets/characters/${id}.png`));
+  return requireCondition(missing.length === 0, `missing character portraits: ${missing.join(', ')}`);
 }
 
 function checkCards(): boolean {
@@ -93,6 +98,8 @@ function checkSecondaryResources(): boolean {
     ['informant', 'evidence'],
     ['brute', 'rage'],
     ['tactician', 'command'],
+    ['penitent_judge', 'verdict'],
+    ['void_sanctioner', 'seal'],
   ]);
   const mismatches = [...expected.entries()]
     .filter(([characterId, resource]) => resourcesByCharacter.get(characterId) !== resource)
@@ -104,7 +111,8 @@ async function main(): Promise<void> {
   console.log('=== Content Bundle Checks ===\n');
 
   const checks = [
-    { name: 'Character definitions (6 chars)', fn: checkCharacters },
+    { name: 'Character definitions (8 chars)', fn: checkCharacters },
+    { name: 'Character portraits (8 chars)', fn: checkCharacterPortraits },
     { name: 'Branch cards (informant/brute/tactician)', fn: checkCards },
     { name: 'Mirror/branch relics', fn: checkRelics },
     { name: 'Mirror events', fn: checkEvents },

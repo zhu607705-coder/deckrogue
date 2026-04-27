@@ -1740,5 +1740,147 @@
     },
     "inscription": "这根权杖曾属于无数朝圣者中的一员——他们中的大多数没能走完朝圣之路。",
     "flavorText": "\"每一步都是救赎。\""
+  },
+  {
+    "id": "mortuary_warrant",
+    "name": "停尸拘票",
+    "description": "每场战斗开始时，获得 1 点判令。",
+    "price": 140,
+    "tags": [
+      "penitent_judge",
+      "verdict",
+      "execution"
+    ],
+    "resonanceGroup": "verdict_archive",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainResource",
+      "resource": "verdict",
+      "amount": 1
+    },
+    "inscription": "拘票签发给一具尚未死亡的尸体，签名栏被反复涂黑。",
+    "flavorText": "“他们先把我的名字写进停尸间，然后才通知我犯了什么罪。”",
+    "background": "这件遗物把战斗开局变成一场已经宣判的审讯，支撑判令牌的第一轮启动。"
+  },
+  {
+    "id": "confessor_sigil",
+    "name": "供述者烙印",
+    "description": "每当你打出带有判令标签的牌，获得 2 点护盾。",
+    "price": 155,
+    "tags": [
+      "penitent_judge",
+      "verdict",
+      "confession",
+      "block"
+    ],
+    "resonanceGroup": "verdict_archive",
+    "trigger": "Passive",
+    "effect": {
+      "type": "OnCardPlayed",
+      "tag": "verdict",
+      "effect": {
+        "type": "GainBlock",
+        "amount": 2
+      }
+    },
+    "inscription": "烙印会在持有者说谎时发冷，在他说真话时流血。",
+    "flavorText": "“烙印替我承认了罪，它练习了很久。”",
+    "background": "它让判令牌的每次启动都留下防御回声，与黑庭审、删名圣徒形成护盾与抽牌的叙事闭环。"
+  },
+  {
+    "id": "blackened_gavel",
+    "name": "焦黑判槌",
+    "description": "每当你消耗判令，对随机敌人造成 3 点伤害。",
+    "price": 170,
+    "tags": [
+      "penitent_judge",
+      "verdict",
+      "execution"
+    ],
+    "resonanceGroup": "verdict_archive",
+    "trigger": "Passive",
+    "effect": {
+      "type": "OnResourceSpent",
+      "resource": "verdict",
+      "effect": {
+        "type": "DealDamage",
+        "amount": 3,
+        "target": "RandomEnemy"
+      }
+    },
+    "inscription": "槌面焦痕来自无数次敲下同一个结论后留下的热。",
+    "flavorText": "“判槌落下时，旁听席总会少一个人。”",
+    "background": "判槌把判令消耗转化为额外处刑压力，使最后拘票和绝罚弹更像案卷中的连续证物。"
+  },
+  {
+    "id": "void_anchor_litany",
+    "name": "虚空锚经文",
+    "description": "每场战斗开始时，获得 1 点封印，并使随机敌人获得 1 层虚弱。",
+    "price": 150,
+    "tags": [
+      "void_sanctioner",
+      "seal",
+      "suppression"
+    ],
+    "resonanceGroup": "void_lock",
+    "trigger": "StartCombat",
+    "effect": {
+      "type": "GainResource",
+      "resource": "seal",
+      "amount": 1
+    },
+    "inscription": "经文每读一行，锚链就会向看不见的深处再沉一寸。",
+    "flavorText": "“如果你听见锚落水，这里已经不在船上。”",
+    "background": "锚经文保证封印职业第一回合有压制起点，并把虚空枪刺、归零协议提前接入资源循环。"
+  },
+  {
+    "id": "nullglass_lens",
+    "name": "无光玻璃透镜",
+    "description": "每当你获得封印，获得 2 点护盾。",
+    "price": 165,
+    "tags": [
+      "void_sanctioner",
+      "seal",
+      "block"
+    ],
+    "resonanceGroup": "void_lock",
+    "trigger": "Passive",
+    "effect": {
+      "type": "TriggerOnResourceGain",
+      "resource": "seal",
+      "effect": {
+        "type": "GainBlock",
+        "amount": 2
+      }
+    },
+    "inscription": "透镜不会反光，它只显示观察者被世界忘记后的轮廓。",
+    "flavorText": "“我看见自己站在镜外，正把镜内的我封上。”",
+    "background": "透镜把封印获取转成防御，抵消封印抽取与裂隙钉带来的生命或节奏代价。"
+  },
+  {
+    "id": "cage_bell_clapper",
+    "name": "囚铃断舌",
+    "description": "每当你消耗封印，对全体敌人施加 1 层虚弱。",
+    "price": 175,
+    "tags": [
+      "void_sanctioner",
+      "seal",
+      "suppression"
+    ],
+    "resonanceGroup": "void_lock",
+    "trigger": "Passive",
+    "effect": {
+      "type": "OnResourceSpent",
+      "resource": "seal",
+      "effect": {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "AllEnemies"
+      }
+    },
+    "inscription": "铃舌被切下后仍挂在链上，只在敌人准备呼喊时轻轻摆动。",
+    "flavorText": "“它不响，所以我们才知道门又开了一条缝。”",
+    "background": "断舌让封印消耗与群体压制绑定，直接支撑重力囚笼、事界线和寂灭铃的收束路线。"
   }
 ]

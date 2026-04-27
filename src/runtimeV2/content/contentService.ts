@@ -27,6 +27,9 @@ export interface CardData {
   art_prompt?: string;
   upgrade?: Partial<Omit<CardDef, 'id' | 'upgrade'>>;
   character?: string;
+  background?: string;
+  loreText?: string;
+  lastWords?: string;
 }
 
 export interface CharacterData {
@@ -44,6 +47,9 @@ export interface CharacterData {
   portraitPrompt?: string;
   secondaryResource?: string;
   rewardWeights?: Record<string, unknown>;
+  background?: string;
+  mechanicNarrative?: string;
+  loreFragments?: string[];
 }
 
 export interface EnemyData {
@@ -63,6 +69,9 @@ export interface RelicData {
   name: string;
   rarity: string;
   description?: string;
+  inscription?: string;
+  flavorText?: string;
+  background?: string;
   flavor_text?: string;
   effects?: Array<{
     type: string;

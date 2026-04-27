@@ -205,7 +205,11 @@ export interface CharacterDef {
   complexity?: 'low' | 'medium' | 'high';
   archetype?: string[];
   extendedPool?: string[];
+  background?: string;
+  mechanicNarrative?: string;
+  loreFragments?: string[];
   specialResource?: 'timeLayer' | 'thread' | 'concoction';
+  secondaryResource?: 'evidence' | 'rage' | 'command' | 'verdict' | 'seal';
 }
 
 /** 玩家运行时状态 */

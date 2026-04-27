@@ -28,10 +28,16 @@ export interface RelicEffect {
 export class RelicSystem {
   private relicEffects: Map<string, RelicEffect[]> = new Map();
   private getState: () => GameState;
+  private eventDisposables: Array<() => void> = [];
 
   constructor(getStateTracker: () => GameState) {
     this.getState = getStateTracker;
     this.initializeRelicEffects();
+    this.setupEventListeners();
+  }
+
+  public bindStateTracker(getStateTracker: () => GameState): void {
+    this.getState = getStateTracker;
     this.setupEventListeners();
   }
 
@@ -194,27 +200,124 @@ export class RelicSystem {
         }
       }
     ]);
+
+    this.relicEffects.set('mortuary_warrant', [
+      {
+        trigger: 'CombatStart',
+        action: (_state, _event, enqueueUrgent) => {
+          enqueueUrgent(ActionFactory.createAction({ type: 'GainResource', resource: 'verdict', amount: 1 }), {
+            source: 'relic_mortuary_warrant'
+          });
+        }
+      }
+    ]);
+
+    this.relicEffects.set('confessor_sigil', [
+      {
+        trigger: 'CardPlayed',
+        action: (_state, event, enqueueUrgent) => {
+          const card = cardsData.find((entry) => entry.id === (event as any).cardId);
+          if (!card || !(card.tags || []).includes('verdict')) return;
+          enqueueUrgent(ActionFactory.createAction({ type: 'GainBlock', amount: 2, target: 'Self' }), {
+            source: 'relic_confessor_sigil'
+          });
+        }
+      }
+    ]);
+
+    this.relicEffects.set('blackened_gavel', [
+      {
+        trigger: 'RouteResourceSpent',
+        action: (state, event, enqueueUrgent) => {
+          if (!state.combat || String((event as any).resource || '') !== 'verdict') return;
+          if (!state.combat.enemies.some(enemy => enemy.hp > 0)) return;
+          const amount = Math.max(1, Number((event as any).amount || 1)) * 3;
+          enqueueUrgent(ActionFactory.createAction({
+            type: 'DealDamage',
+            amount,
+            target: 'RandomEnemy'
+          }), {
+            source: 'relic_blackened_gavel'
+          });
+        }
+      }
+    ]);
+
+    this.relicEffects.set('void_anchor_litany', [
+      {
+        trigger: 'CombatStart',
+        action: (state, _event, enqueueUrgent) => {
+          enqueueUrgent(ActionFactory.createAction({ type: 'GainResource', resource: 'seal', amount: 1 }), {
+            source: 'relic_void_anchor_litany'
+          });
+          const target = state.combat ? stateRandomChoice(state, state.combat.enemies.filter(enemy => enemy.hp > 0)) : null;
+          if (!target) return;
+          combatSystem.applyStatus(state, 'enemy', target.id, 'Weak', 1);
+        }
+      }
+    ]);
+
+    this.relicEffects.set('nullglass_lens', [
+      {
+        trigger: 'RouteResourceGained',
+        action: (_state, event, enqueueUrgent) => {
+          if (String((event as any).resource || '') !== 'seal') return;
+          const amount = Math.max(1, Number((event as any).amount || 1)) * 2;
+          enqueueUrgent(ActionFactory.createAction({ type: 'GainBlock', amount, target: 'Self' }), {
+            source: 'relic_nullglass_lens'
+          });
+        }
+      }
+    ]);
+
+    this.relicEffects.set('cage_bell_clapper', [
+      {
+        trigger: 'RouteResourceSpent',
+        action: (state, event) => {
+          if (!state.combat || String((event as any).resource || '') !== 'seal') return;
+          for (const enemy of state.combat.enemies.filter(entry => entry.hp > 0)) {
+            combatSystem.applyStatus(state, 'enemy', enemy.id, 'Weak', 1);
+          }
+        }
+      }
+    ]);
   }
 
   private setupEventListeners() {
-    globalEventBus.subscribe('TurnStart', (event) => this.handleEvent('TurnStart', event));
-    globalEventBus.subscribe('TurnEnd', (event) => this.handleEvent('TurnEnd', event));
-    globalEventBus.subscribe('CombatStart', (event) => this.handleEvent('CombatStart', event));
-    globalEventBus.subscribe('CombatEnd', (event) => this.handleEvent('CombatEnd', event));
-    globalEventBus.subscribe('CardPlayed', (event) => this.handleEvent('CardPlayed', event));
-    globalEventBus.subscribe('DamageReceived', (event) => this.handleEvent('DamageReceived', event));
-    globalEventBus.subscribe('RelicAcquired', (event) => this.handleEvent('RelicAcquired', event));
+    this.eventDisposables.splice(0).forEach((dispose) => dispose());
+    this.eventDisposables.push(
+      globalEventBus.subscribe('CardPlayed', (event) => this.handleEvent('CardPlayed', event)),
+      globalEventBus.subscribe('DamageReceived', (event) => this.handleEvent('DamageReceived', event)),
+      globalEventBus.subscribe('RelicAcquired', (event) => this.handleEvent('RelicAcquired', event)),
+      globalEventBus.subscribe('RouteResourceGained', (event: any) => this.handleEvent('RouteResourceGained', event)),
+      globalEventBus.subscribe('RouteResourceSpent', (event: any) => this.handleEvent('RouteResourceSpent', event))
+    );
   }
 
   private handleEvent(trigger: string, event: GameEvent): void {
     const state = this.getState();
     if (!state || !(state as any).player || !(state as any).player.relics) return;
-    const manager = getActionManager();
-    
+    let manager: ReturnType<typeof getActionManager>;
+    try {
+      manager = getActionManager();
+    } catch {
+      return;
+    }
     if (!manager) return;
+    let queuedAction = false;
 
     const enqueueUrgent = (action: any, context: any) => {
-      manager.enqueueUrgentAction(action, context, 'relic');
+      const relicContext = {
+        ...context,
+        source: 'player',
+        sourceId: context?.sourceId ?? context?.source
+      };
+      if (action && typeof action.execute === 'function') {
+        manager.enqueueUrgentAction(action, relicContext, 'relic');
+      } else {
+        manager.enqueueUrgent(action, relicContext, 'relic');
+      }
+      queuedAction = true;
     };
 
     for (const relicId of state.player.relics) {
@@ -228,6 +331,9 @@ export class RelicSystem {
           }
         }
       }
+    }
+    if (queuedAction && !manager.isProcessing()) {
+      manager.executeAll();
     }
   }
 
@@ -333,6 +439,7 @@ export class RelicSystem {
       if (effect.status) spec.status = effect.status;
       if (effect.target) spec.target = effect.target;
       if (effect.actions) spec.actions = effect.actions;
+      if (effect.resource) spec.resource = effect.resource;
       enqueue(spec, { source: 'player', sourceId: 'player', targetId: effect.target === 'Self' ? 'player' : undefined });
     }
   }

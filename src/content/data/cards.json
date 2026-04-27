@@ -12031,5 +12031,1255 @@
     },
     "art_prompt": "An alchemist writing the world formula in fire and acid circles over a cosmic workbench, vertical dark fantasy card illustration, dramatic readable silhouette, high contrast, painterly, no text, no logo",
     "character": "alchemist"
+  },
+  {
+    "id": "judgement_cut",
+    "name": "审判切痕",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "verdict",
+      "execution",
+      "attack"
+    ],
+    "text": "造成 6 点伤害。若目标处于易伤，获得 1 点判令。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "TargetHasStatus",
+          "status": "Vulnerable"
+        },
+        "resource": "verdict",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A bone-white execution blade carving a red verdict mark into black armor, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 9 点伤害。若目标处于易伤，获得 1 点判令。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalResourceGain",
+          "condition": {
+            "type": "TargetHasStatus",
+            "status": "Vulnerable"
+          },
+          "resource": "verdict",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "切痕不为杀敌，只为在盔甲上留下可供判读的罪名。",
+    "loreText": "“如果伤口呈十字形，就说明她还给了你申辩时间。”",
+    "lastWords": "别擦掉那道痕，它是我唯一被承认的名字。"
+  },
+  {
+    "id": "edict_mark",
+    "name": "敕令标记",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "verdict",
+      "confession",
+      "debuff"
+    ],
+    "text": "施加 2 层易伤。获得 1 点判令。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainResource",
+        "resource": "verdict",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A red wax legal seal burning on a black iron pauldron, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "施加 3 层易伤。获得 1 点判令。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 3,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainResource",
+          "resource": "verdict",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "敕令会先烙在敌人身上，随后才出现在裁断官的内衬皮肤。",
+    "loreText": "这枚印记的编号与一场失踪审判完全一致，边缘仍留着未干的墨。",
+    "lastWords": "她说我有罪之前，印记已经替我点头。"
+  },
+  {
+    "id": "absolution_guard",
+    "name": "赦罪护持",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "verdict",
+      "block",
+      "faith"
+    ],
+    "text": "获得 7 点护盾。若你拥有判令，额外获得 4 点护盾。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "ConditionalBonusBlock",
+        "condition": {
+          "type": "HasResource",
+          "resource": "verdict",
+          "amount": 1
+        },
+        "bonus": 4
+      }
+    ],
+    "art_prompt": "A cracked shield covered in parchment verdict strips and red wax seals, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "获得 10 点护盾。若你拥有判令，额外获得 5 点护盾。",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "ConditionalBonusBlock",
+          "condition": {
+            "type": "HasResource",
+            "resource": "verdict",
+            "amount": 1
+          },
+          "bonus": 5
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "她从不说赦免是慈悲。赦免只是判决延后执行。",
+    "loreText": "盾面内侧刻着上一任持有者的供词，句尾被重重刮掉。",
+    "lastWords": "我求来的不是活命，只是下一轮审问。"
+  },
+  {
+    "id": "excommunication_bolt",
+    "name": "绝罚弹",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "verdict",
+      "execution",
+      "pierce"
+    ],
+    "text": "造成 7 点伤害。消耗 1 点判令，无视目标 8 点护盾。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendResourceEffect",
+        "resource": "verdict",
+        "amount": 1,
+        "effect": {
+          "type": "IgnoreBlock",
+          "amount": 8
+        }
+      }
+    ],
+    "art_prompt": "A red-lit execution round punching through a black shield, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 10 点伤害。消耗 1 点判令，无视目标 10 点护盾。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendResourceEffect",
+          "resource": "verdict",
+          "amount": 1,
+          "effect": {
+            "type": "IgnoreBlock",
+            "amount": 10
+          }
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "绝罚弹不会记录弹道，只记录最后被穿透的借口。",
+    "loreText": "弹壳里没有火药，只有一小段被逐出祷文的名字。",
+    "lastWords": "别读完它，最后一个音节会选择目标。"
+  },
+  {
+    "id": "sentence_cache",
+    "name": "量刑缓存",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "verdict",
+      "setup",
+      "cost"
+    ],
+    "text": "获得 1 点判令。抽 1 张牌。你本回合打出的下一张攻击牌费用减少 1。",
+    "actions": [
+      {
+        "type": "GainResource",
+        "resource": "verdict",
+        "amount": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "NextAttackCostDown",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A brass cogitator cache filled with red legal tags and wax seals, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "获得 2 点判令。抽 1 张牌。你本回合打出的下一张攻击牌费用减少 1。",
+      "actions": [
+        {
+          "type": "GainResource",
+          "resource": "verdict",
+          "amount": 2
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "NextAttackCostDown",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "缓存盒中每一张量刑片都比使用者更早知道结论。",
+    "loreText": "抽出的卡片背面写着“已执行”，正面仍是空白。",
+    "lastWords": "她没有判我死刑，她只是调出了已经存在的结果。"
+  },
+  {
+    "id": "confession_chain",
+    "name": "供述链",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "confession",
+      "debuff",
+      "draw"
+    ],
+    "text": "施加 1 层虚弱与 1 层易伤。若目标已有负面状态，抽 1 张牌。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "amount": 1
+      }
+    ],
+    "art_prompt": "Chains of parchment confessions wrapped around an armored prisoner, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "施加 2 层虚弱与 1 层易伤。若目标已有负面状态，抽 1 张牌。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalDraw",
+          "condition": {
+            "type": "TargetHasAnyDebuff"
+          },
+          "amount": 1
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "链环之间夹着不同人的供词，却全都用同一种笔迹签名。",
+    "loreText": "供述用于拖住被审判者的脚步，审判官无需被说服。",
+    "lastWords": "我听见自己的声音从三条链子里同时求饶。"
+  },
+  {
+    "id": "seal_the_sin",
+    "name": "封存罪证",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "confession",
+      "verdict",
+      "debuff"
+    ],
+    "text": "消耗 1 点判令，施加 3 层虚弱。",
+    "actions": [
+      {
+        "type": "SpendResourceEffect",
+        "resource": "verdict",
+        "amount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "stacks": 3,
+          "target": "Enemy"
+        }
+      }
+    ],
+    "art_prompt": "A sealed evidence reliquary swallowing a black confession scroll, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "消耗 1 点判令，施加 4 层虚弱。",
+      "actions": [
+        {
+          "type": "SpendResourceEffect",
+          "resource": "verdict",
+          "amount": 1,
+          "effect": {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "stacks": 4,
+            "target": "Enemy"
+          }
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "罪证被封存后仍会轻轻敲击盒盖，像有人在里面要求复审。",
+    "loreText": "封蜡盖住罪名时，案卷里的哭声会短暂停止，只剩盒盖内侧的敲击声。",
+    "lastWords": "我没有说完的那半句，被她锁进盒子里了。"
+  },
+  {
+    "id": "black_trial",
+    "name": "黑庭审",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "confession",
+      "verdict",
+      "power"
+    ],
+    "text": "每回合首次获得判令时，获得 2 点护盾。",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "GainResource",
+          "resource": "verdict"
+        },
+        "effect": {
+          "type": "GainBlock",
+          "amount": 2,
+          "target": "Self"
+        }
+      }
+    ],
+    "art_prompt": "A black tribunal chamber lit by red wax candles and hanging iron halos, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "每回合首次获得判令时，获得 3 点护盾。",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "GainResource",
+            "resource": "verdict"
+          },
+          "effect": {
+            "type": "GainBlock",
+            "amount": 3,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "黑庭审从不开庭，只有旁听席会不断增加新影子。",
+    "loreText": "案卷上的页码从第九页开始，前八页被判为不必要。",
+    "lastWords": "我没看见法官，只看见我的影子举起了槌。"
+  },
+  {
+    "id": "last_warrant",
+    "name": "最后拘票",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "verdict",
+      "execution",
+      "finisher"
+    ],
+    "text": "造成 10 点伤害。消耗全部判令，每点判令额外造成 5 点伤害。若击杀，抽 2 张牌。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "verdict",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      },
+      {
+        "type": "ConditionalDraw",
+        "condition": {
+          "type": "Kill"
+        },
+        "amount": 2
+      }
+    ],
+    "art_prompt": "A final arrest warrant burning like a red comet above an execution sword, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 12 点伤害。消耗全部判令，每点判令额外造成 6 点伤害。若击杀，抽 2 张牌。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "verdict",
+          "effect": {
+            "type": "DealDamage",
+            "amount": 6,
+            "target": "Enemy"
+          }
+        },
+        {
+          "type": "ConditionalDraw",
+          "condition": {
+            "type": "Kill"
+          },
+          "amount": 2
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "最后拘票没有收件人，因为它会在命中瞬间补全姓名。",
+    "loreText": "拘票背面列着尚未发生的死亡日期，墨水按心跳变深。",
+    "lastWords": "我先签字，再学会害怕。"
+  },
+  {
+    "id": "burning_crossfile",
+    "name": "燃烧交叉案卷",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "execution",
+      "confession",
+      "aoe"
+    ],
+    "text": "对全体敌人造成 8 点伤害。若目标已有负面状态，额外造成 4 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "ConditionalBonusDamage",
+        "condition": {
+          "type": "TargetHasAnyDebuff"
+        },
+        "bonus": 4,
+        "target": "AllEnemies"
+      }
+    ],
+    "art_prompt": "Burning case files forming a red cross above multiple armored silhouettes, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "对全体敌人造成 10 点伤害。若目标已有负面状态，额外造成 5 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "AllEnemies"
+        },
+        {
+          "type": "ConditionalBonusDamage",
+          "condition": {
+            "type": "TargetHasAnyDebuff"
+          },
+          "bonus": 5,
+          "target": "AllEnemies"
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "交叉案卷会把互不相识的罪名连成一场共同处刑。",
+    "loreText": "档案灰烬落到谁身上，谁就会想起自己没有做过的罪。",
+    "lastWords": "我终于知道为什么他们都用同一个编号称呼我们。"
+  },
+  {
+    "id": "redacted_saint",
+    "name": "删名圣徒",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "verdict",
+      "power",
+      "draw"
+    ],
+    "text": "每回合首次消耗判令时，抽 1 张牌。",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "SpendResource",
+          "resource": "verdict"
+        },
+        "effect": {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "art_prompt": "A faceless saint statue with its name chiseled away, red wax and black halo, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "每回合首次消耗判令时，抽 1 张牌并获得 2 点护盾。",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "SpendResource",
+            "resource": "verdict"
+          },
+          "effect": [
+            {
+              "type": "Draw",
+              "amount": 1,
+              "target": "Self"
+            },
+            {
+              "type": "GainBlock",
+              "amount": 2,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "penitent_judge",
+    "background": "删名圣徒的神龛没有脸，只有一块反光到近乎残忍的空白铭牌。",
+    "loreText": "祈祷者越虔诚，越会忘记自己原本向谁祈祷，只剩空白铭牌替他回应。",
+    "lastWords": "他们把我的名字凿掉后，我才开始被供奉。"
+  },
+  {
+    "id": "void_lance",
+    "name": "虚空枪刺",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "seal",
+      "suppression",
+      "void"
+    ],
+    "text": "造成 6 点伤害。若你拥有封印，施加 1 层虚弱。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 6,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalApply",
+        "condition": {
+          "type": "HasResource",
+          "resource": "seal",
+          "amount": 1
+        },
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A blue-white void lance piercing a black armored target, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 9 点伤害。若你拥有封印，施加 2 层虚弱。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalApply",
+          "condition": {
+            "type": "HasResource",
+            "resource": "seal",
+            "amount": 1
+          },
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "枪刺没有枪声，只在命中处留下一小块完全没有温度的寂静。",
+    "loreText": "被刺穿的护甲会向内坍缩，像在躲避某个看不见的太阳。",
+    "lastWords": "我没有听见开火，只听见自己的祷词少了一句。"
+  },
+  {
+    "id": "containment_ward",
+    "name": "收容护符",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "seal",
+      "risk",
+      "block"
+    ],
+    "text": "获得 6 点护盾。获得 1 点封印。若本回合受过伤，额外获得 4 点护盾。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "seal",
+        "amount": 1
+      },
+      {
+        "type": "ConditionalBonusBlock",
+        "condition": {
+          "type": "TookDamageThisTurn"
+        },
+        "bonus": 4
+      }
+    ],
+    "art_prompt": "A brass containment ward with blue-white null runes and cracked black glass, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "获得 9 点护盾。获得 1 点封印。若本回合受过伤，额外获得 5 点护盾。",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 9,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "seal",
+          "amount": 1
+        },
+        {
+          "type": "ConditionalBonusBlock",
+          "condition": {
+            "type": "TookDamageThisTurn"
+          },
+          "bonus": 5
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "护符越完整，持有者的影子越像被从身体里钉了出去。",
+    "loreText": "第七道刻痕看似防护符号，实际是一个倒写的门牌号。",
+    "lastWords": "它挡住了刀，也挡住了我回去的路。"
+  },
+  {
+    "id": "seal_siphon",
+    "name": "封印抽取",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "seal",
+      "risk",
+      "debuff"
+    ],
+    "text": "失去 2 点生命。获得 2 点封印。施加 1 层虚弱。",
+    "actions": [
+      {
+        "type": "LoseHp",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "seal",
+        "amount": 2
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "art_prompt": "A void siphon pulling blue-white light from a wound into a brass seal, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "失去 1 点生命。获得 2 点封印。施加 2 层虚弱。",
+      "actions": [
+        {
+          "type": "LoseHp",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "seal",
+          "amount": 2
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "抽取器要求用血启动，因为它需要知道哪一侧仍属于现实。",
+    "loreText": "仪器读数显示“稳定”，但记录员的手写批注是“它在喝”。",
+    "lastWords": "我只献出一滴，井里却回响了我的全名。"
+  },
+  {
+    "id": "void_censure",
+    "name": "虚无申斥",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "seal",
+      "suppression",
+      "attack"
+    ],
+    "text": "造成 5 点伤害。若目标处于虚弱，获得 1 点封印。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalResourceGain",
+        "condition": {
+          "type": "TargetHasStatus",
+          "status": "Weak"
+        },
+        "resource": "seal",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A silent blue-white censure sigil crushing a target silhouette, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 8 点伤害。若目标处于虚弱，获得 1 点封印。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalResourceGain",
+          "condition": {
+            "type": "TargetHasStatus",
+            "status": "Weak"
+          },
+          "resource": "seal",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "封印师把斥责写成一条无声禁令，用来切断敌人的下一次反击。",
+    "loreText": "被斥责者会忘记自己为何举起武器，只记得手腕正在变轻。",
+    "lastWords": "他说了一个字，房间却少了一面墙。"
+  },
+  {
+    "id": "null_protocol",
+    "name": "归零协议",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "seal",
+      "draw",
+      "setup"
+    ],
+    "text": "消耗 1 点封印，抽 2 张牌。",
+    "actions": [
+      {
+        "type": "SpendResourceEffect",
+        "resource": "seal",
+        "amount": 1,
+        "effect": {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        }
+      }
+    ],
+    "art_prompt": "A cogitator screen dropping to zero while blue null seals lock around it, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "消耗 1 点封印，抽 3 张牌。",
+      "actions": [
+        {
+          "type": "SpendResourceEffect",
+          "resource": "seal",
+          "amount": 1,
+          "effect": {
+            "type": "Draw",
+            "amount": 3,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "协议归零后，屏幕仍会显示一行细小的等待符。",
+    "loreText": "等待符持续闪烁了十三年，直到有人再次流血。",
+    "lastWords": "我按下归零键，才发现自己也在计数里。"
+  },
+  {
+    "id": "rift_pin",
+    "name": "裂隙钉",
+    "rarity": "Uncommon",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "seal",
+      "risk",
+      "delay"
+    ],
+    "text": "造成 10 点伤害。1 回合后再次造成 8 点伤害。获得 1 点封印。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 10,
+        "target": "Enemy"
+      },
+      {
+        "type": "Delay",
+        "turns": 1,
+        "actions": [
+          {
+            "type": "DealDamage",
+            "amount": 8,
+            "target": "Enemy"
+          }
+        ]
+      },
+      {
+        "type": "GainResource",
+        "resource": "seal",
+        "amount": 1
+      }
+    ],
+    "art_prompt": "A black iron nail pinning a blue-white rift shut above a battlefield, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "造成 13 点伤害。1 回合后再次造成 10 点伤害。获得 1 点封印。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "Enemy"
+        },
+        {
+          "type": "Delay",
+          "turns": 1,
+          "actions": [
+            {
+              "type": "DealDamage",
+              "amount": 10,
+              "target": "Enemy"
+            }
+          ]
+        },
+        {
+          "type": "GainResource",
+          "resource": "seal",
+          "amount": 1
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "裂隙钉只能临时固定门缝，无法保证门后没有东西学会等待。",
+    "loreText": "钉帽上刻着“勿拔”，但字体明显来自拔出之后。",
+    "lastWords": "我把钉子敲进去时，另一边有人说谢谢。"
+  },
+  {
+    "id": "hollow_vow",
+    "name": "空誓",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Power",
+    "targeting": "Self",
+    "tags": [
+      "seal",
+      "void",
+      "power"
+    ],
+    "text": "每回合首次抽到费用为 0 的牌时，获得 1 点封印。",
+    "actions": [
+      {
+        "type": "StartOfTurnEffect",
+        "trigger": {
+          "type": "DrawZeroCostCard"
+        },
+        "effect": {
+          "type": "GainResource",
+          "resource": "seal",
+          "amount": 1
+        }
+      }
+    ],
+    "art_prompt": "A hollow oath ring floating above a black altar with blue-white silence, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "每回合首次抽到费用为 0 的牌时，获得 1 点封印并获得 2 点护盾。",
+      "actions": [
+        {
+          "type": "StartOfTurnEffect",
+          "trigger": {
+            "type": "DrawZeroCostCard"
+          },
+          "effect": [
+            {
+              "type": "GainResource",
+              "resource": "seal",
+              "amount": 1
+            },
+            {
+              "type": "GainBlock",
+              "amount": 2,
+              "target": "Self"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "空誓会在抽到零费牌时回应，把免费的瞬间变成新的封印。",
+    "loreText": "宣誓者必须把名字念到最后一个音之前停下，否则门会记住他的声音。",
+    "lastWords": "我发誓守门，却忘了门在哪一边。"
+  },
+  {
+    "id": "gravetic_cage",
+    "name": "重力囚笼",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "AllEnemies",
+    "tags": [
+      "seal",
+      "suppression",
+      "aoe"
+    ],
+    "text": "最多消耗 2 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧。",
+    "actions": [
+      {
+        "type": "SpendResourceUpTo",
+        "resource": "seal",
+        "maxAmount": 2,
+        "effect": [
+          {
+            "type": "ApplyStatus",
+            "status": "Weak",
+            "stacks": 1,
+            "target": "AllEnemies"
+          },
+          {
+            "type": "ApplyStatus",
+            "status": "Fear",
+            "stacks": 1,
+            "target": "AllEnemies"
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A brass gravity cage folding blue-white bars around several enemies, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "最多消耗 3 点封印。每消耗 1 点，对全体敌人施加 1 层虚弱与 1 层恐惧。",
+      "actions": [
+        {
+          "type": "SpendResourceUpTo",
+          "resource": "seal",
+          "maxAmount": 3,
+          "effect": [
+            {
+              "type": "ApplyStatus",
+              "status": "Weak",
+              "stacks": 1,
+              "target": "AllEnemies"
+            },
+            {
+              "type": "ApplyStatus",
+              "status": "Fear",
+              "stacks": 1,
+              "target": "AllEnemies"
+            }
+          ]
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "囚笼里的重力方向会轮流指向每一个悔过的瞬间。",
+    "loreText": "被关住的人先跪下，随后才意识到地面已经去了别处。",
+    "lastWords": "我没有倒下，是上方落到了我身上。"
+  },
+  {
+    "id": "event_horizon",
+    "name": "事界线",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "AllEnemies",
+    "tags": [
+      "seal",
+      "void",
+      "aoe"
+    ],
+    "text": "对全体敌人造成 7 点伤害。消耗全部封印，每点封印额外对全体造成 3 点伤害。",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "AllEnemies"
+      },
+      {
+        "type": "SpendAllResourceEffect",
+        "resource": "seal",
+        "effect": {
+          "type": "DealDamage",
+          "amount": 3,
+          "target": "AllEnemies"
+        }
+      }
+    ],
+    "art_prompt": "A blue-white event horizon ring consuming silhouettes in a gothic cathedral battlefield, no text.",
+    "upgrade": {
+      "text": "对全体敌人造成 9 点伤害。消耗全部封印，每点封印额外对全体造成 4 点伤害。",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "AllEnemies"
+        },
+        {
+          "type": "SpendAllResourceEffect",
+          "resource": "seal",
+          "effect": {
+            "type": "DealDamage",
+            "amount": 4,
+            "target": "AllEnemies"
+          }
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "事界线之后，所有求救都会以同一声静默抵达。",
+    "loreText": "观测员写下“边界稳定”，然后整页字迹向中心坠落。",
+    "lastWords": "我越过那条线时，看见自己还站在原地。"
+  },
+  {
+    "id": "quietus_bell",
+    "name": "寂灭铃",
+    "rarity": "Rare",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "suppression",
+      "seal",
+      "cost"
+    ],
+    "text": "施加 2 层虚弱。若目标意图攻击，获得 2 点封印并使下一张牌费用减少 1。",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalEffect",
+        "condition": {
+          "type": "EnemyWillAttack"
+        },
+        "effects": [
+          {
+            "type": "GainResource",
+            "resource": "seal",
+            "amount": 2
+          },
+          {
+            "type": "NextCardCostDown",
+            "amount": 1
+          }
+        ]
+      }
+    ],
+    "art_prompt": "A silent brass bell wrapped in blue null chains above an attacking silhouette, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "施加 3 层虚弱。若目标意图攻击，获得 2 点封印并使下一张牌费用减少 1。",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 3,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalEffect",
+          "condition": {
+            "type": "EnemyWillAttack"
+          },
+          "effects": [
+            {
+              "type": "GainResource",
+              "resource": "seal",
+              "amount": 2
+            },
+            {
+              "type": "NextCardCostDown",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "铃舌被切除后，铃声开始从听者骨头里响起，并在敌意成形前收紧。",
+    "loreText": "只有准备攻击的人能听见它，所以战场上没人承认它响过。",
+    "lastWords": "铃没响，但我的手先放下了武器。"
+  },
+  {
+    "id": "anti_miracle",
+    "name": "反奇迹",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "seal",
+      "risk",
+      "block"
+    ],
+    "text": "获得 12 点护盾。消耗 1 点封印，获得 1 层人工制品。",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      },
+      {
+        "type": "SpendResourceEffect",
+        "resource": "seal",
+        "amount": 1,
+        "effect": {
+          "type": "ApplyStatus",
+          "status": "Artifact",
+          "stacks": 1,
+          "target": "Self"
+        }
+      }
+    ],
+    "art_prompt": "A broken miracle icon inverted into a blue-white null ward, gothic sci-fi card art, no text.",
+    "upgrade": {
+      "text": "获得 16 点护盾。消耗 1 点封印，获得 1 层人工制品。",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 16,
+          "target": "Self"
+        },
+        {
+          "type": "SpendResourceEffect",
+          "resource": "seal",
+          "amount": 1,
+          "effect": {
+            "type": "ApplyStatus",
+            "status": "Artifact",
+            "stacks": 1,
+            "target": "Self"
+          }
+        }
+      ]
+    },
+    "character": "void_sanctioner",
+    "background": "反奇迹会把神迹发生的位置从世界中剪掉，只留下可被封印师短暂握住的空洞。",
+    "loreText": "护符上没有圣名，只刻着“此处不得发生”，像一道拒绝奇迹的伤口。",
+    "lastWords": "我祈祷没有回应，于是我活了下来。"
   }
 ]

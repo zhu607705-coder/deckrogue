@@ -70,6 +70,7 @@ export class CombatManager {
   private deferStoredEffectFlushDepth = 0;
 
   constructor(private deps: CombatManagerDeps, private actionManager: ActionManager) {
+    relicSystem.bindStateTracker(() => this.deps.getState());
     this.bossPhaseManager = new BossPhaseManager({
       getState: () => this.deps.getState(),
       rng: () => this.deps.rng(),
@@ -124,6 +125,14 @@ export class CombatManager {
         console.error('[CombatManager] Failed to dispose subscription:', error);
       }
     });
+  }
+
+  private enqueueRelicAction(actionOrSpec: any, ctx: IActionContext): void {
+    if (actionOrSpec && typeof actionOrSpec.execute === 'function') {
+      this.actionManager.enqueueUrgentAction(actionOrSpec, ctx, 'relic');
+    } else {
+      this.actionManager.enqueueUrgent(actionOrSpec, ctx, 'relic');
+    }
   }
 
   startCombat(nodeType: 'Combat' | 'Elite' | 'Boss'): void {
@@ -194,13 +203,7 @@ export class CombatManager {
     state.screen = 'Combat';
     metricsTracker.recordCombatStart?.();
     globalEventBus.publish({ type: 'CombatStart' } as any);
-    relicSystem.trigger('CombatStart', state, (actionOrSpec: any, ctx: IActionContext) => {
-      if (actionOrSpec && typeof actionOrSpec.execute === 'function') {
-        this.actionManager.enqueueUrgentAction(actionOrSpec, ctx, 'relic');
-      } else {
-        this.actionManager.enqueueUrgent(actionOrSpec, ctx, 'relic');
-      }
-    });
+    relicSystem.trigger('CombatStart', state, (actionOrSpec: any, ctx: IActionContext) => this.enqueueRelicAction(actionOrSpec, ctx));
     if ((state.player.corruption || 0) > 0) {
       state.combat.warpPulse = {
         text: `Corruption stirs the warp: Tide ${state.combat.warpTide} · DMG x${this.getCorruptionDamageBonusMultiplier().toFixed(2)}`,
@@ -425,6 +428,9 @@ export class CombatManager {
     }
 
     this.actionManager.updateState(state);
+    relicSystem.trigger('StartTurn', state, (actionOrSpec: any, ctx: IActionContext) => this.enqueueRelicAction(actionOrSpec, ctx), {
+      playerTurn: true,
+    });
     this.actionManager.executeAll();
     this.deps.notify();
   }
@@ -1191,13 +1197,7 @@ export class CombatManager {
       );
     }
 
-    relicSystem.trigger('EndTurn', state, (actionOrSpec: any, ctx: IActionContext) => {
-      if (actionOrSpec && typeof actionOrSpec.execute === 'function') {
-        this.actionManager.enqueueUrgentAction(actionOrSpec, ctx, 'relic');
-      } else {
-        this.actionManager.enqueueUrgent(actionOrSpec, ctx, 'relic');
-      }
-    });
+    relicSystem.trigger('EndTurn', state, (actionOrSpec: any, ctx: IActionContext) => this.enqueueRelicAction(actionOrSpec, ctx));
 
     await this.actionManager.executeAll();
   }

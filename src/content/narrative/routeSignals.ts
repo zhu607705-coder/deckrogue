@@ -98,6 +98,28 @@ const CARD_ROUTE_SIGNALS_BY_ID: Record<string, CardRouteSignalDef> = {
   universal_solvent: { routeTags: ['alchemist:acid'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
   concoct: { routeTags: ['alchemist:concoction'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
   elemental_burst: { routeTags: ['alchemist:concoction'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+
+  // Penitent Judge
+  edict_mark: { routeTags: ['penitent_judge:verdict'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  sentence_cache: { routeTags: ['penitent_judge:verdict'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  last_warrant: { routeTags: ['penitent_judge:verdict'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  judgement_cut: { routeTags: ['penitent_judge:execution'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  excommunication_bolt: { routeTags: ['penitent_judge:execution'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  burning_crossfile: { routeTags: ['penitent_judge:execution'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  confession_chain: { routeTags: ['penitent_judge:confession'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  seal_the_sin: { routeTags: ['penitent_judge:confession'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  black_trial: { routeTags: ['penitent_judge:confession'], routeSignalStrength: 2, earlyGameRole: 'generic_power' },
+
+  // Void Sanctioner
+  seal_siphon: { routeTags: ['void_sanctioner:seal'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  null_protocol: { routeTags: ['void_sanctioner:seal'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  event_horizon: { routeTags: ['void_sanctioner:seal'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  void_lance: { routeTags: ['void_sanctioner:suppression'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  gravetic_cage: { routeTags: ['void_sanctioner:suppression'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  quietus_bell: { routeTags: ['void_sanctioner:suppression'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  containment_ward: { routeTags: ['void_sanctioner:risk'], routeSignalStrength: 3, earlyGameRole: 'route_confirm' },
+  rift_pin: { routeTags: ['void_sanctioner:risk'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
+  anti_miracle: { routeTags: ['void_sanctioner:risk'], routeSignalStrength: 4, earlyGameRole: 'route_payoff' },
 };
 
 const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
@@ -202,6 +224,8 @@ const GENERIC_POWER_BY_CHARACTER: Record<string, string[]> = {
   puppeteer: ['wire_guard', 'wire_acrobatics', 'reposition'],
   chronomancer: ['afterimage_tick', 'borrow_tomorrow', 'fractured_hour'],
   alchemist: ['frost_armor', 'transmute_life', 'elemental_shield'],
+  penitent_judge: [],
+  void_sanctioner: [],
 };
 
 const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
@@ -313,6 +337,42 @@ const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
     label: '配方链',
     supportRelicIds: ['dissolution_crucible', 'prism_crucible', 'cooling_retort', 'evidence_furnace'],
   },
+  'penitent_judge:verdict': {
+    routeTag: 'penitent_judge:verdict',
+    characterId: 'penitent_judge',
+    label: '判令链',
+    supportRelicIds: ['mortuary_warrant', 'confessor_sigil', 'blackened_gavel'],
+  },
+  'penitent_judge:execution': {
+    routeTag: 'penitent_judge:execution',
+    characterId: 'penitent_judge',
+    label: '处刑链',
+    supportRelicIds: ['blackened_gavel', 'mortuary_warrant', 'surgical_lens'],
+  },
+  'penitent_judge:confession': {
+    routeTag: 'penitent_judge:confession',
+    characterId: 'penitent_judge',
+    label: '供述链',
+    supportRelicIds: ['confessor_sigil', 'wiretap_rosary', 'black_ledger'],
+  },
+  'void_sanctioner:seal': {
+    routeTag: 'void_sanctioner:seal',
+    characterId: 'void_sanctioner',
+    label: '封印链',
+    supportRelicIds: ['void_anchor_litany', 'nullglass_lens', 'cage_bell_clapper'],
+  },
+  'void_sanctioner:suppression': {
+    routeTag: 'void_sanctioner:suppression',
+    characterId: 'void_sanctioner',
+    label: '压制链',
+    supportRelicIds: ['cage_bell_clapper', 'void_anchor_litany', 'anchor'],
+  },
+  'void_sanctioner:risk': {
+    routeTag: 'void_sanctioner:risk',
+    characterId: 'void_sanctioner',
+    label: '代价链',
+    supportRelicIds: ['nullglass_lens', 'sacred_reactor_shard', 'ruined_reactor'],
+  },
 };
 
 const CARD_ROUTE_AFFINITY_OVERRIDES_BY_ID: Record<string, string[]> = {
@@ -361,6 +421,16 @@ const TAG_ROUTE_RULES_BY_CHARACTER: Record<string, Array<{ routeTag: string; key
     { routeTag: 'alchemist:fire', keywords: ['fire'] },
     { routeTag: 'alchemist:acid', keywords: ['acid'] },
     { routeTag: 'alchemist:concoction', keywords: ['concoction', 'element', 'brew'] },
+  ],
+  penitent_judge: [
+    { routeTag: 'penitent_judge:verdict', keywords: ['verdict', 'warrant', 'sentence'] },
+    { routeTag: 'penitent_judge:execution', keywords: ['execution', 'bolt', 'cut'] },
+    { routeTag: 'penitent_judge:confession', keywords: ['confession', 'trial', 'sin'] },
+  ],
+  void_sanctioner: [
+    { routeTag: 'void_sanctioner:seal', keywords: ['seal', 'null', 'horizon'] },
+    { routeTag: 'void_sanctioner:suppression', keywords: ['suppression', 'cage', 'quietus'] },
+    { routeTag: 'void_sanctioner:risk', keywords: ['risk', 'rift', 'ward'] },
   ],
 };
 

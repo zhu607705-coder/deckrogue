@@ -12,7 +12,7 @@ import type { GameState, CombatState } from '@/core/types';
 import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep, ResolutionContext, ResolutionStepResult } from './resolutionTypes';
 
 export interface ResourceMutation {
-  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction';
+  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction' | 'verdict' | 'seal';
   operation: 'add' | 'subtract' | 'set' | 'multiply';
   value: number;
   source: TriggerSource;
@@ -192,6 +192,20 @@ export class MechanicRegistry {
           combatPlayer.concoction = this.applyOperation(combatPlayer.concoction, mutation);
         }
         break;
+      case 'verdict':
+      case 'seal': {
+        const carrier = player as typeof player & Record<string, number> & {
+          secondaryResources?: Record<string, number>;
+        };
+        const current = carrier.secondaryResources?.[mutation.resource] ?? carrier[mutation.resource] ?? 0;
+        const next = this.applyOperation(current, mutation);
+        carrier[mutation.resource] = next;
+        carrier.secondaryResources = {
+          ...(carrier.secondaryResources || {}),
+          [mutation.resource]: next,
+        };
+        break;
+      }
     }
   }
 

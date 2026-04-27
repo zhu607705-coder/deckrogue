@@ -33,6 +33,34 @@ test('combat view model: character resource snapshot clamps invalid values', () 
   });
 });
 
+test('combat view model: new secondary resources are displayable', () => {
+  assert.deepEqual(
+    getCharacterResourceSnapshot(
+      'penitent_judge',
+      { timeLayer: 0, thread: 0, concoction: 0 },
+      { verdict: 3 }
+    ),
+    {
+      label: '\u5224\u4ee4',
+      value: 3,
+      tone: 'grimdark-pill--resource'
+    }
+  );
+
+  assert.deepEqual(
+    getCharacterResourceSnapshot(
+      'void_sanctioner',
+      { timeLayer: 0, thread: 0, concoction: 0 },
+      { seal: 2 }
+    ),
+    {
+      label: '\u5c01\u5370',
+      value: 2,
+      tone: 'grimdark-pill--resource'
+    }
+  );
+});
+
 test('combat view model: clamp helpers keep values in display-safe range', () => {
   assert.equal(clampCombatInteger(-12), 0);
   assert.equal(clampCombatInteger(6.9), 6);

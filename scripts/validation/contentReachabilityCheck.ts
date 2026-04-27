@@ -48,6 +48,8 @@ interface SecondaryResourceAnalysis {
   informantEvidence: boolean;
   bruteRage: boolean;
   tacticianCommand: boolean;
+  penitentJudgeVerdict: boolean;
+  voidSanctionerSeal: boolean;
   hasSummaryField: boolean;
   hasSaveLoadField: boolean;
   brokenEdges: string[];
@@ -176,17 +178,29 @@ function analyzeChapterPools(): ChapterPoolAnalysis {
 function analyzeSecondaryResources(): SecondaryResourceAnalysis {
   const characterContent = readFileSync('src/content/data/characters.json', 'utf-8');
   const stateContent = readFileSync('src/core/types/combat.ts', 'utf-8');
+  const resourceTypeContent = [
+    readFileSync('src/core/types/actions.ts', 'utf-8'),
+    readFileSync('src/types/combat.ts', 'utf-8'),
+  ].join('\n');
   const summaryContent = readFileSync('src/core/events/runSummarySystem.ts', 'utf-8');
   const saveManagerContent = readFileSync('src/core/events/SaveManager.ts', 'utf-8');
   const analysis: SecondaryResourceAnalysis = {
     informantEvidence: characterContent.includes('"secondaryResource": "evidence"'),
     bruteRage: characterContent.includes('"secondaryResource": "rage"'),
     tacticianCommand: characterContent.includes('"secondaryResource": "command"'),
+    penitentJudgeVerdict: characterContent.includes('"secondaryResource": "verdict"') && resourceTypeContent.includes('verdict'),
+    voidSanctionerSeal: characterContent.includes('"secondaryResource": "seal"') && resourceTypeContent.includes('seal'),
     hasSummaryField: summaryContent.includes('secondaryResourcePeak'),
     hasSaveLoadField: saveManagerContent.includes('stateSnapshot') || saveManagerContent.includes('serializeState'),
     brokenEdges: [],
   };
 
+  if (!analysis.penitentJudgeVerdict) {
+    analysis.brokenEdges.push('missing_verdict_secondary_resource');
+  }
+  if (!analysis.voidSanctionerSeal) {
+    analysis.brokenEdges.push('missing_seal_secondary_resource');
+  }
   if (!stateContent.includes('secondaryResourcePeak')) {
     analysis.brokenEdges.push('missing_secondary_resource_in_state');
   }
@@ -298,6 +312,8 @@ async function main(): Promise<void> {
   console.log(`  ${secondaryResources.informantEvidence ? '✅' : '❌'} Informant evidence defined`);
   console.log(`  ${secondaryResources.bruteRage ? '✅' : '❌'} Brute rage defined`);
   console.log(`  ${secondaryResources.tacticianCommand ? '✅' : '❌'} Tactician command defined`);
+  console.log(`  ${secondaryResources.penitentJudgeVerdict ? '✅' : '❌'} Penitent Judge verdict defined`);
+  console.log(`  ${secondaryResources.voidSanctionerSeal ? '✅' : '❌'} Void Sanctioner seal defined`);
   console.log(`  ${secondaryResources.hasSummaryField ? '✅' : '❌'} Summary field exists`);
   console.log(`  ${secondaryResources.hasSaveLoadField ? '✅' : '❌'} Save/Load field exists`);
   if (secondaryResources.brokenEdges.length > 0) {

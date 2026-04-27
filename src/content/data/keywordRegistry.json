@@ -353,6 +353,50 @@
       "stacking": "intensity",
       "characterRestriction": ["alchemist"],
       "examples": ["mix_concoction"]
+    },
+    "verdict": {
+      "id": "verdict",
+      "name": "判令",
+      "nameEn": "Verdict",
+      "description": "忏罪裁断官职业资源。通过标记、供述和削弱敌人获得，用于处刑、穿盾和击杀奖励。",
+      "abbreviation": "VRD",
+      "category": "resource",
+      "iconHint": "gavel",
+      "logFormat": "{target} 获得 {amount} 判令",
+      "uiPriority": 58,
+      "validOn": [
+        "player"
+      ],
+      "stacking": "intensity",
+      "characterRestriction": [
+        "penitent_judge"
+      ],
+      "examples": [
+        "edict_mark",
+        "last_warrant"
+      ]
+    },
+    "seal": {
+      "id": "seal",
+      "name": "封印",
+      "nameEn": "Seal",
+      "description": "虚空封印师职业资源。通过自损、护持和压制获得，用于抽牌、群体压制和封存裂隙收益。",
+      "abbreviation": "SEL",
+      "category": "resource",
+      "iconHint": "lock",
+      "logFormat": "{target} 获得 {amount} 封印",
+      "uiPriority": 59,
+      "validOn": [
+        "player"
+      ],
+      "stacking": "intensity",
+      "characterRestriction": [
+        "void_sanctioner"
+      ],
+      "examples": [
+        "seal_siphon",
+        "event_horizon"
+      ]
     }
   },
   "categories": {

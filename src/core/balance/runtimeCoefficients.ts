@@ -38,6 +38,8 @@ export interface RuntimeCoefficients {
     threadPerStack: number;
     timeLayerPerStack: number;
     concoctionPerStack: number;
+    verdictPerStack: number;
+    sealPerStack: number;
   };
   softCaps: {
     damageSoftCap: number;
@@ -91,6 +93,8 @@ export const DEFAULT_RUNTIME_COEFFICIENTS: RuntimeCoefficients = {
     threadPerStack: 1,
     timeLayerPerStack: 1,
     concoctionPerStack: 1,
+    verdictPerStack: 1,
+    sealPerStack: 1,
   },
   softCaps: {
     damageSoftCap: 100,
@@ -307,7 +311,7 @@ export function calculateStatusTick(
 }
 
 export interface ResourceGainContext {
-  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction';
+  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction' | 'verdict' | 'seal';
   baseAmount: number;
   multipliers?: number[];
 }

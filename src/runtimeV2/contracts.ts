@@ -19,6 +19,7 @@ export interface ContentBundleCharacter {
   starting_deck: string[];
   extended_pool?: string[];
   special_resource?: string;
+  secondary_resource?: string;
 }
 
 export interface ContentBundleCard {

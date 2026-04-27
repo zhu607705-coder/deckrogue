@@ -24,6 +24,7 @@ type CharacterEntry = {
   startingDeck: string[];
   extendedPool?: string[];
   specialResource?: string;
+  secondaryResource?: string;
 };
 
 type EnemyEntry = {
@@ -57,6 +58,7 @@ export function buildRuntimeV2ContentBundle(): ContentBundle {
     starting_deck: [...(entry.startingDeck || [])],
     extended_pool: [...(entry.extendedPool || [])],
     special_resource: entry.specialResource,
+    secondary_resource: entry.secondaryResource,
   }));
 
   const cards = baseCardsData.map((entry) => {

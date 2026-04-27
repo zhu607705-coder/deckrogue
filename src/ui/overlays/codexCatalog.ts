@@ -33,6 +33,7 @@ export interface CodexCatalogEntry {
   dataPoints: Array<{ label: string; value: string }>;
   notes?: string[];
   demo?: CodexDemoPanelDef;
+  background?: string;
   loreFragments?: Array<{ label: string; text: string; source?: string; tone?: 'neutral' | 'grim' | 'faith' | 'warp' }>;
 }
 
@@ -56,6 +57,7 @@ const ACTION_LABELS: Record<string, string> = {
   GainBlock: '获得护盾',
   ApplyStatus: '施加状态',
   DrawCards: '抽牌',
+  Draw: '抽牌',
   Delay: '延迟触发',
   TriggerDelay: '触发延迟',
   GainIntel: '获得情报',
@@ -63,7 +65,18 @@ const ACTION_LABELS: Record<string, string> = {
   AddWarpTide: '提高亚空间潮汐',
   ReturnLastCard: '返回上一张牌',
   Conditional: '条件判定',
-  GainEnergy: '获得能量'
+  GainEnergy: '获得能量',
+  GainResource: '获得路线资源',
+  SpendResourceEffect: '消耗资源触发效果',
+  SpendAllResourceEffect: '消耗全部资源触发效果',
+  SpendResourceUpTo: '最多消耗资源',
+  ConditionalResourceGain: '条件资源获得',
+  ConditionalEffect: '条件效果',
+  ConditionalDraw: '条件抽牌',
+  LoseHp: '失去生命',
+  NextAttackCostDown: '下一张攻击降费',
+  NextCardCostDown: '下一张牌降费',
+  StartOfTurnEffect: '事件触发'
 };
 
 function toTitleCaseValue(v: any): string {
@@ -88,6 +101,59 @@ function inferRelicLoreSource(relic: any, fragment: 'inscription' | 'flavorText'
   if (relic.corrupted || tags.includes('corruption')) return fragment === 'inscription' ? '异端低语记录' : '异端处置笔录';
   if (tags.includes('devotion') || tags.includes('zeal') || /martyr|inquisitor|seal_of/i.test(String(relic.id || ''))) return '审判庭档案';
   return fragment === 'inscription' ? '战场拾获' : '战场回收录音';
+}
+
+function toLoreTextList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((entry) => String(entry || '').trim()).filter(Boolean);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+}
+
+function collectCardLoreFragments(card: any): Array<{ label: string; text: string; source?: string; tone?: 'neutral' | 'grim' | 'faith' | 'warp' }> {
+  const tone = card.tags?.includes('warp') || card.tags?.includes('void') ? 'warp' as const : 'grim' as const;
+  return [
+    ...toLoreTextList(card.background).map((text) => ({
+      label: '背景残片',
+      text,
+      source: inferCardLoreSource(card),
+      tone,
+    })),
+    ...toLoreTextList(card.loreText).map((text) => ({
+      label: '碎片叙事',
+      text,
+      source: inferCardLoreSource(card),
+      tone,
+    })),
+    ...(card.lastWords ? [{
+      label: '上一任持有者临终遗言',
+      text: String(card.lastWords),
+      source: inferCardLoreSource(card),
+      tone,
+    }] : []),
+  ];
+}
+
+function collectEnemyLoreFragments(enemy: any): Array<{ label: string; text: string; source?: string; tone?: 'neutral' | 'grim' | 'faith' | 'warp' }> {
+  return [
+    ...toLoreTextList(enemy.background).map((text) => ({
+      label: '敌怪背景',
+      text,
+      source: '敌情档案',
+      tone: enemy.keywords?.includes('boss') ? 'warp' as const : 'grim' as const,
+    })),
+    ...toLoreTextList(enemy.loreText).map((text) => ({
+      label: '现场残录',
+      text,
+      source: '战场回收录音',
+      tone: 'grim' as const,
+    })),
+    ...(!enemy.background && enemy.description ? [{
+      label: '敌情摘要',
+      text: String(enemy.description),
+      source: '敌情档案',
+      tone: 'neutral' as const,
+    }] : []),
+  ];
 }
 
 type NarrativeOverride = Partial<Pick<CodexCatalogEntry, 'summary' | 'mechanics' | 'interactions' | 'examples' | 'notes'>>;
@@ -411,9 +477,7 @@ function buildCardEntries(): CodexCatalogEntry[] {
       card.upgrade ? `升级收益示例：优先升级《${localizedName}》可提升 ${localizedUpgradeText || '核心效果'}。` : ''
     ]);
 
-    const loreFragments = uniqStrings([
-      typeof card.lastWords === 'string' ? card.lastWords : ''
-    ]);
+    const loreFragments = collectCardLoreFragments(card);
 
     const keywords = uniqStrings([
       card.name,
@@ -426,7 +490,7 @@ function buildCardEntries(): CodexCatalogEntry[] {
       localizedText
     ]);
 
-    const searchText = [...keywords, ...mechanics, ...interactions, ...examples, ...loreFragments].join(' ').toLowerCase();
+    const searchText = [...keywords, ...mechanics, ...interactions, ...examples, ...loreFragments.map((x) => `${x.label} ${x.text}`)].join(' ').toLowerCase();
 
     const entry = {
       category: 'cards',
@@ -443,17 +507,14 @@ function buildCardEntries(): CodexCatalogEntry[] {
       badges: uniqStrings([card.character && card.character !== 'All' ? card.character : 'All', card.type, card.rarity, ...(card.tags || []).slice(0, 4)]),
       searchText,
       dataPoints: [
+        ...(card.upgrade ? [{ label: '升级', value: localizedUpgradeText || upgradeActions.map(actionSummary).join('; ') || '见动作定义' }] : []),
         { label: '费用', value: String(card.cost ?? '-') },
         { label: '类型', value: String(card.type || '-') },
         { label: '目标', value: getCardTargetingZh(card.targeting) },
         { label: '角色', value: String(card.character || 'All') }
       ],
-      loreFragments: card.lastWords ? [{
-        label: '上一任持有者临终遗言',
-        text: String(card.lastWords),
-        source: inferCardLoreSource(card),
-        tone: card.tags?.includes('warp') ? 'warp' : 'grim'
-      }] : undefined,
+      background: typeof card.background === 'string' ? card.background : undefined,
+      loreFragments: loreFragments.length ? loreFragments : undefined,
       notes: card.upgrade ? [`升级文本：${localizedUpgradeText || '见动作定义'}`] : undefined,
       demo: createCardDemo(card)
     } satisfies CodexCatalogEntry;
@@ -584,6 +645,7 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
     ]);
     const examples = uniqStrings(parsed.examples);
     const keywords = uniqStrings([enemy.id, enemy.name, ...(enemy.keywords || []), ...Object.keys(enemy.moves || {})]);
+    const loreFragments = collectEnemyLoreFragments(enemy);
     const entry = {
       category,
       id: enemy.id,
@@ -597,13 +659,15 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
       interactions,
       examples,
       badges,
-      searchText: [...keywords, summary, ...mechanics, ...interactions, ...examples].join(' ').toLowerCase(),
+      searchText: [...keywords, summary, ...mechanics, ...interactions, ...examples, ...loreFragments.map((x) => `${x.label} ${x.text}`)].join(' ').toLowerCase(),
       dataPoints: [
         { label: '生命值', value: hpRange },
         { label: '意图数', value: String(Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0) },
         { label: '分类', value: enemy.keywords?.includes('boss') ? 'Boss' : enemy.keywords?.includes('elite') ? 'Elite' : 'Normal' }
       ],
       notes: Object.keys(enemy.moves || {}).length > 0 ? [`招式池：${Object.keys(enemy.moves).join(' / ')}`] : undefined,
+      background: typeof enemy.background === 'string' ? enemy.background : undefined,
+      loreFragments: loreFragments.length ? loreFragments : undefined,
       demo: createEnemyDemo(enemy)
     } satisfies CodexCatalogEntry;
     entries.push(category === 'elites' ? applyNarrativeOverride(entry, HANDWRITTEN_ELITE_GUIDES[enemy.id]) : entry);

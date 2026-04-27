@@ -58,7 +58,7 @@ export abstract class BaseAction implements IAction {
 
 const DEBUFF_STATUSES = ['Weak', 'Vulnerable', 'Poison', 'Burn', 'Frail', 'Fear'];
 const SPECIAL_RESOURCES = ['timeLayer', 'thread', 'concoction'] as const;
-const SECONDARY_RESOURCES = ['evidence', 'rage', 'command'] as const;
+const SECONDARY_RESOURCES = ['evidence', 'rage', 'command', 'verdict', 'seal'] as const;
 const ROUTE_RESOURCES = ['intel', ...SPECIAL_RESOURCES, ...SECONDARY_RESOURCES] as const;
 const SCALABLE_ACTION_NUMBERS = [
   'amount',

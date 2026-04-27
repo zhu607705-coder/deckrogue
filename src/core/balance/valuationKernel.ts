@@ -27,6 +27,8 @@ export interface ValuationWeights {
   thread: number;
   timeLayer: number;
   concoction: number;
+  verdict: number;
+  seal: number;
 }
 
 export const DEFAULT_VALUATION_WEIGHTS: ValuationWeights = {
@@ -44,6 +46,8 @@ export const DEFAULT_VALUATION_WEIGHTS: ValuationWeights = {
   thread: 0.24,
   timeLayer: 0.30,
   concoction: 0.28,
+  verdict: 0.27,
+  seal: 0.25,
 };
 
 export type StatusType =
@@ -223,7 +227,7 @@ export function calculateHealEVU(
 }
 
 export interface ResourceValuationParams {
-  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction';
+  resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction' | 'verdict' | 'seal';
   amount: number;
   timingTurns?: number;
   variance?: VarianceClass;

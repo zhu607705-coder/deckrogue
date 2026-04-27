@@ -63,7 +63,7 @@ function getNeutralCardId(characterId: string) {
 }
 
 test('route taxonomy guardrail keeps every route connected to confirm, payoff, and support relics', () => {
-  const characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
+  const characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'];
 
   for (const characterId of characters) {
     const knownTags = getKnownRouteTagsForCharacter(characterId);
@@ -87,7 +87,7 @@ test('route taxonomy guardrail keeps every route connected to confirm, payoff, a
 });
 
 test('generic power pools stay neutral relative to route affinity taxonomy', () => {
-  const characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+  const characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'] as const;
 
   for (const characterId of characters) {
     for (const cardId of getGenericPowerIdsForCharacter(characterId)) {

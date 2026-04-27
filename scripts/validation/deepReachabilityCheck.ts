@@ -236,6 +236,8 @@ function checkSecondaryResourceWriteback(): ReachabilityResult[] {
     { id: 'informant', resource: 'evidence' },
     { id: 'brute', resource: 'rage' },
     { id: 'tactician', resource: 'command' },
+    { id: 'penitent_judge', resource: 'verdict' },
+    { id: 'void_sanctioner', resource: 'seal' },
   ];
   for (const char of characters) {
     const hasCharDef = resourcesByCharacter.get(char.id) === char.resource;

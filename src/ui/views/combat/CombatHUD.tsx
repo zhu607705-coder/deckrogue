@@ -68,12 +68,16 @@ export function CombatHUD({
     evidence?: number;
     rage?: number;
     command?: number;
+    verdict?: number;
+    seal?: number;
   };
   const secondaryResources: SecondaryResourceState = {
     ...(legacySecondaryResourceCarrier.secondaryResources || {}),
     evidence: legacySecondaryResourceCarrier.secondaryResources?.evidence ?? legacySecondaryResourceCarrier.evidence,
     rage: legacySecondaryResourceCarrier.secondaryResources?.rage ?? legacySecondaryResourceCarrier.rage,
-    command: legacySecondaryResourceCarrier.secondaryResources?.command ?? legacySecondaryResourceCarrier.command
+    command: legacySecondaryResourceCarrier.secondaryResources?.command ?? legacySecondaryResourceCarrier.command,
+    verdict: legacySecondaryResourceCarrier.secondaryResources?.verdict ?? legacySecondaryResourceCarrier.verdict,
+    seal: legacySecondaryResourceCarrier.secondaryResources?.seal ?? legacySecondaryResourceCarrier.seal
   };
 
   const characterResource = getCharacterResourceSnapshot(characterId, player, secondaryResources);
