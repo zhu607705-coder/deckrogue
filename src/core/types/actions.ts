@@ -40,6 +40,7 @@ export type ActionCondition =
   | { type: 'HasConcoction'; amount: number }
   | { type: 'HasResource'; resource: string; amount?: number }
   | { type: 'NoResource'; resource: string; amount?: number }
+  | { type: 'ResourceAmount'; resource: string; minimum: number }
   | { type: 'ResourceThreshold'; resource: string; threshold: number }
   | { type: 'ResourceSpent' }
   | { type: 'SpendResource'; resource: string; amount: number }

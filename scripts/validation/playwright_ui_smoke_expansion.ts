@@ -17,6 +17,7 @@ import { GameEngine, createDefaultMetaProfile } from '@/core';
 import { createRoomSessionForNode, setRoomSession, syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
 import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
 import { syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
+import charactersData from '@/content/data/characters.json';
 import type { RoomOwnerKind } from '@/core/types';
 import { checkServer, getDefaultSmokeUrl, spawnDevServer, waitForServer } from './flow_smoke_helpers';
 
@@ -304,14 +305,16 @@ function createExpansionSaveFixtures(): SaveSlotFixture[] {
 function buildStoragePayload() {
   const slots = createExpansionSaveFixtures();
   const metaProfile = createDefaultMetaProfile();
-  metaProfile.unlocks.characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
+  metaProfile.unlocks.characters = charactersData.map((character) => character.id);
   metaProfile.progression.ascensionUnlockedLevelByCharacter = {
     informant: 2,
     brute: 0,
     tactician: 0,
     puppeteer: 0,
     chronomancer: 0,
-    alchemist: 0
+    alchemist: 0,
+    penitent_judge: 0,
+    void_sanctioner: 0
   };
   metaProfile.preferences.selectedAscension = 2;
 

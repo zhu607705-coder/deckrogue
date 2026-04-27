@@ -4,6 +4,24 @@
 
 本轮完成哥特科幻扩展内容、战斗资源机制接入、图鉴叙事增强和缺失图片补齐。
 
+## Follow-up Fix - ResourceAmount
+
+- Added `ResourceAmount` condition support for route resources using the JSON-authored `minimum` field.
+- Changed generic JSON relic triggering to forward the full `effect` object so conditions and effect-specific fields stay intact.
+- Updated the relic utility unit test to load `fractured hourglass` through `getRelicDefById` and trigger its real `StartTurn` effect shape.
+- Verified with `npx tsx --test tests/unit/specialActionBehavior.test.ts`, `npx tsc --noEmit --pretty false --project tsconfig.json`, and `git diff --check`.
+
+## Manual Victory Runs - 3 Passes
+
+- Fixed Playwright fixture unlocks to derive all selectable character ids from `src/content/data/characters.json`, so newly added characters are covered by real UI runs.
+- Completed three long UI-driven victory runs through `scripts/validation/playwright_manual_victory_run.ts`:
+  - `alchemist`, seed `1777217199075`: `roomsVisited=10`, `combatsWon=7`, `cardsClicked=155`, `turnsEnded=36`.
+  - `penitent_judge`, seed `1777217199075`: `roomsVisited=10`, `combatsWon=7`, `cardsClicked=125`, `turnsEnded=22`.
+  - `void_sanctioner`, seed `1777217199075`: `roomsVisited=10`, `combatsWon=7`, `cardsClicked=120`, `turnsEnded=36`.
+- Preserved per-run evidence under `reports/flows/manual-victory-run-01-alchemist.json`, `reports/flows/manual-victory-run-02-penitent-judge.json`, `reports/flows/manual-victory-run-03-void-sanctioner.json` and matching `output/playwright/manual-victory-run-*` screenshot folders.
+- Ran `npm run report:longform-balance -- --pass=4 --runs-per-build=3`: covered 8/8 characters, 24/24 route builds, 330/330 cards, 98/98 relics, 87/87 event options, with `findingCount=0`.
+- Observed two non-blocking harsh-seed deaths on alternate seeds before the three pass set: `penitent_judge` seed `2777217199075` died to early floor-4 elite pressure; `void_sanctioner` seed `3777217199075` died to floor-6 elite pressure. Treat as future tuning data, not a runtime blocker.
+
 ## Completed
 
 - 追加平衡与 review 收口：

@@ -432,14 +432,7 @@ export class RelicSystem {
       const effect = relic.effect;
       if (!effect.type || effect.type === 'Passive' || effect.type === 'Seal') continue;
 
-      const spec: any = {
-        type: effect.type,
-        amount: effect.amount
-      };
-      if (effect.status) spec.status = effect.status;
-      if (effect.target) spec.target = effect.target;
-      if (effect.actions) spec.actions = effect.actions;
-      if (effect.resource) spec.resource = effect.resource;
+      const spec: any = { ...effect };
       enqueue(spec, { source: 'player', sourceId: 'player', targetId: effect.target === 'Self' ? 'player' : undefined });
     }
   }

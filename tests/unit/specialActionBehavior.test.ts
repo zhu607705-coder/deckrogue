@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { GameState } from '@/core/types';
-import { cardsData, getCardDefById } from '@/content/narrative/numericSystem';
+import { cardsData, getCardDefById, getRelicDefById } from '@/content/narrative/numericSystem';
 import { createRunCardInstance } from '@/core/combat/runCardInstance';
 import { ActionManager } from '@/core/actions/actionManager';
 import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
@@ -220,13 +220,18 @@ test('new secondary resources share route resource gain and spend storage', () =
   assert.equal(state.combat!.player.block, 3);
 });
 
-test('legacy relic utility actions draw, heal, and gain conditional energy', () => {
+test('legacy relic utility actions draw, heal, and fractured hourglass gains conditional energy', () => {
   const state = makeState();
   const manager = makeManager(state);
   const drawCard = getCardDefById('calculated_strike');
+  const hourglass = getRelicDefById('fractured hourglass');
   assert.ok(drawCard);
+  assert.ok(hourglass);
+  assert.equal(hourglass!.effect?.type, 'ConditionalEnergyGain');
+  assert.equal(hourglass!.effect?.condition?.type, 'ResourceAmount');
   state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_heal_card'));
   state.combat!.player.hp = 10;
+  state.player.relics = ['fractured hourglass'];
   const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
   player.command = 1;
   player.secondaryResources = { command: 1 };
@@ -234,20 +239,27 @@ test('legacy relic utility actions draw, heal, and gain conditional energy', () 
   manager.enqueueAll(
     [
       { type: 'DrawAndHeal', drawAmount: 1, healAmount: 3, target: 'Self' },
-      {
-        type: 'ConditionalEnergyGain',
-        condition: { type: 'ResourceThreshold', resource: 'command', threshold: 1 },
-        amount: 1,
-        target: 'Self',
-      },
     ] as any,
     { source: 'player', targetId: 'player' }
   );
+  relicSystem.trigger('StartTurn', state, (actionOrSpec: any, ctx: any) => manager.enqueueUrgent(actionOrSpec, ctx, 'relic'), {
+    playerTurn: true,
+  });
   manager.executeAllSync();
 
   assert.equal(state.combat!.hand.length, 1);
   assert.equal(state.combat!.player.hp, 13);
   assert.equal(state.combat!.player.energy, 4);
+
+  player.command = 0;
+  player.secondaryResources.command = 0;
+  state.combat!.player.energy = 3;
+  relicSystem.trigger('StartTurn', state, (actionOrSpec: any, ctx: any) => manager.enqueueUrgent(actionOrSpec, ctx, 'relic'), {
+    playerTurn: true,
+  });
+  manager.executeAllSync();
+
+  assert.equal(state.combat!.player.energy, 3);
 });
 
 test('route resource relic events resolve against the active game state', () => {

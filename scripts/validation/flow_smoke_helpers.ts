@@ -18,6 +18,7 @@ import { GameEngine, createDefaultMetaProfile } from '@/core';
 import { createRoomSessionForNode, setRoomSession, syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
 import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
 import { syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
+import charactersData from '@/content/data/characters.json';
 import type { RoomOwnerKind } from '@/core/types';
 
 export interface SaveSlotFixture {
@@ -391,7 +392,7 @@ export function createGameOverFixture(seed = 5103): SaveSlotFixture {
 
 export function buildStoragePayload(fixtures: SaveSlotFixture[]) {
   const metaProfile = createDefaultMetaProfile();
-  metaProfile.unlocks.characters = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'];
+  metaProfile.unlocks.characters = charactersData.map((character) => character.id);
   return {
     slots: fixtures.map((fixture) => fixture.slot),
     saveEntries: Object.fromEntries(

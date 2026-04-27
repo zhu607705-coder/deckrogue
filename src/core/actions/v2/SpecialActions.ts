@@ -240,6 +240,8 @@ function evaluateActionCondition(state: GameState, context: IActionContext, cond
       return getRouteResource(state, String(condition.resource || '')) >= Math.max(1, Number(condition.amount || 1));
     case 'NoResource':
       return getRouteResource(state, String(condition.resource || '')) < Math.max(1, Number(condition.amount || 1));
+    case 'ResourceAmount':
+      return getRouteResource(state, String(condition.resource || '')) >= Math.max(0, Number(condition.minimum || 0));
     case 'ResourceThreshold':
       return getRouteResource(state, String(condition.resource || '')) >= Math.max(0, Number(condition.threshold || 0));
     case 'ResourceSpent':
