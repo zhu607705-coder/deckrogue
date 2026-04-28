@@ -1790,7 +1790,7 @@
   {
     "id": "blackened_gavel",
     "name": "焦黑判槌",
-    "description": "每当你消耗判令，对随机敌人造成 3 点伤害。",
+    "description": "每当你消耗判令，对随机异端造成 3 点伤害。",
     "price": 170,
     "tags": [
       "penitent_judge",
@@ -1815,7 +1815,7 @@
   {
     "id": "void_anchor_litany",
     "name": "虚空锚经文",
-    "description": "每场战斗开始时，获得 1 点封印，并使随机敌人获得 1 层虚弱。",
+    "description": "每场战斗开始时，获得 1 点封印，并使随机异端获得 1 层虚弱。",
     "price": 150,
     "tags": [
       "void_sanctioner",
@@ -1860,7 +1860,7 @@
   {
     "id": "cage_bell_clapper",
     "name": "囚铃断舌",
-    "description": "每当你消耗封印，对全体敌人施加 1 层虚弱。",
+    "description": "每当你消耗封印，对全体异端施加 1 层虚弱。",
     "price": 175,
     "tags": [
       "void_sanctioner",
@@ -1879,7 +1879,7 @@
         "target": "AllEnemies"
       }
     },
-    "inscription": "铃舌被切下后仍挂在链上，只在敌人准备呼喊时轻轻摆动。",
+    "inscription": "铃舌被切下后仍挂在链上，只在异端准备呼喊时轻轻摆动。",
     "flavorText": "“它不响，所以我们才知道门又开了一条缝。”",
     "background": "断舌让封印消耗与群体压制绑定，直接支撑重力囚笼、事界线和寂灭铃的收束路线。"
   }

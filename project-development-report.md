@@ -1,5 +1,14 @@
 # Project Development Report
 
+## Release Readiness Stale Report Cleanup - 2026-04-28
+
+- Re-ran the full doctor gate after the Windows package work to refresh stale release artifacts.
+- Fixed the only non-stale doctor failure: `Translation Audit` flagged 4 relic terminology conflicts in `src/content/data/relics.json`.
+- Updated `blackened_gavel`, `void_anchor_litany`, and `cage_bell_clapper` visible relic copy from enemy wording to the project-standard combat term.
+- Verified `npm run doctor:game:full`: `47/47` stages passed.
+- Verified `npm run check:release-readiness`: `pass=40`, `warn=1`, `fail=0`.
+- Remaining note: the single readiness warning is the expected manual `reports_dir` growth review warning, not a stale or blocking failure.
+
 ## Windows EXE And Performance Packaging - 2026-04-28
 
 - Added `scripts/desktop/dist_win.ts` as the Windows packaging entry used by `npm run dist:win`.
