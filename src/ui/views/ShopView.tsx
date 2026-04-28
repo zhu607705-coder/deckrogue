@@ -21,6 +21,7 @@ import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narra
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { GlossaryText } from '@/ui/components/GlossaryText';
+import { localShopArt } from '@/content/assets/standeeArt';
 import { getUiLabelZh } from '@/ui/content/terminology';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import type { RunCardInstance, RelicDef, PotionDef as CorePotionDef } from '@/core/types/actions';
@@ -110,7 +111,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
     VIEW_BACKGROUNDS.shop.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.shop.length) : 0
   );
   const backgroundSrc = VIEW_BACKGROUNDS.shop[backgroundIndex]?.desktop || '';
-  const merchantImage = '/assets/shop/shop_merchant_salvager.png';
+  const merchantImage = localShopArt('shop_merchant_salvager');
   const [merchantLine] = useState(() => {
     const lines = (WORLD_LORE?.npcDialogueTemplates?.merchant || []) as string[];
     if (!lines.length) return '货在这，命也在这。风险自负。';

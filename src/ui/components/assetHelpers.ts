@@ -8,12 +8,15 @@
  * - 生成卡牌/敌人/遗物等资源路径
  */
 
+import type { SyntheticEvent } from 'react';
+import { localCharacterArt, localEnemyArt } from '@/content/assets/standeeArt';
+
 export const ASSET_PLACEHOLDERS = {
   card: '/assets/cards/strike.png',
   relic: '/assets/relics/anchor.png',
   potion: '/assets/potions/healing_potion.png',
-  character: '/assets/characters/informant.png',
-  enemy: '/assets/enemies/goblin.png',
+  character: localCharacterArt('informant'),
+  enemy: localEnemyArt('goblin'),
   mapRoom: '/assets/map/map_event.svg',
   merchant: '/assets/map/map_shop.svg'
 } as const;
@@ -22,9 +25,7 @@ export function localCardArt(id: string): string {
   return `/assets/cards/${id}.png`;
 }
 
-export function localEnemyArt(id: string): string {
-  return `/assets/enemies/${id}.png`;
-}
+export { localCharacterArt, localEnemyArt };
 
 export function bindImgFallback(
   event: SyntheticEvent<HTMLImageElement>,
@@ -37,4 +38,3 @@ export function bindImgFallback(
   img.dataset.fallbackApplied = '1';
   img.src = fallbackSrc;
 }
-import type { SyntheticEvent } from 'react';

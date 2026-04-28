@@ -8,6 +8,8 @@
  * - 管理图片加载策略
  */
 
+import { localCharacterArt } from '@/content/assets/standeeArt';
+
 export interface ImageSrcSet {
   avif?: string;
   webp?: string;
@@ -81,9 +83,9 @@ export async function getOptimalImageFormat(
 
 export function getCriticalImages(): string[] {
   return [
-    '/assets/characters/puppeteer.png',
-    '/assets/characters/informant.png',
-    '/assets/characters/alchemist.png',
+    localCharacterArt('puppeteer'),
+    localCharacterArt('informant'),
+    localCharacterArt('alchemist'),
     '/assets/map/map_combat.svg',
     '/assets/map/map_event.svg',
     '/assets/backgrounds/menu_war_room.png',

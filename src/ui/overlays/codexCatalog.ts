@@ -14,6 +14,7 @@ import { potionsData } from '@/content/narrative/numericSystem';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { STORY_EVENTS } from '@/content/narrative/numericSystem';
 import type { CodexCategory } from '@/core';
+import { localEnemyArt } from '@/content/assets/standeeArt';
 import { getCardNameZh, getCardTargetingZh, getCardTextZh, getUiLabelZh } from '@/ui/content/terminology';
 
 export interface CodexCatalogEntry {
@@ -650,7 +651,7 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
       category,
       id: enemy.id,
       name: enemy.name,
-      imageSrc: `/assets/enemies/${enemy.id}.png`,
+      imageSrc: localEnemyArt(enemy.id),
       rarity: enemy.keywords?.includes('boss') ? 'Boss' : enemy.keywords?.includes('elite') ? 'Elite' : 'Normal',
       subtitle: category === 'elites' ? 'Elite/Boss Encounter' : 'Normal Encounter',
       keywords,

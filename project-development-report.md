@@ -1,5 +1,25 @@
 # Project Development Report
 
+## Lossless Standee Artwork Compression - 2026-04-28
+
+- Converted 64 readable standee PNG assets to lossless WebP without resizing or lossy quantization.
+- Verified each converted file by decoding the WebP back to RGBA and comparing a SHA-256 pixel hash with the source PNG before deleting the PNG.
+- Scope converted: 8 character portraits, 48 enemy standees, 6 event/NPC standees, and 2 shop standees/backgrounds.
+- Source standee asset weight changed from `111,221,566` bytes to `84,265,756` bytes for the converted set, saving `26,955,810` bytes (`24.24%`).
+- The combined `characters/enemies/events/shop` standee directories now hold `64` WebP files plus `16` untouched legacy PNG files, about `81.97 MiB` total.
+- The Windows installer was rebuilt at `release\win\DeckRogue-0.0.0-x64.exe`; size is now `277,701,304` bytes.
+- Added `src/content/assets/standeeArt.ts` as the canonical path switch so converted art uses WebP while untouched legacy assets still use PNG.
+- Verification:
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npm run check:content-bundle`
+  - `npm run check:enemy-visual-identity`
+  - `npm run build`
+  - `npm run test:ui-smoke:expansion`
+  - `npm run dist:win`
+  - `npm run doctor:game:full`
+  - `npm run check:release-readiness`
+- Note: 16 legacy PNG files in the same folders could not be decoded by Pillow and were intentionally left unchanged for this no-quality-loss pass.
+
 ## Release Readiness Stale Report Cleanup - 2026-04-28
 
 - Re-ran the full doctor gate after the Windows package work to refresh stale release artifacts.

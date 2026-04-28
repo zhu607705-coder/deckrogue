@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
+import { localEventArt, localShopArt } from '@/content/assets/standeeArt';
 
 interface BackgroundImageProps {
   src: string;
@@ -150,9 +151,9 @@ export const VIEW_BACKGROUNDS = {
   ],
   shop: [
     {
-      desktop: '/assets/shop/shop_salvage_exchange.png',
-      tablet: '/assets/shop/shop_salvage_exchange.png',
-      mobile: '/assets/shop/shop_salvage_exchange.png'
+      desktop: localShopArt('shop_salvage_exchange'),
+      tablet: localShopArt('shop_salvage_exchange'),
+      mobile: localShopArt('shop_salvage_exchange')
     },
     {
       desktop: '/assets/shop/shop_forge.png',
@@ -189,9 +190,9 @@ export const VIEW_BACKGROUNDS = {
   },
   events: {
     forge: '/assets/events/event_forge.png',
-    rustingMedicae: '/assets/events/event_rusting_medicae.png',
+    rustingMedicae: localEventArt('event_rusting_medicae'),
     shrine: '/assets/events/event_shrine.png',
-    martyrShrine: '/assets/events/event_martyr_shrine.png',
+    martyrShrine: localEventArt('event_martyr_shrine'),
     warp: '/assets/events/event_warp.png',
     trial: '/assets/events/event_trial.png',
     hereticAltar: '/assets/events/event_heretic_altar.png',

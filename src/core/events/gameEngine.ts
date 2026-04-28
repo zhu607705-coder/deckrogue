@@ -38,7 +38,7 @@ import {
 } from '@/content/narrative/numericSystem';
 import type { IActionContext } from '@/core/actions/actionQueue';
 import charactersDataRaw from '@/content/data/characters.json';
-const charactersData = charactersDataRaw as CharacterDef[];
+import { localCharacterArt } from '@/content/assets/standeeArt';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RuntimeEventType } from '@/core/events/eventContract';
 import { metricsTracker } from '@/core/events/metricsTracker';
@@ -52,6 +52,8 @@ import { EventManager } from '@/core/events/EventManager';
 import { RunFlowManager } from '@/core/events/RunFlowManager';
 import { CombatManager, type CombatManagerDeps } from '@/core/events/CombatManager';
 import { runPhaseToScreen } from '@/core/events/runStateMachine';
+
+const charactersData = charactersDataRaw as CharacterDef[];
 import { projectRuleSnapshotToLegacyState, type LegacyStateProjection } from '@/runtimeV2/legacyStateProjector';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
@@ -1463,7 +1465,7 @@ export class GameEngine {
 
   loadCharacterPortrait(): string {
     const id = this.state.character?.id || 'informant';
-    const url = `/assets/characters/${id}.png`;
+    const url = localCharacterArt(id);
     this.state.player.portraitUrl = url;
     return url;
   }

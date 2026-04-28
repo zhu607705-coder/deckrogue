@@ -20,6 +20,7 @@ import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelper
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { GlossaryText } from '@/ui/components/GlossaryText';
 import { EventOptionLongTermEffect } from '@/ui/components/EventLongTermEffect';
+import { localEventArt } from '@/content/assets/standeeArt';
 import { getUiLabelZh } from '@/ui/content/terminology';
 import { uiWorldLore } from '@/ui/content/worldLore';
 
@@ -55,15 +56,15 @@ function getEventBackground(eventId: string): string {
 function getEventNpcArt(eventId: string): EventNpcArt | null {
   switch (eventId) {
     case 'rusting_medicae':
-      return { image: '/assets/events/npc_medicae_servitor.png', label: 'Rusting medicae servitor', tone: 'medicae' };
+      return { image: localEventArt('npc_medicae_servitor'), label: 'Rusting medicae servitor', tone: 'medicae' };
     case 'nameless_martyr_shrine':
-      return { image: '/assets/events/npc_shrine_warden.png', label: 'Nameless shrine warden', tone: 'shrine' };
+      return { image: localEventArt('npc_shrine_warden'), label: 'Nameless shrine warden', tone: 'shrine' };
     case 'inquisitor_legacy':
-      return { image: '/assets/events/npc_inquisitor_interrogator.png', label: 'Inquisitor interrogator', tone: 'inquisitor' };
+      return { image: localEventArt('npc_inquisitor_interrogator'), label: 'Inquisitor interrogator', tone: 'inquisitor' };
     case 'warp_tear_whispers':
     case 'heretic_altar':
     case 'chaos_gate':
-      return { image: '/assets/events/npc_warp_oracle.png', label: 'Warp oracle', tone: 'warp' };
+      return { image: localEventArt('npc_warp_oracle'), label: 'Warp oracle', tone: 'warp' };
     default:
       return null;
   }

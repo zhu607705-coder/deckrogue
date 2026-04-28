@@ -10,6 +10,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
+import { localEventArt, localShopArt } from '@/content/assets/standeeArt';
 
 interface PreloadableResource {
   type: 'image' | 'font';
@@ -229,19 +230,19 @@ export function preloadRouteAssets(screen: string): PreloadableResource[] {
       `${assetBase}/backgrounds/bg_psychic_archive.png`,
     ],
     Shop: [
-      `${assetBase}/shop/shop_salvage_exchange.png`,
-      `${assetBase}/shop/shop_merchant_salvager.png`,
+      localShopArt('shop_salvage_exchange'),
+      localShopArt('shop_merchant_salvager'),
       `${assetBase}/shop/shop_merchant.png`,
       `${assetBase}/shop/shop_black.png`,
       `${assetBase}/shop/shop_forge.png`,
     ],
     Event: [
-      `${assetBase}/events/event_rusting_medicae.png`,
-      `${assetBase}/events/event_martyr_shrine.png`,
-      `${assetBase}/events/npc_medicae_servitor.png`,
-      `${assetBase}/events/npc_shrine_warden.png`,
-      `${assetBase}/events/npc_inquisitor_interrogator.png`,
-      `${assetBase}/events/npc_warp_oracle.png`,
+      localEventArt('event_rusting_medicae'),
+      localEventArt('event_martyr_shrine'),
+      localEventArt('npc_medicae_servitor'),
+      localEventArt('npc_shrine_warden'),
+      localEventArt('npc_inquisitor_interrogator'),
+      localEventArt('npc_warp_oracle'),
       `${assetBase}/events/event_shrine.png`,
       `${assetBase}/events/event_chaos_gate.png`,
       `${assetBase}/events/event_forge.png`,

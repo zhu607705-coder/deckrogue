@@ -11,6 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 
 import { RunGenerator } from '@/core/events/runGenerator';
+import { localCharacterArt } from '@/content/assets/standeeArt';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/bundle-check.json`;
@@ -63,7 +64,7 @@ function checkCharacters(): boolean {
 }
 
 function checkCharacterPortraits(): boolean {
-  const missing = REQUIRED_CHARACTER_IDS.filter((id) => !existsSync(`public/assets/characters/${id}.png`));
+  const missing = REQUIRED_CHARACTER_IDS.filter((id) => !existsSync(`public${localCharacterArt(id)}`));
   return requireCondition(missing.length === 0, `missing character portraits: ${missing.join(', ')}`);
 }
 

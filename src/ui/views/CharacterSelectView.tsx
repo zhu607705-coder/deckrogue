@@ -21,6 +21,7 @@ import {
 } from '@/core';
 import { Heart, Zap, Play, BookOpen, Trophy, Sparkles, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Shield } from 'lucide-react';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
+import { localCharacterArt } from '@/content/assets/standeeArt';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { getAchievementDefById, getAchievementTotalCount, getAchievementUnlockedCount } from '@/features/achievements/achievementSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
@@ -278,7 +279,7 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
             >
               <div className="w-16 h-16 bg-slate-800 rounded-full mb-2.5 flex items-center justify-center border border-slate-600 overflow-hidden">
                 <img
-                  src={`/assets/characters/${char.id}.png`}
+                  src={localCharacterArt(char.id)}
                   alt={char.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
