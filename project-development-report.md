@@ -1,5 +1,21 @@
 # Project Development Report
 
+## Windows EXE And Performance Packaging - 2026-04-28
+
+- Added `scripts/desktop/dist_win.ts` as the Windows packaging entry used by `npm run dist:win`.
+- Generated `release\win\DeckRogue-0.0.0-x64.exe`; final installer size is `304,471,571` bytes.
+- Staged a minimal Electron app under `.desktop-build\win-app`, copying only `dist`, `electron`, and a minimal `package.json`, so the installer no longer bundles root development dependencies.
+- Disabled unsigned executable editing in the Windows builder config to avoid the local non-admin symlink failure from `winCodeSign`.
+- Optimized 428 PNG assets used by cards, characters, enemies, events, and shop scenes. The optimized pass reduced the processed source images from about `362.39 MB` to `154.86 MB` and cut the public PNG total from about `403.23 MB` to `195.7 MB`.
+- Added `release/` and `.desktop-build/` to `.gitignore`; the local installer remains available but generated package output is not tracked in git.
+- Verified with:
+  - `npm run check:content-bundle`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npm run test:ui-smoke:expansion`
+  - `npm run dist:win`
+  - `npm run test:desktop-smoke`
+- Remaining release gate note: `npm run check:release-readiness` still reports stale historical flow/report files outside this packaging slice, so it is not used as the completion claim for this targeted EXE/performance task.
+
 ## Scope
 
 本轮完成哥特科幻扩展内容、战斗资源机制接入、图鉴叙事增强和缺失图片补齐。
