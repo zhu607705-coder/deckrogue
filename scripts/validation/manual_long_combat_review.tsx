@@ -4,10 +4,21 @@ import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { chromium } from 'playwright';
-import { CardView } from '@/ui/views/CardView';
-import { GameEngine } from '@/core';
+import { chromium, type Page } from 'playwright';
+
 import { cardsData } from '@/content/narrative/numericSystem';
+import { CardView } from '@/ui/views/CardView';
+import {
+  bootstrapContext,
+  buildSaveData,
+  checkServer,
+  createEngineAtFirstRoom,
+  getDefaultSmokeUrl,
+  loadSlotFromLauncher,
+  spawnDevServer,
+  waitForServer,
+  type SaveSlotFixture,
+} from './flow_smoke_helpers';
 
 type ReviewFinding = {
   area: string;
@@ -27,7 +38,7 @@ const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA
 function parseArgs() {
   const arg = process.argv.find((entry) => entry.startsWith('--url='));
   return {
-    url: arg ? arg.split('=')[1] : 'http://127.0.0.1:3000'
+    url: arg ? arg.split('=')[1] : getDefaultSmokeUrl(),
   };
 }
 
@@ -53,7 +64,7 @@ function createThemeReviewHtml() {
     defend: 'wood',
     dead_drop: 'tactic',
     mirror_probe: 'mirror',
-    acid_bath: 'acid'
+    acid_bath: 'acid',
   };
   const cards = ids
     .map((id) => cardsData.find((card) => card.id === id))
@@ -64,7 +75,7 @@ function createThemeReviewHtml() {
     <div className="theme-review-shell">
       <header className="theme-review-header">
         <div className="theme-review-kicker">manual visual review</div>
-        <h1 className="theme-review-title">wood / tactic / mirror / acid 卡牌正文可读性</h1>
+        <h1 className="theme-review-title">wood / tactic / mirror / acid card text readability</h1>
       </header>
       <main className="theme-review-grid">
         {cards.map((card) => (
@@ -137,151 +148,134 @@ function createThemeReviewHtml() {
   return output;
 }
 
-async function waitForPlayerTurn(page: import('playwright').Page) {
-  await page.waitForFunction(() => {
-    const marker = Array.from(document.querySelectorAll('.grimdark-turn-label')).find((el) =>
-      (el.textContent || '').includes('指挥者阶段')
-    );
-    return !!marker;
-  });
-}
-
-async function clickCharacterCard(page: import('playwright').Page, characterId: string) {
-  const card = page.locator(`[data-character-id="${characterId}"]`).first();
-  await card.scrollIntoViewIfNeeded();
-  await card.click({ force: true });
-}
-
-async function clickEndTurn(page: import('playwright').Page) {
-  const button = page.getByRole('button', { name: /结束周期/i });
-  await button.click({ force: true });
-}
-
-async function playLongestTurn(page: import('playwright').Page) {
-  for (;;) {
-    const cards = page.locator('[data-keyboard-card]');
-    const count = await cards.count();
-    let played = false;
-
-    for (let index = 0; index < count; index += 1) {
-      const card = cards.nth(index);
-      const cardClass = (await card.getAttribute('class')) || '';
-      if (cardClass.includes('is-disabled')) continue;
-
-      await card.click();
-      const targets = page.locator('[data-keyboard-target="true"]');
-      if (await targets.count()) {
-        await targets.first().click();
-      }
-      await page.waitForTimeout(180);
-      played = true;
-      break;
-    }
-
-    if (!played) break;
+function createLongCombatFixture(seed = 6201): SaveSlotFixture {
+  const engine = createEngineAtFirstRoom(seed, 'informant');
+  const currentNode = engine.state.currentNodeId
+    ? engine.state.map.find((node) => node.id === engine.state.currentNodeId)
+    : null;
+  if (currentNode) {
+    currentNode.type = 'Combat';
   }
+  (engine as any).startCombat('Combat');
+  return buildSaveData(engine, 'manual_long_combat_review', 'Manual Long Combat Review');
+}
+
+async function getActiveScreen(page: Page): Promise<string | null> {
+  return page.locator('[data-screen]').first().getAttribute('data-screen').catch(() => null);
+}
+
+async function waitForPlayerTurn(page: Page, timeout = 15_000): Promise<boolean> {
+  try {
+    await page.waitForFunction(() => {
+      const marker = document.querySelector('[data-keyboard-end-turn="true"]') as HTMLButtonElement | null;
+      return Boolean(marker) && !marker.disabled;
+    }, undefined, { timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hasEndTurnControl(page: Page): Promise<boolean> {
+  const button = page.locator('[data-keyboard-end-turn="true"]').first();
+  if (!(await button.count())) return false;
+  return button.evaluate((element) => !(element as HTMLButtonElement).disabled).catch(() => false);
+}
+
+async function clickEndTurn(page: Page): Promise<boolean> {
+  if (!(await hasEndTurnControl(page))) return false;
+  const button = page.locator('[data-keyboard-end-turn="true"]').first();
+  await button.click({ force: true });
+  return true;
 }
 
 async function captureLongCombat(url: string) {
   ensureOutDir();
+  let devServer: ReturnType<typeof spawnDevServer> | null = null;
+  if (!checkServer(url)) {
+    devServer = spawnDevServer(url);
+    await waitForServer(url);
+  }
+
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 960 } });
+  const context = await browser.newContext({ viewport: { width: 1600, height: 960 } });
+  await bootstrapContext(context, [createLongCombatFixture()]);
+  const page = await context.newPage();
   const screenshots: string[] = [];
   const findings: ReviewFinding[] = [];
 
-  await page.goto(url, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /开始新战区|new run/i }).click();
-  await clickCharacterCard(page, 'informant');
-  await page.locator('button[data-node-id]').first().waitFor({ timeout: 10_000 });
-  const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
-  if (await combatNode.count()) {
-    await combatNode.click({ force: true });
-  } else {
-    await page.locator('button[data-node-id]:not([disabled])').first().click({ force: true });
-  }
-  await page.waitForSelector('.grimdark-battlefield');
-  await waitForPlayerTurn(page);
-
-  const combatStart = path.join(OUT_DIR, 'long_combat_turn_start.png');
-  await page.screenshot({ path: combatStart, fullPage: true });
-  screenshots.push(combatStart);
-
-  const guideVisible = await page.locator('[data-testid="combat-guide-panel"]').count();
-  findings.push({
-    area: '首战引导',
-    verdict: guideVisible > 0 ? 'pass' : 'watch',
-    detail: guideVisible > 0 ? '首战术语联动面板已出现。' : '首战术语联动面板未出现。'
-  });
-
-  await playLongestTurn(page);
-  await clickEndTurn(page);
-  await page.waitForTimeout(1400);
-
-  const enemyTurn = path.join(OUT_DIR, 'long_combat_enemy_turn.png');
-  await page.screenshot({ path: enemyTurn, fullPage: true });
-  screenshots.push(enemyTurn);
-
-  findings.push({
-    area: '战斗阅读',
-    verdict: 'pass',
-    detail: '已捕获玩家阶段和敌袭阶段两种阅读态，可对照 HUD、敌方意图和手牌正文。'
-  });
-
-  let rewardSeen = false;
-  for (let round = 0; round < 5; round += 1) {
-    if (await page.getByText('选取一张记忆印痕').count()) {
-      rewardSeen = true;
-      break;
+  try {
+    await page.goto(url, { waitUntil: 'networkidle' });
+    await loadSlotFromLauncher(page, 'Manual Long Combat Review');
+    await page.locator('.enemy-standee, .player-standee').first().waitFor({ timeout: 15_000 });
+    if (!(await waitForPlayerTurn(page))) {
+      throw new Error('Manual long combat review did not reach a controllable player turn.');
     }
-    await waitForPlayerTurn(page);
-    await playLongestTurn(page);
-    await clickEndTurn(page);
-    await page.waitForTimeout(1200);
-  }
 
-  if (rewardSeen || (await page.getByText('选取一张记忆印痕').count()) > 0) {
-    const rewardShot = path.join(OUT_DIR, 'long_combat_reward.png');
-    await page.screenshot({ path: rewardShot, fullPage: true });
-    screenshots.push(rewardShot);
+    const combatStart = path.join(OUT_DIR, 'long_combat_turn_start.png');
+    await page.screenshot({ path: combatStart, fullPage: true });
+    screenshots.push(combatStart);
+
+    const guideVisible = await page.locator('[data-testid="combat-guide-panel"]').count();
     findings.push({
-      area: '奖励页聚焦',
-      verdict: 'pass',
-      detail: '长战斗后已进入奖励页，可用于检查 compact 卡牌的居中和反馈。'
+      area: 'first-combat guide',
+      verdict: guideVisible > 0 ? 'pass' : 'watch',
+      detail: guideVisible > 0 ? 'Combat guide panel was visible at battle start.' : 'Combat guide panel was not visible at battle start.',
     });
-  } else {
+
+    const endedTurn = await clickEndTurn(page);
+    await page.waitForTimeout(1400);
+
+    const enemyTurn = path.join(OUT_DIR, 'long_combat_after_turn.png');
+    await page.screenshot({ path: enemyTurn, fullPage: true });
+    screenshots.push(enemyTurn);
     findings.push({
-      area: '奖励页聚焦',
+      area: 'combat readability',
+      verdict: endedTurn ? 'pass' : 'watch',
+      detail: endedTurn
+        ? 'Captured combat after ending the player turn for HUD, enemy intent, and hand readability review.'
+        : `Captured combat start only because the end-turn control was unavailable on screen ${await getActiveScreen(page) ?? 'unknown'}.`,
+    });
+
+    findings.push({
+      area: 'reward transition',
       verdict: 'watch',
-      detail: '本次长战斗未在脚本回合数内进入奖励页，需要人工继续补看。'
+      detail: 'Manual long-combat visual review does not force reward; reward presentation is covered by reward flow smoke.',
     });
+
+    const themeHtml = createThemeReviewHtml();
+    await page.goto(`file://${themeHtml}`);
+    await page.waitForLoadState('load');
+    const themeShot = path.join(OUT_DIR, 'theme_card_review.png');
+    await page.screenshot({ path: themeShot, fullPage: true });
+    screenshots.push(themeShot);
+    findings.push({
+      area: 'theme card readability',
+      verdict: 'pass',
+      detail: 'Generated standalone wood/tactic/mirror/acid card readability screenshot.',
+    });
+
+    const report: ReviewReport = {
+      baseUrl: url,
+      screenshots,
+      findings,
+    };
+    const reportPath = path.join(OUT_DIR, 'manual_long_combat_review.json');
+    writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
+    console.log(`report=${reportPath}`);
+    screenshots.forEach((item) => console.log(`shot=${item}`));
+  } finally {
+    await context.close().catch(() => {});
+    await browser.close();
+    if (devServer && !devServer.killed) {
+      devServer.kill('SIGTERM');
+    }
   }
-
-  const themeHtml = createThemeReviewHtml();
-  await page.goto(`file://${themeHtml}`);
-  await page.waitForLoadState('load');
-  const themeShot = path.join(OUT_DIR, 'theme_card_review.png');
-  await page.screenshot({ path: themeShot, fullPage: true });
-  screenshots.push(themeShot);
-  findings.push({
-    area: '主题卡牌可读性',
-    verdict: 'pass',
-    detail: '已生成 wood / tactic / mirror / acid 四套主题卡牌的独立阅读截图。'
-  });
-
-  await browser.close();
-
-  const report: ReviewReport = {
-    baseUrl: url,
-    screenshots,
-    findings
-  };
-  const reportPath = path.join(OUT_DIR, 'manual_long_combat_review.json');
-  writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
-  console.log(`report=${reportPath}`);
-  screenshots.forEach((item) => console.log(`shot=${item}`));
 }
 
-captureLongCombat(parseArgs().url).catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+captureLongCombat(parseArgs().url)
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

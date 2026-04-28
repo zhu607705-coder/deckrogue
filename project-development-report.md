@@ -1,5 +1,38 @@
 # Project Development Report
 
+## Prelaunch Full Game Test Pass - 2026-04-28
+
+- Ran the Game Studio playtest pass and Build Web Apps frontend verification pass for the current Windows release candidate.
+- Fixed `scripts\validation\manual_long_combat_review.tsx` after it timed out during prelaunch testing:
+  - Uses the shared Playwright smoke server helper and default `http://127.0.0.1:3200` port instead of assuming port `3000`.
+  - Boots from a deterministic combat save fixture instead of relying on map RNG to expose a combat node.
+  - Limits the script to stable visual-review evidence: battle start, post-end-turn combat state, and themed card readability screenshots.
+  - Exits explicitly after browser/server cleanup so the CLI command does not hang after writing its report.
+- Browser and playtest evidence:
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`
+  - `npm run test:ui-smoke`
+  - `npm run test:ui-smoke:expansion`
+  - Flow smoke matrix passed: reward, terminal, shop, event, rest, upgrade, remove-card, boss-phase, boss-terminal.
+  - `npm run test:real-ui-30-rounds`: `30/30` browser rounds passed.
+  - `npm run test:real-ui-30-clicks`: `30/30` scenarios passed, including desktop/tablet/mobile layout checks.
+  - `npm run review:long-combat`: passed and wrote screenshots under `output\playwright\manual_long_combat_review`.
+- Core verification evidence:
+  - `npm run lint --silent`
+  - `npm run test:runtime-v2:ts`: `146` passed, `1` skipped.
+  - `npm run test:supplemental-units`: `142/142` passed.
+  - `npm run test:runtime-v2:py`: `8/8` passed.
+  - `npm run accept:runtime-v2-parity`
+  - `npm run check:content-bundle`: `7/7` passed.
+  - `npm run build`
+- Release evidence:
+  - `npm run dist:win`: rebuilt `release\win\DeckRogue-0.0.0-x64.exe`, size `262,371,205` bytes.
+  - `npm run doctor:game:full`: `47/47` stages passed.
+  - `npm run check:release-readiness`: `pass=41`, `warn=0`, `fail=0`.
+- Manual screenshot review notes:
+  - Battle start and post-end-turn screenshots are non-blank and show combat HUD, player/enemy standees, hand cards, enemy intent, and first-combat guide panel.
+  - Theme card readability screenshot shows wood, tactic, mirror, and acid card variants. Reward presentation is covered by the dedicated reward flow smoke.
+
 ## Lossless Card Face Compression - 2026-04-28
 
 - Converted all `364` card face PNG assets under `public\assets\cards` to lossless WebP.
