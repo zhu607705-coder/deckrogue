@@ -9,8 +9,6 @@
  * - 游戏菜单和存档管理
  * - 各游戏视图的懒加载和切换
  *
- * 注意: 此组件为旧版实现，新版本请参考 UnifiedAppShell.tsx
- * UnifiedAppShell 支持旧引擎和新引擎(RuntimeV2)的双模式切换
  */
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { ResourcePreloader, preloadRouteAssets } from '@/ui/components/ResourcePreloader';

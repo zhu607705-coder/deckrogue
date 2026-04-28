@@ -150,7 +150,7 @@ function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): Experie
     {
       component: '动画速度档位',
       requirement: 'fast/normal/reduced',
-      status: checkFileContains(resolve('src/ui/views/UnifiedAppShell.tsx'), ['ANIMATION_SPEEDS', 'animationSpeedManager', 'fast', 'normal', 'reduced']).found.length > 0 ? 'implemented' : checkFileContains(combatViewPath, ['animation', 'speed', 'duration']).found.length > 0 ? 'partial' : 'missing',
+      status: checkFileContains(resolve('src/ui/views/AppShell.tsx'), ['ANIMATION_SPEEDS', 'animationSpeedManager', 'fast', 'normal', 'reduced']).found.length > 0 ? 'implemented' : checkFileContains(combatViewPath, ['animation', 'speed', 'duration']).found.length > 0 ? 'partial' : 'missing',
       notes: '动画速度档位配置已实现'
     }
   ];

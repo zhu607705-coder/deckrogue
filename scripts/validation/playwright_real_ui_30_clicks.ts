@@ -16,6 +16,7 @@ import { chromium, type Browser, type BrowserContext, type Locator, type Page } 
 
 import {
   bootstrapContext,
+  createBossTerminalFixture,
   checkServer,
   createBossPhaseFixture,
   createEventFixture,
@@ -107,10 +108,6 @@ function parseArgs() {
   return options;
 }
 
-function appendQuery(url: string, query: string): string {
-  const normalized = url.endsWith('/') ? url.slice(0, -1) : url;
-  return `${normalized}/${query.startsWith('?') ? query : `?${query}`}`;
-}
 
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64);
@@ -148,9 +145,6 @@ async function waitForReward(page: Page) {
   await page.getByRole('button', { name: '保持当前构筑' }).waitFor({ timeout: 15_000 });
 }
 
-async function waitForRuntimeV2Map(page: Page, renderer: 'dom' | 'pixi') {
-  await page.locator(`[data-screen="Map"][data-renderer="${renderer}"]`).waitFor({ timeout: 30_000 });
-}
 
 async function openLegacyRun(ctx: ScenarioContext, characterId = 'informant') {
   await ctx.page.goto(ctx.baseUrl, { waitUntil: 'networkidle' });
@@ -247,7 +241,10 @@ async function loadFixtureSlot(ctx: ScenarioContext, slotName: string) {
   await waitForLauncher(ctx.page);
   const slotCard = ctx.page.getByText(slotName).locator('xpath=ancestor::div[.//button[normalize-space()="读取"]][1]');
   await slotCard.scrollIntoViewIfNeeded();
-  await ctx.click(`launcher: load ${slotName}`, slotCard.getByRole('button', { name: '读取' }));
+  console.log(`[real-ui-30-clicks] fixture load: ${slotName}`);
+  await slotCard.getByRole('button', { name: '读取' }).evaluate((button) => {
+    (button as HTMLButtonElement).click();
+  });
 }
 
 async function auditVisual(page: Page, index: number, name: string, outputDir: string): Promise<VisualAudit> {
@@ -582,6 +579,17 @@ function buildScenarios(): ScenarioDefinition[] {
       },
     },
     {
+      name: 'boss terminal restarts run',
+      specialty: 'Boss victory terminal',
+      fixtures: () => [createBossTerminalFixture()],
+      action: async (ctx) => {
+        await loadFixtureSlot(ctx, 'Boss Terminal Flow');
+        await ctx.page.getByText('行动归档').waitFor({ timeout: 10_000 });
+        await ctx.click('boss terminal: new run', ctx.page.getByRole('button', { name: '再来一局' }).first());
+        await waitForCharacterSelect(ctx.page);
+      },
+    },
+    {
       name: 'gameover terminal restarts run',
       specialty: 'Game over terminal',
       fixtures: () => [createGameOverFixture()],
@@ -605,18 +613,6 @@ function buildScenarios(): ScenarioDefinition[] {
         if (!body.includes('过热的机械释放灼热冲击') && !body.includes('14/20')) {
           throw new Error('Boss phase effect did not appear after ending turn.');
         }
-      },
-    },
-    {
-      name: 'runtime v2 dom reaches map',
-      specialty: 'Runtime V2 DOM path',
-      action: async (ctx) => {
-        await ctx.page.goto(appendQuery(ctx.baseUrl, 'runtimeV2=1&adapter=python-wasm&renderer=dom&seed=2468'), { waitUntil: 'networkidle' });
-        await ctx.page.getByText('Launch Runtime V2').waitFor({ timeout: 10_000 });
-        await ctx.click('runtime-v2: start new run', ctx.page.getByRole('button', { name: /开始新局|Start New Run/ }).first());
-        await ctx.page.locator('[data-screen="CharacterSelect"]').waitFor({ timeout: 30_000 });
-        await ctx.click('runtime-v2: select informant', ctx.page.locator('button[data-character-id="informant"]').first());
-        await waitForRuntimeV2Map(ctx.page, 'dom');
       },
     },
   ];

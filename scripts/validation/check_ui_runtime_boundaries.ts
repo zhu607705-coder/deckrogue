@@ -29,7 +29,6 @@ const GLOBAL_EVENT_BUS_ALLOWLIST = new Set([
   'src/ui/overlays/AchievementOverlay.tsx',
   'src/ui/views/CharacterSelectView.tsx',
   'src/ui/views/AppShell.tsx',
-  'src/ui/views/UnifiedAppShell.tsx',
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

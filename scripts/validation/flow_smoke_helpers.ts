@@ -420,7 +420,9 @@ export async function loadSlotFromLauncher(page: Page, slotName: string) {
     .getByText(slotName)
     .locator('xpath=ancestor::div[.//button[normalize-space()="读取"]][1]');
   await slotCard.scrollIntoViewIfNeeded();
-  await slotCard.getByRole('button', { name: '读取' }).click();
+  await slotCard.getByRole('button', { name: '读取' }).evaluate((button) => {
+    (button as HTMLButtonElement).click();
+  });
 }
 
 export function screenshotPath(dir: string, file: string): string {

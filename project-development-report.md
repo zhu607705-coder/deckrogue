@@ -1,5 +1,53 @@
 # Project Development Report
 
+## Launcher Vertical Centering
+
+- Adjusted the legacy setup launcher hero section so the title and action panel align around the first viewport center instead of sitting low on large desktop screens.
+- Changed the large-screen hero grid from bottom alignment to center alignment while preserving a small archive-section hint below the fold.
+- Browser measurement at `1440x900`: launcher group center offset is `-31.9px` from viewport center.
+- Screenshot evidence: `output\playwright\launcher-centered-1440x900.png`.
+
+## Runtime UI Decommission
+
+- Removed the public new-engine UI entry and query-parameter launch path.
+- Removed the unified shell, Runtime UI scenes, Pixi runtime scenes, and associated browser/unit checks.
+- Removed unused Pixi dependencies after deleting the Pixi scene layer.
+- Main app startup now always enters the legacy visual AppShell path.
+- Desktop launch and EA release-channel metadata now resolve only to the legacy UI entry.
+- Verification:
+  - `npm run lint --silent`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npm run build`
+  - `npm run test:supplemental-units --silent`: `145/145` passed
+  - New-engine UI and Pixi residue scan over `src`, `tests`, `scripts`, `electron`, `package.json`, and `package-lock.json`: no matches
+  - `git diff --check`: no whitespace errors; Git reported only LF-to-CRLF working-copy warnings
+
+## Actual Play Combat Stability Fix - 2026-04-28
+
+- Fixed the Penitent Judge combat soft-lock reported in real play: when `judgement_cut` killed one symbiote and the linked symbiote was reduced to 0 HP by the death-side effect, combat now resolves victory from the final enemy state even if the second enemy did not emit a separate `EnemyDeath` event.
+- Added a regression test for the exact `penitent_judge` + `symbiote_a`/`symbiote_b` case. The test plays the real `judgement_cut` run-card instance and asserts the screen advances to `Reward`, combat is cleared, and reward cards are generated.
+- Fixed missing card faces for runtime delayed replay cards by normalizing IDs such as `judgement_cut_delayed_replay` back to their base card art path.
+- Reduced combat targeting shake by removing infinite transform-scale animation from enemy target feedback and target rings while keeping static/opacity feedback visible.
+- Removed transform-scale pulsing from enemy intent warning badges so warning feedback no longer creates constant combat HUD motion.
+- Restored the launcher root `data-screen="Launcher"` marker so desktop smoke and future UI automation can reliably confirm tutorial close returns to the launcher.
+- Hardened save-slot loading in Playwright flow helpers so launcher panel motion/overlap cannot block deterministic smoke fixture entry.
+- Fixed tutorial and launcher overflow found by the real UI run: hidden glossary bubbles no longer widen the page, launcher decorative orbs are disabled, and the mobile launcher brand now fits a 390px viewport without horizontal scroll.
+- Restored the current 30-click scenario count after Runtime UI decommission by replacing the removed Runtime V2 map scenario with a Boss Terminal legacy path.
+- Verification:
+  - `npx tsx --test tests/unit/combatVictoryFromEnemyDeath.test.ts tests/unit/cardExpansionPack.test.ts`
+  - `npm run lint --silent`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npm run test:supplemental-units`: `145/145` passed
+  - `npm run test:ui-smoke`
+  - `npm run test:ui-smoke:expansion`: clean report, `0` failed requests, `0` broken images, `0` layout issues
+  - `npm run test:real-ui-30-clicks`: `30/30` scenarios passed, `0` console errors, `0` page errors, `0` failed requests
+  - `npm run test:desktop-smoke`
+  - `npm run build`
+  - `npm run dist:win`: rebuilt `release\win\DeckRogue-0.0.0-x64.exe`, size `262,214,517` bytes, SHA256 `2B9325A8D4DCA674A8DA7BD1DA8C0B8DFCCD96D5F6FE63B905D6A147E1709F12`
+  - `npm run doctor:game:full`: `44/44` stages passed
+  - `npm run check:release-readiness`: `pass=41`, `warn=0`, `fail=0`
+- Latest 30-click screenshots and JSON evidence are under `output\playwright\real-ui-30-clicks` and `reports\flows\real-ui-30-clicks.json`.
+
 ## Prelaunch Full Game Test Pass - 2026-04-28
 
 - Ran the Game Studio playtest pass and Build Web Apps frontend verification pass for the current Windows release candidate.
@@ -9,8 +57,6 @@
   - Limits the script to stable visual-review evidence: battle start, post-end-turn combat state, and themed card readability screenshots.
   - Exits explicitly after browser/server cleanup so the CLI command does not hang after writing its report.
 - Browser and playtest evidence:
-  - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`
-  - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`
   - `npm run test:ui-smoke`
   - `npm run test:ui-smoke:expansion`
   - Flow smoke matrix passed: reward, terminal, shop, event, rest, upgrade, remove-card, boss-phase, boss-terminal.
@@ -19,10 +65,7 @@
   - `npm run review:long-combat`: passed and wrote screenshots under `output\playwright\manual_long_combat_review`.
 - Core verification evidence:
   - `npm run lint --silent`
-  - `npm run test:runtime-v2:ts`: `146` passed, `1` skipped.
   - `npm run test:supplemental-units`: `142/142` passed.
-  - `npm run test:runtime-v2:py`: `8/8` passed.
-  - `npm run accept:runtime-v2-parity`
   - `npm run check:content-bundle`: `7/7` passed.
   - `npm run build`
 - Release evidence:
@@ -178,9 +221,7 @@
 - `npm run lint --silent`
 - `npx tsc --noEmit --pretty false --project tsconfig.json`
 - `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/growthRoutePhase2.test.ts tests/unit/combatViewModel.test.ts tests/unit/specialActionBehavior.test.ts`
-- `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/growthRoutePhase2.test.ts tests/unit/combatViewModel.test.ts tests/unit/specialActionBehavior.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/cardExpansionPack.test.ts`
 - `npm run test:supplemental-units`
-- `npm run test:runtime-v2:ts`
 - `npm run check:content-bundle`
 - `npm run check:content-reachability`
 - `npm run check:deep-reachability`

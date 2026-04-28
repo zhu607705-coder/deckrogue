@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { cardsData } from '@/content/narrative/numericSystem';
 import { getCardRouteAffinityTags } from '@/content/narrative/routeSignals';
-import { localCardArt } from '@/content/assets/standeeArt';
+import { localCardArt, resolveCardArtId } from '@/content/assets/standeeArt';
 import type { ActionSpec, CardDef } from '@/core/types';
 
 const EXPANSION_CARD_IDS = [
@@ -158,6 +158,11 @@ test('new profession cards remain visible to route affinity and card art lookup'
       assert.ok(getCardRouteAffinityTags(card).length > 0, `${card.id} must map to at least one route tag`);
     }
   }
+});
+
+test('runtime replay cards reuse their source card art', () => {
+  assert.equal(resolveCardArtId('judgement_cut_delayed_replay'), 'judgement_cut');
+  assert.ok(existsSync(resolve('public', `.${localCardArt('judgement_cut_delayed_replay')}`)));
 });
 
 test('judgment and seal profession cards are route-visible and executable', () => {

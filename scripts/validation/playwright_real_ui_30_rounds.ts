@@ -89,24 +89,6 @@ const SCENARIOS: ScenarioConfig[] = [
     supportsUrlArg: true,
   },
   {
-    name: 'runtime-v2-entry-smoke',
-    script: 'scripts/validation/playwright_runtime_v2_entry_smoke.ts',
-    reportPath: path.join(process.cwd(), 'output', 'playwright', 'runtime_v2_entry', 'report.json'),
-    supportsUrlArg: true,
-  },
-  {
-    name: 'runtime-v2-flow-smoke',
-    script: 'scripts/validation/playwright_runtime_v2_flow_smoke.ts',
-    reportPath: path.join(process.cwd(), 'output', 'playwright', 'runtime_v2_flow', 'report.json'),
-    supportsUrlArg: true,
-  },
-  {
-    name: 'unified-runtime-v2-smoke',
-    script: 'scripts/validation/playwright_unified_runtime_v2_smoke.ts',
-    reportPath: path.join(process.cwd(), 'output', 'playwright', 'unified_runtime_v2', 'report.json'),
-    supportsUrlArg: true,
-  },
-  {
     name: 'reward-flow-smoke',
     script: 'scripts/validation/playwright_reward_flow_smoke.ts',
     reportPath: path.join(process.cwd(), 'reports', 'flows', 'reward-flow-smoke.json'),
@@ -155,7 +137,6 @@ const SCENARIOS: ScenarioConfig[] = [
 
 const STRESS_REPEAT_SCENARIOS = [
   'ui-smoke-expansion',
-  'runtime-v2-flow-smoke',
   'reward-flow-smoke',
   'shop-flow-smoke',
   'event-flow-smoke',

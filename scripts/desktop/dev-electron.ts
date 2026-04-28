@@ -69,7 +69,7 @@ async function main() {
 
   const electronProcess = spawnChild(electronBinary, ['electron/main.mjs'], {
     VITE_DEV_SERVER_URL: devServerUrl,
-    DECKROGUE_DESKTOP_ENTRY_MODE: process.env.DECKROGUE_DESKTOP_ENTRY_MODE || 'unified',
+    DECKROGUE_DESKTOP_ENTRY_MODE: 'legacy',
   });
 
   electronProcess.on('exit', (code) => {

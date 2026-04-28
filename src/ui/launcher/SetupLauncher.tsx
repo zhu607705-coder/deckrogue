@@ -114,7 +114,11 @@ export function SetupLauncher({
   }, [tutorialOpen]);
 
   return (
-    <div ref={shellRef} className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_eldar_void.png')] bg-cover bg-center">
+    <div
+      ref={shellRef}
+      data-screen="Launcher"
+      className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_eldar_void.png')] bg-cover bg-center"
+    >
       <div className="launcher-veil absolute inset-0 bg-black/60" />
       <div className="launcher-grain absolute inset-0 opacity-60" />
       <div className="launcher-orb launcher-orb-left absolute" />
@@ -122,14 +126,14 @@ export function SetupLauncher({
 
       <div className="relative z-10 min-h-screen px-6 py-8 md:px-10 xl:h-screen xl:overflow-hidden xl:px-14">
         <div className="mx-auto flex max-w-7xl flex-col xl:h-full xl:min-h-0">
-          <section className="flex min-h-[calc(100vh-4rem)] flex-col justify-center py-10 xl:min-h-0 xl:flex-none xl:justify-end xl:py-1">
-            <div className="grid items-end gap-10 xl:gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-              <div className="max-w-4xl">
+          <section className="flex min-h-[calc(100vh-4rem)] flex-col justify-center py-10 xl:min-h-[calc(100vh-8rem)] xl:flex-none xl:justify-center xl:py-4">
+            <div className="grid items-center gap-10 xl:gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+              <div className="min-w-0 max-w-4xl">
                 <div className="launcher-kicker mb-4 text-[11px] uppercase tracking-[0.4em] text-amber-200/70">
                   {getUiLabelZh('Ritual Access Node')}
                 </div>
                 <div className="launcher-brand reveal-rise">
-                  <div className="text-[clamp(3.75rem,11vw,8.8rem)] font-black uppercase leading-[0.85] tracking-[0.08em] text-amber-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.7)] xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
+                  <div className="text-[3rem] font-black uppercase leading-[0.85] tracking-[0.04em] text-amber-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.7)] sm:text-[clamp(3.75rem,11vw,8.8rem)] sm:tracking-[0.08em] xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
                     DeckRogue
                   </div>
                   <h1 className="mt-3 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.5)] xl:text-[clamp(1.5rem,2.8vw,2.5rem)]">
@@ -155,7 +159,7 @@ export function SetupLauncher({
                 ) : null}
               </div>
 
-                <div className="launcher-panel reveal-rise overflow-hidden border border-white/10 bg-black/35 p-5 backdrop-blur-md md:p-6 xl:p-4">
+                <div className="launcher-panel reveal-rise min-w-0 overflow-hidden border border-white/10 bg-black/35 p-5 backdrop-blur-md md:p-6 xl:p-4">
                 <div className="text-[11px] uppercase tracking-[0.34em] text-stone-400">{getUiLabelZh('Launch Sequence')}</div>
                 <div className="mt-5 space-y-3 xl:mt-4 xl:space-y-2.5">
                   <button

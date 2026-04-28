@@ -3,8 +3,14 @@
  * @description Canonical runtime paths for lossless optimized artwork.
  */
 
+export function resolveCardArtId(id: string): string {
+  const normalized = String(id || '').trim();
+  if (!normalized) return 'strike';
+  return normalized.replace(/_delayed_replay$/i, '');
+}
+
 export function localCardArt(id: string): string {
-  return `/assets/cards/${id}.webp`;
+  return `/assets/cards/${resolveCardArtId(id)}.webp`;
 }
 
 const WEBP_CHARACTER_IDS = new Set([

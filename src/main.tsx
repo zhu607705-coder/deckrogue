@@ -1,8 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import App from '@/App';
-import UnifiedAppShell from '@/ui/views/UnifiedAppShell';
-import { RuntimeV2App, resolveAppEntryMode } from '@/runtimeV2';
 import { gameSetup } from '@/core';
 import { resolveCurrentDesktopEnvironment } from '@/desktop/hostPlatform';
 import '@/index.css';
@@ -10,7 +8,6 @@ import '@/index.css';
 function GameInitializer() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const entryMode = resolveAppEntryMode(window.location.search);
   const desktopEnvironment = resolveCurrentDesktopEnvironment();
 
   useEffect(() => {
@@ -70,14 +67,6 @@ function GameInitializer() {
         <p className="text-gray-600 text-sm mt-2">正在加载资源和配置</p>
       </div>
     );
-  }
-
-  if (entryMode === 'runtime-v2') {
-    return <RuntimeV2App />;
-  }
-
-  if (entryMode === 'unified') {
-    return <UnifiedAppShell />;
   }
 
   return <App />;

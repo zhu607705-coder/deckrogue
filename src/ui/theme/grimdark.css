@@ -1198,6 +1198,7 @@
 }
 
 .launcher-orb {
+  display: none;
   width: 42rem;
   height: 42rem;
   border-radius: 9999px;
@@ -2207,16 +2208,14 @@
 }
 
 .grimdark-enemy-standee.is-targeting {
-  animation: enemy-target-pulse 0.6s ease-in-out infinite;
+  box-shadow: 0 0 24px rgba(220, 38, 38, 0.45);
 }
 
 @keyframes enemy-target-pulse {
   0%, 100% {
-    transform: scale(1);
     box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
   }
   50% {
-    transform: scale(1.02);
     box-shadow: 0 0 35px rgba(220, 38, 38, 0.7);
   }
 }
@@ -2507,11 +2506,9 @@
 @keyframes target-ring-pulse {
   0%, 100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
     opacity: 0.6;
-    transform: scale(1.05);
   }
 }
 

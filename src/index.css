@@ -7,7 +7,7 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    UNIFIED MOTION SYSTEM - DeckRogue Animation Token Layer
-   Serves UnifiedAppShell main path only
+   Serves AppShell main path only
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Motion Token Definitions */
@@ -1378,6 +1378,7 @@
 }
 
 .glossary-term__bubble {
+  display: none;
   position: absolute;
   left: 50%;
   bottom: calc(100% + 0.55rem);
@@ -1412,6 +1413,7 @@
 .glossary-term:hover .glossary-term__bubble,
 .glossary-term:focus-visible .glossary-term__bubble,
 .glossary-term[data-glossary-open='true'] .glossary-term__bubble {
+  display: block;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
@@ -2678,13 +2680,13 @@
 }
 
 @keyframes intent-warning-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.02); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 @keyframes intent-warning-lethal {
-  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
-  50% { opacity: 0.85; transform: scale(1.05); box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+  50% { opacity: 0.85; box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); }
 }
 
 .enemy-standee__frame {

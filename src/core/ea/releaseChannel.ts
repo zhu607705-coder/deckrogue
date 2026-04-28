@@ -45,8 +45,6 @@ export interface ReleaseChannelManifest {
   
   entryPoints: {
     primary: 'legacy-ui';
-    debug: 'runtime-v2';
-    experimental: 'unified';
   };
   
   diagnostics: {
@@ -422,7 +420,7 @@ export class ReleaseChannelManager {
   }
   
   getDebugEntryPoint(): string {
-    return 'runtime-v2';
+    return 'legacy-ui';
   }
   
   validateCompatibility(rulesVersion: string, saveSchemaVersion: string): boolean {

@@ -406,6 +406,10 @@ export class CombatManager {
     }
 
     this.executeConstructAttacks();
+    if (this.tryResolveCombatVictoryFromState()) {
+      this.deps.notify();
+      return;
+    }
 
     let skipDrawThisTurn = false;
     if ((combat.player.statuses['SkipDraw'] || 0) > 0) {
@@ -471,6 +475,16 @@ export class CombatManager {
         tone: 'faith'
       };
     }
+  }
+
+  private tryResolveCombatVictoryFromState(): boolean {
+    const state = this.deps.getState();
+    const combat = state.combat;
+    if (state.screen !== 'Combat' || !combat || combat.enemies.length === 0) return false;
+    if (!combat.enemies.every(enemy => enemy.hp <= 0)) return false;
+
+    globalEventBus.publish({ type: 'CombatVictory' } as any);
+    return state.screen !== 'Combat' || !state.combat;
   }
 
   private processStatusDecay(statuses: Record<string, number>): void {
@@ -687,9 +701,7 @@ export class CombatManager {
     if (card.targeting === 'Enemy') {
       const target = targetId ? combat.enemies.find(e => e.id === targetId) : null;
       if (!target || target.hp <= 0) {
-        if (!combat.enemies.some(e => e.hp > 0)) {
-          globalEventBus.publish({ type: 'CombatVictory' } as any);
-        }
+        this.tryResolveCombatVictoryFromState();
         return;
       }
     }
@@ -726,6 +738,7 @@ export class CombatManager {
 
     this.actionManager.enqueueAll(card.actions, context, 0, 'card');
     await this.actionManager.executeAll();
+    this.tryResolveCombatVictoryFromState();
 
     globalEventBus.publish({
       type: 'CardPlayed',
@@ -756,6 +769,9 @@ export class CombatManager {
     this.discardHandRespectingRetain();
 
     await this.executeEnemyTurn();
+
+    if (!state.combat || state.screen !== 'Combat') return;
+    if (this.tryResolveCombatVictoryFromState()) return;
 
     combat.turn++;
     this.startPlayerTurn();
@@ -1200,6 +1216,7 @@ export class CombatManager {
     relicSystem.trigger('EndTurn', state, (actionOrSpec: any, ctx: IActionContext) => this.enqueueRelicAction(actionOrSpec, ctx));
 
     await this.actionManager.executeAll();
+    this.tryResolveCombatVictoryFromState();
   }
 
   handleEnemyDefeated(enemyId: string): void {
@@ -1223,10 +1240,7 @@ export class CombatManager {
 
     metricsTracker.recordEnemyDefeated(enemy.defId);
 
-    const allEnemiesDefeated = combat.enemies.every(e => e.hp <= 0);
-    if (allEnemiesDefeated && state.screen !== 'GameOver') {
-      globalEventBus.publish({ type: 'CombatVictory' } as any);
-    }
+    this.tryResolveCombatVictoryFromState();
   }
 
   handleCombatVictory(): void {

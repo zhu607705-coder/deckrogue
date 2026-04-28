@@ -12,6 +12,8 @@ import assert from 'node:assert/strict';
 
 import { GameEngine } from '@/core/events/gameEngine';
 import { globalEventBus } from '@/core/events/eventBus';
+import { createRunCardInstance } from '@/core/combat/runCardInstance';
+import { getCardDefById } from '@/content/narrative/numericSystem';
 
 test.afterEach(() => {
   globalEventBus.clear();
@@ -76,6 +78,61 @@ test('enemy death from the shared damage pipeline should advance combat to rewar
   assert.equal(engine.state.screen, 'Reward');
   assert.equal(engine.state.combat, null);
   assert.equal(engine.state.pendingNodeResolution, true);
+  assert.ok((engine.state.rewardCards?.length || 0) > 0);
+
+  engine.dispose();
+});
+
+test('penitent judge kill that chains symbiote death should advance combat to reward', async () => {
+  const engine = new GameEngine(4243, null, { enableRuntimeDelegation: false });
+  engine.selectCharacter('penitent_judge');
+  (engine as any).startCombat('Combat');
+
+  const combat = engine.state.combat;
+  assert.ok(combat);
+  combat.enemies = [
+    {
+      id: 'enemy_1',
+      defId: 'symbiote_a',
+      name: 'Symbiote A',
+      hp: 6,
+      maxHp: 10,
+      block: 0,
+      statuses: {},
+      nextIntent: 'Attack',
+      lastUsedIntent: '',
+      intentCooldowns: {},
+      devotion: 0,
+      corruptionAxis: 0,
+      axisDisposition: 'balanced',
+    } as any,
+    {
+      id: 'enemy_2',
+      defId: 'symbiote_b',
+      name: 'Symbiote B',
+      hp: 10,
+      maxHp: 10,
+      block: 0,
+      statuses: {},
+      nextIntent: 'Attack',
+      lastUsedIntent: '',
+      intentCooldowns: {},
+      devotion: 0,
+      corruptionAxis: 0,
+      axisDisposition: 'balanced',
+    } as any,
+  ];
+
+  const cardDef = getCardDefById('judgement_cut');
+  assert.ok(cardDef);
+  const card = createRunCardInstance(cardDef, 'judgement_cut_test');
+  combat.hand = [card];
+  combat.player.energy = 3;
+
+  await engine.playCard(card.instanceId, 'enemy_1');
+
+  assert.equal(engine.state.screen, 'Reward');
+  assert.equal(engine.state.combat, null);
   assert.ok((engine.state.rewardCards?.length || 0) > 0);
 
   engine.dispose();

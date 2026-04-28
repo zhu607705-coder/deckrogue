@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   }
   
   if (commands.length === 0) {
-    commands = ['npm run test:runtime-v2:ts 2>&1'];
+    commands = ['npm run test:supplemental-units 2>&1'];
   }
 
   console.log('=== DeckRogue Repeat Test Suite ===');

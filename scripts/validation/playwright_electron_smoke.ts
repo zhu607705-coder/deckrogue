@@ -159,7 +159,7 @@ async function main() {
       args: [path.join(process.cwd(), 'electron', 'main.mjs')],
       env: {
         ...process.env,
-        DECKROGUE_DESKTOP_ENTRY_MODE: 'unified',
+        DECKROGUE_DESKTOP_ENTRY_MODE: 'legacy',
         DECKROGUE_FORCE_LOCAL_DIST: mode === 'production' ? '1' : '0',
         VITE_DEV_SERVER_URL: mode === 'development' ? 'http://127.0.0.1:3000' : '',
         DECKROGUE_USER_DATA_DIR: tempUserDataDir,

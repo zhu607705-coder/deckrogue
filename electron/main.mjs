@@ -26,27 +26,13 @@ if (requestedUserDataDir) {
   app.setPath('userData', requestedUserDataDir);
 }
 
-const entryMode = (() => {
-  const requested = process.env.DECKROGUE_DESKTOP_ENTRY_MODE;
-  if (requested === 'legacy' || requested === 'runtime-v2' || requested === 'unified') {
-    return requested;
-  }
-  return 'unified';
-})();
-
 const devServerUrl = process.env.VITE_DEV_SERVER_URL?.trim() || '';
 const forceLocalDist = process.env.DECKROGUE_FORCE_LOCAL_DIST === '1';
 const useDevServer = Boolean(devServerUrl) && !forceLocalDist;
 
 function buildEntryQuery() {
   const params = new URLSearchParams();
-  if (entryMode === 'runtime-v2') {
-    params.set('runtimeV2', '1');
-  } else if (entryMode === 'unified') {
-    params.set('unified', '1');
-  } else {
-    params.set('legacy', '1');
-  }
+  params.set('legacy', '1');
   return params;
 }
 

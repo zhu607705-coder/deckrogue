@@ -21,7 +21,7 @@ interface DesktopBuildReport {
   rendererIndexPath: string;
   electronMainPath: string;
   preloadPath: string;
-  entryMode: 'legacy' | 'runtime-v2' | 'unified';
+  entryMode: 'legacy';
   evidence: string[];
 }
 
@@ -62,7 +62,7 @@ function main() {
       rendererIndexPath,
       electronMainPath,
       preloadPath,
-      entryMode: 'unified',
+      entryMode: 'legacy',
       evidence,
     });
   } catch (error) {
@@ -73,7 +73,7 @@ function main() {
       rendererIndexPath,
       electronMainPath,
       preloadPath,
-      entryMode: 'unified',
+      entryMode: 'legacy',
       evidence,
     });
     throw error;

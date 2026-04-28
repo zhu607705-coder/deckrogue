@@ -478,7 +478,7 @@ function buildMarkdown(): string {
   lines.push(`- \`anomalyWarnings = ${formatInt(baseline?.anomalySummary?.warnings)}\``);
   lines.push(`- \`driftWarnings = ${formatInt(baseline?.driftSummary?.warnings)}\``);
   lines.push('');
-  lines.push('### 2.5 Runtime V2 Parity');
+  lines.push('### 2.5 Legacy Runtime Coverage');
   lines.push('');
   lines.push(`来源：\`${repoPath(parityPath)}\``);
   lines.push('');
