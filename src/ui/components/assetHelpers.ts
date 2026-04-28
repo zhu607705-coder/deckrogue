@@ -9,10 +9,10 @@
  */
 
 import type { SyntheticEvent } from 'react';
-import { localCharacterArt, localEnemyArt } from '@/content/assets/standeeArt';
+import { localCardArt, localCharacterArt, localEnemyArt } from '@/content/assets/standeeArt';
 
 export const ASSET_PLACEHOLDERS = {
-  card: '/assets/cards/strike.png',
+  card: localCardArt('strike'),
   relic: '/assets/relics/anchor.png',
   potion: '/assets/potions/healing_potion.png',
   character: localCharacterArt('informant'),
@@ -21,11 +21,7 @@ export const ASSET_PLACEHOLDERS = {
   merchant: '/assets/map/map_shop.svg'
 } as const;
 
-export function localCardArt(id: string): string {
-  return `/assets/cards/${id}.png`;
-}
-
-export { localCharacterArt, localEnemyArt };
+export { localCardArt, localCharacterArt, localEnemyArt };
 
 export function bindImgFallback(
   event: SyntheticEvent<HTMLImageElement>,

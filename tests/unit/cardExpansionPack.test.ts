@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { cardsData } from '@/content/narrative/numericSystem';
 import { getCardRouteAffinityTags } from '@/content/narrative/routeSignals';
+import { localCardArt } from '@/content/assets/standeeArt';
 import type { ActionSpec, CardDef } from '@/core/types';
 
 const EXPANSION_CARD_IDS = [
@@ -152,7 +153,7 @@ test('new card expansion pack uses registered actions and bounded numeric surfac
 test('new profession cards remain visible to route affinity and card art lookup', () => {
   for (const card of expansionCards()) {
     assert.ok(card.art_prompt, `${card.id} must declare an art prompt for runtime image lookup`);
-    assert.ok(existsSync(resolve('public/assets/cards', `${card.id}.png`)), `${card.id} art is missing`);
+    assert.ok(existsSync(resolve('public', `.${localCardArt(card.id)}`)), `${card.id} art is missing`);
     if (card.character && card.character !== 'All') {
       assert.ok(getCardRouteAffinityTags(card).length > 0, `${card.id} must map to at least one route tag`);
     }

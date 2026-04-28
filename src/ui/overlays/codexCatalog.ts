@@ -14,7 +14,7 @@ import { potionsData } from '@/content/narrative/numericSystem';
 import { enemiesData } from '@/content/narrative/numericSystem';
 import { STORY_EVENTS } from '@/content/narrative/numericSystem';
 import type { CodexCategory } from '@/core';
-import { localEnemyArt } from '@/content/assets/standeeArt';
+import { localCardArt, localEnemyArt } from '@/content/assets/standeeArt';
 import { getCardNameZh, getCardTargetingZh, getCardTextZh, getUiLabelZh } from '@/ui/content/terminology';
 
 export interface CodexCatalogEntry {
@@ -497,7 +497,7 @@ function buildCardEntries(): CodexCatalogEntry[] {
       category: 'cards',
       id: card.id,
       name: localizedName,
-      imageSrc: `/assets/cards/${card.id}.png`,
+      imageSrc: localCardArt(card.id),
       rarity: card.rarity,
       subtitle: `${card.type} · ${getCardTargetingZh(card.targeting)}`,
       keywords,

@@ -7,6 +7,7 @@ import charactersDataRaw from '@/content/data/characters.json';
 import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { cardsData, relicsData } from '@/content/narrative/numericSystem';
 import { getCardRouteAffinityTags, getRelicRouteTags } from '@/content/narrative/routeSignals';
+import { localCardArt } from '@/content/assets/standeeArt';
 import { getCodexCatalog } from '@/ui/overlays/codexCatalog';
 import type { ActionSpec, CardDef } from '@/core/types';
 
@@ -93,6 +94,17 @@ function assertPng(path: string, minWidth: number, minHeight: number): void {
   assert.ok(buffer.readUInt32BE(20) >= minHeight, `${path} is too short`);
 }
 
+function assertWebp(path: string): void {
+  assert.ok(existsSync(path), `missing webp asset: ${path}`);
+  const buffer = readFileSync(path);
+  assert.equal(buffer.toString('ascii', 0, 4), 'RIFF', `${path} is not a RIFF container`);
+  assert.equal(buffer.toString('ascii', 8, 12), 'WEBP', `${path} is not a WebP asset`);
+}
+
+function assertCardAsset(cardId: string): void {
+  assertWebp(resolve('public', `.${localCardArt(cardId)}`));
+}
+
 test('all eight characters meet the narrative and deck integrity standard', () => {
   const characters = charactersDataRaw as CharacterData[];
   const cardIds = new Set(cardsData.map((card) => card.id));
@@ -141,7 +153,7 @@ test('gothic character cards are balanced, registered, routed, narrated, and ill
     assert.ok((card.loreText || '').length > 20, `${card.id} needs lore text`);
     assert.ok((card.lastWords || '').length > 10, `${card.id} needs last words`);
     assert.ok(getCardRouteAffinityTags(card).length > 0, `${card.id} must map to at least one route tag`);
-    assertPng(resolve('public/assets/cards', `${card.id}.png`), 64, 64);
+    assertCardAsset(card.id);
 
     for (const type of collectActionTypes(card.actions)) {
       assert.ok(registeredActions.has(type), `${card.id} uses unregistered action ${type}`);
@@ -166,7 +178,7 @@ test('gothic relics are routed, narrated, and illustrated', () => {
 
 test('all card and relic definitions have runtime image assets', () => {
   for (const card of cardsData) {
-    assertPng(resolve('public/assets/cards', `${card.id}.png`), 64, 64);
+    assertCardAsset(card.id);
   }
   for (const relic of relicsData) {
     assertPng(resolve('public/assets/relics', `${relic.id}.png`), 64, 64);

@@ -10,6 +10,7 @@
 import type { RuleSnapshot } from './contracts';
 import type { UIModel, UICard, UIPlayerModel, UIMapModel, UIRoomModel, UICombatModel, UIRewardModel, UIEventModel, UINotification, UIRoomChoice } from './uiModel';
 import { getContentService } from './content/contentService';
+import { localCardArt } from '@/content/assets/standeeArt';
 import { getStoryEventDef } from '@/content/narrative/numericSystem';
 
 const DEFAULT_MAX_ENERGY = 3;
@@ -375,7 +376,7 @@ export class UIModelConverter {
       rarity: cardData?.rarity || 'Common',
       type: cardData?.type || 'Attack',
       description: cardData?.text || `Card: ${cardId}`,
-      imageUrl: cardData?.art_prompt ? `/assets/cards/${cardId}.png` : undefined,
+      imageUrl: cardData?.art_prompt ? localCardArt(cardId) : undefined,
       isUpgraded: false,
     };
   }

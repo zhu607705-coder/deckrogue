@@ -1,7 +1,11 @@
 /**
  * @file standeeArt.ts
- * @description Canonical runtime paths for lossless standee artwork.
+ * @description Canonical runtime paths for lossless optimized artwork.
  */
+
+export function localCardArt(id: string): string {
+  return `/assets/cards/${id}.webp`;
+}
 
 const WEBP_CHARACTER_IDS = new Set([
   'alchemist',

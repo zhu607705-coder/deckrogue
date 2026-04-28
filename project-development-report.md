@@ -1,5 +1,28 @@
 # Project Development Report
 
+## Lossless Card Face Compression - 2026-04-28
+
+- Converted all `364` card face PNG assets under `public\assets\cards` to lossless WebP.
+- Verified every converted card face by decoding WebP back to RGBA and comparing a SHA-256 pixel hash with the original PNG from git before removing the PNG.
+- Removed `38` duplicate card JPG files after confirming runtime and test references no longer target `public/assets/cards/*.jpg`.
+- Card PNG weight changed from `51,159,278` bytes to `41,284,828` bytes, saving `9,874,450` bytes (`19.3%`) without pixel loss.
+- Duplicate JPG removal saved another `6,623,313` bytes, for `16,497,763` bytes total card directory reduction.
+- `public\assets\cards` now contains `364` WebP files, about `39.37 MiB`.
+- Added `localCardArt()` to the shared optimized art helper so runtime model conversion, codex card lookup, placeholders, and card asset tests all use the same WebP path.
+- Rebuilt `release\win\DeckRogue-0.0.0-x64.exe`; size is now `262,371,206` bytes, down `15,330,098` bytes from the standee-compressed package.
+- Verification:
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/cardExpansionPack.test.ts`
+  - `npm run check:content-bundle`
+  - `npm run build`
+  - `npm run test:ui-smoke:expansion`
+  - `npm run dist:win`
+  - `npm run doctor:game:full`: `47/47` stages passed
+  - `npm run check:release-readiness`: `pass=41`, `warn=0`, `fail=0`
+- Asset verification:
+  - `rg -n "assets/cards/.+\.(png|jpg)" src scripts tests public`: no runtime or test references remain.
+  - Pixel round-trip check verified `364` PNG/WebP pairs and confirmed `9,874,450` bytes of lossless PNG replacement savings.
+
 ## Lossless Standee Artwork Compression - 2026-04-28
 
 - Converted 64 readable standee PNG assets to lossless WebP without resizing or lossy quantization.
