@@ -16,6 +16,8 @@ import { pathToFileURL } from 'url';
 
 const REPORT_DIR = 'reports/release';
 const REPORT_PATH = `${REPORT_DIR}/release-readiness.json`;
+const DEFAULT_REPORT_MAX_FILES = 2000;
+const DEFAULT_REPORT_MAX_BYTES = 50 * 1024 * 1024;
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 
@@ -107,6 +109,32 @@ function ensureDir(dir: string) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
+}
+
+function getPositiveIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function collectDirectorySummary(target: string): { files: number; bytes: number } {
+  let files = 0;
+  let bytes = 0;
+
+  for (const entry of readdirSync(target, { withFileTypes: true })) {
+    const entryPath = resolve(target, entry.name);
+    if (entry.isDirectory()) {
+      const child = collectDirectorySummary(entryPath);
+      files += child.files;
+      bytes += child.bytes;
+    } else if (entry.isFile()) {
+      files += 1;
+      bytes += statSync(entryPath).size;
+    }
+  }
+
+  return { files, bytes };
 }
 
 function checkFile(path: string, id: string): ReleaseCheck {
@@ -244,16 +272,31 @@ function checkSaveAndSettingsContracts(): ReleaseCheck[] {
 function checkArtifactWeight(): ReleaseCheck {
   const reportsDir = resolve('reports');
   if (!existsSync(reportsDir)) {
-    return { id: 'reports_dir', status: 'warn', evidence: 'reports/ missing; no accumulated logs to inspect' };
+    return { id: 'reports_dir', status: 'pass', evidence: 'reports/ missing; no accumulated logs to inspect' };
   }
-  const sizeMb = statSync(reportsDir).isDirectory()
-    ? Math.round((readdirSync(reportsDir).length / 100) * 10) / 10
-    : 0;
-  return {
-    id: 'reports_dir',
-    status: 'warn',
-    evidence: `reports/ present; manual log growth review still required (rough entry score=${sizeMb})`
-  };
+  const stats = statSync(reportsDir);
+  if (!stats.isDirectory()) {
+    return { id: 'reports_dir', status: 'fail', evidence: 'reports exists but is not a directory' };
+  }
+
+  const maxFiles = getPositiveIntegerEnv('RELEASE_READINESS_REPORT_MAX_FILES', DEFAULT_REPORT_MAX_FILES);
+  const maxBytes = getPositiveIntegerEnv('RELEASE_READINESS_REPORT_MAX_BYTES', DEFAULT_REPORT_MAX_BYTES);
+  const summary = collectDirectorySummary(reportsDir);
+  const sizeMiB = Math.round((summary.bytes / (1024 * 1024)) * 100) / 100;
+  const maxMiB = Math.round((maxBytes / (1024 * 1024)) * 100) / 100;
+  const withinLimits = summary.files <= maxFiles && summary.bytes <= maxBytes;
+
+  return withinLimits
+    ? {
+      id: 'reports_dir',
+      status: 'pass',
+      evidence: `reports/ growth checked: ${summary.files} files, ${sizeMiB} MiB <= ${maxFiles} files, ${maxMiB} MiB`
+    }
+    : {
+      id: 'reports_dir',
+      status: 'fail',
+      evidence: `reports/ exceeds growth limits: ${summary.files} files, ${sizeMiB} MiB > ${maxFiles} files or ${maxMiB} MiB`
+    };
 }
 
 function checkDoctorAndSecurityArtifacts(): ReleaseCheck[] {

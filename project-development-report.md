@@ -7,7 +7,11 @@
 - Updated `blackened_gavel`, `void_anchor_litany`, and `cage_bell_clapper` visible relic copy from enemy wording to the project-standard combat term.
 - Verified `npm run doctor:game:full`: `47/47` stages passed.
 - Verified `npm run check:release-readiness`: `pass=40`, `warn=1`, `fail=0`.
-- Remaining note: the single readiness warning is the expected manual `reports_dir` growth review warning, not a stale or blocking failure.
+- Replaced the manual `reports_dir` growth warning with an automated threshold check in `scripts/validation/check_release_readiness.ts`.
+- Current automated report growth limits: `2000` files and `50 MiB`, overrideable with `RELEASE_READINESS_REPORT_MAX_FILES` and `RELEASE_READINESS_REPORT_MAX_BYTES`.
+- Verified after the warning fix:
+  - `npm run doctor:game:full`: `47/47` stages passed.
+  - `npm run check:release-readiness`: `pass=41`, `warn=0`, `fail=0`.
 
 ## Windows EXE And Performance Packaging - 2026-04-28
 
