@@ -12,3 +12,6 @@ export * from '@/core/balance';
 export * from '@/core/combat';
 export * from '@/core/events';
 export * from '@/core/persistence';
+export { AudioManager } from '@/features/audio/AudioManager';
+export { musicEngine } from '@/features/audio/MusicEngine';
+export { MusicDispatcher } from '@/core/events/MusicDispatcher';

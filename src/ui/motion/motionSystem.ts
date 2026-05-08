@@ -9,6 +9,7 @@
  */
 
 import { globalEventBus } from '@/core';
+import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 
 export type AnimationSpeed = 'fast' | 'normal' | 'reduced';
 export type AnimationQuality = 'high' | 'balanced' | 'reduced';
@@ -162,9 +163,9 @@ let currentScene: SceneId = 'Launcher';
 function loadStoredConfig(): void {
   if (typeof window === 'undefined') return;
 
-  const storedSpeed = window.localStorage.getItem(STORAGE_KEY_SPEED) as AnimationSpeed | null;
-  const storedQuality = window.localStorage.getItem(STORAGE_KEY_QUALITY) as AnimationQuality | null;
-  const storedAmbient = window.localStorage.getItem(STORAGE_KEY_AMBIENT) as AmbientProfile | null;
+  const storedSpeed = safeStorageGetString(STORAGE_KEY_SPEED, '').value as AnimationSpeed | '';
+  const storedQuality = safeStorageGetString(STORAGE_KEY_QUALITY, '').value as AnimationQuality | '';
+  const storedAmbient = safeStorageGetString(STORAGE_KEY_AMBIENT, '').value as AmbientProfile | '';
 
   if (storedSpeed === 'fast' || storedSpeed === 'normal' || storedSpeed === 'reduced') {
     currentConfig.speed = storedSpeed;
@@ -184,7 +185,7 @@ export function getMotionConfig(): MotionConfig {
 export function setAnimationSpeed(speed: AnimationSpeed): void {
   currentConfig.speed = speed;
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY_SPEED, speed);
+    safeStorageSetString(STORAGE_KEY_SPEED, speed);
     document.documentElement.setAttribute('data-animation-speed', speed);
   }
   globalEventBus.publish({ type: 'MotionConfigChanged', config: currentConfig });
@@ -193,7 +194,7 @@ export function setAnimationSpeed(speed: AnimationSpeed): void {
 export function setAnimationQuality(quality: AnimationQuality): void {
   currentConfig.quality = quality;
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY_QUALITY, quality);
+    safeStorageSetString(STORAGE_KEY_QUALITY, quality);
     document.documentElement.setAttribute('data-quality', quality);
   }
   globalEventBus.publish({ type: 'MotionConfigChanged', config: currentConfig });
@@ -202,7 +203,7 @@ export function setAnimationQuality(quality: AnimationQuality): void {
 export function setAmbientProfile(profile: AmbientProfile): void {
   currentConfig.ambientProfile = profile;
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY_AMBIENT, profile);
+    safeStorageSetString(STORAGE_KEY_AMBIENT, profile);
   }
   globalEventBus.publish({ type: 'MotionConfigChanged', config: currentConfig });
 }

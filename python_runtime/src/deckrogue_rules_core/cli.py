@@ -20,6 +20,12 @@ def _write(message: dict[str, Any]) -> None:
     sys.stdout.flush()
 
 
+def _response(request: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    if "request_id" in request:
+        return {"request_id": request["request_id"], **payload}
+    return payload
+
+
 def main() -> int:
     runtime: RuleRuntime | None = None
 
@@ -28,34 +34,39 @@ def main() -> int:
         if not line:
             continue
 
+        request: dict[str, Any] = {}
         try:
             request = json.loads(line)
             op = request.get("op")
 
             if op == "init":
                 runtime = boot(request["content_bundle"], seed=int(request.get("seed", 0)))
-                _write({"ok": True, "snapshot": runtime.snapshot()})
+                _write(_response(request, {"ok": True, "snapshot": runtime.snapshot()}))
                 continue
 
             if op == "snapshot":
                 if runtime is None:
                     raise RuntimeError("Runtime has not been initialized")
-                _write({"ok": True, "snapshot": runtime.snapshot()})
+                _write(_response(request, {"ok": True, "snapshot": runtime.snapshot()}))
                 continue
 
             if op == "dispatch":
                 if runtime is None:
                     raise RuntimeError("Runtime has not been initialized")
-                _write({"ok": True, **runtime.dispatch(request["command"])})
+                _write(_response(request, {"ok": True, **runtime.dispatch(request["command"])}))
                 continue
 
             if op == "shutdown":
-                _write({"ok": True})
+                _write(_response(request, {"ok": True}))
                 return 0
 
             raise RuntimeError(f"Unsupported op: {op}")
         except Exception as exc:  # pragma: no cover - exercised through TS integration
-            _write({"ok": False, "error": str(exc)})
+            request_id = request.get("request_id") if isinstance(request, dict) else None
+            payload = {"ok": False, "error": str(exc)}
+            if request_id is not None:
+                payload = {"request_id": request_id, **payload}
+            _write(payload)
 
     return 0
 

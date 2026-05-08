@@ -1,4 +1,5 @@
 import { app, BrowserWindow, net, protocol, shell } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -20,6 +21,8 @@ const repoRoot = path.resolve(__dirname, '..');
 const preloadPath = path.join(__dirname, 'preload.cjs');
 const rendererIndexPath = path.join(repoRoot, 'dist', 'index.html');
 const distRoot = path.join(repoRoot, 'dist');
+const packageJsonPath = path.join(repoRoot, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
 const requestedUserDataDir = process.env.DECKROGUE_USER_DATA_DIR;
 if (requestedUserDataDir) {
@@ -36,9 +39,22 @@ function buildEntryQuery() {
   return params;
 }
 
+function openExternalHttpUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return;
+    }
+    void shell.openExternal(parsed.toString());
+  } catch {
+    // Ignore malformed external URLs.
+  }
+}
+
 function createWindow() {
   process.env.DECKROGUE_DESKTOP_CHANNEL = useDevServer ? 'development' : 'production';
   process.env.DECKROGUE_DESKTOP_PACKAGED = app.isPackaged ? '1' : '0';
+  process.env.DECKROGUE_DESKTOP_APP_VERSION = packageJson.version || '0.0.0';
 
   const win = new BrowserWindow({
     width: 1600,
@@ -53,13 +69,13 @@ function createWindow() {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
     },
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openExternalHttpUrl(url);
     return { action: 'deny' };
   });
 
@@ -67,7 +83,7 @@ function createWindow() {
     if (useDevServer && url.startsWith(devServerUrl)) return;
     if (!useDevServer && url.startsWith('deckrogue://app')) return;
     event.preventDefault();
-    void shell.openExternal(url);
+    openExternalHttpUrl(url);
   });
 
   win.once('ready-to-show', () => {
@@ -98,16 +114,17 @@ function registerAppProtocol() {
     const url = new URL(request.url);
     const relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
     const candidatePath = path.resolve(distRoot, relativePath);
-    if (!candidatePath.startsWith(distRoot)) {
+    const relativeToDist = path.relative(distRoot, candidatePath);
+    if (relativeToDist.startsWith('..') || path.isAbsolute(relativeToDist)) {
       return new Response('Not found', { status: 404 });
     }
     return net.fetch(pathToFileURL(candidatePath).toString());
   });
 }
 
-// Disable GPU sandbox on macOS to avoid initialization failures
-app.commandLine.appendSwitch('disable-gpu-sandbox');
-app.commandLine.appendSwitch('no-sandbox');
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+}
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {

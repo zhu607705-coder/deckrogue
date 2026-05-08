@@ -1,6 +1,6 @@
 # 新增卡牌与遗物立绘生成指南
 
-本文档包含所有新增卡牌和遗物的 `art_prompt`，可用于 AI 图像生成工具（如 Midjourney、DALL-E、Stable Diffusion 等）生成战锤风格的立绘。
+本文档包含所有新增卡牌和遗物的 `art_prompt`，可用于 AI 图像生成工具生成原创黑暗哥特科幻风格的立绘。
 
 ---
 
@@ -8,45 +8,45 @@
 
 ### 1. Gaze of the Abyss (深渊凝视)
 ```
-A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style
+A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style
 ```
-**风格建议**：深紫色亚空间门户，恶魔之眼，战锤40K灵能者风格
+**风格建议**：深紫色维度裂隙，深渊之眼，原创黑暗哥特科幻风格
 
 ### 2. Flesh Tentacle (血肉触手)
 ```
-A grotesque mass of writhing flesh tentacles erupting from corrupted flesh, warhammer chaos mutation style
+A grotesque mass of writhing flesh tendrils erupting from corrupted organic machinery, original body-horror gothic sci-fi style
 ```
-**风格建议**：混沌变异，血肉触手，战锤混沌风格
+**风格建议**：异化变异，血肉触须，原创身体恐怖风格
 
 ### 3. Chainsword Sweep (链锯剑轻扫)
 ```
-A space marine chainsword sweeping through the air with teeth spinning, warhammer 40k style
+A heavy industrial chain blade sweeping through smoke with spinning teeth, original cathedral-industrial sci-fi style
 ```
-**风格建议**：星际战士链锯剑，旋转锯齿，战锤40K风格
+**风格建议**：工业链刃，旋转锯齿，教堂工业风格
 
 ### 4. Awaken Machine Spirit (机魂唤醒)
 ```
-A mechanical cogitator spirit awakening with glowing eyes in a gothic machine, warhammer mechanicus style
+A dormant machine choir awakening with glowing optic cores inside a gothic industrial console
 ```
-**风格建议**：机械神教风格，机魂觉醒，哥特式机械
+**风格建议**：机械圣歌，机魂觉醒，哥特式机械
 
 ### 5. Overheat (过载废热)
 ```
-A mechanical component glowing red hot with steam venting, warhammer mechanicus style
+A mechanical component glowing red hot with steam venting, original gothic industrial sci-fi style
 ```
-**风格建议**：过热机械，蒸汽喷射，机械神教风格
+**风格建议**：过热机械，蒸汽喷射，原创工业机械风格
 
 ### 6. Emperor's Wrath (帝皇之怒)
 ```
-A space marine in golden armor surrounded by holy fire and wrath, warhammer 40k style
+An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire
 ```
-**风格建议**：金色盔甲星际战士，神圣火焰，帝皇之怒
+**风格建议**：仪式盔甲，神圣工业火焰，无名誓约怒火
 
 ### 7. Trial of Heretics (异端审判)
 ```
-An inquisitor holding a flaming sword pronouncing judgment on heretics, warhammer 40k style
+A masked tribunal judge holding a burning verdict blade inside a ruined cathedral court
 ```
-**风格建议**：审判官，火焰剑，异端审判
+**风格建议**：覆面审判者，火焰判决刃，废墟法庭
 
 ---
 
@@ -54,39 +54,39 @@ An inquisitor holding a flaming sword pronouncing judgment on heretics, warhamme
 
 ### 1. Nurgle's Blessing (纳垢的赐福)
 ```
-A rotting green artifact with flies and disease symbols, warhammer nurgle style
+A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils
 ```
-**风格建议**：纳垢风格，腐烂绿色，苍蝇与疾病符号
+**风格建议**：腐败圣匣，腐烂绿色，苍蝇与疾病符号
 
 ### 2. Mechanicus Coolant (机械教冷却液)
 ```
-A vial of glowing blue coolant with mechanicus symbols, warhammer 40k style
+A vial of glowing blue coolant with original machine-liturgical markings
 ```
-**风格建议**：蓝色发光液体，机械神教符号
+**风格建议**：蓝色发光液体，原创机械礼拜符号
 
 ### 3. Seal of Martyrdom (殉道者印记)
 ```
-A red wax seal with a parchment scroll attached, purity seal warhammer 40k style
+A red wax vow seal with a scorched parchment scroll attached, original gothic sci-fi relic
 ```
-**风格建议**：红色蜡封，羊皮纸卷轴，纯洁印记
+**风格建议**：红色蜡封，羊皮纸卷轴，誓约印记
 
 ### 4. Seal of Exterminatus (灭绝令印记)
 ```
-A black wax seal with skull symbol and flames, purity seal warhammer 40k style
+A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic
 ```
-**风格建议**：黑色蜡封，骷髅符号，火焰
+**风格建议**：黑色蜡封，抽象骨纹，火焰
 
 ### 5. Seal of Defiance (不屈印记)
 ```
-A golden wax seal with shield symbol, purity seal warhammer 40k style
+A golden wax resistance seal with a cracked shield symbol, original gothic sci-fi relic
 ```
 **风格建议**：金色蜡封，盾牌符号
 
 ### 6. Seal of Omnissiah (欧姆弥赛亚印记)
 ```
-A copper wax seal with cog symbol, purity seal warhammer mechanicus style
+A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic
 ```
-**风格建议**：铜色蜡封，齿轮符号，机械神教风格
+**风格建议**：铜色蜡封，齿轮符号，教堂工业风格
 
 ---
 
@@ -98,10 +98,10 @@ A copper wax seal with cog symbol, purity seal warhammer mechanicus style
 
 ### 风格关键词
 - `grimdark` - 黑暗哥特风格
-- `warhammer 40k` - 战锤40K风格
-- `warhammer mechanicus` - 机械神教风格
-- `warhammer chaos` - 混沌风格
-- `warhammer nurgle` - 纳垢风格
+- `original gothic sci-fi` - 原创黑暗哥特科幻
+- `cathedral industrial` - 教堂工业
+- `body horror machinery` - 血肉机械异化
+- `void reliquary` - 虚空圣匣
 
 ### 文件命名
 生成后请将图片保存到以下目录：
@@ -118,13 +118,13 @@ A copper wax seal with cog symbol, purity seal warhammer mechanicus style
 
 ```bash
 # 使用 Stable Diffusion WebUI 的 API
-python scripts/txt2img.py --prompt "A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style" --outdir assets/cards --n_samples 1 --W 512 --H 512
+python scripts/txt2img.py --prompt "A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style" --outdir assets/cards --n_samples 1 --W 512 --H 512
 ```
 
 ## 使用 Midjourney 示例
 
 ```
-/imagine prompt: A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style --ar 1:1 --v 5
+/imagine prompt: A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style --ar 1:1 --v 5
 ```
 
 ---
@@ -135,22 +135,22 @@ python scripts/txt2img.py --prompt "A psyker staring into a swirling purple warp
 
 | 卡牌ID | 名称 | art_prompt |
 |--------|------|------------|
-| gaze_of_the_abyss | 深渊凝视 | A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style |
-| flesh_tentacle | 血肉触手 | A grotesque mass of writhing flesh tentacles erupting from corrupted flesh, warhammer chaos mutation style |
-| chainsword_sweep | 链锯剑轻扫 | A space marine chainsword sweeping through the air with teeth spinning, warhammer 40k style |
-| awaken_machine_spirit | 机魂唤醒 | A mechanical cogitator spirit awakening with glowing eyes in a gothic machine, warhammer mechanicus style |
-| overheat | 过载废热 | A mechanical component glowing red hot with steam venting, warhammer mechanicus style |
-| emperors_wrath | 帝皇之怒 | A space marine in golden armor surrounded by holy fire and wrath, warhammer 40k style |
-| trial_of_heretics | 异端审判 | An inquisitor holding a flaming sword pronouncing judgment on heretics, warhammer 40k style |
+| gaze_of_the_abyss | 深渊凝视 | A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style |
+| flesh_tentacle | 血肉触手 | A grotesque mass of writhing flesh tendrils erupting from corrupted organic machinery, original body-horror gothic sci-fi style |
+| chainsword_sweep | 链锯剑轻扫 | A heavy industrial chain blade sweeping through smoke with spinning teeth, original cathedral-industrial sci-fi style |
+| awaken_machine_spirit | 机魂唤醒 | A dormant machine choir awakening with glowing optic cores inside a gothic industrial console |
+| overheat | 过载废热 | A mechanical component glowing red hot with steam venting, original gothic industrial sci-fi style |
+| emperors_wrath | 帝皇之怒 | An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire |
+| trial_of_heretics | 异端审判 | A masked tribunal judge holding a burning verdict blade inside a ruined cathedral court |
 
 ### 缺失的遗物立绘 (7个)
 
 | 遗物ID | 名称 | art_prompt |
 |--------|------|------------|
-| nurgles_blessing | 纳垢的赐福 | A rotting green artifact with flies and disease symbols, warhammer nurgle style |
-| mechanicus_coolant | 机械教冷却液 | A vial of glowing blue coolant with mechanicus symbols, warhammer 40k style |
-| seal_of_martyrdom | 殉道者印记 | A red wax seal with a parchment scroll attached, purity seal warhammer 40k style |
-| seal_of_exterminatus | 灭绝令印记 | A black wax seal with skull symbol and flames, purity seal warhammer 40k style |
-| seal_of_defiance | 不屈印记 | A golden wax seal with shield symbol, purity seal warhammer 40k style |
-| seal_of_omnissiah | 欧姆弥赛亚印记 | A copper wax seal with cog symbol, purity seal warhammer mechanicus style |
-| zealots_chain | 狂热者锁链 | A chain of prayer beads glowing with holy light, warhammer 40k faith style |
+| nurgles_blessing | 腐败圣匣赐福 | A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils |
+| mechanicus_coolant | 机械冷却液 | A vial of glowing blue coolant with original machine-liturgical markings |
+| seal_of_martyrdom | 殉道者印记 | A red wax vow seal with a scorched parchment scroll attached, original gothic sci-fi relic |
+| seal_of_exterminatus | 灭绝令印记 | A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic |
+| seal_of_defiance | 不屈印记 | A golden wax resistance seal with a cracked shield symbol, original gothic sci-fi relic |
+| seal_of_omnissiah | 万机誓印 | A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic |
+| zealots_chain | 狂热者锁链 | A chain of oath beads glowing with sacred industrial light, original gothic sci-fi faith style |

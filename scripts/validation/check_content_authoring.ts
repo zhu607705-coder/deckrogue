@@ -253,6 +253,7 @@ function checkContent(): ContentAuthoringReport {
   const totalItems = cards.length + enemies.length + relics.length;
   const validItems = validCards + validEnemies + validRelics;
   const passRate = totalItems > 0 ? (validItems / totalItems) * 100 : 0;
+  const invalidItems = cardIssues.length + enemyIssues.length + relicIssues.length;
 
   return {
     timestamp: new Date().toISOString(),
@@ -284,7 +285,7 @@ function checkContent(): ContentAuthoringReport {
       issues: relicIssues
     },
     summary: {
-      overallStatus: passRate >= 90 ? 'pass' : 'fail',
+      overallStatus: invalidItems === 0 ? 'pass' : 'fail',
       passRate: Math.round(passRate * 100) / 100
     }
   };
@@ -313,6 +314,26 @@ function main() {
     }
     if (report.cards.issues.length > 5) {
       log(`  ... and ${report.cards.issues.length - 5} more`);
+    }
+  }
+
+  if (report.enemies.invalid > 0) {
+    log('\nEnemy issues:');
+    for (const { enemyId, issues } of report.enemies.issues.slice(0, 10)) {
+      log(`  - ${enemyId}: ${issues.join(', ')}`);
+    }
+    if (report.enemies.issues.length > 10) {
+      log(`  ... and ${report.enemies.issues.length - 10} more`);
+    }
+  }
+
+  if (report.relics.invalid > 0) {
+    log('\nRelic issues:');
+    for (const { relicId, issues } of report.relics.issues.slice(0, 5)) {
+      log(`  - ${relicId}: ${issues.join(', ')}`);
+    }
+    if (report.relics.issues.length > 5) {
+      log(`  ... and ${report.relics.issues.length - 5} more`);
     }
   }
 

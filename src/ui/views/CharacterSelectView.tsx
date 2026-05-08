@@ -26,6 +26,7 @@ import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundIma
 import { getAchievementDefById, getAchievementTotalCount, getAchievementUnlockedCount } from '@/features/achievements/achievementSystem';
 import { relicsData } from '@/content/narrative/numericSystem';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 import { uiCharacters } from '@/ui/content/characters';
 
 const CodexOverlay = lazy(async () => import('../overlays/CodexOverlay').then((m) => ({ default: m.CodexOverlay })));
@@ -39,7 +40,7 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
   const [showAchievements, setShowAchievements] = useState(false);
   const [isTopPanelExpanded, setIsTopPanelExpanded] = useState(() => {
     if (typeof window === 'undefined') return true;
-    const saved = window.localStorage.getItem('deckrogue:charselect:top-panel-expanded');
+    const saved = safeStorageGetString('deckrogue:charselect:top-panel-expanded', '').value;
     if (saved === '1') return true;
     if (saved === '0') return false;
     return window.innerHeight >= 1080;
@@ -74,7 +75,7 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem('deckrogue:charselect:top-panel-expanded', isTopPanelExpanded ? '1' : '0');
+    safeStorageSetString('deckrogue:charselect:top-panel-expanded', isTopPanelExpanded ? '1' : '0');
   }, [isTopPanelExpanded]);
 
   const persistMeta = (updater: (prev: any) => any) => {

@@ -189,18 +189,63 @@ export class SaveManager {
     }
   }
 
+  private getSaveSlot(slotId: string): SaveSlot | null {
+    return this.getSaveSlots().find((slot) => slot.id === slotId) ?? null;
+  }
+
+  private validateSaveData(data: unknown): data is SaveData {
+    if (!data || typeof data !== 'object') return false;
+    const save = data as SaveData;
+    if (typeof save.version !== 'string') return false;
+    if (!Number.isFinite(save.timestamp)) return false;
+    if (!Number.isFinite(save.playTime)) return false;
+    if (!save.state || typeof save.state !== 'object') return false;
+    if (!save.metadata || typeof save.metadata !== 'object') return false;
+    if (!Number.isFinite(save.metadata.floor)) return false;
+    if (!Number.isFinite(save.metadata.chapterIndex)) return false;
+    if (typeof save.metadata.characterId !== 'string') return false;
+    if (!Number.isFinite(save.metadata.seed)) return false;
+    if (!Number.isFinite(save.metadata.runStartTime)) return false;
+    return true;
+  }
+
+  private prepareLoadedSaveData(raw: string): SaveData | null {
+    let parsed: SaveData;
+    try {
+      parsed = JSON.parse(raw) as SaveData;
+    } catch (error) {
+      globalEventBus.publish({
+        type: 'LoadFailed',
+        error: `Invalid save data JSON: ${error instanceof Error ? error.message : String(error)}`
+      });
+      return null;
+    }
+    const saveData = parsed.version === SaveManager.SAVE_VERSION ? parsed : this.migrateSaveData(parsed);
+    if (!this.validateSaveData(saveData)) {
+      globalEventBus.publish({ type: 'LoadFailed', error: 'Invalid save data shape' });
+      return null;
+    }
+    return saveData;
+  }
+
+  private serializeValidatedSaveData(saveData: SaveData): string | null {
+    if (!this.validateSaveData(saveData)) return null;
+    return JSON.stringify(saveData);
+  }
+
   loadGame(slotId: string): SaveData | null {
     try {
       const data = localStorage.getItem(`${SaveManager.SAVE_KEY_PREFIX}${slotId}`);
       if (!data) return null;
 
-      const saveData: SaveData = JSON.parse(data);
-
-      if (saveData.version !== SaveManager.SAVE_VERSION) {
-        const migrated = this.migrateSaveData(saveData);
-        if (!migrated) return null;
-        return migrated;
+      const slot = this.getSaveSlot(slotId);
+      if (slot?.checksum && slot.checksum !== this.calculateChecksum(data)) {
+        globalEventBus.publish({ type: 'LoadFailed', error: 'Save checksum mismatch' });
+        return null;
       }
+
+      const saveData = this.prepareLoadedSaveData(data);
+      if (!saveData) return null;
 
       this.currentRunStartTime = saveData.metadata.runStartTime;
       this.accumulatedPlayTime = saveData.playTime;
@@ -589,22 +634,22 @@ export class SaveManager {
   importSave(slotId: string, exportedData: string): boolean {
     try {
       const decompressed = atob(exportedData);
-      const saveData: SaveData = JSON.parse(decompressed);
+      const saveData = this.prepareLoadedSaveData(decompressed);
+      if (!saveData) return false;
 
-      if (saveData.version !== SaveManager.SAVE_VERSION) {
-        const migrated = this.migrateSaveData(saveData);
-        if (!migrated) return false;
-      }
+      const serialized = this.serializeValidatedSaveData(saveData);
+      if (!serialized) return false;
 
-      localStorage.setItem(`${SaveManager.SAVE_KEY_PREFIX}${slotId}`, decompressed);
+      localStorage.setItem(`${SaveManager.SAVE_KEY_PREFIX}${slotId}`, serialized);
 
       this.updateSaveSlot(slotId, {
         name: `Imported - ${saveData.metadata.characterId}`,
         timestamp: saveData.timestamp,
         playTime: saveData.playTime,
         floor: saveData.metadata.floor,
+        chapterIndex: saveData.metadata.chapterIndex,
         characterId: saveData.metadata.characterId,
-        checksum: this.calculateChecksum(decompressed)
+        checksum: this.calculateChecksum(serialized)
       });
 
       return true;

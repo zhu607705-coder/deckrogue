@@ -14,7 +14,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion } from 'motion/react';
 import { GameEngine, MapNode } from '@/core';
 import type { RenderModel } from '@/runtimeV2';
-import { Eye, ZoomIn, ZoomOut, Maximize2, Skull, Flame } from 'lucide-react';
+import { ArrowRight, BadgeInfo, Eye, Flame, MapPinned, Maximize2, Route, Skull, ZoomIn, ZoomOut } from 'lucide-react';
 import { MapIcon } from '@/ui/components/MapIcon';
 import { BackgroundVisualMode, getMapBackgroundTuning } from '@/ui/components/backgroundVisuals';
 import { grimdarkNodeToneClasses } from '@/ui/theme';
@@ -109,6 +109,31 @@ export function MapView({
     () => new Map(routeDossiers.map((dossier) => [dossier.nodeId, dossier])),
     [routeDossiers]
   );
+  const currentNode = currentNodeId ? map.find((node) => node.id === currentNodeId) ?? null : null;
+  const hoveredNode = hoveredNodeId ? map.find((node) => node.id === hoveredNodeId) ?? null : null;
+  const hudNode = hoveredNode ?? currentNode;
+  const hudDossier = hudNode ? routeDossierById.get(hudNode.id) ?? null : null;
+  const currentNodeLabel = currentNode
+    ? `${nodeTypeNames[currentNode.type] || currentNode.type} · 第 ${currentNode.y + 1} 层`
+    : '待部署';
+  const patrolStateLabel = engine.state.pendingNodeResolution
+    ? '巡逻结算中'
+    : currentNode
+      ? '巡逻推进中'
+      : '等待登陆';
+  const routeHintLabel = currentNode
+    ? currentNode.next
+        .map((nextId) => map.find((node) => node.id === nextId))
+        .filter((node): node is MapNode => !!node)
+        .slice(0, 3)
+        .map((node) => nodeTypeNames[node.type] || node.type)
+        .join(' / ') || '终点锁定'
+    : '从首层节点开始巡逻';
+  const operationFeedback = hoveredNode
+    ? `已预览 ${nodeTypeNames[hoveredNode.type] || hoveredNode.type} 节点`
+    : currentNode
+      ? `当前可选 ${selectableNodeIds.length} 条路线`
+      : '悬停节点可查看路线情报';
 
   const zoomIn = useCallback(() => {
     setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP));
@@ -217,7 +242,7 @@ export function MapView({
   }, [currentNodeId, map.length]);
 
   return (
-    <div className="grimdark-terminal-screen campaign-shell flex flex-col h-full text-[#d4d4d8]" data-screen="Map">
+    <div className="grimdark-terminal-screen grimdark-map-screen campaign-shell flex flex-col h-full text-[#d4d4d8]" data-screen="Map">
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -330,7 +355,7 @@ export function MapView({
         </div>
       </div>
 
-      <div className="absolute top-24 right-4 z-20 flex flex-col gap-2">
+      <div className="grimdark-map-controls absolute top-24 right-4 z-20 flex flex-col gap-2">
         <div className="grimdark-control-panel rounded-sm overflow-hidden backdrop-blur-sm">
           <button
             onClick={zoomIn}
@@ -380,59 +405,42 @@ export function MapView({
         </div>
       )}
 
-      {routeDossiers.length > 0 && (
-        <div className="relative z-10 px-4 md:px-8 pt-4">
-          <div className="mx-auto max-w-6xl grid gap-3 md:grid-cols-3">
-            {routeDossiers.map((dossier) => {
-              const isFocused = hoveredNodeId === dossier.nodeId || (!hoveredNodeId && selectableNodeIds[0] === dossier.nodeId);
-              return (
-                <button
-                  key={dossier.nodeId}
-                  type="button"
-                  onMouseEnter={() => setHoveredNodeId(dossier.nodeId)}
-                  onFocus={() => setHoveredNodeId(dossier.nodeId)}
-                  onMouseLeave={() => setHoveredNodeId(null)}
-                  className={`text-left rounded-sm border px-4 py-3 transition-all duration-200 ${
-                    isFocused
-                      ? 'border-amber-400/60 bg-stone-900/85 shadow-[0_0_30px_rgba(245,158,11,0.16)]'
-                      : 'border-stone-700/70 bg-stone-950/75 hover:border-stone-500/80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-stone-400">{dossier.fitLabel}</div>
-                      <div className="mt-1 text-sm font-bold text-stone-100">{dossier.title}</div>
-                    </div>
-                    <div className="text-right text-[11px] text-amber-300">{dossier.challengeLabel}</div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-stone-300">
-                    <div>
-                      <div className="text-stone-500">挑战</div>
-                      <div className="font-semibold">{'★'.repeat(dossier.challenge)}</div>
-                    </div>
-                    <div>
-                      <div className="text-stone-500">补给</div>
-                      <div className="font-semibold">{'★'.repeat(dossier.sustain)}</div>
-                    </div>
-                    <div>
-                      <div className="text-stone-500">异动</div>
-                      <div className="font-semibold">{'★'.repeat(dossier.mystery)}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-[11px] leading-5 text-stone-300">{dossier.summary}</div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-stone-400">
-                    {dossier.previewTypes.map((type, index) => (
-                      <span key={`${dossier.nodeId}-${type}-${index}`} className="rounded-sm border border-stone-700 px-2 py-1">
-                        {nodeTypeNames[type] || type}
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              );
-            })}
+      <div className="relative z-10 px-4 md:px-8 pt-3">
+        <div className="grimdark-map-hud mx-auto grid gap-3 lg:grid-cols-[1.15fr_0.9fr_0.95fr_1.1fr]">
+          <div className="grimdark-map-hud__tile">
+            <div className="grimdark-map-hud__head">
+              <MapPinned size={14} aria-hidden="true" />
+              <span>当前节点</span>
+            </div>
+            <div className="grimdark-map-hud__value">{currentNodeLabel}</div>
+            <div className="grimdark-map-hud__subtle">{hudDossier?.title || currentEnvironmentDescription || '巡逻态势未完全展开'}</div>
+          </div>
+          <div className="grimdark-map-hud__tile">
+            <div className="grimdark-map-hud__head">
+              <Route size={14} aria-hidden="true" />
+              <span>巡逻状态</span>
+            </div>
+            <div className="grimdark-map-hud__value">{patrolStateLabel}</div>
+            <div className="grimdark-map-hud__subtle">{hudDossier?.fitLabel || floorLabel}</div>
+          </div>
+          <div className="grimdark-map-hud__tile">
+            <div className="grimdark-map-hud__head">
+              <ArrowRight size={14} aria-hidden="true" />
+              <span>路径提示</span>
+            </div>
+            <div className="grimdark-map-hud__value">{routeHintLabel}</div>
+            <div className="grimdark-map-hud__subtle">{hudDossier?.summary || '未收集到完整路线情报'}</div>
+          </div>
+          <div className="grimdark-map-hud__tile grimdark-map-hud__tile--accent">
+            <div className="grimdark-map-hud__head">
+              <BadgeInfo size={14} aria-hidden="true" />
+              <span>操作反馈</span>
+            </div>
+            <div className="grimdark-map-hud__value">{operationFeedback}</div>
+            <div className="grimdark-map-hud__subtle">{hudDossier?.challengeLabel || currentEnvironmentDescription || '移动光标查看节点回应'}</div>
           </div>
         </div>
-      )}
+      </div>
 
       <div
         ref={mapContainerRef}
@@ -465,6 +473,12 @@ export function MapView({
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
+              <marker id="grimdark-path-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0 0 L8 4 L0 8 z" fill="#b45309" opacity="0.9" />
+              </marker>
+              <marker id="grimdark-path-arrow-highlight" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M0 0 L9 4.5 L0 9 z" fill="#fbbf24" opacity="0.95" />
+              </marker>
             </defs>
             {map.map(node => {
               return node.next.map(nextId => {
@@ -493,6 +507,18 @@ export function MapView({
                     : isPathTaken
                       ? 2.5
                       : 2;
+                const pathMarker = isPathHighlighted
+                  ? 'url(#grimdark-path-arrow-highlight)'
+                  : isPathActive
+                    ? 'url(#grimdark-path-arrow)'
+                    : undefined;
+                const pathDashArray = isPathHighlighted
+                  ? '10 8'
+                  : isPathActive
+                    ? '14 10'
+                    : isPathTaken
+                      ? '3 4'
+                      : '8 5';
 
                 return (
                   <g key={`${node.id}-${nextId}`}>
@@ -503,7 +529,7 @@ export function MapView({
                       y2={`${100 - (nextNode.y / totalFloorSpan) * 100}%`}
                       stroke={isPathHighlighted ? '#fbbf24' : isPathActive ? '#ef4444' : pathStroke}
                       strokeWidth={isPathHighlighted ? pathWidth + 6 : isPathActive ? pathWidth + 4 : pathWidth + 2}
-                      strokeDasharray={isPathActive ? 'none' : isPathTaken ? '3 4' : '8 5'}
+                      strokeDasharray={pathDashArray}
                       strokeLinecap="round"
                       opacity={isPathHighlighted ? 0.5 : isPathActive ? 0.4 : isPathTaken ? 0.2 : 0.15}
                       filter="blur(4px)"
@@ -515,13 +541,14 @@ export function MapView({
                       y2={`${100 - (nextNode.y / totalFloorSpan) * 100}%`}
                       stroke={pathStroke}
                       strokeWidth={pathWidth}
-                      strokeDasharray={isPathActive ? 'none' : isPathTaken ? '3 4' : '8 5'}
+                      strokeDasharray={pathDashArray}
                       strokeLinecap="round"
+                      markerEnd={pathMarker}
                       filter={isPathHighlighted ? 'url(#path-glow-strong)' : isPathActive ? 'url(#glow)' : 'none'}
                       opacity={isPathHighlighted ? 1 : isPathActive ? 0.95 : isPathTaken ? 0.7 : 0.5}
-                      className={`${isPathHighlighted ? 'grimdark-path-highlight animate-path-pulse-highlight' : isPathActive ? 'grimdark-path-line--active animate-path-flow-glow' : ''}`}
+                      className={`${isPathHighlighted ? 'grimdark-path-highlight' : isPathActive ? 'grimdark-path-line--active' : ''} grimdark-path-line`}
                       style={{
-                        willChange: 'opacity, stroke'
+                        willChange: 'opacity, stroke, stroke-dashoffset'
                       }}
                     />
                     {(isPathActive || isPathHighlighted) && (
@@ -556,18 +583,46 @@ export function MapView({
                 const isCurrent = currentNodeId === node.id;
                 const isSelectable = isNodeSelectable(node);
                 const isPast = node.y < currentY;
+                const isHovered = hoveredNodeId === node.id;
                 const typeName = nodeTypeNames[node.type] || node.type;
                 const styles = getTypeStyles(node.type);
                 const dossier = routeDossierById.get(node.id);
+                const nodeRouteTitle = dossier?.title || typeName;
+                const nodeRouteSummary = dossier?.summary || (node.revealed ? currentEnvironmentDescription : '需要侦测');
+                const nodePreviewLabels = dossier?.previewTypes
+                  .slice(1)
+                  .map((previewType) => nodeTypeNames[previewType] || previewType) ?? [];
+                const nodeRouteMetrics = dossier
+                  ? [
+                      { key: 'challenge', label: '压', value: dossier.challenge, tone: 'danger', aria: `挑战压力 ${dossier.challenge}/5` },
+                      { key: 'sustain', label: '补', value: dossier.sustain, tone: 'sustain', aria: `补给空间 ${dossier.sustain}/5` },
+                      { key: 'mystery', label: '异', value: dossier.mystery, tone: 'mystery', aria: `异动未知 ${dossier.mystery}/5` },
+                    ]
+                  : [];
                 const nodeStateClass = isCurrent
                   ? 'grimdark-node-card--current'
                   : isPast
                     ? 'grimdark-node-card--past'
-                    : isSelectable
+                  : isSelectable
                       ? 'grimdark-node-card--selectable'
                       : '';
+                const nodeHoverClass = isHovered ? 'grimdark-node-card--hovered' : '';
                 const unknownClass = !node.revealed ? 'grimdark-node-card--unknown' : '';
                 const nodeCursorClass = isSelectable ? 'cursor-pointer' : isPast ? 'cursor-default' : 'cursor-not-allowed';
+                const nodeChipPrimary = isCurrent
+                  ? '当前节点'
+                  : isSelectable
+                    ? '可选路线'
+                    : isPast
+                      ? '已通过'
+                      : node.revealed
+                        ? '已揭示'
+                        : '未探明';
+                const nodeChipSecondary = isCurrent
+                  ? `${nodeRouteTitle} · ${nodeRouteSummary}`
+                  : node.revealed
+                    ? `${dossier?.challengeLabel || '巡逻'} · ${dossier?.fitLabel || '侦测完成'} · ${nodeRouteSummary}`
+                    : '继续侦测';
 
                 return (
                   <div
@@ -579,33 +634,71 @@ export function MapView({
                       onClick={() => isSelectable && engine.enterNode(node.id)}
                       disabled={!isSelectable}
                       data-node-id={node.id}
+                      data-node-type={node.type}
                       data-floor={node.y}
                       data-keyboard-focus="true"
                       data-keyboard-option={isSelectable ? String(selectableNodeIds.indexOf(node.id) + 1) : undefined}
                       onMouseEnter={() => isSelectable && setHoveredNodeId(node.id)}
                       onMouseLeave={() => setHoveredNodeId(null)}
-                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${unknownClass} ${nodeCursorClass} grimdark-node-card--enhanced w-28 min-h-[90px] px-2.5 py-2.5 flex flex-col items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 focus:ring-2 focus:ring-amber-500/50`}
+                      className={`grimdark-node-card ${styles.tone} ${nodeStateClass} ${nodeHoverClass} ${unknownClass} ${nodeCursorClass} grimdark-node-card--enhanced w-32 min-h-[124px] px-2.5 py-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 focus:ring-2 focus:ring-amber-500/50`}
                       aria-label={node.revealed ? `${typeName} - 第 ${node.y + 1} 扇区` : '未探明区域'}
                       aria-disabled={!isSelectable}
 
                     >
+                      <div className="grimdark-node-card__statusChip">
+                        <span className="grimdark-node-card__statusChipMain">{nodeChipPrimary}</span>
+                        <span className="grimdark-node-card__statusChipSub">{nodeChipSecondary}</span>
+                      </div>
                       {node.revealed ? (
                         <>
-                          <div className={`grimdark-node-card__iconFrame ${styles.icon} w-10 h-10 flex items-center justify-center overflow-hidden`}>
+                          <div className={`grimdark-node-card__iconFrame ${styles.icon} w-9 h-9 flex items-center justify-center overflow-hidden`}>
                             <MapIcon
                               type={node.type}
                               alt={typeName}
-                              className="w-8 h-8 object-contain"
+                              className="w-7 h-7 object-contain"
                             />
                           </div>
-                          <span className="text-[10px] font-bold tracking-wide text-center leading-tight uppercase">{typeName}</span>
+                          <span className="text-[9px] font-bold tracking-wide text-center leading-tight uppercase">{typeName}</span>
+                          {dossier && (
+                            <div className="grimdark-node-card__routeMeta">
+                              <div className="grimdark-node-card__routeMetaTitle">{nodeRouteTitle}</div>
+                              <div className="grimdark-node-card__routeMetaSummary">{nodeRouteSummary}</div>
+                              <div className="grimdark-node-card__routeIntel" aria-label={`路线指标：挑战 ${dossier.challenge}/5，补给 ${dossier.sustain}/5，异动 ${dossier.mystery}/5`}>
+                                {nodeRouteMetrics.map((metric) => (
+                                  <div
+                                    key={`${node.id}-${metric.key}`}
+                                    className={`grimdark-node-card__routeMetric grimdark-node-card__routeMetric--${metric.tone}`}
+                                    aria-label={metric.aria}
+                                  >
+                                    <span className="grimdark-node-card__routeMetricLabel">{metric.label}</span>
+                                    <span className="grimdark-node-card__routeMetricTrack" aria-hidden="true">
+                                      {Array.from({ length: 5 }).map((_, index) => (
+                                        <span
+                                          key={`${node.id}-${metric.key}-${index}`}
+                                          className={index < metric.value ? 'is-active' : ''}
+                                        />
+                                      ))}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="grimdark-node-card__routePreview">
+                                <span className="grimdark-node-card__routePreviewLabel">后续</span>
+                                {(nodePreviewLabels.length > 0 ? nodePreviewLabels : ['终点']).slice(0, 3).map((label, index) => (
+                                  <span key={`${node.id}-${label}-${index}`} className="grimdark-node-card__routePreviewChip">
+                                    {label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
-                          <div className="grimdark-node-card__iconFrame grimdark-node-card__iconFrame--unknown w-10 h-10 flex items-center justify-center">
+                          <div className="grimdark-node-card__iconFrame grimdark-node-card__iconFrame--unknown w-9 h-9 flex items-center justify-center">
                             <svg
                               viewBox="0 0 24 24"
-                              className="w-7 h-7 text-[#d4d4d8]"
+                              className="w-6 h-6 text-[#d4d4d8]"
                               fill="none"
                               stroke="currentColor"
                               strokeWidth="1.8"
@@ -618,7 +711,7 @@ export function MapView({
                               <circle cx="12" cy="12" r="9.2" opacity="0.25" />
                             </svg>
                           </div>
-                          <span className="grimdark-node-card__unknownLabel">未探明</span>
+                          <span className="grimdark-node-card__unknownLabel">未探明 · 继续侦测</span>
                         </>
                       )}
                     </button>

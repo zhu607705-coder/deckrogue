@@ -40,7 +40,7 @@ export function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
 }
 
-const DEFAULT_SMOKE_PORT = process.env.PLAYWRIGHT_SMOKE_PORT || '3200';
+const DEFAULT_SMOKE_PORT = process.env.PLAYWRIGHT_SMOKE_PORT || reserveSmokePort();
 const SERVER_PROBE_SCRIPT = `
   const url = process.argv[1];
   const controller = new AbortController();
@@ -50,6 +50,20 @@ const SERVER_PROBE_SCRIPT = `
     .then((response) => process.exit(response.ok ? 0 : 1))
     .catch(() => process.exit(1));
 `;
+
+function reserveSmokePort(): string {
+  return execFileSync(process.execPath, ['-e', `
+    const net = require('node:net');
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') process.exit(1);
+      console.log(address.port);
+      server.close();
+    });
+    server.on('error', () => process.exit(1));
+  `], { encoding: 'utf8' }).trim();
+}
 
 export function getDefaultSmokeUrl(): string {
   return process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${DEFAULT_SMOKE_PORT}`;

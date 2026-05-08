@@ -102,7 +102,7 @@ function derivePythonRouteState(
 
 export function normalizePythonSnapshot(
   snapshot: Record<string, unknown>,
-  options: { generatedAtFallback?: () => string } = {},
+  options: { generatedAtFallback?: () => string; adapter?: RuleSnapshot['meta']['adapter'] } = {},
 ): RuleSnapshot {
   const converted = convertKeys(snapshot, snakeToCamelKey) as Partial<RuleSnapshot>;
   const player = converted.player ?? ({} as RuleSnapshot['player']);
@@ -192,7 +192,7 @@ export function normalizePythonSnapshot(
       runId: meta.runId ?? null,
       replayLength: meta.replayLength ?? 0,
       generatedAt: meta.generatedAt ?? generatedAtFallback(),
-      adapter: 'python-wasm',
+      adapter: options.adapter ?? 'python-wasm',
       runtimeRngState: meta.runtimeRngState ?? 0,
     },
   };

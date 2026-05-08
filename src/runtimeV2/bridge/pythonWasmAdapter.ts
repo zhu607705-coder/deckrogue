@@ -18,8 +18,6 @@ import {
   unwrapPythonSnapshotEnvelope,
 } from '@/runtimeV2/pythonInterop';
 
-const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
-
 interface PyodideInterface {
   globals: {
     set(name: string, value: unknown): void;
@@ -37,6 +35,7 @@ declare global {
 
 const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
 const PYODIDE_SCRIPT_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
+const PYODIDE_SCRIPT_REFERRER_POLICY = 'no-referrer';
 export { normalizePythonSnapshot, unwrapPythonSnapshotEnvelope } from '@/runtimeV2/pythonInterop';
 
 export class PythonWasmAdapter implements RuleRuntimeAdapter {
@@ -149,6 +148,8 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       const script = document.createElement('script');
       script.src = PYODIDE_SCRIPT_URL;
       script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.referrerPolicy = PYODIDE_SCRIPT_REFERRER_POLICY;
       script.dataset.pyodideLoader = 'true';
       script.addEventListener('load', () => resolve(), { once: true });
       script.addEventListener('error', () => reject(new Error('Failed to load Pyodide loader script')), { once: true });

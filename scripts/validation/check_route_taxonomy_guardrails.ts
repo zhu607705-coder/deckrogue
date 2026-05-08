@@ -23,7 +23,7 @@ import {
 } from '@/content/narrative/numericSystem';
 import type { RunCardInstance } from '@/core/types';
 
-const CHARACTER_IDS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+const CHARACTER_IDS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'] as const;
 
 function makeRuntimeCard(cardId: string, instanceId: string): RunCardInstance {
   const card = cardsData.find((entry) => entry.id === cardId);

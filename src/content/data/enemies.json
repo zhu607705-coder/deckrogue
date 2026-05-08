@@ -2488,6 +2488,54 @@
           "amount": 18,
           "target": "Self"
         }
+      ],
+      "overheat_mass": [
+        {
+          "type": "GainBlock",
+          "amount": 24,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "cooling_breach": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
       ]
     },
     "ai_profile": {
@@ -2565,6 +2613,43 @@
           "type": "ApplyStatus",
           "status": "Weak",
           "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "forbidden_proof": [
+        {
+          "type": "ApplyStatus",
+          "status": "Dexterity",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "final_axiom": [
+        {
+          "type": "DealDamage",
+          "amount": 24,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "PlayerDrawLess",
+          "amount": 1,
           "target": "Enemy"
         }
       ]
@@ -3816,6 +3901,59 @@
           "amount": 2,
           "target": "Enemy"
         }
+      ],
+      "cathedral_bloom": [
+        {
+          "type": "GainBlock",
+          "amount": 20,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Ritual",
+          "amount": 1,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "Summon",
+          "enemyId": "blight_larva",
+          "target": "Self"
+        }
+      ],
+      "rotting_apotheosis": [
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 2,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
       ]
     },
     "ai_profile": {
@@ -3901,6 +4039,38 @@
           "amount": 1,
           "target": "Enemy"
         }
+      ],
+      "sinking_mass": [
+        {
+          "type": "RandomCardCostIncrease",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        }
+      ],
+      "final_decay": [
+        {
+          "type": "DealDamage",
+          "amount": 26,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalDamage",
+          "condition": {
+            "type": "PlayerHasDebuffConsecutiveTurns",
+            "statuses": [
+              "Poison"
+            ]
+          },
+          "trueDamage": 8,
+          "falseDamage": 0,
+          "isTrueDamage": true,
+          "target": "Enemy"
+        }
       ]
     },
     "ai_profile": {
@@ -3938,32 +4108,6 @@
     },
     "art": "泥潭圣者是一个人形机械，混合了法官和泥沼生物风格，身体由腐烂的泥浆和金属组成，末日沼泽风格",
     "description": "泥潭圣者会用资源拖慢和状态惩罚来压制玩家，在半血后更加危险。"
-  },
-  {
-    "id": "mind_peek",
-    "name": "Mind Peek",
-    "type": "special",
-    "target": "player",
-    "effects": [
-      {
-        "type": "reveal_hand",
-        "value": 2
-      }
-    ],
-    "description": "Reveals 2 cards in your hand to the enemy."
-  },
-  {
-    "id": "card_swap",
-    "name": "Card Swap",
-    "type": "special",
-    "target": "player",
-    "effects": [
-      {
-        "type": "swap_cards",
-        "value": 1
-      }
-    ],
-    "description": "Swaps 2 cards in your hand."
   },
   {
     "id": "psychic_infiltrator",

@@ -11,6 +11,7 @@ coverage/
 .minimax/
 .playwright-cli/
 .trae/
+.claude/
 __pycache__/
 *.pyc
 
@@ -18,6 +19,7 @@ __pycache__/
 output/playwright/
 output/web-game/
 output/packages/
+output/generated_images/
 
 # 测试报告和截图
 output/**/screenshots/

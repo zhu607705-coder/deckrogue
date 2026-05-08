@@ -137,6 +137,9 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
       'chronomancer:delay',
       'alchemist:concoction',
       'alchemist:fire',
+      'penitent_judge:execution',
+      'void_sanctioner:seal',
+      'void_sanctioner:suppression',
     ],
     reinforcement: 'payoff',
     preferredChoiceIds: ['medicae_implant', 'medicae_extract', 'medicae_salvage'],
@@ -154,6 +157,10 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
       'puppeteer:threads',
       'chronomancer:time_layer',
       'alchemist:acid',
+      'penitent_judge:verdict',
+      'penitent_judge:execution',
+      'penitent_judge:confession',
+      'void_sanctioner:risk',
     ],
     reinforcement: 'confirm',
     preferredChoiceIds: ['martyr_offer_blood', 'martyr_offer_wealth', 'martyr_inscribe_oath'],
@@ -169,7 +176,7 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
     },
   },
   warp_tear_whispers: {
-    routeTags: ['chronomancer:warp', 'chronomancer:time_layer'],
+    routeTags: ['chronomancer:warp', 'chronomancer:time_layer', 'void_sanctioner:risk', 'void_sanctioner:seal'],
     reinforcement: 'support',
     preferredChoiceRoles: {
       tear_embrace: 'payoff',
@@ -177,13 +184,13 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
       tear_seal: 'pivot',
     },
     preferredChoiceCommitTags: {
-      tear_embrace: ['chronomancer:warp'],
-      tear_bargain: ['chronomancer:warp'],
-      tear_seal: ['chronomancer:time_layer'],
+      tear_embrace: ['chronomancer:warp', 'void_sanctioner:risk'],
+      tear_bargain: ['chronomancer:warp', 'void_sanctioner:risk'],
+      tear_seal: ['chronomancer:time_layer', 'void_sanctioner:seal'],
     },
   },
   inquisitor_legacy: {
-    routeTags: ['informant:intel', 'informant:evidence'],
+    routeTags: ['informant:intel', 'informant:evidence', 'penitent_judge:verdict', 'penitent_judge:confession'],
     reinforcement: 'confirm',
     preferredChoiceIds: ['legacy_read_codex', 'legacy_take_rosary'],
     preferredChoiceRoles: {
@@ -193,9 +200,9 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
       legacy_inscribe_sigil: 'payoff',
     },
     preferredChoiceCommitTags: {
-      legacy_read_codex: ['informant:intel'],
-      legacy_take_rosary: ['informant:evidence'],
-      legacy_inscribe_sigil: ['informant:evidence'],
+      legacy_read_codex: ['informant:intel', 'penitent_judge:verdict'],
+      legacy_take_rosary: ['informant:evidence', 'penitent_judge:confession'],
+      legacy_inscribe_sigil: ['informant:evidence', 'penitent_judge:verdict'],
     },
   },
   machine_psalm_archive: {
@@ -207,11 +214,11 @@ const EVENT_ROUTE_SIGNALS_BY_ID: Record<string, EventRouteSignalDef> = {
       machine_psalm_alter: 'payoff',
     },
   },
-  logic_tribunal: { routeTags: ['tactician:command', 'tactician:formation'], reinforcement: 'support' },
+  logic_tribunal: { routeTags: ['tactician:command', 'tactician:formation', 'penitent_judge:verdict'], reinforcement: 'support' },
   sacred_overclock: { routeTags: ['brute:strength', 'alchemist:concoction'], reinforcement: 'support' },
   blood_mill: { routeTags: ['brute:rage'], reinforcement: 'support' },
   servo_reliquary: { routeTags: ['puppeteer:summon', 'puppeteer:threads'], reinforcement: 'support' },
-  terminal_silence: { routeTags: ['chronomancer:warp', 'chronomancer:time_layer'], reinforcement: 'support' },
+  terminal_silence: { routeTags: ['chronomancer:warp', 'chronomancer:time_layer', 'void_sanctioner:seal', 'void_sanctioner:suppression'], reinforcement: 'support' },
   oracle_shrine: { routeTags: ['informant:intel', 'chronomancer:warp', 'tactician:command'], reinforcement: 'support' },
   coolant_crypt: { routeTags: ['alchemist:acid'], reinforcement: 'support' },
   reactor_chapel: { routeTags: ['alchemist:fire'], reinforcement: 'support' },
@@ -552,6 +559,14 @@ export function getEventChoiceCommitTags(eventId: string, choiceId: string): str
     return [];
   }
   return [...(signal.preferredChoiceCommitTags?.[choiceId] ?? signal.routeTags)];
+}
+
+export function getExplicitEventChoiceCommitTags(eventId: string, choiceId: string): string[] {
+  const signal = getEventRouteSignal(eventId);
+  if (!signal) {
+    return [];
+  }
+  return [...(signal.preferredChoiceCommitTags?.[choiceId] ?? [])];
 }
 
 export function enrichCardRouteSignals<T extends CardDef>(cards: T[]): T[] {

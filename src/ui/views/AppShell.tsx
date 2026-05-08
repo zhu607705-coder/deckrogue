@@ -21,6 +21,7 @@ import { ViewBackgroundLayer, type ScreenId } from '@/ui/components/ViewBackgrou
 import { SetupLauncher } from '@/ui/launcher/SetupLauncher';
 import { Eye, Layers, Zap, Skull, Sun, Moon } from 'lucide-react';
 import { getUiLabelZh } from '@/ui/content/terminology';
+import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 import { uiWorldLore } from '@/ui/content/worldLore';
 import {
   buildEffectiveKeybinds,
@@ -149,7 +150,7 @@ function AppContent() {
   const themeTransitionTimerRef = useRef<number | null>(null);
   const [backgroundVisualMode, setBackgroundVisualMode] = useState<BackgroundVisualMode>(() => {
     if (typeof window === 'undefined') return 'balanced';
-    const saved = window.localStorage.getItem(BG_VISUAL_MODE_KEY);
+    const saved = safeStorageGetString(BG_VISUAL_MODE_KEY, '').value;
     return saved === 'cinematic' || saved === 'balanced' || saved === 'vivid' ? saved : 'balanced';
   });
 
@@ -195,7 +196,7 @@ function AppContent() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(BG_VISUAL_MODE_KEY, backgroundVisualMode);
+    safeStorageSetString(BG_VISUAL_MODE_KEY, backgroundVisualMode);
   }, [backgroundVisualMode]);
 
   useEffect(() => {

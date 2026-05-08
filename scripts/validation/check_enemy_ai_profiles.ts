@@ -18,6 +18,7 @@ type EnemyRecord = {
   keywords?: string[];
   intent_policy?: Array<{ intent: string }>;
   intentPolicy?: Array<{ intent: string }>;
+  moves?: Record<string, unknown>;
   ai_profile?: {
     perceptionAccuracy?: number;
     personality?: Record<string, number>;
@@ -43,6 +44,16 @@ function main(): void {
   for (const enemy of enemies) {
     const policies = enemy.intent_policy || enemy.intentPolicy || [];
     if (policies.length === 0) continue;
+    const moves = enemy.moves && typeof enemy.moves === 'object' && !Array.isArray(enemy.moves)
+      ? enemy.moves
+      : {};
+    const knownMoveIntents = new Set(Object.keys(moves));
+
+    for (const policy of policies) {
+      if (!policy.intent || !knownMoveIntents.has(policy.intent)) {
+        violations.push(`${enemy.id}: intent_policy references missing move ${policy.intent || 'unknown'}`);
+      }
+    }
 
     const profile = enemy.ai_profile;
     if (!profile) {
@@ -67,6 +78,8 @@ function main(): void {
     for (const rule of profile.intentBiases || []) {
       if (!knownIntents.has(rule.intent)) {
         violations.push(`${enemy.id}: intentBiases references unknown intent ${rule.intent}`);
+      } else if (!knownMoveIntents.has(rule.intent)) {
+        violations.push(`${enemy.id}: intentBiases references intent without move ${rule.intent}`);
       }
       const multiplier = Number(rule.multiplier);
       if (!Number.isFinite(multiplier) || multiplier < 0) {
@@ -77,6 +90,14 @@ function main(): void {
     const antiStall = profile.antiStall;
     if (!antiStall || !Number.isFinite(Number(antiStall.maxNonAttackTurns))) {
       violations.push(`${enemy.id}: antiStall.maxNonAttackTurns missing`);
+    } else {
+      for (const intent of antiStall.suppressedIntents || []) {
+        if (!knownIntents.has(intent)) {
+          violations.push(`${enemy.id}: antiStall references unknown intent ${intent}`);
+        } else if (!knownMoveIntents.has(intent)) {
+          violations.push(`${enemy.id}: antiStall references intent without move ${intent}`);
+        }
+      }
     }
   }
 

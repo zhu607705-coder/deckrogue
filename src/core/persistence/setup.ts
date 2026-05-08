@@ -199,7 +199,7 @@ class GameSetup {
     this.state.isRunning = true;
     this.state.isPaused = false;
 
-    this.engine = new GameEngine(this.state.currentSeed);
+    this.engine = new GameEngine(this.state.currentSeed, null, { enableRuntimeDelegation: false });
     this.engine.loadSaveData(saveData);
 
     saveManager.resumeRun();

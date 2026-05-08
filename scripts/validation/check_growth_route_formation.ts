@@ -17,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 import { GameEngine } from '@/core/events/gameEngine';
 import { analyzeRouteSignals, getCardRouteSignal } from '@/content/narrative/numericSystem';
 
-const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'] as const;
 const SEEDS = Array.from({ length: 20 }, (_, index) => index + 1);
 const THRESHOLD = 0.7;
 

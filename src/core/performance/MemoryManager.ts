@@ -32,6 +32,7 @@ class MemoryManager {
   private lastGCWarning = 0;
   private _tempDataCount = 0;
   private _combatTempCount = 0;
+  private monitoringTimer: ReturnType<typeof setInterval> | null = null;
 
   private constructor() {
     if (typeof window !== 'undefined') {
@@ -46,12 +47,25 @@ class MemoryManager {
     return MemoryManager.instance;
   }
 
-  private startMonitoring(): void {
-    if (typeof window === 'undefined') return;
+  startMonitoring(): void {
+    if (typeof window === 'undefined' || this.monitoringTimer) return;
 
-    setInterval(() => {
+    this.monitoringTimer = setInterval(() => {
       this.takeSnapshot();
     }, 1000);
+  }
+
+  stopMonitoring(): void {
+    if (!this.monitoringTimer) return;
+
+    clearInterval(this.monitoringTimer);
+    this.monitoringTimer = null;
+  }
+
+  dispose(): void {
+    this.stopMonitoring();
+    this.snapshots = [];
+    this.forceCleanup();
   }
 
   private takeSnapshot(): void {

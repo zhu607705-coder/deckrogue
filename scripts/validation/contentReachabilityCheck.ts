@@ -183,7 +183,7 @@ function analyzeSecondaryResources(): SecondaryResourceAnalysis {
     readFileSync('src/types/combat.ts', 'utf-8'),
   ].join('\n');
   const summaryContent = readFileSync('src/core/events/runSummarySystem.ts', 'utf-8');
-  const saveManagerContent = readFileSync('src/core/events/SaveManager.ts', 'utf-8');
+  const saveManagerContent = readFileSync('src/core/persistence/saveManager.ts', 'utf-8');
   const analysis: SecondaryResourceAnalysis = {
     informantEvidence: characterContent.includes('"secondaryResource": "evidence"'),
     bruteRage: characterContent.includes('"secondaryResource": "rage"'),

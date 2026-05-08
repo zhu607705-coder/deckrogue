@@ -11,6 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { GameEngine } from '@/core/events/gameEngine';
+import { getStoryEventOptionPresentation } from '@/content/narrative/numericSystem';
 
 function attachCombat(engine: GameEngine): void {
   engine.state.combat = {
@@ -76,4 +77,37 @@ test('event relic acquisition uses live relic fields for corruption and combat p
   assert.equal(engine.state.player.relicStates['mark_of_chaos']?.corrupted, true);
   assert.equal(engine.state.combat?.warpPulse?.text.includes('混沌烙印'), true);
   engine.dispose();
+});
+
+test('story event presentation exposes adapter-owned decision tags', () => {
+  const engine = new GameEngine(1122, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+
+    const payoff = getStoryEventOptionPresentation('rusting_medicae', 'medicae_implant', engine.state);
+    const pivot = getStoryEventOptionPresentation('rusting_medicae', 'medicae_salvage', engine.state);
+    const recovery = getStoryEventOptionPresentation('warp_tear_whispers', 'tear_seal', engine.state);
+
+    assert.ok(payoff?.tags?.some((tag) => tag.id === 'payoff'));
+    assert.ok(payoff?.tags?.some((tag) => tag.id === 'burden'));
+    assert.ok(pivot?.tags?.some((tag) => tag.id === 'pivot'));
+    assert.ok(pivot?.tags?.some((tag) => tag.id === 'debt'));
+    assert.ok(recovery?.tags?.some((tag) => tag.id === 'recovery'));
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('neutral story event follow-up choices do not inherit route commit tags', () => {
+  const engine = new GameEngine(1123, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+
+    const followUp = getStoryEventOptionPresentation('rusting_medicae', 'medicae_salvage_flee', engine.state);
+
+    assert.equal(followUp?.tags?.some((tag) => tag.id === 'commit'), false);
+    assert.ok(followUp?.tags?.some((tag) => tag.id === 'burden'));
+  } finally {
+    engine.dispose();
+  }
 });

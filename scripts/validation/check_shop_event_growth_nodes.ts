@@ -17,7 +17,7 @@ import { GameEngine } from '@/core/events/gameEngine';
 import { getCardRouteSignal, getEventRouteSignal } from '@/content/narrative/numericSystem';
 import { seedRecentChoiceOverrideScenario } from './growthRouteScenario';
 
-const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'] as const;
 const SEEDS = Array.from({ length: 20 }, (_, index) => index + 1);
 const THRESHOLD = 0.5;
 
@@ -94,6 +94,17 @@ function main() {
       }];
     }),
   );
+  const characterFailures = Object.entries(byCharacter)
+    .filter(([, entry]) => entry.shopRate < THRESHOLD || entry.eventRate < THRESHOLD)
+    .map(([characterId, entry]) => ({
+      characterId,
+      shopRate: entry.shopRate,
+      eventRate: entry.eventRate,
+      shopCount: entry.shopCount,
+      eventCount: entry.eventCount,
+      totalSamples: entry.totalSamples,
+    }));
+  const characterPassCount = CHARACTERS.length - characterFailures.length;
   const report = {
     threshold: THRESHOLD,
     totalSamples: samples.length,
@@ -103,7 +114,9 @@ function main() {
     shopRate,
     eventCount,
     eventRate,
-    pass: shopRate >= THRESHOLD && eventRate >= THRESHOLD,
+    characterPassCount,
+    characterFailures,
+    pass: characterFailures.length === 0,
     byCharacter,
     samples,
   };
@@ -115,7 +128,9 @@ function main() {
   console.log(`[check_shop_event_growth_nodes] anyNodeRate: ${(anyNodeRate * 100).toFixed(1)}% (${anyNodeCount}/${samples.length})`);
   console.log(`[check_shop_event_growth_nodes] shopRate: ${(shopRate * 100).toFixed(1)}% (${shopCount}/${samples.length})`);
   console.log(`[check_shop_event_growth_nodes] eventRate: ${(eventRate * 100).toFixed(1)}% (${eventCount}/${samples.length})`);
+  console.log(`[check_shop_event_growth_nodes] characterPassCount: ${characterPassCount}/${CHARACTERS.length}`);
   if (!report.pass) {
+    console.log(`[check_shop_event_growth_nodes] characterFailures: ${characterFailures.map((entry) => `${entry.characterId}: shop ${(entry.shopRate * 100).toFixed(1)}%, event ${(entry.eventRate * 100).toFixed(1)}%`).join('; ')}`);
     process.exitCode = 1;
   }
 }

@@ -1,0 +1,14 @@
+{
+  "project": "My deckrogue",
+  "root": "Assets/DeckRogue",
+  "status": "placeholder-contract",
+  "entries": [
+    "Characters/<characterId>/",
+    "Cards/<cardId>/",
+    "Enemies/<enemyId>/",
+    "Events/<eventId>/",
+    "Shops/<shopId>/"
+  ],
+  "source": "src/content/assets/tuanjieModelManifest.ts",
+  "notes": "Use the TypeScript manifest as the canonical adapter. This JSON documents the Tuanjie Hub folder contract and does not claim real prefab/model files exist yet."
+}

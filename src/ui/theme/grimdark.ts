@@ -1,6 +1,6 @@
 /**
  * @file grimdark.ts
- * @description 战锤40K 黑暗风格设计系统 - 定义核心色彩、术语和主题配置
+ * @description 原创黑暗哥特科幻设计系统 - 定义核心色彩、术语和主题配置
  *
  * 设计哲学:
  * - grim-black: 深黑背景，代表宇宙的冷酷无情
@@ -317,7 +317,7 @@ export const grimdarkEffects = {
   `,
 } as const;
 
-// 术语表 - 战锤风格命名
+// 术语表 - 原创黑暗哥特科幻命名
 export const grimdarkTerminology = {
   // 资源
   resources: {

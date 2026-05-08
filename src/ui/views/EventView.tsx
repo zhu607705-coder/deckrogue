@@ -16,6 +16,7 @@
 import React from 'react';
 import { GameEngine } from '@/core';
 import { getStoryEventDef, getStoryEventOptionPresentation, relicsData } from '@/content/narrative/numericSystem';
+import type { EventPresentationTag } from '@/content/narrative/numericSystem';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { GlossaryText } from '@/ui/components/GlossaryText';
@@ -32,6 +33,7 @@ type EventOptionVm = {
   description: string;
   gains?: string[];
   costs?: string[];
+  tags?: EventPresentationTag[];
   danger?: 'low' | 'medium' | 'high';
 };
 
@@ -189,6 +191,7 @@ function buildStoryEventOptions(engine: GameEngine): EventOptionVm[] {
         description: '你听见液压关节拉伸的尖啸。它冲你来了。',
         gains: fightCopy?.gains || ['若战胜：保留刚刚搜刮的战利品，并获得精英战战利品'],
         costs: fightCopy?.costs || ['高风险精英战斗'],
+        tags: fightCopy?.tags,
         danger: 'high'
       },
       {
@@ -197,6 +200,7 @@ function buildStoryEventOptions(engine: GameEngine): EventOptionVm[] {
         description: '你拖着零件冲入黑暗，在身后留下金属的嚎叫。',
         gains: fleeCopy?.gains || ['保留 100 金币与奇物'],
         costs: fleeCopy?.costs || ['受到 15 点不可减免伤害'],
+        tags: fleeCopy?.tags,
         danger: 'medium'
       }
     ];
@@ -213,6 +217,7 @@ function buildStoryEventOptions(engine: GameEngine): EventOptionVm[] {
         description: '回到祭坛前，继续挑选要焚毁的牌。',
         gains: removeCopy?.gains || [`还能移除 ${engine.getEventFreeRemovalsRemaining()} 张牌`],
         costs: removeCopy?.costs || ['无法改选其他供奉方式'],
+        tags: removeCopy?.tags,
         danger: 'medium'
       }
     ];
@@ -226,6 +231,7 @@ function buildStoryEventOptions(engine: GameEngine): EventOptionVm[] {
       description: option.description,
       gains: copy?.gains || option.gains,
       costs: copy?.costs || option.costs,
+      tags: copy?.tags,
       danger: option.danger
     };
   });
@@ -244,6 +250,23 @@ function dangerClasses(level: EventOptionVm['danger'] = 'medium') {
 
 function dangerLabel(level: EventOptionVm['danger'] = 'medium') {
   return level === 'low' ? '低危' : level === 'high' ? '高危' : '中危';
+}
+
+function presentationTagClasses(tone: EventPresentationTag['tone']): string {
+  switch (tone) {
+    case 'payoff':
+      return 'border-emerald-500/35 bg-emerald-950/25 text-emerald-200';
+    case 'pivot':
+      return 'border-sky-500/35 bg-sky-950/25 text-sky-200';
+    case 'burden':
+      return 'border-rose-500/35 bg-rose-950/25 text-rose-200';
+    case 'debt':
+      return 'border-amber-500/35 bg-amber-950/25 text-amber-200';
+    case 'recovery':
+      return 'border-teal-500/35 bg-teal-950/25 text-teal-200';
+    default:
+      return 'border-slate-500/35 bg-slate-950/35 text-slate-200';
+  }
 }
 
 function detectLongTermEffects(gains: string[], costs: string[]): Array<{ type: string; duration: string; description: string }> {
@@ -351,6 +374,19 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
                     <div className="text-[10px] uppercase tracking-widest text-slate-300">{dangerLabel(option.danger)}</div>
                   </div>
                   <div className="text-sm text-slate-300 mt-1"><GlossaryText text={option.description} /></div>
+
+                  {!!option.tags?.length && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {option.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          className={`border px-2 py-1 text-[11px] font-semibold leading-none ${presentationTagClasses(tag.tone)}`}
+                        >
+                          {tag.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {!!option.gains?.length && (
                     <div className="mt-3 rounded-lg border border-emerald-700/30 bg-emerald-950/20 p-2.5">

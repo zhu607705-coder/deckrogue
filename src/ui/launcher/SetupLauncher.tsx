@@ -133,10 +133,13 @@ export function SetupLauncher({
                   {getUiLabelZh('Ritual Access Node')}
                 </div>
                 <div className="launcher-brand reveal-rise">
-                  <div className="text-[3rem] font-black uppercase leading-[0.85] tracking-[0.04em] text-amber-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.7)] sm:text-[clamp(3.75rem,11vw,8.8rem)] sm:tracking-[0.08em] xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
-                    DeckRogue
+                  <div className="launcher-title-shell inline-flex flex-col px-1 py-1">
+                    <div className="launcher-title text-[3rem] font-black uppercase leading-[0.85] tracking-[0.04em] text-amber-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.7)] sm:text-[clamp(3.75rem,11vw,8.8rem)] sm:tracking-[0.08em] xl:text-[clamp(3.2rem,6.9vw,5.5rem)]">
+                      DeckRogue
+                    </div>
+                    <div className="launcher-title-rule mt-4 h-px w-full" />
                   </div>
-                  <h1 className="mt-3 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.5)] xl:text-[clamp(1.5rem,2.8vw,2.5rem)]">
+                  <h1 className="mt-4 max-w-3xl text-[clamp(1.6rem,3.7vw,3.4rem)] font-semibold leading-[0.95] tracking-tight text-stone-200 drop-shadow-[0_0_8px_rgb(0,0,0,0.5)] xl:text-[clamp(1.5rem,2.8vw,2.5rem)]">
                     战区启动器
                   </h1>
                 </div>
@@ -164,7 +167,7 @@ export function SetupLauncher({
                 <div className="mt-5 space-y-3 xl:mt-4 xl:space-y-2.5">
                   <button
                     onClick={onNewRun}
-                    className="launcher-action group w-full border border-emerald-500/50 bg-emerald-900/50 px-6 py-6 text-left transition hover:border-emerald-300 hover:bg-emerald-800/60 lg:px-5 lg:py-5"
+                    className="launcher-action launcher-action-primary group w-full border border-emerald-500/50 bg-emerald-900/50 px-6 py-6 text-left transition hover:border-emerald-300 hover:bg-emerald-800/60 lg:px-5 lg:py-5"
                     data-keyboard-option="1"
                     data-keyboard-focus="true"
                   >

@@ -84,10 +84,18 @@ async function clickCharacterAndStart(page: Page): Promise<void> {
 async function enterFirstCombat(page: Page): Promise<boolean> {
   await page.waitForTimeout(1000);
 
-  const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗|Combat/i }).first();
+  const combatNode = page.locator('button[data-node-type="Combat"]').first();
   if (await combatNode.count() > 0) {
     await combatNode.scrollIntoViewIfNeeded();
     await combatNode.click({ force: true });
+    await page.waitForTimeout(500);
+    return true;
+  }
+
+  const fallbackCombatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗|Combat/i }).first();
+  if (await fallbackCombatNode.count() > 0) {
+    await fallbackCombatNode.scrollIntoViewIfNeeded();
+    await fallbackCombatNode.click({ force: true });
     await page.waitForTimeout(500);
     return true;
   }

@@ -9,6 +9,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 
 import charactersDataRaw from '@/content/data/characters.json';
 import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
@@ -193,6 +195,73 @@ class FixedSnapshotAdapter implements RuleRuntimeAdapter {
 
   dispose(): void {}
 }
+
+type FakePythonProcess = EventEmitter & {
+  stdin: PassThrough;
+  stdout: PassThrough;
+  stderr: PassThrough;
+  kill: () => boolean;
+};
+
+function createFakePythonProcess(): FakePythonProcess {
+  const processHandle = new EventEmitter() as FakePythonProcess;
+  processHandle.stdin = new PassThrough();
+  processHandle.stdout = new PassThrough();
+  processHandle.stderr = new PassThrough();
+  processHandle.kill = () => true;
+  return processHandle;
+}
+
+function readJsonLines(stream: PassThrough, count: number): Promise<Array<Record<string, unknown>>> {
+  return new Promise((resolve) => {
+    const lines: Array<Record<string, unknown>> = [];
+    stream.on('data', (chunk) => {
+      for (const line of chunk.toString().trim().split('\n')) {
+        if (!line) continue;
+        lines.push(JSON.parse(line) as Record<string, unknown>);
+        if (lines.length === count) {
+          resolve(lines);
+        }
+      }
+    });
+  });
+}
+
+test('PythonProcessAdapter resolves out-of-order responses by request id', async () => {
+  const processHandle = createFakePythonProcess();
+  const adapter = PythonProcessAdapter.createForTesting(processHandle, { requestTimeoutMs: 1000 });
+  const requestsPromise = readJsonLines(processHandle.stdin, 2);
+  const firstPromise = adapter.dispatch({ type: 'select_character', characterId: 'informant' });
+  const secondPromise = adapter.dispatch({ type: 'select_character', characterId: 'automation' });
+  const requests = await requestsPromise;
+  const firstId = requests[0].request_id;
+  const secondId = requests[1].request_id;
+
+  processHandle.stdout.write(`${JSON.stringify({ request_id: secondId, ok: true, snapshot: { seed: 2 } })}\n`);
+  processHandle.stdout.write(`${JSON.stringify({ request_id: firstId, ok: true, snapshot: { seed: 1 } })}\n`);
+
+  const [firstSnapshot, secondSnapshot] = await Promise.all([firstPromise, secondPromise]);
+  assert.equal(firstSnapshot.seed, 1);
+  assert.equal(secondSnapshot.seed, 2);
+  assert.equal(firstSnapshot.meta.adapter, 'python-process');
+  assert.equal(secondSnapshot.meta.adapter, 'python-process');
+  adapter.dispose();
+});
+
+test('PythonProcessAdapter ignores unknown request id responses without corrupting pending queue', async () => {
+  const processHandle = createFakePythonProcess();
+  const adapter = PythonProcessAdapter.createForTesting(processHandle, { requestTimeoutMs: 1000 });
+  const requestsPromise = readJsonLines(processHandle.stdin, 1);
+  const snapshotPromise = adapter.dispatch({ type: 'select_character', characterId: 'informant' });
+  const [request] = await requestsPromise;
+
+  processHandle.stdout.write(`${JSON.stringify({ request_id: 'unknown', ok: true, snapshot: { seed: 99 } })}\n`);
+  processHandle.stdout.write(`${JSON.stringify({ request_id: request.request_id, ok: true, snapshot: { seed: 7 } })}\n`);
+
+  const snapshot = await snapshotPromise;
+  assert.equal(snapshot.seed, 7);
+  adapter.dispose();
+});
 
 test('runParityScenario reports zero diffs for stable matching fields', async () => {
   const result = await runParityScenario({

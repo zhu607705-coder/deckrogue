@@ -9,7 +9,7 @@
 
 ## 3. 主要文件清单
 - `ART_GENERATION_GUIDE.md`
-- `WARHAMMER_IMPLEMENTATION_GUIDE.md`
+- `ORIGINAL_GOTHIC_IMPLEMENTATION_GUIDE.md`
 - `asset_generation.md`
 - `map_background_setup.md`
 - `map_icons_setup.md`

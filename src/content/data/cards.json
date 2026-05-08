@@ -1793,7 +1793,7 @@
         "type": "CheckWarpPeril"
       }
     ],
-    "art_prompt": "A psyker hurling a soul-lance through a cathedral nave, grimdark warhammer style",
+    "art_prompt": "A void-sensitive exile hurling a soul-lance through a ruined cathedral nave, original grimdark gothic sci-fi style",
     "character": "All",
     "upgrade": {
       "name": "灵魂惩戒+",
@@ -1895,7 +1895,7 @@
         "type": "EmperorMercy"
       }
     ],
-    "art_prompt": "A grim commissar executing a corrupted trooper as purity seals flare, warhammer grimdark",
+    "art_prompt": "A masked field judge executing a corrupted oathbreaker as red verdict seals flare, original grimdark gothic sci-fi style",
     "character": "All"
   },
   {
@@ -1968,7 +1968,7 @@
         ]
       }
     ],
-    "art_prompt": "A psyker staring into a swirling purple warp portal with a demonic eye staring back, grimdark warhammer 40k style",
+    "art_prompt": "A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style",
     "character": "All",
     "upgrade": {
       "name": "凝视深渊+",
@@ -2033,7 +2033,7 @@
         }
       }
     ],
-    "art_prompt": "A grotesque mass of writhing flesh tentacles erupting from corrupted flesh, warhammer chaos mutation style",
+    "art_prompt": "A grotesque mass of writhing flesh tendrils erupting from corrupted organic machinery, original body-horror gothic sci-fi style",
     "character": "All",
     "upgrade": {
       "name": "血肉触手+",
@@ -2081,7 +2081,7 @@
       }
     ],
     "sealSlots": 2,
-    "art_prompt": "A space marine chainsword sweeping through the air with teeth spinning, warhammer 40k style",
+    "art_prompt": "A heavy industrial chain blade sweeping through smoke with spinning teeth, original cathedral-industrial sci-fi style",
     "character": "All",
     "upgrade": {
       "name": "链锯横扫+",
@@ -2117,7 +2117,7 @@
         "target": "Self"
       }
     ],
-    "art_prompt": "A mechanical cogitator spirit awakening with glowing eyes in a gothic machine, warhammer mechanicus style",
+    "art_prompt": "A dormant machine choir awakening with glowing optic cores inside a gothic industrial console",
     "character": "All",
     "upgrade": {
       "name": "唤醒机魂+",
@@ -2139,7 +2139,7 @@
     ],
     "text": "无法打出。回合结束时，受到 2 点伤害。若你拥有护盾，则失去 5 点护盾。",
     "actions": [],
-    "art_prompt": "A mechanical component glowing red hot with steam venting, warhammer mechanicus style",
+    "art_prompt": "A mechanical component glowing red hot with steam venting, original gothic industrial sci-fi style",
     "character": "All"
   },
   {
@@ -2184,7 +2184,7 @@
         ]
       }
     ],
-    "art_prompt": "A space marine in golden armor surrounded by holy fire and wrath, warhammer 40k style",
+    "art_prompt": "An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire",
     "character": "All",
     "upgrade": {
       "name": "帝皇之怒+",
@@ -2240,7 +2240,7 @@
         "zealPerBuff": 3
       }
     ],
-    "art_prompt": "An inquisitor holding a flaming sword pronouncing judgment on heretics, warhammer 40k style",
+    "art_prompt": "A masked tribunal judge holding a burning verdict blade inside a ruined cathedral court",
     "character": "All",
     "upgrade": {
       "name": "异端审判+",

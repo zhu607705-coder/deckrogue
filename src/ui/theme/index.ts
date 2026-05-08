@@ -5,13 +5,14 @@
  * 主要职责:
  * - 导出 grimdark 主题颜色和术语
  * - 提供资源和战斗术语获取函数
- * - 管理战锤术语切换配置
+ * - 管理黑暗哥特术语切换配置
  */
 
 export * from './grimdark';
 
 // 主题工具函数
 import { grimdarkColors, grimdarkTerminology } from './grimdark';
+import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 
 /**
  * 获取资源显示名称
@@ -67,23 +68,23 @@ export function getColor(
 }
 
 /**
- * 检查是否应该使用战锤术语
+ * 检查是否应该使用黑暗哥特术语
  * 可以通过 localStorage 或环境变量控制
  */
 export function shouldUseGrimdarkTerms(): boolean {
   if (typeof window !== 'undefined') {
-    const setting = localStorage.getItem('deckrogue_grimdark_terms');
+    const setting = safeStorageGetString('deckrogue_grimdark_terms', '').value;
     return setting !== 'false';
   }
   return true;
 }
 
 /**
- * 切换战锤术语显示
+ * 切换黑暗哥特术语显示
  */
 export function toggleGrimdarkTerms(): void {
   if (typeof window !== 'undefined') {
-    const current = localStorage.getItem('deckrogue_grimdark_terms') !== 'false';
-    localStorage.setItem('deckrogue_grimdark_terms', String(!current));
+    const current = safeStorageGetString('deckrogue_grimdark_terms', '').value !== 'false';
+    safeStorageSetString('deckrogue_grimdark_terms', String(!current));
   }
 }

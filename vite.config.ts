@@ -1,21 +1,17 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 
 function normalizeChunkId(id: string): string {
   return id.replace(/\\/g, '/');
 }
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   const disableHmr = process.env.DISABLE_HMR === 'true';
   return {
     base: './',
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
@@ -58,12 +54,6 @@ export default defineConfig(({mode}) => {
             }
             if (normalizedId.includes('/src/core/')) {
               return 'core-runtime';
-            }
-            if (normalizedId.includes('/src/ui/components/')) {
-              return 'ui-components';
-            }
-            if (normalizedId.includes('/src/ui/overlays/')) {
-              return 'ui-overlays';
             }
           },
         },

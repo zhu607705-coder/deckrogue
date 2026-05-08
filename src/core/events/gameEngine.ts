@@ -51,6 +51,7 @@ import {
 import { EventManager } from '@/core/events/EventManager';
 import { RunFlowManager } from '@/core/events/RunFlowManager';
 import { CombatManager, type CombatManagerDeps } from '@/core/events/CombatManager';
+import { MusicDispatcher } from '@/core/events/MusicDispatcher';
 import { runPhaseToScreen } from '@/core/events/runStateMachine';
 
 const charactersData = charactersDataRaw as CharacterDef[];
@@ -89,6 +90,7 @@ export class GameEngine {
   private eventManager: EventManager;
   private runFlowManager: RunFlowManager;
   private combatManager: CombatManager;
+  private musicDispatcher: import('@/core/events/MusicDispatcher').MusicDispatcher | null = null;
 
   constructor(seed?: number, metaProfile?: MetaProfile | null, options: GameEngineRuntimeDelegateOptions = {}) {
     this.state = this.createInitialState(seed);
@@ -176,6 +178,7 @@ export class GameEngine {
     };
     this.combatManager = new CombatManager(combatDeps, this.actionManager);
 
+    this.musicDispatcher = new MusicDispatcher(this);
     this.setupEventListeners();
   }
 
@@ -318,6 +321,8 @@ export class GameEngine {
     this.disposed = true;
     this.combatManager.dispose();
     ActionManager.clearIfCurrent(this.actionManager);
+    this.musicDispatcher?.dispose();
+    this.musicDispatcher = null;
     this.runtimeDelegate?.dispose();
     this.globalDisposables.splice(0).forEach((dispose) => {
       try {
@@ -741,6 +746,8 @@ export class GameEngine {
   selectCharacter(characterId: string): void {
     if (!this.supportsBootAndMapDelegation()) {
       this.selectCharacterLegacyInternal(characterId);
+      this.musicDispatcher?.onCharacterSelected(characterId);
+      this.musicDispatcher?.onScreenChange(this.state.screen);
       this.notify();
       return;
     }
@@ -779,6 +786,8 @@ export class GameEngine {
       this.state.routeState = projection.routeState ?? null;
       applySurfaceContext(this.state, projection.surfaceContext ?? null);
       unlockManyCodexEntries('cards', this.state.player.deck.map((card) => card.id));
+      this.musicDispatcher?.onCharacterSelected(projection.characterId ?? characterId);
+      this.musicDispatcher?.onScreenChange(this.state.screen);
       this.notify();
     } catch (error) {
       this.recordDelegationFallback(error);
@@ -789,6 +798,7 @@ export class GameEngine {
 
   startCombat(nodeType: 'Combat' | 'Elite' | 'Boss'): void {
     this.combatManager.startCombat(nodeType);
+    this.musicDispatcher?.onScreenChange(this.state.screen);
   }
 
   startTurn(): void {
@@ -831,10 +841,16 @@ export class GameEngine {
 
   enterShop(): void {
     this.runFlowManager.enterShop();
+    this.musicDispatcher?.onScreenChange(this.state.screen);
   }
 
   startEvent(): void {
     this.eventManager.startEvent();
+    const eventId = (this.state as any).activeEvent?.id ?? null;
+    if (eventId) {
+      this.musicDispatcher?.onEventStart(eventId);
+    }
+    this.musicDispatcher?.onScreenChange(this.state.screen);
     this.notify();
   }
 
@@ -1096,13 +1112,17 @@ export class GameEngine {
         this.state.screen = projection.screen;
         this.reconcileProjectedRoomResolution(projection);
         this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'leave_room';
+        this.musicDispatcher?.onEventEnd();
+        this.musicDispatcher?.onScreenChange(this.state.screen);
         this.notify();
         return;
       } catch (error) {
         this.recordDelegationFallback(error);
       }
     }
+    this.musicDispatcher?.onEventEnd();
     this.runFlowManager.leaveCurrentRoomToMap();
+    this.musicDispatcher?.onScreenChange(this.state.screen);
   }
 
   restEnchant(): void {

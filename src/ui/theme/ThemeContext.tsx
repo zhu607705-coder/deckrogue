@@ -9,6 +9,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { safeStorageGet, safeStorageGetString, safeStorageSet, safeStorageSetString } from '@/core/utils/safeStorage';
 
 export type ThemeMode = 'dark' | 'light';
 export type VisualIntensity = 'subtle' | 'balanced' | 'intense';
@@ -42,7 +43,7 @@ const defaultFilters = {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'dark';
-    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const saved = safeStorageGetString(THEME_STORAGE_KEY, '').value;
     if (saved === 'light' || saved === 'dark') return saved;
     if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
     return 'dark';
@@ -50,17 +51,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const [visualIntensity, setVisualIntensityState] = useState<VisualIntensity>(() => {
     if (typeof window === 'undefined') return 'balanced';
-    const saved = window.localStorage.getItem(INTENSITY_STORAGE_KEY);
+    const saved = safeStorageGetString(INTENSITY_STORAGE_KEY, '').value;
     return saved === 'subtle' || saved === 'balanced' || saved === 'intense' ? saved : 'balanced';
   });
 
   const [filterEffects, setFilterEffects] = useState(() => {
     if (typeof window === 'undefined') return defaultFilters;
-    try {
-      const saved = window.localStorage.getItem(FILTERS_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return defaultFilters;
+    return safeStorageGet(FILTERS_STORAGE_KEY, defaultFilters).value ?? defaultFilters;
   });
 
   useEffect(() => {
@@ -71,18 +68,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [mode]);
 
   useEffect(() => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    safeStorageSetString(THEME_STORAGE_KEY, mode);
   }, [mode]);
 
   useEffect(() => {
-    window.localStorage.setItem(INTENSITY_STORAGE_KEY, visualIntensity);
+    safeStorageSetString(INTENSITY_STORAGE_KEY, visualIntensity);
     const root = document.documentElement;
     root.classList.remove('intensity-subtle', 'intensity-balanced', 'intensity-intense');
     root.classList.add(`intensity-${visualIntensity}`);
   }, [visualIntensity]);
 
   useEffect(() => {
-    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filterEffects));
+    safeStorageSet(FILTERS_STORAGE_KEY, filterEffects);
     const root = document.documentElement;
     root.classList.toggle('filter-vignette', filterEffects.vignette);
     root.classList.toggle('filter-noise', filterEffects.noise);

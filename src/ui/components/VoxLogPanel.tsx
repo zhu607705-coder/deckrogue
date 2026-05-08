@@ -11,6 +11,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { Radio, Minimize2, Maximize2, X, GripVertical } from 'lucide-react';
+import { safeStorageGet, safeStorageGetString, safeStorageSet, safeStorageSetString } from '@/core/utils/safeStorage';
 
 interface VoxLogPanelProps {
   logLines: string[];
@@ -27,36 +28,41 @@ interface Position {
 const STORAGE_KEY_POSITION = 'deckrogue_voxlog_position';
 const STORAGE_KEY_MODE = 'deckrogue_voxlog_mode';
 
+const DEFAULT_POSITION: Position = { x: 16, y: 280 };
+const MIN_POSITION = -64;
+const MAX_POSITION = 10000;
+
+function normalizePosition(value: unknown): Position {
+  if (!value || typeof value !== 'object') {
+    return DEFAULT_POSITION;
+  }
+
+  const candidate = value as Partial<Position>;
+  if (!Number.isFinite(candidate.x) || !Number.isFinite(candidate.y)) {
+    return DEFAULT_POSITION;
+  }
+
+  return {
+    x: Math.min(MAX_POSITION, Math.max(MIN_POSITION, candidate.x as number)),
+    y: Math.min(MAX_POSITION, Math.max(MIN_POSITION, candidate.y as number)),
+  };
+}
+
 function loadSavedPosition(): Position {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_POSITION);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch {}
-  return { x: 16, y: 280 };
+  return normalizePosition(safeStorageGet<unknown>(STORAGE_KEY_POSITION, DEFAULT_POSITION).value);
 }
 
 function savePosition(pos: Position): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify(pos));
-  } catch {}
+  safeStorageSet(STORAGE_KEY_POSITION, normalizePosition(pos));
 }
 
 function loadSavedMode(): PanelMode {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_MODE);
-    if (saved === 'full' || saved === 'minimized') {
-      return saved;
-    }
-  } catch {}
-  return 'full';
+  const saved = safeStorageGetString(STORAGE_KEY_MODE, '').value;
+  return saved === 'full' || saved === 'minimized' ? saved : 'full';
 }
 
 function saveMode(mode: PanelMode): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_MODE, mode);
-  } catch {}
+  safeStorageSetString(STORAGE_KEY_MODE, mode);
 }
 
 export function VoxLogPanel({ 

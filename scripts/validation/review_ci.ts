@@ -8,12 +8,18 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
+const PACKAGE_JSON = path.join(ROOT, 'package.json');
+
+if (!existsSync(PACKAGE_JSON)) {
+  throw new Error(`Invalid project root: ${ROOT}`);
+}
 
 type Step = {
   name: string;

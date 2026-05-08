@@ -37,6 +37,36 @@ export function getStorage(): Storage | null {
   }
 }
 
+export function safeStorageGetString(key: string, defaultValue: string): StorageResult<string> {
+  try {
+    const storage = getStorage();
+    if (!storage) {
+      return { success: false, value: defaultValue, error: STORAGE_UNAVAILABLE };
+    }
+
+    const raw = storage.getItem(key);
+    return { success: true, value: raw ?? defaultValue };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown storage error';
+    return { success: false, value: defaultValue, error: errorMessage };
+  }
+}
+
+export function safeStorageSetString(key: string, value: string): StorageResult<void> {
+  try {
+    const storage = getStorage();
+    if (!storage) {
+      return { success: false, value: null, error: STORAGE_UNAVAILABLE };
+    }
+
+    storage.setItem(key, value);
+    return { success: true, value: null };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown storage error';
+    return { success: false, value: null, error: errorMessage };
+  }
+}
+
 export function safeStorageGet<T>(key: string, defaultValue: T): StorageResult<T> {
   try {
     const storage = getStorage();

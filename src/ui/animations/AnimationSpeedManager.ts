@@ -8,6 +8,8 @@
  * - 管理动画速度偏好持久化
  */
 
+import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
+
 // 动画速度档位类型，与现有系统保持一致
 export type AnimationSpeedLevel = 'fast' | 'normal' | 'reduced';
 
@@ -57,25 +59,15 @@ export class AnimationSpeedManager {
 
   // 从本地存储加载动画速度设置
   private loadSpeedFromStorage(): AnimationSpeedLevel | null {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && Object.keys(SPEED_MULTIPLIERS).includes(stored)) {
-        return stored as AnimationSpeedLevel;
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to load animation speed from storage:', error);
-      return null;
-    }
+    const stored = safeStorageGetString(STORAGE_KEY, '').value;
+    return stored && Object.keys(SPEED_MULTIPLIERS).includes(stored)
+      ? (stored as AnimationSpeedLevel)
+      : null;
   }
 
   // 保存动画速度设置到本地存储
   private saveSpeedToStorage(level: AnimationSpeedLevel): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, level);
-    } catch (error) {
-      console.error('Failed to save animation speed to storage:', error);
-    }
+    safeStorageSetString(STORAGE_KEY, level);
   }
 }
 

@@ -85,7 +85,7 @@ export function CombatHUD({
   const getPotionIconSrc = (id: string) => `/assets/potions/${id}.png`;
   const getRelicIconSrc = (id: string) => `/assets/relics/${id}.png`;
 
-  // 战锤术语
+  // 黑暗哥特术语
   const terms = grimdarkTerminology;
   const motionConfig = getMotionConfig();
 

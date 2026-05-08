@@ -115,7 +115,7 @@ export function LoadingScreen({
                 DECKROGUE
               </h1>
               <p className="text-sm text-gray-500 tracking-widest uppercase">
-                Warhammer-Inspired Deck Builder
+                Gothic Sci-Fi Deck Builder
               </p>
             </div>
           </div>

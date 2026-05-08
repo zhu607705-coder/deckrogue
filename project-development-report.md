@@ -1,5 +1,89 @@
 # Project Development Report
 
+## Map Responsive Smoke Pass - 2026-05-03
+
+- Added `scripts/validation/playwright_map_responsive_smoke.ts` plus `npm run test:map-responsive-smoke` to audit the grimdark map at `390x844`, `768x1024`, and `1440x960`.
+- Fixed the narrow mobile map layout exposed by the new smoke test:
+  - compacted the map topbar, resource panel, HUD tiles, and zoom controls below `767px`,
+  - preserved visible node-card route intel by reducing mobile-only card density,
+  - added explicit `grimdark-map-screen` and `grimdark-map-controls` hooks instead of broad global overrides.
+- Verification:
+  - `npm run test:map-responsive-smoke`
+  - `npm run lint --silent`
+  - `npm run build`
+  - `npm run test:ui-smoke`
+- Visual evidence:
+  - `output\playwright\map-responsive\mobile_390x844.png`
+  - `output\playwright\map-responsive\tablet_768x1024.png`
+  - `output\playwright\map-responsive\desktop_1440x960.png`
+  - `output\playwright\map-responsive\map_responsive_report.json`
+- Remaining risk:
+  - Mobile now exposes node route intel in the checked narrow viewport; additional handset aspect ratios may still benefit from manual visual polish, but the automated responsive audit is green.
+
+## Map Node Route Intel Pass - 2026-05-03
+
+- Reduced the remaining map readability risk by moving more route judgment into each revealed selectable node card:
+  - status chips now include route title plus compact route summary instead of only short state copy,
+  - node cards show challenge / sustain / mystery meters directly in the card,
+  - preview chips now focus on true downstream nodes and fall back to a terminal marker when no future node exists.
+- Kept the HUD as global context while making the node card itself sufficient for first-pass route comparison.
+- Verification:
+  - `npm run lint --silent`
+  - `npm run build`
+  - `npm run test:ui-smoke`
+- Visual evidence:
+  - `output\playwright\map.png`
+  - `output\playwright\map_after_reward.png`
+  - `output\playwright\ui_smoke_report.json`
+- Remaining risk:
+  - No known layout or smoke-test issue in the checked desktop route. Very small mobile widths may still prefer zoom/pan over dense card reading.
+
+## Route Briefing Strip Removal - 2026-05-02
+
+- Removed the remaining multi-card route briefing strip from `MapView` after the node cards themselves were expanded to carry route title, fit label, summary, and preview types.
+- The map now relies on the four-tile HUD for global state and on each node card for route detail, which keeps the center playfield cleaner and reduces repeated messaging.
+- Verification:
+  - `npm run lint --silent`
+  - `npm run build`
+  - `npm run test:ui-smoke`
+- Visual evidence:
+  - `output\playwright\map.png`
+  - `output\playwright\ui_smoke_report.json`
+- Remaining risk:
+  - The node cards are denser than before; if route copy grows again, the card copy may need one more trim pass.
+
+## Map Route Info Refinement - 2026-05-02
+
+- Tightened the patrol map so route detail no longer leans on the HUD/cards alone:
+  - node chips now carry a two-line status summary,
+  - revealed nodes show route title, fit label, and preview types directly inside the card,
+  - the large route dossier grid was compressed into a slim tactical briefing strip.
+- Added `data-node-type` to map node buttons and updated Playwright combat selection helpers to prefer combat nodes by type, which keeps smoke tests stable even when node text gains extra route metadata.
+- Verification:
+  - `npm run lint --silent`
+  - `npm run build`
+  - `npm run test:ui-smoke`
+- Visual evidence:
+  - `output\playwright\map.png`
+  - `output\playwright\ui_smoke_report.json`
+- Remaining risk:
+  - The map is denser by design; if future route copy grows much longer, the briefing strip may need another compacting pass.
+
+## Map View Grimdark Polish - 2026-05-02
+
+- Upgraded `src/ui/views/MapView.tsx` to carry the grimdark lane through the patrol map: added a tactical HUD strip for current node, patrol state, route hints, and operation feedback; tightened node cards with a status chip; and added directional path markers with animated dash flow.
+- Extended `src/ui/theme/grimdark.css` with map HUD panel styles, hovered node treatment, status chip styling, and active path dash animations so the page reads as one composed interface instead of separate widgets.
+- Kept gameplay logic unchanged. The work is visual and interaction-layer only.
+- Verification:
+  - `npm run lint --silent`
+  - `npm run build`
+  - `npm run test:ui-smoke`
+- Visual evidence:
+  - `output\playwright\map.png`
+  - `output\playwright\ui_smoke_report.json`
+- Remaining risk:
+  - Node status chip text is intentionally compact; longer route descriptions still rely on the HUD and route dossier cards for detail.
+
 ## Launcher Vertical Centering
 
 - Adjusted the legacy setup launcher hero section so the title and action panel align around the first viewport center instead of sitting low on large desktop screens.
@@ -235,7 +319,250 @@
 - Asset scan: `missingCards=0`, `missingRelics=0`, `badCards=0`, `badRelics=0`
 - Build output confirmed no `pixi-vendor` chunk-size warning; `pixi-vendor` remains split at 508.41 kB.
 
+## Tuanjie Placeholder Art Pass - 2026-05-03
+
+- Replaced the current Tuanjie modeling-gap placeholder PNG set with generated production art in `public/assets`.
+- Completed 24 workspace-bound assets for this pass: 8 backgrounds, 6 enemy portraits, 6 event scenes, and 4 shop scenes.
+- Generated the remaining shop scenes for `shop_forge.png`, `shop_merchant.png`, and `shop_trade.png` with the built-in image generation path; the source batch was then migrated into the E-drive project archive below.
+- Migrated the generation source batch to `E:\deckrogue\deckrogue\output\generated_images\019de61d-1ba5-7cf1-9228-d6c6a47bc6a5` after SHA256 verification and removed the original C drive cache copy.
+- Migrated the 4 earlier generated image source batches from `C:\Users\123\.codex\generated_images` to `E:\deckrogue\deckrogue\output\generated_images`, covering 85 files and `173691708` bytes after SHA256 verification; removed the original C drive batch directories.
+- Copied the already generated enemy, event, and `shop_black.png` assets into their final `public/assets` paths without deleting generation sources.
+- Verification:
+  - `npm run check:tuanjie-assets`: passed with 34 manifest entries and wrote `reports/content/tuanjie-asset-manifest.json`.
+  - Target asset scan: `Count=24`, `Missing=0`, `PlaceholderSized=0`, `MinBytes=2149435`; all checked PNGs now have real image dimensions instead of 1KB placeholders.
+
 ## Remaining Risks
 
 - 批量补齐的旧卡图和旧遗物图是本地生成的风格化 PNG，占位质量稳定，但没有逐张手绘精修。
 - 长局数平衡已用 10 runs/build 覆盖 24 条路线，当前无脚本级 findings；仍未做人工长时间手动调参。
+
+## STS-Inspired Original Expansion Planning - 2026-05-08
+
+- 响应 `$ralplan` 请求，为“参考成熟卡牌构筑游戏设计来强化 DeckRogue”建立合规计划。
+- 明确边界：不解包、不反编译、不复制第三方商业游戏代码、数据、文本、立绘、音频或资产；仅做机制层分析和原创重写。
+- 已确认当前内容入口：
+  - `src/content/data/cards.json`：330 张卡。
+  - `src/content/data/enemies.json`：52 个敌人。
+  - `src/content/data/relics.json`：98 件奇物。
+  - `src/content/data/potions.json`：12 个药水。
+  - `src/content/narrative/storyEvents.ts`：故事事件定义。
+- 已确认系统触点：
+  - 商店：`src/ui/views/ShopView.tsx`。
+  - 事件：`src/core/events/EventManager.ts`。
+  - 敌人意图：`src/core/ai/intentSelector.ts`。
+  - 数值聚合：`src/content/narrative/numericSystem.ts`。
+- 新增上下文快照：`.omx/context/sts-inspired-original-expansion-20260508T051239Z.md`。
+- 新增计划：`.omx/plans/2026-05-08-sts-inspired-original-expansion.md`。
+- 计划采用分阶段原创内容包：先设计转译，再小批量卡牌/敌人/事件/奇物落地，然后验证和调参。
+
+## Original Expansion Execution Follow-up - 2026-05-08
+
+- 新增设计转译文档与人工表达审查清单：
+  - `docs/design/sts-inspired-original-expansion.md`
+  - `docs/design/original-gothic-expansion-review.md`
+- 将事件选项预览标签收敛到 `src/content/narrative/numericSystem.ts`，输出 `commit`、`pivot`、`payoff`、`burden`、`debt`、`recovery`，`EventView.tsx` 只渲染适配层提供的标签。
+- 将路线验证脚本从 6 角色扩展到 8 角色，包含 `penitent_judge` 与 `void_sanctioner`。
+- 补充音乐资源清单测试，验证 `musicManifest.ts` 声明的场景、角色、事件 MP3 均存在且非空。
+- 清理运行时文案、卡牌 `art_prompt` 和旧设计指南中的第三方 IP 专名表述，统一改为原创黑暗哥特科幻/教堂工业方向。
+- 修复音乐系统接入问题：
+  - `AudioManager.crossfade()` 先初始化音频上下文再读取 layer，避免场景音乐实际不播放。
+  - `MusicDispatcher` 记录并释放全局事件订阅，`GameEngine.dispose()` 会同步清理音乐调度器。
+
+## Verification
+
+- `npm run lint --silent`
+- `npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/musicManifest.test.ts tests/unit/growthRoutePhase2.test.ts`
+- `npm run check:content-contract-layer`
+- `npm run check:content-bundle`
+- `npm run check:route-taxonomy-guardrails`
+- `npm run check:shop-event-growth-nodes`
+- `npm run check:growth-route-formation`
+- `npm run check:reward-tradeoff-quality`
+- `npx tsx scripts/validation/check_shop_route_reinforcement.ts`
+- `npx tsx scripts/validation/check_rest_route_reinforcement.ts`
+- `npm run check:content-authoring`
+- `npm run check:enemy-ai-profiles`
+- `npm run check:content-reachability`
+- `npm run check:deep-reachability`
+- `npm run report:translation-audit`
+- `npm run check:readme-consistency`
+- `npm run accept:expansion-content`
+- `npm run test:supplemental-units`
+- `npx tsx --test tests/unit/saveManagerSecurity.test.ts tests/unit/musicManifest.test.ts`
+- `npm run build`
+- `git diff --check`
+- `npm run test:event-flow-smoke`
+- `npm run test:shop-flow-smoke`
+- `npm run test:ui-smoke:expansion`
+- IP 表述扫描：对运行时内容、脚本、测试、计划和文档执行第三方 IP 专名检索，除本报告记录外无匹配；同时检查文件名无相关专名残留。
+- Dev server health check: `http://127.0.0.1:3000/` returned HTTP 200.
+
+## Review Fix Follow-up - 2026-05-08
+
+- 修复 8 角色商店/事件成长节点检查的假通过：`check_shop_event_growth_nodes.ts` 现在要求每个角色的 `shopRate` 与 `eventRate` 都达到阈值，并在报告中输出逐角色失败明细。
+- 补齐 `penitent_judge` 与 `void_sanctioner` 的事件路线覆盖：早期事件可覆盖判令/处刑/供述与封印/压制/代价路线，后续裂隙、裁决庭和终端事件也补上相应支撑标签。
+- 修复事件选项标签误判：UI 预览只用显式选项提交标签或选项角色生成 `commit`，中立 follow-up 不再继承事件级路线标签。
+- 修复音频状态问题：`AudioManager` 会缓存初始化前设置的 master/layer 音量；`MusicEngine.unmute()` 恢复用户配置音量；`crossfade()` 增加 transition id，快速切屏时旧延迟回调不会覆盖新曲。
+- 新增 `tests/unit/audioManager.test.ts` 覆盖初始化前音量缓存、crossfade 竞态取消和 mute/unmute 音量恢复。
+
+## Verification
+
+- `npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/audioManager.test.ts`
+- `npm run check:shop-event-growth-nodes`: `shopRate=100.0%`, `eventRate=100.0%`, `characterPassCount=8/8`
+- `npm run check:growth-route-formation`: `formationRate=100.0%`
+- `npm run check:reward-tradeoff-quality`: `tradeoffRate=100.0%`
+- `npx tsx scripts/validation/check_shop_route_reinforcement.ts`: primary/service semantic alignment `100.0%`
+- `npx tsx scripts/validation/check_rest_route_reinforcement.ts`: semantic alignment `100.0%`
+- `npm run lint --silent`
+- `npx tsc --noEmit --pretty false --project tsconfig.json`
+- `npm run check:route-taxonomy-guardrails`
+- `npx tsx scripts/validation/check_event_choice_reinforcement.ts`: `passCount=5/5`
+- `npx tsx --test tests/unit/growthRoutePhase2.test.ts tests/unit/musicManifest.test.ts tests/unit/audioManager.test.ts tests/unit/eventManagerContract.test.ts`
+- `npx tsx --test tests/unit/growthRouteFormation.test.ts`
+- `npm run build`
+- `npm run test:supplemental-units`: `147/147` passed
+- `npm run test:event-flow-smoke`
+- `npm run test:shop-flow-smoke`
+- `git diff --check` passed with existing LF/CRLF normalization warnings only.
+
+## Ralph Closure - Original Expansion - 2026-05-08
+
+- 按 `$ralph` 门禁补齐执行工件：
+  - `.omx/plans/prd-sts-inspired-original-expansion.md`
+  - `.omx/plans/test-spec-sts-inspired-original-expansion.md`
+  - `.omx/state/sts-inspired-original-expansion-ralph-progress.json`
+- 以既有批准计划为基线完成收口：原创机制转译、表达审查、8 角色路线覆盖、事件/商店决策标签、哥特扩展内容、音乐与音频运行时均进入可验证状态。
+- 当前 Ralph 状态进入 architect review，等待只读复核签收。
+
+## Verification
+
+- `npm run lint --silent`
+- `npx tsc --noEmit --pretty false --project tsconfig.json`
+- `npm run check:content-contract-layer`
+- `npm run check:content-bundle`: `7/7` passed
+- `npm run check:content-authoring`: cards `330/330`, enemies `46/52`, relics `98/98`, pass rate `98.75%`
+- `npm run check:enemy-ai-profiles`: OK
+- `npm run check:content-reachability`: `11/11` reachable, broken edges `0`
+- `npm run check:deep-reachability`: `22/22` reachable, broken edges `0`
+- `npm run report:translation-audit`: total `0`
+- `npm run check:shop-event-growth-nodes`: `shopRate=100%`, `eventRate=100%`, `characterPassCount=8/8`
+- `npm run check:route-taxonomy-guardrails`: `24` routes, `failureCount=0`
+- `npm run check:growth-route-formation`: `formationRate=100%`
+- `npm run check:reward-tradeoff-quality`: `tradeoffRate=100%`
+- `npx tsx scripts/validation/check_shop_route_reinforcement.ts`: primary/service semantic alignment `100%`
+- `npx tsx scripts/validation/check_rest_route_reinforcement.ts`: semantic alignment `100%`
+- `npx tsx scripts/validation/check_event_choice_reinforcement.ts`: `passCount=5/5`
+- `npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/musicManifest.test.ts tests/unit/audioManager.test.ts tests/unit/growthRoutePhase2.test.ts tests/unit/growthRouteFormation.test.ts tests/unit/gothicExpansionContent.test.ts tests/unit/cardExpansionPack.test.ts`: `32/32` passed
+- `npm run test:supplemental-units`: `147/147` passed
+- `npm run accept:expansion-content`: `3/3` suites passed, `441` tests total
+- `npm run build`
+- `npm run test:event-flow-smoke`
+- `npm run test:shop-flow-smoke`
+- `git diff --check`: exit `0`, only existing LF/CRLF warnings
+
+## Ralph Architect Reject Fix - 2026-05-08
+
+- 处理 architect 复核拒绝项：4 个 boss 的 `intentPolicy` 指向未定义 `moves`，导致敌人 authoring 并未真正全绿。
+- 为 `cathedral_engine`、`logic_saint`、`pox_cathedral`、`the_mire_saint` 补齐 8 个缺失意图动作，动作语义对齐既有 `bossPhases.json` 阶段设计，并只使用当前战斗引擎已支持的动作类型。
+- 删除 `mind_peek` 与 `card_swap` 的顶层伪敌人条目；它们仍作为 `psychic_infiltrator` 的 move 存在，不再污染敌人 authoring 总数。
+- 强化 `check_content_authoring.ts`：任意 card/enemy/relic authoring issue 都会硬失败，不再用整体 90% 通过率掩盖局部错误。
+- 强化 `check_enemy_ai_profiles.ts` 与 `enemyAiProfileCoverage.test.ts`：`intent_policy`、`intentBiases`、`antiStall.suppressedIntents` 必须能解析到声明的 move。
+
+## Verification
+
+- `npm run lint --silent`
+- `npx tsc --noEmit --pretty false --project tsconfig.json`
+- `npm run check:content-contract-layer`: OK
+- `npm run check:content-bundle`: `7/7` passed
+- `npm run check:content-authoring`: cards `330/330`, enemies `50/50`, relics `98/98`, pass rate `100%`
+- `npm run check:enemy-ai-profiles`: OK
+- `npx tsx --test tests/unit/enemyAiProfileCoverage.test.ts`: `3/3` passed
+- `npm run check:content-reachability`: `11/11` reachable, broken edges `0`
+- `npm run check:deep-reachability`: `22/22` reachable, broken edges `0`
+- `npm run report:translation-audit`: total `0`
+- `npm run check:shop-event-growth-nodes`: `shopRate=100%`, `eventRate=100%`, `characterPassCount=8/8`
+- `npm run check:route-taxonomy-guardrails`: `24` routes, `failureCount=0`
+- `npm run check:growth-route-formation`: `formationRate=100%`
+- `npm run check:reward-tradeoff-quality`: `tradeoffRate=100%`
+- `npm run check:enemy-variant-behavior`: OK, 6 variants checked
+- `npm run check:enemy-first3-exposure`: OK
+- `npm run accept:expansion-content`: `3/3` suites passed, `444` tests total
+- `npm run test:supplemental-units`: `148/148` passed
+- `npm run build`
+- `npm run test:event-flow-smoke`
+- `npm run test:shop-flow-smoke`
+- `git diff --check`: exit `0`, LF/CRLF normalization warnings only
+
+## Ralph Architect Approval - 2026-05-08
+
+- Architect recheck verdict: `APPROVE`.
+- 此前拒绝项已关闭：
+  - 4 个 boss 的 `intentPolicy` 与 `moves` 已对齐。
+  - `mind_peek` / `card_swap` 不再作为顶层敌人污染 authoring。
+  - `check_content_authoring.ts` 已改为任一 authoring issue 硬失败。
+  - `check_enemy_ai_profiles.ts` 和 `enemyAiProfileCoverage.test.ts` 已覆盖 intent/move 解析。
+- Ralph 状态已关闭：`.omx/state/sts-inspired-original-expansion-ralph-progress.json` 标记 `active=false`、`current_phase=complete`。
+- 剩余风险为非阻断：工作区仍含大量既有未提交改动；Windows LF/CRLF 归一化警告存在，但 `git diff --check` 退出码为 `0`。
+
+## All Approved Plans Execution Closure - 2026-05-08
+
+- 按“执行完所有计划”重新核对并执行 `.omx/plans` 下 3 份已批准实施计划：
+  - `2026-04-10-deckrogue-enemy-expression-phase1.md`
+  - `2026-04-11-deckrogue-growth-route-formation-phase1.md`
+  - `2026-05-08-sts-inspired-original-expansion.md`
+- 补齐 4 月 10 日计划缺失的 `test:runtime-v2:ts` npm 验收入口，将现有 runtime-v2 / Python bridge / delegation 单测聚合为可复用脚本。
+- 修复 release gate 阻断：`SaveManager.prepareLoadedSaveData()` 现在在解析点内部捕获无效 JSON，发布 `LoadFailed` 后返回 `null`；`check:vulnerability-scan` 高危项从 `1` 降为 `0`。
+- 刷新 release-readiness 依赖的所有 canonical artifacts：desktop build/smoke、doctor、security、UI expansion smoke、reward/terminal/shop/event/rest/upgrade/remove-card/boss-phase/boss-terminal flow smoke。
+- 执行 30 轮真实 UI harness，`30/30` 全部通过。
+
+## Verification
+
+- Enemy expression plan:
+  - `npm run lint --silent`
+  - `npm run check:content-authoring`: cards `330/330`, enemies `50/50`, relics `98/98`
+  - `npm run check:enemy-ai-profiles`: OK
+  - `npm run check:content-bundle`: `7/7` passed
+  - `npm run check:enemy-visual-identity`: OK, 6 variants
+  - `npm run check:enemy-variant-behavior`: OK, 6 variants checked
+  - `npm run check:enemy-first3-exposure`: OK
+  - `npm run test:runtime-v2:ts`: `93` passed, `1` skipped
+  - `npm run build`
+  - `npm run check:release-readiness`: `41/41` passed
+- Growth route formation plan:
+  - `npm run check:growth-route-formation`: `160/160`, `formationRate=100%`
+  - `npm run check:reward-tradeoff-quality`: `160/160`, `tradeoffRate=100%`
+  - `npm run check:shop-event-growth-nodes`: `shopRate=100%`, `eventRate=100%`, `characterPassCount=8/8`
+  - `npm run check:route-taxonomy-guardrails`: `24` routes, `failureCount=0`
+  - `npm run test:real-ui-30-rounds`: `30/30` rounds passed
+  - `npm run report:growth-route-formation`: wrote `reports/growth/growth-route-summary.json`
+- Original expansion plan:
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`
+  - `npm run check:content-contract-layer`: OK
+  - `npm run check:content-reachability`: `11/11` reachable, broken edges `0`
+  - `npm run check:deep-reachability`: `22/22` reachable, broken edges `0`
+  - `npm run report:translation-audit`: total `0`
+  - `npm run accept:expansion-content`: `3/3` suites passed
+  - `npm run test:supplemental-units`: passed in doctor run
+  - `npm run test:event-flow-smoke`
+  - `npm run test:shop-flow-smoke`
+- Release and safety closure:
+  - `npm run doctor:game`: `44/44` passed
+  - `npm run report:security`: `HEALTHY`, risk `LOW`
+  - `npm run check:vulnerability-scan`: critical `0`, high `0`
+  - `git diff --check`: exit `0`, LF/CRLF normalization warnings only
+
+## Dirty Workspace Resolution - 2026-05-08
+
+- 将前述已验证成果收敛为 Git checkpoint：`Close validated DeckRogue expansion plans`。
+- 保留但忽略本地配置与源图归档：`.claude/`、`output/generated_images/`，避免机器本地状态和大体积生成源批次继续污染工作区。
+- 提交运行时需要的成果文件：原创哥特科幻设计文档、音乐系统与 `public/assets/music/`、Tuanjie manifest、公开运行资源、验证脚本、音频/存档安全/敌人 AI 覆盖测试。
+- 当前收敛验证：
+  - `git diff --check`: exit `0`
+  - `git diff --cached --check`: exit `0`
+  - `npm run lint --silent`: exit `0`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`
+  - `npm run build`: exit `0`
+  - `git status --short --branch`: clean, branch ahead `origin/codex/test-auto/ui-click-30` by local commits
+- 剩余风险：
+  - 分支仍未 push 到远端。
+  - `public/assets/music/` 属于大体积运行资源，已提交到 Git；后续若远端体积策略严格，应单独评估 LFS 或资源分发方案。

@@ -18,7 +18,7 @@ import { getRouteSupportRelicIds } from '@/content/narrative/routeSignals';
 import { buildShopRouteAdvice } from '@/ui/views/shopRouteAdvisor';
 import { seedRecentChoiceOverrideScenario } from './growthRouteScenario';
 
-const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist'] as const;
+const CHARACTERS = ['informant', 'brute', 'tactician', 'puppeteer', 'chronomancer', 'alchemist', 'penitent_judge', 'void_sanctioner'] as const;
 const SEEDS = Array.from({ length: 20 }, (_, index) => index + 1);
 const THRESHOLD = 0.8;
 

@@ -159,11 +159,16 @@ async function openLegacyRun(ctx: ScenarioContext, characterId = 'informant') {
 }
 
 async function enterFirstCombat(ctx: ScenarioContext) {
-  const combatNode = ctx.page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
+  const combatNode = ctx.page.locator('button[data-node-type="Combat"]').first();
   if (await combatNode.count()) {
     await ctx.click('map: enter combat node', combatNode);
   } else {
-    await ctx.click('map: enter first available node', ctx.page.locator('button[data-node-id]:not([disabled])').first());
+    const fallbackCombatNode = ctx.page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗|Combat/i }).first();
+    if (await fallbackCombatNode.count()) {
+      await ctx.click('map: enter combat node', fallbackCombatNode);
+    } else {
+      await ctx.click('map: enter first available node', ctx.page.locator('button[data-node-id]:not([disabled])').first());
+    }
   }
   await waitForCombat(ctx.page);
 }

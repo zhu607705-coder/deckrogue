@@ -53,11 +53,16 @@ async function clickCharacterCard(page: Page, characterId: string) {
 
 async function enterFirstCombat(page: Page) {
   await page.locator('button[data-node-id]').first().waitFor({ timeout: 10000 });
-  const combatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗/i }).first();
+  const combatNode = page.locator('button[data-node-type="Combat"]').first();
   if (await combatNode.count()) {
     await combatNode.click();
   } else {
-    await page.locator('button[data-node-id]:not([disabled])').first().click();
+    const fallbackCombatNode = page.locator('button[data-node-id]').filter({ hasText: /遭遇战|战斗|Combat/i }).first();
+    if (await fallbackCombatNode.count()) {
+      await fallbackCombatNode.click();
+    } else {
+      await page.locator('button[data-node-id]:not([disabled])').first().click();
+    }
   }
   await waitForCombatReady(page);
 }

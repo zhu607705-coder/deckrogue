@@ -39,3 +39,17 @@ test('enemy ai_profile intent biases only reference declared intents', () => {
 
   assert.deepEqual(invalidReferences, []);
 });
+
+test('enemy intent policies only reference declared moves', () => {
+  const missingMoves = enemiesData
+    .filter((enemy) => hasIntentPolicy(enemy))
+    .flatMap((enemy) => {
+      const policies = enemy.intent_policy || (enemy as any).intentPolicy || [];
+      const moveIds = new Set(Object.keys(enemy.moves || {}));
+      return policies
+        .filter((policy: { intent: string }) => !moveIds.has(policy.intent))
+        .map((policy: { intent: string }) => `${enemy.id}:${policy.intent}`);
+    });
+
+  assert.deepEqual(missingMoves, []);
+});

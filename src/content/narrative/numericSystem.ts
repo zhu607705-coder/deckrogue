@@ -19,6 +19,7 @@ import {
   getCardRouteAffinityTags,
   enrichCardRouteSignals,
   getCardRouteSignal,
+  getExplicitEventChoiceCommitTags,
   getEventChoiceCommitTags,
   getEventChoiceRouteRole,
   getEventRouteSignal,
@@ -166,20 +167,39 @@ function parsePath(path: string): Array<string | number> {
   return tokens;
 }
 
-function setByPathMutable(target: any, path: string, value: unknown): void {
+function isUnsafePatchPathToken(token: string): boolean {
+  return token === '__proto__' || token === 'constructor' || token === 'prototype';
+}
+
+function isValidPatchPath(path: string, tokens: Array<string | number>): boolean {
+  if (!path.trim() || tokens.length === 0) return false;
+  return tokens.every((token) =>
+    typeof token === 'number'
+      ? Number.isSafeInteger(token) && token >= 0
+      : token.length > 0 && !isUnsafePatchPathToken(token)
+  );
+}
+
+function setByPathMutable(target: unknown, path: string, value: unknown): void {
   const tokens = parsePath(path);
-  if (!tokens.length) return;
-  let cursor = target;
+  if (!isPlainObject(target) && !Array.isArray(target)) return;
+  if (!isValidPatchPath(path, tokens)) {
+    console.warn(`[numericSystem] Ignoring invalid numeric patch path: ${path}`);
+    return;
+  }
+  let cursor: Record<string, unknown> | unknown[] = target as Record<string, unknown> | unknown[];
   for (let i = 0; i < tokens.length - 1; i += 1) {
     const key = tokens[i];
     const nextKey = tokens[i + 1];
-    const current = cursor[key as any];
+    const current = cursor[key as keyof typeof cursor];
     if (current == null || (typeof current !== 'object' && !Array.isArray(current))) {
-      cursor[key as any] = typeof nextKey === 'number' ? [] : {};
+      (cursor as Record<string, unknown>)[String(key)] = typeof nextKey === 'number' ? [] : {};
     }
-    cursor = cursor[key as any];
+    const next = cursor[key as keyof typeof cursor];
+    if (!isPlainObject(next) && !Array.isArray(next)) return;
+    cursor = next as Record<string, unknown> | unknown[];
   }
-  cursor[tokens[tokens.length - 1] as any] = value;
+  (cursor as Record<string, unknown>)[String(tokens[tokens.length - 1])] = value;
 }
 
 function applyPathOverrides<T>(target: T, pathOverrides?: Record<string, unknown>): T {
@@ -189,6 +209,12 @@ function applyPathOverrides<T>(target: T, pathOverrides?: Record<string, unknown
   }
   return target;
 }
+
+export const __numericSystemTesting = {
+  applyPathOverrides,
+  isValidPatchPath,
+  parsePath,
+};
 
 function deepMergePatch<T>(base: T, patch: unknown): T {
   if (patch === undefined) return base;
@@ -436,12 +462,73 @@ function formatPct(ratio: number): string {
   return `${pct}%`;
 }
 
+export type EventPresentationTagTone = 'commit' | 'pivot' | 'payoff' | 'burden' | 'debt' | 'recovery';
+
+export interface EventPresentationTag {
+  id: string;
+  label: string;
+  tone: EventPresentationTagTone;
+}
+
+export interface StoryEventOptionPresentation {
+  gains?: string[];
+  costs?: string[];
+  tags?: EventPresentationTag[];
+}
+
+function pushUniquePresentationTag(tags: EventPresentationTag[], tag: EventPresentationTag): void {
+  if (!tags.some((entry) => entry.id === tag.id)) {
+    tags.push(tag);
+  }
+}
+
+function buildStoryEventOptionTags(
+  eventId: string,
+  optionId: string,
+  presentation: Pick<StoryEventOptionPresentation, 'gains' | 'costs'>,
+): EventPresentationTag[] {
+  const tags: EventPresentationTag[] = [];
+  const role = getEventChoiceRouteRole(eventId, optionId);
+  const explicitCommitTags = getExplicitEventChoiceCommitTags(eventId, optionId);
+
+  if (role === 'payoff') {
+    pushUniquePresentationTag(tags, { id: 'payoff', label: '高回报', tone: 'payoff' });
+  } else if (role === 'pivot') {
+    pushUniquePresentationTag(tags, { id: 'pivot', label: '路线转向', tone: 'pivot' });
+  } else if (role || explicitCommitTags.length > 0) {
+    pushUniquePresentationTag(tags, { id: 'commit', label: role === 'support' ? '路线支撑' : '路线提交', tone: 'commit' });
+  }
+
+  const gainText = (presentation.gains ?? []).join(' ');
+  const costText = (presentation.costs ?? []).join(' ');
+  if (/恢复|清除|移除|净化|治疗|保留/.test(gainText)) {
+    pushUniquePresentationTag(tags, { id: 'recovery', label: '恢复窗口', tone: 'recovery' });
+  }
+  if (/随后|后续|接下来|下场|追杀|债|必须选择/.test(costText)) {
+    pushUniquePresentationTag(tags, { id: 'debt', label: '延后代价', tone: 'debt' });
+  }
+  if (/最大生命值|失去|受到|腐化|诅咒|摧毁|不可减免|放弃/.test(costText)) {
+    pushUniquePresentationTag(tags, { id: 'burden', label: '沉重代价', tone: 'burden' });
+  }
+
+  return tags;
+}
+
+function decorateStoryEventOptionPresentation(
+  eventId: string,
+  optionId: string,
+  presentation: Pick<StoryEventOptionPresentation, 'gains' | 'costs'>,
+): StoryEventOptionPresentation {
+  const tags = buildStoryEventOptionTags(eventId, optionId, presentation);
+  return tags.length > 0 ? { ...presentation, tags } : presentation;
+}
+
 export function getStoryEventOptionPresentation(
   eventId: string,
   optionId: string,
   state: GameState,
   runtime?: { freeRemovalsRemaining?: number }
-): { gains?: string[]; costs?: string[] } | undefined {
+): StoryEventOptionPresentation | undefined {
   const n = calculateStoryEventNumbers(eventId, state) as any;
   const outcomesCfg = getStoryEventOutcomeConfig<any>(eventId) || {};
 
@@ -450,7 +537,7 @@ export function getStoryEventOptionPresentation(
     const extractHealRatio = Number(outcomesCfg.extract?.healMaxHpRatio ?? 0.3);
     switch (optionId) {
       case 'medicae_implant':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [
             `最大生命值 +${n.implantMaxHpGain ?? 10}`,
             '获得奇物《锈蚀植入体》（每场战斗开始时 +1 力量）'
@@ -459,9 +546,9 @@ export function getStoryEventOptionPresentation(
             `失去 ${formatPct(implantRatio)} 当前生命值（当前约 ${n.implantCurrentHpLoss ?? 0}）`,
             '牌库加入诅咒《排异反应》'
           ]
-        };
+        });
       case 'medicae_extract':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [
             `获得 ${n.extractPotionCount ?? 2} 瓶随机${n.extractStrongPotionsOnly ? '强力' : ''}药水`,
             `恢复 ${formatPct(extractHealRatio)} 最大生命值`
@@ -470,25 +557,25 @@ export function getStoryEventOptionPresentation(
             `最大生命值 -${n.extractMaxHpLoss ?? 5}`,
             `腐化值 +${n.extractCorruptionGain ?? 20}`
           ]
-        };
+        });
       case 'medicae_salvage':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [
             `获得 ${n.salvageGoldGain ?? 100} 信用筹码`,
             `获得 1 件随机${n.salvageNormalRelicOnly === false ? '' : '普通'}奇物`
           ],
           costs: [`随后必须选择：迎战精英 或 承受 ${n.salvageFleeTrueDamage ?? 15} 点不可减免伤害撤离`]
-        };
+        });
       case 'medicae_salvage_flee':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [`保留 ${n.salvageGoldGain ?? 100} 信用筹码与奇物`],
           costs: [`受到 ${n.salvageFleeTrueDamage ?? 15} 点不可减免伤害`]
-        };
+        });
       case 'medicae_salvage_fight':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['若战胜：保留刚刚搜刮的战利品，并获得精英战战利品'],
           costs: ['高风险精英战斗']
-        };
+        });
     }
   }
 
@@ -496,50 +583,50 @@ export function getStoryEventOptionPresentation(
     const bloodRatio = Number(outcomesCfg.offerBlood?.maxHpLossRatio ?? 0.33);
     switch (optionId) {
       case 'martyr_offer_blood':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['获得稀有奇物《殉道者之印》（生命越低伤害越高）'],
           costs: [`永久失去 ${formatPct(bloodRatio)} 最大生命值（当前约 ${n.offerBloodMaxHpLoss ?? 0}）`]
-        };
+        });
       case 'martyr_offer_wealth':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [`移除 ${n.offerWealthFreeRemovals ?? 2} 张牌（事件免费移除）`],
           costs: [`失去所有信用筹码；若少于 ${n.offerWealthCurseGoldThreshold ?? 50}，额外加入诅咒《贪婪之罪》`]
-        };
+        });
       case 'martyr_desecrate':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['获得升级攻击牌《处决斩击》'],
           costs: [`虔诚值设为 ${n.desecrateDevotionSetTo ?? 0}`, `下场战斗亚空间潮汐 +${n.desecrateWarpTideBonus ?? 30}`]
-        };
+        });
       case 'martyr_inscribe_oath':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['选择 1 张攻击或技能牌，获得附魔《血色铭文》'],
           costs: [`失去 ${Math.max(1, Number((runtime as any)?.inscribeHpLoss ?? 6))} 点生命值`]
-        };
+        });
       case 'martyr_continue_remove':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [`还能移除 ${Math.max(0, Number(runtime?.freeRemovalsRemaining ?? 0))} 张牌`],
           costs: ['无法改选其他供奉方式']
-        };
+        });
     }
   }
 
   if (eventId === 'warp_tear_whispers') {
     switch (optionId) {
       case 'tear_embrace':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['牌库中所有基础牌（打击/防御）转化为随机非基础牌（非普通）'],
           costs: [`腐化值立刻达到 ${n.embraceCorruptionSetTo ?? 100}`, `接下来 ${n.embraceWarpDebuffCombats ?? 3} 场战斗开局获得恐惧与脆弱`]
-        };
+        });
       case 'tear_bargain':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['获得 1 件强大的亚空间/混沌奇物'],
           costs: ['随机永久摧毁 1 张非基础牌']
-        };
+        });
       case 'tear_seal':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [`虔诚值 +${n.sealDevotionGain ?? 50}`, '清除待结算的亚空间潮汐增幅'],
           costs: ['牌库加入诅咒《灵能反噬》']
-        };
+        });
     }
   }
 
@@ -547,25 +634,25 @@ export function getStoryEventOptionPresentation(
     const hpLossRatio = Number(outcomesCfg.openCasket?.currentHpLossRatio ?? 0.5);
     switch (optionId) {
       case 'legacy_open_casket':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['获得奇物《混沌圣物》（每打出一张牌随机伤害敌人）'],
           costs: [`立刻失去 ${formatPct(hpLossRatio)} 当前生命值（当前约 ${n.openCasketCurrentHpLoss ?? 0}）`, `后续遭遇敌人获得追杀增幅（生命/伤害 +${Math.round((n.openCasketEnemyHuntBonusPct ?? 0.1) * 100)}%）`]
-        };
+        });
       case 'legacy_read_codex':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: [`Intel +${n.readCodexIntelGain ?? 30}`, '揭示地图全部未知节点'],
           costs: [`最大生命值 -${n.readCodexMaxHpLoss ?? 10}`, '牌库加入诅咒《妄想狂》（移除费用翻倍）']
-        };
+        });
       case 'legacy_take_rosary':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['获得奇物《审判官玫瑰》（战斗开始获得护盾）'],
           costs: [`受到 ${n.takeRosarySelfDamage ?? 10} 点伤害`]
-        };
+        });
       case 'legacy_inscribe_sigil':
-        return {
+        return decorateStoryEventOptionPresentation(eventId, optionId, {
           gains: ['选择 1 张攻击或技能牌，获得附魔《迅捷刻印》'],
           costs: ['放弃其他遗物分支']
-        };
+        });
     }
   }
 

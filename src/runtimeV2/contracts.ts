@@ -236,7 +236,7 @@ export interface RuleSnapshot {
     runId: string | null;
     replayLength: number;
     generatedAt: string;
-    adapter: 'legacy-oracle' | 'python-wasm';
+    adapter: 'legacy-oracle' | 'python-wasm' | 'python-process';
     runtimeRngState?: number;
   };
   compat?: {

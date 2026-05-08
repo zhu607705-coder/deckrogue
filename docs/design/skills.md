@@ -347,7 +347,7 @@ $$V_{coolant} = N_{overheat} \times (k_{energy} + |V_{overheat}|)$$
 
 ---
 
-## 模块 XIII: 战锤机制数值检视表 (Warhammer Mechanics Checklist)
+## 模块 XIII: 原创黑暗哥特机制数值检视表 (Original Gothic Mechanics Checklist)
 
 1.  **腐化度平衡测试**：
     *   [ ] 确认 $\alpha(C)$ 在 $C=100$ 时不超过 50% 增益。
