@@ -1666,7 +1666,7 @@ export interface ActiveResonance {
 export const RESONANCE_SETS: ResonanceSet[] = [
   {
     id: 'warp_trio',
-    relics: ['mark_of_chaos', 'heretics_metronome', 'nurgles_blessing'],
+    relics: ['mark_of_entropy', 'heretics_metronome', 'rot_reliquary_blessing'],
     bonus: {
       type: 'enhanced',
       effect: {
@@ -1677,7 +1677,7 @@ export const RESONANCE_SETS: ResonanceSet[] = [
       },
       stackable: false
     },
-    description: 'Chaos Unleashed: Increased warp effects and damage'
+    description: 'Entropy Unleashed: Increased warp effects and damage'
   },
   {
     id: 'iron_guardian',
@@ -1840,7 +1840,7 @@ private calculateRelicAwarenessUtility(
 export const ADDITIONAL_RESONANCE_SETS: ResonanceSet[] = [
   {
     id: 'time_master',
-    relics: ['warp_distorter', 'corrupted_tome', 'mechanicus_coolant'],
+    relics: ['warp_distorter', 'corrupted_tome', 'machine_canticle_coolant'],
     bonus: {
       type: 'enhanced',
       effect: {

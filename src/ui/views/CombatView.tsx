@@ -312,7 +312,7 @@ export function CombatView({
     : '无目标';
 
   const getEnemyStandeeClass = (enemy: any) => {
-    if (enemy.autonomyState === 'ChaosEgg') return 'enemy-standee--void';
+    if (enemy.autonomyState === 'EntropyEgg') return 'enemy-standee--void';
     if (enemy.autonomyState === 'Martyr') return 'enemy-standee--boss';
     const def = enemiesData.find(e => e.id === enemy.defId) as any;
     const keywords: string[] = def?.keywords || [];

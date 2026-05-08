@@ -117,7 +117,7 @@ export function SetupLauncher({
     <div
       ref={shellRef}
       data-screen="Launcher"
-      className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_eldar_void.png')] bg-cover bg-center"
+      className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_starless_archive.png')] bg-cover bg-center"
     >
       <div className="launcher-veil absolute inset-0 bg-black/60" />
       <div className="launcher-grain absolute inset-0 opacity-60" />

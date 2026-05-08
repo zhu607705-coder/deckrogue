@@ -56,7 +56,7 @@ Original prompt: 设计有专门的 set-uo 的启动器，不再只能依靠直�
 - 2026-03-10: 对 `public/assets/cards` 与 `public/assets/backgrounds` 的全部卡牌图像和背景立绘执行画质压缩，新增 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/scripts/assets/compress_card_and_background_images.py` 作为批处理脚本，并输出 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/output/image_compression_report.json` 与 `/Users/zhuhangcheng/Downloads/好玩/deckrogue/output/image_compression_report.md`。
 - 2026-03-10: 本轮共检查 264 张图像，实际压缩 125 张；目标目录总大小从约 429.2 MB 压缩到约 112.9 MB，所有卡牌图和背景立绘已 100% 收敛到 1 MB 以下。最大节省来自 `bg_symbiote_lab.png`、`bg_gemini_map.png`、`bg_worm_nest.png` 等超大背景图。
 - 2026-03-10: 处理过程中发现少量以 `.png` 命名但实际为 SVG 的资源（例如 `catalyst_overload.png`）；这类文件因体积本身很小被保留原样，未引入运行时资源查找变更。`npm run build --silent` 已通过，说明本轮资产压缩未破坏前端构建链路。
-- 2026-03-10: 完成全局键盘操作与可自定义键位系统。新增 `src/ui/input/` 模块，包含 `keybinds.ts`（动作定义、默认键位、保留键）、`useGlobalKeyboardInput.ts`（全局keydown监听）和 `index.ts`（公共导出）。默认键位采用类 Slay the Spire 布局：`1-0` 直选手牌/选项，`E` 结束回合，`Enter` 确认，`Esc` 系统保留，`Tab` 切换目标，方向键导航，`M` 打开菜单。
+- 2026-03-10: 完成全局键盘操作与可自定义键位系统。新增 `src/ui/input/` 模块，包含 `keybinds.ts`（动作定义、默认键位、保留键）、`useGlobalKeyboardInput.ts`（全局keydown监听）和 `index.ts`（公共导出）。默认键位采用卡牌爬塔式布局：`1-0` 直选手牌/选项，`E` 结束回合，`Enter` 确认，`Esc` 系统保留，`Tab` 切换目标，方向键导航，`M` 打开菜单。
 - 2026-03-10: 在 `AppShell` 中接入全局键盘输入监听，菜单新增 `keybinds` 设置页，支持单键重绑、冲突检测和恢复默认。键位配置通过 `saveManager.saveSettings/loadSettings` 持久化到 localStorage。
 - 2026-03-10: 所有视图组件已接入键盘操作属性：`CombatView`（`1-0` 出牌、`Tab` 切目标、`E` 结束回合）、`MapView`/`RewardView`/`ShopView`/`RestView`/`EventView`（数字键直选、方向键导航）、`UpgradeView`/`RemoveCardView`（数字键选择卡牌）、Modal/Overlay（`Esc` 关闭、方向键导航）。
 - 2026-03-10: 为 61 张缺立绘卡牌生成占位符图片，并从 `images 2` 文件夹映射移动 38 张 AI 生成图片到 `public/assets/cards/`。所有卡牌现已拥有对应立绘文件。

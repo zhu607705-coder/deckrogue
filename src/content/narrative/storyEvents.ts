@@ -115,7 +115,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
         id: 'tear_bargain',
         text: '[虚空交易]',
         description: '闭着眼伸手进去，摸索有价值的残骸。',
-        gains: ['获得 1 件强大的亚空间/混沌奇物'],
+        gains: ['获得 1 件强大的亚空间/熵变奇物'],
         costs: ['随机永久摧毁 1 张非基础牌'],
         danger: 'medium'
       },
@@ -145,7 +145,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
         id: 'legacy_open_casket',
         text: '[破除静滞匣的封印]',
         description: '好奇心是异端的温床，但这力量太诱人了。',
-        gains: ['获得奇物《混沌圣物》（每打出一张牌随机伤害敌人）'],
+        gains: ['获得奇物《熵变圣物》（每打出一张牌随机伤害敌人）'],
         costs: ['立刻失去 50% 当前生命值', '后续遭遇敌人获得追杀增幅（生命/伤害更高）'],
         danger: 'high'
       },

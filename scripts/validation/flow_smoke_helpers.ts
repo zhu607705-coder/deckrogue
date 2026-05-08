@@ -268,8 +268,8 @@ export function createRemoveCardFixture(seed = 5109): SaveSlotFixture {
   if (currentNode) {
     currentNode.type = 'Rest';
   }
-  engine.state.player.relics.push('mark_of_chaos');
-  engine.state.player.relicStates['mark_of_chaos'] = { level: 1, progress: 0, corrupted: true };
+  engine.state.player.relics.push('mark_of_entropy');
+  engine.state.player.relicStates['mark_of_entropy'] = { level: 1, progress: 0, corrupted: true };
   engine.state.screen = 'Rest';
   refreshFixtureRoomSession(engine);
   return buildSaveData(engine, 'remove_card_flow_smoke', 'Remove Card Flow Smoke');

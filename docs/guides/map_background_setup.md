@@ -22,14 +22,14 @@
 
 | 文件名 | 风格 |
 |--------|------|
-| `bg_chaos_warp.png` | 混沌扭曲 |
-| `bg_eldar_void.png` | 灵族虚空 |
+| `bg_void_breach.png` | 熵变扭曲 |
+| `bg_starless_archive.png` | 无星档案库 |
 | `bg_gothic_battlefield.png` | 哥特战场 |
-| `bg_imperium_palace.png` | 帝国宫殿 |
-| `bg_mechanicus_forge.png` | 机械神教熔炉 |
-| `bg_necron_tomb.png` | 太空亡灵墓穴 |
-| `bg_nurgle_garden.png` | 纳垢花园 |
-| `bg_sisters_chapel.png` | 战斗修女教堂 |
+| `bg_oathbound_palace.png` | 誓约宫庭 |
+| `bg_iron_chapel_forge.png` | 铁礼拜锻炉 |
+| `bg_ancient_machine_tomb.png` | 远古机械墓室 |
+| `bg_plague_garden.png` | 瘟疫花园 |
+| `bg_martyr_chapel.png` | 殉道者礼拜堂 |
 
 ## 修改背景
 

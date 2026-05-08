@@ -34,7 +34,7 @@
 | `heretics_metronome` | 每回合第4张卡0费，但受3点伤害 |
 | `corrupted_relic` | 每次受伤+1腐化，有20+腐化时+1力量 |
 | `corrupted_tome` | 每次抽牌+1腐化，有腐化时抽牌+1 |
-| `mark_of_chaos` | 回合开始时+2腐化，有30+腐化时+1能量 |
+| `mark_of_entropy` | 回合开始时+2腐化，有30+腐化时+1能量 |
 
 ---
 
@@ -55,7 +55,7 @@
 - 临时变异卡牌显示不同外观
 - 实现 `MutateCard` action
 
-#### ⏳ 1.2.3 混沌亚空间风暴 (Warp Storm) - 文档示例
+#### ⏳ 1.2.3 熵变亚空间风暴 (Warp Storm) - 文档示例
 **对比现有**:
 - 已有 `warpTide` 环境机制
 - 可以添加特殊 Boss 环境效果
@@ -71,7 +71,7 @@
 
 ---
 
-## 2. 纯洁印记与机魂体系
+## 2. 纯洁印记与机颂核心体系
 
 ### 2.1 现有机制 (部分实现)
 
@@ -99,7 +99,7 @@
 | 遗物 | 效果 |
 |------|------|
 | `machine_spark` | 科技卡牌伤害+2 |
-| `mechanicus_coolant` | 抽到过载废热时消耗并+1能量 |
+| `machine_canticle_coolant` | 抽到过载废热时消耗并+1能量 |
 
 ---
 
@@ -123,7 +123,7 @@
 - 添加 `slots` 字段到 Card 类型
 - 创建低费高插槽的卡牌
 
-#### ⏳ 2.2.4 机魂唤醒 (Awaken Machine Spirit) - 文档示例
+#### ⏳ 2.2.4 机颂核心唤醒 (Awaken Machine Chorus) - 文档示例
 **对比现有**:
 - 可以基于 `overcharge_cycle` 扩展
 
@@ -155,7 +155,7 @@
 
 ### 3.2 文档示例 (可添加)
 
-#### ⏳ 3.2.1 帝皇之怒 (Emperor's Wrath) - 文档示例
+#### ⏳ 3.2.1 誓约之怒 (Oathbound Wrath) - 文档示例
 **对比现有 `zealots_fury`**:
 - 现有: 每1狂热+1伤害
 - 文档示例: Z&gt;10时造成25伤害+致盲
@@ -176,9 +176,9 @@
 
 1. **添加 3-5 个文档中的卡牌/遗物**
    - `gaze_of_the_abyss` (深渊凝视)
-   - `emperors_wrath` (帝皇之怒)
+   - `oathbound_wrath` (誓约之怒)
    - `trial_of_heretics` (异端审判)
-   - `nurgles_blessing` (纳垢的赐福)
+   - `rot_reliquary_blessing` (腐败圣匣赐福)
 
 2. **完善变异机制**
    - 添加 `card.isMutated` 字段
@@ -202,7 +202,7 @@
    - 印记不可拆卸的策略选择
    - 更多印记类型
 
-6. **机魂过载完整体系**
+6. **机颂核心过载完整体系**
    - 更多科技卡牌
    - 更复杂的过载废热机制
 

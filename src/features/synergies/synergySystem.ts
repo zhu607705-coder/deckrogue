@@ -216,7 +216,7 @@ export class SynergySystem {
     // Element Combo Chain
     this.comboChains.set('elemental_chaos', {
       id: 'elemental_chaos',
-      name: 'Elemental Chaos',
+      name: 'Elemental Flux',
       triggers: ['AddElement', 'AddRandomElement', 'TriggerReactions'],
       effects: [
         (state) => {

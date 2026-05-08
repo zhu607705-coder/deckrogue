@@ -129,7 +129,7 @@ patchRelic('heretics_metronome', { price: 200 });
 patchRelic('warp_distorter', { price: 225 });
 patchRelic('ruined_reactor', { price: 235 });
 patchRelic('corrupted_tome', { price: 255 });
-patchRelic('mark_of_chaos', { price: 260 });
+patchRelic('mark_of_entropy', { price: 260 });
 
 // Enemy threat budget pass (shift some spike damage into durability/utility; enforce gentler peaks)
 patchEnemy('slime_small', (e, log) => {

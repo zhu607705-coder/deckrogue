@@ -39,7 +39,7 @@ type ViewBackgroundConfig = {
 
 const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
   CharacterSelect: {
-    primary: ['/assets/backgrounds/menu_throne_room.png', '/assets/backgrounds/menu_war_room.png', '/assets/backgrounds/bg_imperium_palace.png'],
+    primary: ['/assets/backgrounds/menu_throne_room.png', '/assets/backgrounds/menu_war_room.png', '/assets/backgrounds/bg_oathbound_palace.png'],
     secondary: ['/assets/backgrounds/ui_cracked_stained_glass.png'],
     primaryPosition: 'center center',
     secondaryPosition: 'center top',
@@ -71,7 +71,7 @@ const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
     secondaryOpacity: 0.18
   },
   Rest: {
-    primary: ['/assets/backgrounds/bg_sisters_chapel.png', '/assets/backgrounds/ui_cracked_stained_glass.png'],
+    primary: ['/assets/backgrounds/bg_martyr_chapel.png', '/assets/backgrounds/ui_cracked_stained_glass.png'],
     secondary: ['/assets/backgrounds/battle_ancient_dungeon.png'],
     primaryPosition: 'center center',
     secondaryPosition: 'center center',
@@ -95,7 +95,7 @@ const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
     secondaryOpacity: 0.12
   },
   GameOver: {
-    primary: ['/assets/backgrounds/battle_twisted_corridor.png', '/assets/backgrounds/bg_chaos_warp.png'],
+    primary: ['/assets/backgrounds/battle_twisted_corridor.png', '/assets/backgrounds/bg_void_breach.png'],
     secondary: ['/assets/backgrounds/ui_rusted_iron_door.png'],
     primaryPosition: 'center center',
     secondaryPosition: 'center center',
@@ -103,7 +103,7 @@ const VIEW_BACKGROUNDS: Partial<Record<ScreenId, ViewBackgroundConfig>> = {
     secondaryOpacity: 0.14
   },
   Victory: {
-    primary: ['/assets/backgrounds/bg_imperium_palace.png', '/assets/backgrounds/menu_throne_room.png'],
+    primary: ['/assets/backgrounds/bg_oathbound_palace.png', '/assets/backgrounds/menu_throne_room.png'],
     secondary: ['/assets/backgrounds/ui_glowing_rune_circle.png'],
     primaryPosition: 'center center',
     secondaryPosition: 'center center',

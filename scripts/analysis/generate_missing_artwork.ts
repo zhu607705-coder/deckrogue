@@ -34,7 +34,7 @@ const artPrompts: Record<string, string> = {
   'warp_tap': 'A hand reaching into a glowing warp portal to steal something, space fantasy art style',
   'rage_slam': 'A furious warrior slamming a weapon into the ground, rage fantasy art style',
   'armor_break': 'A heavy weapon shattering enemy armor, breaking fantasy art style',
-  'crushing_blow': 'A massive warhammer delivering a devastating blow, heavy fantasy art style',
+  'crushing_blow': 'A massive war maul delivering a devastating blow, heavy fantasy art style',
   'blood_fury': 'A warrior consumed by bloodlust, eyes glowing red, dark fantasy art style',
   'poison_dart': 'A poisoned dart flying through the air, toxic fantasy art style',
   'toxic_cloud': 'A thick green toxic cloud spreading across the battlefield, poison fantasy art style',

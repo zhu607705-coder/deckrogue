@@ -204,7 +204,7 @@
         "target": "Enemy"
       }
     ],
-    "art_prompt": "A massive heavy warhammer smashing into the ground, creating a shockwave, aggressive fantasy art style",
+    "art_prompt": "A massive heavy war maul smashing into the ground, creating a shockwave, aggressive fantasy art style",
     "upgrade": {
       "name": "重击+",
       "text": "造成 18 点伤害。施加 3 层易伤。",
@@ -1736,8 +1736,8 @@
     "character": "informant"
   },
   {
-    "id": "chaos_taint",
-    "name": "混沌污染",
+    "id": "entropy_taint",
+    "name": "熵变污染",
     "rarity": "Starter",
     "cost": 0,
     "type": "Skill",
@@ -1879,8 +1879,8 @@
     "character": "All"
   },
   {
-    "id": "emperors_mercy",
-    "name": "帝皇仁慈",
+    "id": "oathbound_mercy",
+    "name": "誓约仁慈",
     "rarity": "Uncommon",
     "cost": 1,
     "type": "Skill",
@@ -1892,7 +1892,7 @@
     "text": "净除恐惧并降低腐化。获得 30 点虔敬。若你拥有构造体，则将其献祭；否则失去 6 点生命值。",
     "actions": [
       {
-        "type": "EmperorMercy"
+        "type": "OathMercy"
       }
     ],
     "art_prompt": "A masked field judge executing a corrupted oathbreaker as red verdict seals flare, original grimdark gothic sci-fi style",
@@ -2097,8 +2097,8 @@
     }
   },
   {
-    "id": "awaken_machine_spirit",
-    "name": "唤醒机魂",
+    "id": "awaken_machine_chorus",
+    "name": "唤醒机颂核心",
     "rarity": "Rare",
     "cost": 2,
     "type": "Power",
@@ -2120,10 +2120,10 @@
     "art_prompt": "A dormant machine choir awakening with glowing optic cores inside a gothic industrial console",
     "character": "All",
     "upgrade": {
-      "name": "唤醒机魂+",
+      "name": "唤醒机颂核心+",
       "cost": 1
     },
-    "lastWords": "“机魂苏醒了。它先学会的第一句话是拒绝服从。”"
+    "lastWords": "“机颂核心苏醒了。它先学会的第一句话是拒绝服从。”"
   },
   {
     "id": "overheat",
@@ -2143,8 +2143,8 @@
     "character": "All"
   },
   {
-    "id": "emperors_wrath",
-    "name": "帝皇之怒",
+    "id": "oathbound_wrath",
+    "name": "誓约之怒",
     "rarity": "Rare",
     "cost": 2,
     "type": "Attack",
@@ -2187,7 +2187,7 @@
     "art_prompt": "An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire",
     "character": "All",
     "upgrade": {
-      "name": "帝皇之怒+",
+      "name": "誓约之怒+",
       "text": "造成 10 点伤害。若你的狂热值大于 12，则改为造成 35 点伤害并施加【致盲】。",
       "actions": [
         {
@@ -2972,7 +2972,7 @@
       ]
     },
     "character": "brute",
-    "art_prompt": "A massive warhammer delivering a devastating blow, heavy fantasy art style"
+    "art_prompt": "A massive war maul delivering a devastating blow, heavy fantasy art style"
   },
   {
     "id": "blood_fury",
@@ -5203,7 +5203,7 @@
         ]
       }
     ],
-    "art_prompt": "A massive warhammer crushing down on an enemy, devastating impact, fantasy art style"
+    "art_prompt": "A massive war maul crushing down on an enemy, devastating impact, fantasy art style"
   },
   {
     "id": "thick_skin",

@@ -67,7 +67,7 @@ export interface CombatState {
     devotion: number;
     corruptionAxis: number;
     axisDisposition: 'devotion' | 'corruption' | 'balanced';
-    autonomyState?: 'Normal' | 'Martyr' | 'ChaosEgg';
+    autonomyState?: 'Normal' | 'Martyr' | 'EntropyEgg';
     autonomyTurns?: number;
     timeLayer?: number;
     thread?: number;
@@ -90,7 +90,7 @@ export interface CombatState {
     devotion: number;
     corruptionAxis: number;
     axisDisposition: 'devotion' | 'corruption' | 'balanced';
-    autonomyState?: 'Normal' | 'Martyr' | 'ChaosEgg';
+    autonomyState?: 'Normal' | 'Martyr' | 'EntropyEgg';
     autonomyTurns?: number;
   }[];
   drawPile: RunCardInstance[];

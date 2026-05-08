@@ -3150,7 +3150,7 @@
   }
 }
 
-/* ===== Warp Tide / Devotion-Corruption Axis (Warhammer Gothic pass) ===== */
+/* ===== Warp Tide / Devotion-Corruption Axis (Gothic sci-fi pass) ===== */
 .combat-root {
   position: relative;
 }
@@ -3569,17 +3569,17 @@
   text-shadow: 0 0 8px rgba(127, 29, 29, 0.35);
 }
 
-.enemy-standee.is-chaos-egg .enemy-standee__frame {
+.enemy-standee.is-entropy-egg .enemy-standee__frame {
   border-color: #9333ea;
   box-shadow:
     0 18px 34px rgba(0,0,0,0.8),
     0 0 26px rgba(147, 51, 234, 0.22),
     inset 0 0 22px rgba(147, 51, 234, 0.18);
 }
-.enemy-standee.is-chaos-egg .enemy-standee__art {
+.enemy-standee.is-entropy-egg .enemy-standee__art {
   filter: hue-rotate(34deg) saturate(1.25) contrast(1.15);
 }
-.enemy-standee.is-chaos-egg .enemy-standee__nameplate {
+.enemy-standee.is-entropy-egg .enemy-standee__nameplate {
   color: #e9d5ff;
   text-shadow: 0 0 8px rgba(168,85,247,0.45);
 }

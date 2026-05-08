@@ -164,7 +164,7 @@ export class CheckWarpPerilAction extends BaseWarpAction {
     } else {
       sourceEntity.corruptionAxis = 100;
       const entityName = this.context.source === 'player' ? 'Player' : (('name' in sourceEntity ? sourceEntity.name : undefined) || 'Unit');
-      combat.warpPulse = { text: `${entityName} mutates into a Chaos Egg!`, tone: 'danger' };
+      combat.warpPulse = { text: `${entityName} mutates into a Entropy Egg!`, tone: 'danger' };
     }
 
     combat.warpTide = Math.max(0, combat.warpTide - 20);

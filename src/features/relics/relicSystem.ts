@@ -194,7 +194,7 @@ export class RelicSystem {
             ignoreBlock: false
           });
           combat.warpPulse = {
-            text: `混沌圣物迸发：随机造成 ${damage} 点伤害`,
+            text: `熵变圣物迸发：随机造成 ${damage} 点伤害`,
             tone: 'warp'
           };
         }

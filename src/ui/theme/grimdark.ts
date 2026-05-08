@@ -5,8 +5,8 @@
  * 设计哲学:
  * - grim-black: 深黑背景，代表宇宙的冷酷无情
  * - blood-red: 鲜血红色，代表战争的残酷
- * - rusted-brass: 锈蚀黄铜，代表机械神教的古老科技
- * - warp-purple: 亚空间紫色，代表混沌与灵能
+ * - rusted-brass: 锈蚀黄铜，代表机颂教团的古老科技
+ * - warp-purple: 亚空间紫色，代表熵变与灵能
  * - cogitator-green: 计算终端绿色，代表数据与扫描
  * - parchment: 羊皮纸色，代表古老的战术手册
  */
@@ -32,7 +32,7 @@ export const grimdarkColors = {
     100: '#ff6b6b', // 高亮
   },
   
-  // 锈蚀黄铜 - 机械神教/古老科技
+  // 锈蚀黄铜 - 机颂教团/古老科技
   'rusted-brass': {
     900: '#2a1f0d',
     700: '#4a3718',
@@ -42,7 +42,7 @@ export const grimdarkColors = {
     100: '#daa520', // 高亮
   },
   
-  // 亚空间紫 - 灵能/混沌/扭曲
+  // 亚空间紫 - 灵能/熵变/扭曲
   'warp-purple': {
     900: '#1a0a2e',
     700: '#2d1b4e',
@@ -158,8 +158,8 @@ export const grimdarkBorders = {
   styles: {
     // 哥特式装饰边框
     gothic: `2px solid ${grimdarkColors['grim-black'][600]}`,
-    // 机械神教边框
-    mechanicus: `2px solid ${grimdarkColors['rusted-brass'][500]}`,
+    // 机颂教团边框
+    machine_canticle: `2px solid ${grimdarkColors['rusted-brass'][500]}`,
     // 亚空间扭曲边框
     warp: `2px solid ${grimdarkColors['warp-purple'][300]}`,
     // 警告边框
@@ -326,8 +326,8 @@ export const grimdarkTerminology = {
     block: { name: '护盾', icon: '🛡️', description: '抵消伤害的防护层' },
     energy: { name: '能量', icon: '⚡', description: '驱动行动的核心能源' },
     intel: { name: '情报', icon: '🔍', description: '战术分析数据' },
-    relics: { name: '遗物', icon: '👑', description: '帝皇赐福的圣物' },
-    corruption: { name: '腐化', icon: '☠️', description: '混沌侵蚀程度' },
+    relics: { name: '遗物', icon: '👑', description: '誓约赐福的圣物' },
+    corruption: { name: '腐化', icon: '☠️', description: '熵变侵蚀程度' },
     toxicity: { name: '毒素积累', icon: '☣️', description: '化学中毒层级' },
   },
 
@@ -357,7 +357,7 @@ export const grimdarkTerminology = {
     timeLayer: { name: '时间层', description: '时间操控的层级' },
     thread: { name: '丝线', description: '傀儡操控的媒介' },
     concoction: { name: '炼金药剂', description: '化学合成的效用' },
-    warpTide: { name: '亚空间潮汐', description: '混沌能量的波动' },
+    warpTide: { name: '亚空间潮汐', description: '熵变能量的波动' },
     warpEye: { name: '亚空间之眼', description: '窥视虚空的窗口' },
   },
 } as const;

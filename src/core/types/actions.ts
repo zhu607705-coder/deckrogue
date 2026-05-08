@@ -125,7 +125,7 @@ export interface ActionSpec {
     | 'PurgeFearAndCorruption'
     | 'GainDevotion'
     | 'GainCorruptionAxis'
-    | 'EmperorMercy'
+    | 'OathMercy'
     | 'PurgeEnemyBuffs'
     | 'GainTimeLayer'
     | 'SpendTimeLayer'

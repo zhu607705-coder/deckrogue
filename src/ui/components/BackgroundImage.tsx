@@ -196,7 +196,7 @@ export const VIEW_BACKGROUNDS = {
     warp: '/assets/events/event_warp.png',
     trial: '/assets/events/event_trial.png',
     hereticAltar: '/assets/events/event_heretic_altar.png',
-    chaosGate: '/assets/events/event_chaos_gate.png'
+    chaosGate: '/assets/events/event_void_gate.png'
   }
 };
 

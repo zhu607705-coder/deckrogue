@@ -24,11 +24,11 @@ A heavy industrial chain blade sweeping through smoke with spinning teeth, origi
 ```
 **风格建议**：工业链刃，旋转锯齿，教堂工业风格
 
-### 4. Awaken Machine Spirit (机魂唤醒)
+### 4. Awaken Machine Chorus (机颂核心唤醒)
 ```
 A dormant machine choir awakening with glowing optic cores inside a gothic industrial console
 ```
-**风格建议**：机械圣歌，机魂觉醒，哥特式机械
+**风格建议**：机械圣歌，机颂核心觉醒，哥特式机械
 
 ### 5. Overheat (过载废热)
 ```
@@ -36,7 +36,7 @@ A mechanical component glowing red hot with steam venting, original gothic indus
 ```
 **风格建议**：过热机械，蒸汽喷射，原创工业机械风格
 
-### 6. Emperor's Wrath (帝皇之怒)
+### 6. Oathbound Wrath (誓约之怒)
 ```
 An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire
 ```
@@ -52,13 +52,13 @@ A masked tribunal judge holding a burning verdict blade inside a ruined cathedra
 
 ## 新增遗物立绘 (7个)
 
-### 1. Nurgle's Blessing (纳垢的赐福)
+### 1. Rot Reliquary Blessing (腐败圣匣赐福)
 ```
 A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils
 ```
 **风格建议**：腐败圣匣，腐烂绿色，苍蝇与疾病符号
 
-### 2. Mechanicus Coolant (机械教冷却液)
+### 2. Machine Canticle Coolant (机颂冷却液)
 ```
 A vial of glowing blue coolant with original machine-liturgical markings
 ```
@@ -82,7 +82,7 @@ A golden wax resistance seal with a cracked shield symbol, original gothic sci-f
 ```
 **风格建议**：金色蜡封，盾牌符号
 
-### 6. Seal of Omnissiah (欧姆弥赛亚印记)
+### 6. Seal of Machine Vow (万机誓印)
 ```
 A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic
 ```
@@ -110,7 +110,7 @@ A copper wax machine-vow seal with an original cog sigil, cathedral-industrial r
 
 例如：
 - `assets/cards/gaze_of_the_abyss.png`
-- `assets/relics/nurgles_blessing.png`
+- `assets/relics/rot_reliquary_blessing.png`
 
 ---
 
@@ -138,19 +138,19 @@ python scripts/txt2img.py --prompt "A void-sensitive exile staring into a violet
 | gaze_of_the_abyss | 深渊凝视 | A void-sensitive exile staring into a violet dimensional breach with a watchful abyssal eye, original grimdark gothic sci-fi style |
 | flesh_tentacle | 血肉触手 | A grotesque mass of writhing flesh tendrils erupting from corrupted organic machinery, original body-horror gothic sci-fi style |
 | chainsword_sweep | 链锯剑轻扫 | A heavy industrial chain blade sweeping through smoke with spinning teeth, original cathedral-industrial sci-fi style |
-| awaken_machine_spirit | 机魂唤醒 | A dormant machine choir awakening with glowing optic cores inside a gothic industrial console |
+| awaken_machine_chorus | 机颂核心唤醒 | A dormant machine choir awakening with glowing optic cores inside a gothic industrial console |
 | overheat | 过载废热 | A mechanical component glowing red hot with steam venting, original gothic industrial sci-fi style |
-| emperors_wrath | 帝皇之怒 | An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire |
+| oathbound_wrath | 誓约之怒 | An anonymous oathbound champion in scorched ceremonial armor surrounded by sacred industrial fire |
 | trial_of_heretics | 异端审判 | A masked tribunal judge holding a burning verdict blade inside a ruined cathedral court |
 
 ### 缺失的遗物立绘 (7个)
 
 | 遗物ID | 名称 | art_prompt |
 |--------|------|------------|
-| nurgles_blessing | 腐败圣匣赐福 | A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils |
-| mechanicus_coolant | 机械冷却液 | A vial of glowing blue coolant with original machine-liturgical markings |
+| rot_reliquary_blessing | 腐败圣匣赐福 | A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils |
+| machine_canticle_coolant | 机械冷却液 | A vial of glowing blue coolant with original machine-liturgical markings |
 | seal_of_martyrdom | 殉道者印记 | A red wax vow seal with a scorched parchment scroll attached, original gothic sci-fi relic |
 | seal_of_exterminatus | 灭绝令印记 | A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic |
 | seal_of_defiance | 不屈印记 | A golden wax resistance seal with a cracked shield symbol, original gothic sci-fi relic |
-| seal_of_omnissiah | 万机誓印 | A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic |
+| seal_of_machine_vow | 万机誓印 | A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic |
 | zealots_chain | 狂热者锁链 | A chain of oath beads glowing with sacred industrial light, original gothic sci-fi faith style |

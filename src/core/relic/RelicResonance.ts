@@ -39,7 +39,7 @@ export interface ResonanceSet {
 export const RESONANCE_SETS: ResonanceSet[] = [
   {
     id: 'time_master',
-    relics: ['warp_distorter', 'corrupted_tome', 'mechanicus_coolant'],
+    relics: ['warp_distorter', 'corrupted_tome', 'machine_canticle_coolant'],
     bonus: {
       type: 'enhanced',
       effect: {

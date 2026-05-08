@@ -1100,7 +1100,7 @@ function AppContent() {
                     <span className="grimdark-dossier-accent grimdark-dossier-accent--verdict">{corruptionNow}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>帝皇庇护 (Devotion)</span>
+                    <span>誓约庇护 (Devotion)</span>
                     <span className="grimdark-dossier-accent grimdark-dossier-accent--devotion">{devotionNow}</span>
                   </div>
                 </div>

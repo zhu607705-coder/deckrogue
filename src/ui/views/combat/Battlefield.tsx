@@ -144,7 +144,7 @@ export function Battlefield({
                 <div className="player-standee__castMeta grimdark-cast-meta">
                   <span>目标: {selectedCardTargetLabel}</span>
                   <span>消耗: {getPreviewCost(selectedCardPreview)}</span>
-                  <span>剩余: {clampCombatInteger(player.energy - getPreviewCost(selectedCardPreview))} 机魂</span>
+                  <span>剩余: {clampCombatInteger(player.energy - getPreviewCost(selectedCardPreview))} 机颂核心</span>
                 </div>
               </div>
             )}

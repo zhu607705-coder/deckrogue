@@ -127,8 +127,8 @@ test('restDisperse enters remove-card mode instead of leaving the room immediate
   engine.state.pendingNodeResolution = true;
   engine.state.roomResolutionToken = 'rest_room_token';
   engine.state.screen = 'Rest';
-  engine.state.player.relics.push('mark_of_chaos');
-  engine.state.player.relicStates['mark_of_chaos'] = { level: 1, progress: 0, corrupted: true };
+  engine.state.player.relics.push('mark_of_entropy');
+  engine.state.player.relicStates['mark_of_entropy'] = { level: 1, progress: 0, corrupted: true };
 
   engine.restDisperse();
 

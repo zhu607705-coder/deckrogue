@@ -1611,7 +1611,7 @@ export class MutateCardAction extends BaseAction {
   }
 }
 
-export class EmperorMercyAction extends BaseAction {
+export class OathMercyAction extends BaseAction {
   constructor(spec: ActionSpec) {
     super(spec);
   }

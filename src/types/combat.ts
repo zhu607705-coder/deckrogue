@@ -180,7 +180,7 @@ export interface EnemyInstance {
   statuses: EnemyStatuses;
   nextMove?: EnemyMove;
   moveHistory: string[];
-  autonomyState?: 'Normal' | 'ChaosEgg' | 'Martyr';
+  autonomyState?: 'Normal' | 'EntropyEgg' | 'Martyr';
   image: string;
 }
 

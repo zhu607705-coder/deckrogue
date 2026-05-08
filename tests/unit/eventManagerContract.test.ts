@@ -68,14 +68,14 @@ test('event relic acquisition uses live relic fields for corruption and combat p
   const engine = new GameEngine(8765, null, { enableRuntimeDelegation: false });
   engine.selectCharacter('informant');
   attachCombat(engine);
-  engine.state.activeEvent = { id: 'mysterious_shrine', offeredRelicId: 'mark_of_chaos' };
+  engine.state.activeEvent = { id: 'mysterious_shrine', offeredRelicId: 'mark_of_entropy' };
   engine.state.screen = 'Event';
 
   engine.makeEventChoice('accept');
 
-  assert.equal(engine.state.player.relics.includes('mark_of_chaos'), true);
-  assert.equal(engine.state.player.relicStates['mark_of_chaos']?.corrupted, true);
-  assert.equal(engine.state.combat?.warpPulse?.text.includes('混沌烙印'), true);
+  assert.equal(engine.state.player.relics.includes('mark_of_entropy'), true);
+  assert.equal(engine.state.player.relicStates['mark_of_entropy']?.corrupted, true);
+  assert.equal(engine.state.combat?.warpPulse?.text.includes('熵变烙印'), true);
   engine.dispose();
 });
 

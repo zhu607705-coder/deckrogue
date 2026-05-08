@@ -61,7 +61,7 @@ export const EnemyStandee = React.memo(function EnemyStandee({
   const enemyHpNow = Math.max(0, Math.round(enemy.hp));
   const enemyMaxHpNow = Math.max(0, Math.round(enemy.maxHp));
   const imageUrl =
-    enemy.autonomyState === 'ChaosEgg'
+    enemy.autonomyState === 'EntropyEgg'
       ? localEnemyArt('chaos_egg')
       : enemy.autonomyState === 'Martyr'
         ? localEnemyArt('martyr_frenzy')
@@ -83,7 +83,7 @@ export const EnemyStandee = React.memo(function EnemyStandee({
         selectedCard && !isDead ? 'is-targetable' : '',
         selectedCard && !isDead ? 'is-targeting' : '',
         isDead ? 'is-dead' : '',
-        enemy.autonomyState === 'ChaosEgg' ? 'grimdark-enemy--chaos-egg' : '',
+        enemy.autonomyState === 'EntropyEgg' ? 'grimdark-enemy--entropy-egg' : '',
         enemy.autonomyState === 'Martyr' ? 'grimdark-enemy--martyr' : ''
       ].filter(Boolean).join(' ')}
       style={{ transition: 'all 0.2s ease-in-out' }}

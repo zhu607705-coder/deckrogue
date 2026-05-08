@@ -566,3 +566,25 @@
 - 剩余风险：
   - 分支仍未 push 到远端。
   - `public/assets/music/` 属于大体积运行资源，已提交到 Git；后续若远端体积策略严格，应单独评估 LFS 或资源分发方案。
+
+## One-by-one Change Trace - 2026-05-08
+
+- 已按用户要求逐项追踪查看最新提交 `c2d51ca` 的文件变更，并生成明细报告：`docs/design/change-trace-2026-05-08.md`。
+- 追踪中发现并处理原创化边界风险：
+  - 重命名旧 IP 风格背景与事件资源文件：`bg_void_breach`、`bg_starless_archive`、`bg_oathbound_palace`、`bg_iron_chapel_forge`、`bg_ancient_machine_tomb`、`bg_plague_garden`、`bg_martyr_chapel`、`event_void_gate`。
+  - 将用户可见和内部引用中的直接残留替换为原创表达，例如 `oathbound_wrath`、`oathbound_mercy`、`rot_reliquary_blessing`、`machine_canticle_coolant`、`seal_of_machine_vow`、`mark_of_entropy`。
+  - 扫描确认活跃源码、内容数据和运行文档中未残留直接第三方 IP 关键词；追踪报告仅保留历史删除路径作为审计证据。
+  - 密钥扫描未发现真实 `sk-*` 或 API key 实值；`secret` 命中均为普通玩法/变量词。
+- 本轮追踪验证：
+  - `git diff --check`: exit `0`
+  - `npm run lint --silent`: exit `0`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`
+  - `npm run check:content-contract-layer`: OK
+  - `npm run check:content-authoring`: cards `330/330`, enemies `50/50`, relics `98/98`
+  - `npm run check:content-bundle`: `7/7` passed
+  - `npm run check:tuanjie-assets`: passed
+  - `npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/actionManagerAndRoomFlow.test.ts tests/unit/growthRoutePhase2.test.ts tests/unit/roomSessionLifecycle.test.ts`: `25/25` passed
+  - `npx tsx --test tests/unit/musicManifest.test.ts tests/unit/tuanjieModelManifest.test.ts tests/unit/audioManager.test.ts`: `8/8` passed
+  - `npm run build`: exit `0`
+  - `npm run doctor:game`: `44/44` passed
+  - `npm run check:release-readiness`: `41/41` passed after doctor refreshed generated artifacts

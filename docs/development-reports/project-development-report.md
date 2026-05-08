@@ -300,7 +300,7 @@ Step 108/109 当前已完成实现、验证和 architect approval；尚未刷新
 
 - **操作方向**：按 Windows 环境真实启动并打开项目，验证不是只停留在文档适配。
 - **变更内容**：修复 `scripts/validation/flow_smoke_helpers.ts` 的 Windows 兼容问题：server check 改为无 shell 的 `curl` 参数调用，dev server 启动在 Windows 下使用 `npm.cmd`。
-- **实跑结果**：Vite 在 `http://127.0.0.1:3000/` 启动成功；Playwright 打开页面得到 HTTP 200，标题为 `DeckRogue - Warp & Chaos`；`npm run test:ui-smoke -- --url=http://127.0.0.1:3000` 通过。
+- **实跑结果**：Vite 在 `http://127.0.0.1:3000/` 启动成功；Playwright 打开页面得到 HTTP 200，标题为 `DeckRogue - Warp & Entropy`；`npm run test:ui-smoke -- --url=http://127.0.0.1:3000` 通过。
 - **验证证据**：`output/playwright/ui_smoke_report.json` 显示 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，覆盖 launcher、character_select、map、combat、reward、map_after_reward、launcher_after_save、after_continue、after_load_slot。
 - **剩余风险**：`npm install` 首次用于修复 Windows `.bin` shim 时超时，但已生成 `vite.cmd`/`tsx.cmd`；需要后续单独清理依赖安装耗时问题。
 

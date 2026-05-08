@@ -161,8 +161,8 @@
     "flavorText": "“把它交给下一个人。告诉他别问名字。”"
   },
   {
-    "id": "mark_of_chaos",
-    "name": "混沌烙印",
+    "id": "mark_of_entropy",
+    "name": "熵变烙印",
     "description": "商店中的卡牌、遗物与药剂价格减半。每次购买后，向牌库加入 1 张随机诅咒。",
     "price": 260,
     "tags": [
@@ -240,8 +240,8 @@
     "flavorText": "“愿我的骨灰也能成为下一枚子弹的底火。”"
   },
   {
-    "id": "nurgles_blessing",
-    "name": "纳垢赐瘴",
+    "id": "rot_reliquary_blessing",
+    "name": "腐瘴圣匣",
     "description": "你免疫中毒与流血。每当你本应获得这些状态时，改为获得 5 点腐化。",
     "price": 220,
     "tags": [
@@ -260,12 +260,12 @@
       ],
       "corruptionOnImmunity": 5
     },
-    "inscription": "纳垢赐瘴并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "inscription": "腐瘴圣匣并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
     "flavorText": "“如果你听见它在呼唤，不要回头。已经太迟了。”"
   },
   {
-    "id": "mechanicus_coolant",
-    "name": "机神冷却圣油",
+    "id": "machine_canticle_coolant",
+    "name": "机颂冷却圣油",
     "description": "每当你抽到过热牌时，放逐该牌并获得 1 点能量。",
     "price": 195,
     "tags": [
@@ -280,7 +280,7 @@
       "exhaustOverheatOnDraw": true,
       "energyOnExhaust": 1
     },
-    "inscription": "机神冷却圣油并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "inscription": "机颂冷却圣油并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
     "flavorText": "“把它交给下一个人。告诉他别问名字。”"
   },
   {
@@ -365,8 +365,8 @@
     "flavorText": "“把它交给下一个人。告诉他别问名字。”"
   },
   {
-    "id": "seal_of_omnissiah",
-    "name": "欧姆弥赛亚封蜡",
+    "id": "seal_of_machine_vow",
+    "name": "万机誓约封蜡",
     "description": "可附着于任意卡牌的纯洁封印。打出时，本回合令手中 1 张随机机械牌费用降低 1。",
     "price": 170,
     "tags": [
@@ -387,7 +387,7 @@
         ]
       }
     },
-    "inscription": "欧姆弥赛亚封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
+    "inscription": "万机誓约封蜡并不主动发声，它以细小却持续的代价改变佩戴者的命运轨迹。",
     "flavorText": "“把它交给下一个人。告诉他别问名字。”"
   },
   {
@@ -397,7 +397,7 @@
     "price": 180,
     "trigger": "StartCombat",
     "tags": [
-      "mechanicus"
+      "machine_canticle"
     ],
     "effect": {
       "type": "ApplyStatus",
@@ -442,7 +442,7 @@
   },
   {
     "id": "chaos_sanctum_relic",
-    "name": "混沌圣物",
+    "name": "熵变圣物",
     "description": "每打出一张牌，随机对一名异端造成 2-6 点伤害。",
     "price": 280,
     "trigger": "Passive",

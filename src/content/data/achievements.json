@@ -169,7 +169,7 @@
   },
   {
     "id": "corruption_master",
-    "title": "混沌化身",
+    "title": "熵变化身",
     "description": "腐化值达到150并通关。",
     "conditions": {
       "requireVictory": true,
@@ -177,10 +177,10 @@
     },
     "rewards": {
       "startingRelics": [
-        "mark_of_chaos"
+        "mark_of_entropy"
       ],
       "backgrounds": [
-        "bg_chaos_warp"
+        "bg_void_breach"
       ]
     }
   },
@@ -199,7 +199,7 @@
   },
   {
     "id": "faith_master",
-    "title": "帝皇庇佑",
+    "title": "誓约庇佑",
     "description": "以虔敬值 100+ 通关。",
     "conditions": {
       "requireVictory": true,
@@ -319,7 +319,7 @@
         "warp_distorter"
       ],
       "backgrounds": [
-        "bg_eldar_void"
+        "bg_starless_archive"
       ]
     }
   },
@@ -389,7 +389,7 @@
     },
     "rewards": {
       "startingRelics": [
-        "seal_of_omnissiah"
+        "seal_of_machine_vow"
       ]
     }
   },

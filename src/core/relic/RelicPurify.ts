@@ -25,8 +25,8 @@ export const CURSE_RELIC_IDS: string[] = [
   'corrupted_tome',
   'zealots_chain',
   'warp_distorter',
-  'nurgles_blessing',
-  'mark_of_chaos',
+  'rot_reliquary_blessing',
+  'mark_of_entropy',
   'heretics_metronome',
   'seal_of_exterminatus'
 ];
@@ -65,7 +65,7 @@ export const CURSE_RELIC_CONFIGS: CurseRelicConfig[] = [
     }
   },
   {
-    relicId: 'nurgles_blessing',
+    relicId: 'rot_reliquary_blessing',
     curseEffect: {
       type: 'random_cost',
       value: 1,
@@ -73,7 +73,7 @@ export const CURSE_RELIC_CONFIGS: CurseRelicConfig[] = [
     }
   },
   {
-    relicId: 'mark_of_chaos',
+    relicId: 'mark_of_entropy',
     curseEffect: {
       type: 'stat_penalty',
       value: 2,

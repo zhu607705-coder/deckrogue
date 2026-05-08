@@ -92,7 +92,7 @@ function uniqStrings(values: Array<string | null | undefined>): string[] {
 function inferCardLoreSource(card: any): string {
   const tags = Array.isArray(card.tags) ? card.tags : [];
   if (tags.includes('warp') || /abyss|warp/i.test(String(card.id || ''))) return '异端低语记录';
-  if (tags.includes('zeal') || /emperor/i.test(String(card.id || ''))) return '审判庭档案';
+  if (tags.includes('zeal') || /oathbound/i.test(String(card.id || ''))) return '审判庭档案';
   if (tags.includes('tech') || tags.includes('construct')) return '战场回收终端';
   return '战场拾获';
 }

@@ -244,7 +244,7 @@ export function preloadRouteAssets(screen: string): PreloadableResource[] {
       localEventArt('npc_inquisitor_interrogator'),
       localEventArt('npc_warp_oracle'),
       `${assetBase}/events/event_shrine.png`,
-      `${assetBase}/events/event_chaos_gate.png`,
+      `${assetBase}/events/event_void_gate.png`,
       `${assetBase}/events/event_forge.png`,
     ],
     Rest: [

@@ -348,12 +348,12 @@ console.log('\n--- Phase 5: 遗物共鸣系统测试 ---\n');
 
 // 测试17: 遗物共鸣 - 共鸣检测(2件激活)
 test('遗物共鸣 - 共鸣检测(部分匹配)', () => {
-  const relics = ['mark_of_chaos', 'bag_of_prep'];
+  const relics = ['mark_of_entropy', 'bag_of_prep'];
 
   // detectActiveResonances 只返回完全匹配的套装
   const resonances = detectActiveResonances(relics);
 
-  // 'mark_of_chaos' 只匹配 warp_trio，但缺少其他两件，所以返回空
+  // 'mark_of_entropy' 只匹配 warp_trio，但缺少其他两件，所以返回空
   return resonances.length === 0;
 });
 

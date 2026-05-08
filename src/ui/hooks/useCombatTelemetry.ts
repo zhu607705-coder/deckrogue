@@ -130,7 +130,7 @@ function getIntentDisplay(enemy: RuntimeEnemy, state: {
   warpRiftTurns?: number;
   warpRiftPerilFloor?: number;
 }, engine: GameEngine): IntentDisplayShape {
-  if (enemy.autonomyState === 'ChaosEgg') {
+  if (enemy.autonomyState === 'EntropyEgg') {
     return {
       icon: '🧬',
       text: 'Flesh Change',

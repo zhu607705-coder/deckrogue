@@ -129,15 +129,15 @@ function generateBattleBackground(name, primaryColor, secondaryColor, accentColo
       <path d="M350 768 L450 350 L574 350 L674 768 Z" fill="${secondaryColor}" opacity="0.3"/>
       <rect x="0" y="700" width="1024" height="68" fill="${secondaryColor}" opacity="0.4"/>
     `,
-    'nurgle': `
+    'plague_reliquary': `
       <defs>
-        <radialGradient id="nurgleGrad" cx="50%" cy="30%" r="70%">
+        <radialGradient id="plague_reliquaryGrad" cx="50%" cy="30%" r="70%">
           <stop offset="0%" style="stop-color:${accentColor};stop-opacity:0.3"/>
           <stop offset="100%" style="stop-color:#0a0a0f;stop-opacity:1"/>
         </radialGradient>
       </defs>
       <rect width="1024" height="768" fill="#0a0a0f"/>
-      <rect width="1024" height="768" fill="url(#nurgleGrad)"/>
+      <rect width="1024" height="768" fill="url(#plague_reliquaryGrad)"/>
       <circle cx="200" cy="500" r="40" fill="${primaryColor}" opacity="0.3"/>
       <circle cx="800" cy="400" r="60" fill="${primaryColor}" opacity="0.25"/>
       <circle cx="500" cy="600" r="50" fill="${primaryColor}" opacity="0.35"/>
@@ -425,7 +425,7 @@ const mapConfigs = [
 const eventConfigs = [
   { name: 'event_heretic_altar', color: '#7c3aed', icon: '⛩', subtitle: 'Heretic Altar', dir: eventsDir },
   { name: 'event_shrine', color: '#3b82f6', icon: '⛩', subtitle: 'Mysterious Shrine', dir: eventsDir },
-  { name: 'event_chaos_gate', color: '#a855f7', icon: '🌀', subtitle: 'Chaos Gate', dir: eventsDir },
+  { name: 'event_void_gate', color: '#a855f7', icon: '🌀', subtitle: 'Void Gate', dir: eventsDir },
   { name: 'event_forge', color: '#f59e0b', icon: '⚒', subtitle: 'The Forge', dir: eventsDir },
   { name: 'event_trial', color: '#dc2626', icon: '⚖', subtitle: 'Trial of Faith', dir: eventsDir },
   { name: 'event_warp', color: '#7c3aed', icon: '👁', subtitle: 'Warp Event', dir: eventsDir },
@@ -469,34 +469,34 @@ const upgradeConfigs = [
 // 战斗背景配置
 const backgroundConfigs = [
   { name: 'bg_gothic_battlefield', primary: '#1a1a2e', secondary: '#b91c1c', accent: '#dc2626', style: 'gothic', dir: backgroundsDir },
-  { name: 'bg_chaos_warp', primary: '#1a0a2e', secondary: '#4b0082', accent: '#a855f7', style: 'chaos', dir: backgroundsDir },
-  { name: 'bg_mechanicus_forge', primary: '#2d2d1a', secondary: '#78716c', accent: '#f59e0b', style: 'forge', dir: backgroundsDir },
-  { name: 'bg_necron_tomb', primary: '#0a1a0a', secondary: '#3d4f3d', accent: '#22c55e', style: 'necron', dir: backgroundsDir },
-  { name: 'bg_nurgle_garden', primary: '#0a1a0a', secondary: '#1a3d1a', accent: '#22c55e', style: 'nurgle', dir: backgroundsDir },
-  { name: 'bg_imperium_palace', primary: '#1a1a2e', secondary: '#b45309', accent: '#fbbf24', style: 'imperium', dir: backgroundsDir },
-  { name: 'bg_eldar_void', primary: '#0a0a1a', secondary: '#1e3a5f', accent: '#60a5fa', style: 'void', dir: backgroundsDir },
-  { name: 'bg_sisters_chapel', primary: '#1a1a1a', secondary: '#b91c1c', accent: '#fbbf24', style: 'temple', dir: backgroundsDir },
+  { name: 'bg_void_breach', primary: '#1a0a2e', secondary: '#4b0082', accent: '#a855f7', style: 'chaos', dir: backgroundsDir },
+  { name: 'bg_iron_chapel_forge', primary: '#2d2d1a', secondary: '#78716c', accent: '#f59e0b', style: 'forge', dir: backgroundsDir },
+  { name: 'bg_ancient_machine_tomb', primary: '#0a1a0a', secondary: '#3d4f3d', accent: '#22c55e', style: 'necron', dir: backgroundsDir },
+  { name: 'bg_plague_garden', primary: '#0a1a0a', secondary: '#1a3d1a', accent: '#22c55e', style: 'plague_reliquary', dir: backgroundsDir },
+  { name: 'bg_oathbound_palace', primary: '#1a1a2e', secondary: '#b45309', accent: '#fbbf24', style: 'imperium', dir: backgroundsDir },
+  { name: 'bg_starless_archive', primary: '#0a0a1a', secondary: '#1e3a5f', accent: '#60a5fa', style: 'void', dir: backgroundsDir },
+  { name: 'bg_martyr_chapel', primary: '#1a1a1a', secondary: '#b91c1c', accent: '#fbbf24', style: 'temple', dir: backgroundsDir },
 ];
 
 // 卡牌立绘配置
 const cardConfigs = [
   { name: 'gaze_of_the_abyss', color: '#a855f7', icon: '👁', subtitle: 'Warp Corruption', dir: cardsDir },
-  { name: 'flesh_tentacle', color: '#dc2626', icon: '🐙', subtitle: 'Chaos Mutation', dir: cardsDir },
+  { name: 'flesh_tentacle', color: '#dc2626', icon: '🐙', subtitle: 'Entropy Mutation', dir: cardsDir },
   { name: 'chainsword_sweep', color: '#ef4444', icon: '⚔', subtitle: 'Astartes Weapon', dir: cardsDir },
-  { name: 'awaken_machine_spirit', color: '#f59e0b', icon: '⚙', subtitle: 'Mechanicus Power', dir: cardsDir },
+  { name: 'awaken_machine_chorus', color: '#f59e0b', icon: '⚙', subtitle: 'Machine Canticle Power', dir: cardsDir },
   { name: 'overheat', color: '#ef4444', icon: '🔥', subtitle: 'Machine Status', dir: cardsDir },
-  { name: 'emperors_wrath', color: '#fbbf24', icon: '⚡', subtitle: 'Faith Attack', dir: cardsDir },
+  { name: 'oathbound_wrath', color: '#fbbf24', icon: '⚡', subtitle: 'Faith Attack', dir: cardsDir },
   { name: 'trial_of_heretics', color: '#dc2626', icon: '⚖', subtitle: 'Inquisition', dir: cardsDir },
 ];
 
 // 遗物立绘配置
 const relicConfigs = [
-  { name: 'nurgles_blessing', color: '#22c55e', icon: '🦠', subtitle: 'Nurgle', dir: relicsDir },
-  { name: 'mechanicus_coolant', color: '#3b82f6', icon: '❄', subtitle: 'Mechanicus', dir: relicsDir },
+  { name: 'rot_reliquary_blessing', color: '#22c55e', icon: '🦠', subtitle: 'Rot Reliquary', dir: relicsDir },
+  { name: 'machine_canticle_coolant', color: '#3b82f6', icon: '❄', subtitle: 'Machine Canticle', dir: relicsDir },
   { name: 'seal_of_martyrdom', color: '#dc2626', icon: '📜', subtitle: 'Purity Seal', dir: relicsDir },
   { name: 'seal_of_exterminatus', color: '#1f2937', icon: '💀', subtitle: 'Purity Seal', dir: relicsDir },
   { name: 'seal_of_defiance', color: '#fbbf24', icon: '🛡', subtitle: 'Purity Seal', dir: relicsDir },
-  { name: 'seal_of_omnissiah', color: '#f59e0b', icon: '⚙', subtitle: 'Purity Seal', dir: relicsDir },
+  { name: 'seal_of_machine_vow', color: '#f59e0b', icon: '⚙', subtitle: 'Purity Seal', dir: relicsDir },
 ];
 
 // 生成函数

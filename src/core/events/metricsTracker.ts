@@ -86,7 +86,7 @@ export class MetricsTracker {
       { id: 'no_damage_boss', name: 'Perfect Boss', description: 'Defeat a boss without taking damage', unlocked: false },
       { id: 'full_gold_run', name: 'Greedy', description: 'End a run with 999+ gold', unlocked: false },
       { id: 'ten_combos', name: 'Combo Master', description: 'Trigger 10+ synergies in a single combat', unlocked: false },
-      { id: 'corruption_survivor', name: 'Chaos Walker', description: 'Win with 50+ corruption', unlocked: false },
+      { id: 'corruption_survivor', name: 'Entropy Walker', description: 'Win with 50+ corruption', unlocked: false },
       { id: 'speedrunner', name: 'Speed Runner', description: 'Complete a run in under 30 minutes', unlocked: false },
       { id: 'minimal_deck', name: 'Minimalist', description: 'Win with 5 or fewer cards in deck', unlocked: false },
       { id: 'infinite_combo', name: 'Infinite Power', description: 'Deal over 1000 damage in one turn', unlocked: false },

@@ -619,7 +619,7 @@ export function getStoryEventOptionPresentation(
         });
       case 'tear_bargain':
         return decorateStoryEventOptionPresentation(eventId, optionId, {
-          gains: ['获得 1 件强大的亚空间/混沌奇物'],
+          gains: ['获得 1 件强大的亚空间/熵变奇物'],
           costs: ['随机永久摧毁 1 张非基础牌']
         });
       case 'tear_seal':
@@ -635,7 +635,7 @@ export function getStoryEventOptionPresentation(
     switch (optionId) {
       case 'legacy_open_casket':
         return decorateStoryEventOptionPresentation(eventId, optionId, {
-          gains: ['获得奇物《混沌圣物》（每打出一张牌随机伤害敌人）'],
+          gains: ['获得奇物《熵变圣物》（每打出一张牌随机伤害敌人）'],
           costs: [`立刻失去 ${formatPct(hpLossRatio)} 当前生命值（当前约 ${n.openCasketCurrentHpLoss ?? 0}）`, `后续遭遇敌人获得追杀增幅（生命/伤害 +${Math.round((n.openCasketEnemyHuntBonusPct ?? 0.1) * 100)}%）`]
         });
       case 'legacy_read_codex':

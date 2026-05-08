@@ -102,7 +102,7 @@
   {
     "id": "doctrine_heresy",
     "name": "异端教义",
-    "description": "开局获得 1 pact slot 折扣；混沌/风险收益事件权重 +20%；每章第一次事件多 1 个高风险选项",
+    "description": "开局获得 1 pact slot 折扣；熵变/风险收益事件权重 +20%；每章第一次事件多 1 个高风险选项",
     "unlockCondition": {
       "type": "currency",
       "currency": "warpEchoes",

@@ -155,7 +155,7 @@ test('rest upgrade surfaces keep recent route sustain ahead of stale deck histor
     engine.state.player.deck.push(makeRuntimeCard(offRouteUpgradeCard, 'delay-upgrade'));
     engine.state.player.deck.push(makeRuntimeCard(recentRouteCard, 'recent-1'));
     engine.state.player.deck.push(makeRuntimeCard(alignedUpgradeCard, 'warp-upgrade'));
-    engine.state.player.relics.push('bag_of_prep', 'lantern', 'vajra', 'mark_of_chaos');
+    engine.state.player.relics.push('bag_of_prep', 'lantern', 'vajra', 'mark_of_entropy');
     engine.state.screen = 'Rest';
 
     const routeTags = getKnownRouteTagsForCharacter('chronomancer');

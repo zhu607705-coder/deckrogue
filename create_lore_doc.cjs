@@ -143,7 +143,7 @@ const characters = [
   },
   {
     name: "2.2 \u66FC\u5C71\u4E4B\u9B3C (The Brute)",
-    prompt: "A heavily armored fantasy warrior with massive battle scars, wielding a giant warhammer, epic fantasy art style",
+    prompt: "A heavily armored fantasy warrior with massive battle scars, wielding a giant war maul, epic fantasy art style",
     description: "\u4E00\u4F4D\u8EAB\u62AB\u91CD\u7532\u7684\u5947\u5E7B\u6218\u58EB\uFF0C\u6EE1\u8EAB\u6218\u4E89\u4F24\u75D5\uFF0C\u624B\u6301\u5DE8\u5927\u7684\u6218\u9529\uFF0C\u53F2\u8BDD\u5947\u5E7B\u827A\u672F\u98CE\u683C",
     quote: "\u6B7B\u4EA1\u4E0D\u662F\u7EC8\u70B9\uFF0C\u5FCC\u8BB0\u624D\u662F\u3002\u8BA9\u4F60\u7684\u6124\u6012\u711A\u70E7\uFF0C\u76F4\u5230\u628A\u4F60\u7684\u654C\u4EBA\u5168\u90E8\u71D5\u5C3D\u3002"
   },

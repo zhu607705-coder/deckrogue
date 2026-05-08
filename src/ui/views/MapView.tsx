@@ -779,7 +779,7 @@ export function MapView({
                           transition={{ delay: 0.3, duration: 0.3 }}
                         >
                           <span className="grimdark-node-detail-hint-label">💡 提示</span>
-                          {dossier?.summary || '愿帝皇保佑你的征程。'}
+                          {dossier?.summary || '愿誓约保佑你的征程。'}
                         </motion.div>
                       </motion.div>
                     )}

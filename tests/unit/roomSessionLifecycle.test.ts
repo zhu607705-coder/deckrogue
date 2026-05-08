@@ -53,7 +53,7 @@ test('rest relic-upgrade uses RoomSession rest ownership instead of degrading to
     engine.selectCharacter('informant');
     engine.state.currentNodeId = 'rest_node';
     engine.state.screen = 'Rest';
-    engine.state.player.relics.push('mark_of_chaos');
+    engine.state.player.relics.push('mark_of_entropy');
     setRoomSession(engine.state, createRoomSessionForNode({
       token: 'room_rest_token',
       nodeId: 'rest_node',
