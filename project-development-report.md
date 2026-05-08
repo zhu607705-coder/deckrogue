@@ -1,5 +1,22 @@
 # Project Development Report
 
+## Plan Completion Audit - 2026-05-09
+
+- Rechecked the user concern that the approved plans might still be incomplete.
+- Current branch state:
+  - `HEAD`: `dbba6e2`
+  - upstream: `origin/codex/test-auto/ui-click-30` at `dbba6e2`
+  - ahead/behind: `0/0`
+  - `git status --short --branch`: clean
+- Current scoped completion evidence:
+  - `.omx/state/sts-inspired-original-expansion-ralph-progress.json` marks Ralph inactive, `current_phase=complete`, architect verdict `APPROVE`, and `4/4` user-story items verified.
+  - `npm run doctor:game`: `44/44` passed; report recorded `gitHead=dbba6e2c`, `gitDirty=false`, `overallStatus=pass`.
+  - `npm run check:release-readiness`: `41/41` passed, `warn=0`, `fail=0`.
+- Scope clarification:
+  - The approved Phase 1 / scoped execution plans are complete.
+  - The planning note that “full expansion scale” needs multiple passes remains future scope, not a failed acceptance item for this closure.
+  - The older “branch still not pushed” risk below is historical; current branch and upstream are synchronized.
+
 ## Map Responsive Smoke Pass - 2026-05-03
 
 - Added `scripts/validation/playwright_map_responsive_smoke.ts` plus `npm run test:map-responsive-smoke` to audit the grimdark map at `390x844`, `768x1024`, and `1440x960`.
