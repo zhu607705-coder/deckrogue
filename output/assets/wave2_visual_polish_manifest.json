@@ -1,0 +1,214 @@
+{
+  "cards": [
+    {
+      "id": "cipher_dead_drop",
+      "path": "public\\assets\\cards\\cipher_dead_drop.webp",
+      "sha256": "eb160c1cc60c5c3e66a5b67eb8b090ad420e71b2645280e5c5eaf70282e1abc4"
+    },
+    {
+      "id": "shadow_ledger_route",
+      "path": "public\\assets\\cards\\shadow_ledger_route.webp",
+      "sha256": "c9566b0b134148871224586c348a6c09d5b0ce1390c4217d8722ded897eb4e39"
+    },
+    {
+      "id": "witness_box_trap",
+      "path": "public\\assets\\cards\\witness_box_trap.webp",
+      "sha256": "0a9514de1921903b72b5c302b737d147caa5cbec083c89a58532a8609ecd85cd"
+    },
+    {
+      "id": "sainted_sinew",
+      "path": "public\\assets\\cards\\sainted_sinew.webp",
+      "sha256": "51c4275509ebc030b47f60b79cce9cd99e2ca99fe2ab7e1efdfdfd0709179066"
+    },
+    {
+      "id": "nailwall_stance",
+      "path": "public\\assets\\cards\\nailwall_stance.webp",
+      "sha256": "3817911d8cf7f8db320a32230ed021e9c3022923c8b2509045f3cffd8f91b2f3"
+    },
+    {
+      "id": "redline_bellow",
+      "path": "public\\assets\\cards\\redline_bellow.webp",
+      "sha256": "3380f3ae46231b5e0c4ff643fcc2dba746f6e52e455bd4296a67397d5103861d"
+    },
+    {
+      "id": "venom_grid",
+      "path": "public\\assets\\cards\\venom_grid.webp",
+      "sha256": "bf2629c6bc075de29186046dc75f969d493ebf0446fdf8eed21a980d09e6d806"
+    },
+    {
+      "id": "command_canticle",
+      "path": "public\\assets\\cards\\command_canticle.webp",
+      "sha256": "fb77bb5a6e5b14f5c0cb2970f68679bac5c998e2fa6844d0914e9d0a2bc8251c"
+    },
+    {
+      "id": "bastion_geometry",
+      "path": "public\\assets\\cards\\bastion_geometry.webp",
+      "sha256": "f55052d9347508a06b00dfa622319734b7c8e52d569791f0187243f1cbebc608"
+    },
+    {
+      "id": "choir_thread",
+      "path": "public\\assets\\cards\\choir_thread.webp",
+      "sha256": "2b6d4b8e61ae5be2e29f9d71cb7c71d6dc2ac72926e318cf4510d32da6fc036a"
+    },
+    {
+      "id": "reliquary_golem",
+      "path": "public\\assets\\cards\\reliquary_golem.webp",
+      "sha256": "1b582866a4673e24cbcbc6cc15ddc6695f42c0d55d2dfa27ddf5437467bbef2c"
+    },
+    {
+      "id": "severance_pact",
+      "path": "public\\assets\\cards\\severance_pact.webp",
+      "sha256": "e2409fc1c66a7ef15e9d12118798baebbb4e3867e7634eb291104d28fc42b0bc"
+    },
+    {
+      "id": "minute_tax",
+      "path": "public\\assets\\cards\\minute_tax.webp",
+      "sha256": "b54b97b9e5a7ffdca42c7a326df3d68453dfb3a3bedcf72f9e0a29df7f4653cf"
+    },
+    {
+      "id": "delayed_funeral",
+      "path": "public\\assets\\cards\\delayed_funeral.webp",
+      "sha256": "1d2a0a6e3ce7544bd10a7372fc50f766deb4fb5bbb602ccac5ac9915164b0781"
+    },
+    {
+      "id": "warp_notary",
+      "path": "public\\assets\\cards\\warp_notary.webp",
+      "sha256": "22d3d5f29035205016b66bfcb09519d144ce3a662960e0c9c3a42b282ecf85df"
+    },
+    {
+      "id": "ember_distillate",
+      "path": "public\\assets\\cards\\ember_distillate.webp",
+      "sha256": "e5bf59bb79d42f6e7476e30b36c027d957db1b4067bd0c02bbb827455262d02c"
+    },
+    {
+      "id": "acidic_catechism",
+      "path": "public\\assets\\cards\\acidic_catechism.webp",
+      "sha256": "e3d283c5e37ab82acda6e08680f144792ad8177bb67a4fec1c9a8aaf91fb533a"
+    },
+    {
+      "id": "choir_reagent",
+      "path": "public\\assets\\cards\\choir_reagent.webp",
+      "sha256": "f21701e0f601aabee05ab03003ab5cc2737e27209de6c672e68698cb1d03db08"
+    },
+    {
+      "id": "docket_of_bones",
+      "path": "public\\assets\\cards\\docket_of_bones.webp",
+      "sha256": "0b15a5a987ab4e1d8b29c71d94fe63e986cd152b6a657f9e8b9e7713522b2622"
+    },
+    {
+      "id": "execution_hour",
+      "path": "public\\assets\\cards\\execution_hour.webp",
+      "sha256": "a168d08d5d3537a1ee8bee428eb447b4f04e362b3b538c4d1e87e6961df18a81"
+    },
+    {
+      "id": "compelled_confession",
+      "path": "public\\assets\\cards\\compelled_confession.webp",
+      "sha256": "56a61d73f59adb6076287dc39f5045a9cd3f0d4ac95d634c1016a93f9e754d3c"
+    },
+    {
+      "id": "seal_of_stillwater",
+      "path": "public\\assets\\cards\\seal_of_stillwater.webp",
+      "sha256": "499f4cee359a193a3b5c494fdf9abf4dbd0b7ca94b9f507085557082ad7026be"
+    },
+    {
+      "id": "suppression_field",
+      "path": "public\\assets\\cards\\suppression_field.webp",
+      "sha256": "c20fb284fc91d36fcdd916418088d3f3dd4fd2ae310b0a8ffb2d0d2f5cac168b"
+    },
+    {
+      "id": "rift_liability",
+      "path": "public\\assets\\cards\\rift_liability.webp",
+      "sha256": "93d0a3119fc6adc7ee717a089d8a1e69409d43164459a5fc0951ed5c6479f8ae"
+    }
+  ],
+  "relics": [
+    {
+      "id": "cipher_lantern",
+      "path": "public\\assets\\relics\\cipher_lantern.png",
+      "sha256": "0fe5e93aa075c3229e2b3cc463a931bbcf47102aefe83157c1b9a156ed42e96a"
+    },
+    {
+      "id": "iron_votive",
+      "path": "public\\assets\\relics\\iron_votive.png",
+      "sha256": "e2a4b8eb45a201fa5a6ef865c2474fea76fdd45b19790412be11aedc4b1479b0"
+    },
+    {
+      "id": "command_seal",
+      "path": "public\\assets\\relics\\command_seal.png",
+      "sha256": "9944f7e7319cce3674d41145fdce3668af04946347db24ed625bcb601c7d08b7"
+    },
+    {
+      "id": "marionette_reliquary",
+      "path": "public\\assets\\relics\\marionette_reliquary.png",
+      "sha256": "706265318c611cc78798cef75856c66dfbe75d0e96ca8ba7bddc58b10c511a57"
+    },
+    {
+      "id": "minute_censer",
+      "path": "public\\assets\\relics\\minute_censer.png",
+      "sha256": "3427d407598f49aea465b25dc3a54b36038a25835c2cb9ccdc04b87638b116ac"
+    },
+    {
+      "id": "crucible_choir",
+      "path": "public\\assets\\relics\\crucible_choir.png",
+      "sha256": "f65f154ccaff1acf289b7d690804732fe116a98fa65a00f48d585a06d373bd84"
+    },
+    {
+      "id": "verdict_thurible",
+      "path": "public\\assets\\relics\\verdict_thurible.png",
+      "sha256": "d3968aac699cc2d2a4b42b4987a062f3c3a48256cd34a136a2b5feff3fbb4b95"
+    },
+    {
+      "id": "null_chalice",
+      "path": "public\\assets\\relics\\null_chalice.png",
+      "sha256": "95547a3a1fbae5c362c1800d3d2d3b0031b79931a577c4ccb8a24d492c2e1d0f"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "cipher_surgeon",
+      "path": "public\\assets\\enemies\\cipher_surgeon.png",
+      "sha256": "b29b3906d86e08c8682631a53a1382e9c0777e056c606f83eff1aec98e6895aa"
+    },
+    {
+      "id": "redline_penitent",
+      "path": "public\\assets\\enemies\\redline_penitent.png",
+      "sha256": "a3ea450ec2eb3aaff767385196032198967b9b5e45a5275bf6d1308913575662"
+    },
+    {
+      "id": "banner_tax_collector",
+      "path": "public\\assets\\enemies\\banner_tax_collector.png",
+      "sha256": "b61618919b9dc064112b331037225653d6acd4cfe99d62b2973a1558c0192ea6"
+    },
+    {
+      "id": "reliquary_string_host",
+      "path": "public\\assets\\enemies\\reliquary_string_host.png",
+      "sha256": "ac1dda6190e50b425bf747cd067dc7379007ac74e3d88b62953261c5c7f22950"
+    },
+    {
+      "id": "morgue_timekeeper",
+      "path": "public\\assets\\enemies\\morgue_timekeeper.png",
+      "sha256": "21a2c98c8ee3454716265387bab6fe4294a2d440cc8b94ec404cf177672dcf18"
+    },
+    {
+      "id": "crucible_deacon",
+      "path": "public\\assets\\enemies\\crucible_deacon.png",
+      "sha256": "2458495adc3e6ba8a8b6069235551b1b20d9a95227f67a58fe64864c87fa3bbf"
+    },
+    {
+      "id": "catacomb_bailiff",
+      "path": "public\\assets\\enemies\\catacomb_bailiff.png",
+      "sha256": "232c6ca781a6aaf24dd2a14e39121efe9b6ceb7e728d64abc2b963dbd5dd27fc"
+    },
+    {
+      "id": "null_cup_bearer",
+      "path": "public\\assets\\enemies\\null_cup_bearer.png",
+      "sha256": "0ea3dce2fcd50a2535651969306d4a6fc0c642ac02de5a5c0fe2c629ed9b5fe2"
+    }
+  ],
+  "totals": {
+    "cards": 24,
+    "relics": 8,
+    "enemies": 8,
+    "all": 40
+  }
+}

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -116,6 +117,16 @@ function assertPng(path: string): void {
   assert.equal(buffer.readUInt32BE(0), 0x89504e47, `${path} is not a PNG`);
 }
 
+function sha256(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+function hasImmediateDrawAndResource(actions: ActionSpec[]): boolean {
+  const types = collectActionTypes(actions);
+  const resourceTypes = new Set(['GainIntel', 'GainThread', 'GainTimeLayer', 'GainConcoction', 'GainResource']);
+  return types.has('Draw') && [...resourceTypes].some((type) => types.has(type));
+}
+
 function cardById(id: string): CardDef {
   const card = cardsData.find((entry) => entry.id === id);
   assert.ok(card, `missing wave II card ${id}`);
@@ -151,6 +162,7 @@ test('wave II route cards add full-scale support across all 24 route tags', () =
     assert.ok((card.lastWords || '').length > 10, `${card.id} needs last words`);
     assert.ok(getCardRouteSignal(card), `${card.id} must declare an explicit route signal`);
     assertWebp(resolve('public', `.${localCardArt(card.id)}`));
+    assert.ok(card.cost > 0 || !hasImmediateDrawAndResource(card.actions), `${card.id} should not be zero-cost immediate draw plus route resource`);
 
     for (const type of collectActionTypes(card.actions)) {
       assert.ok(registeredActions.has(type), `${card.id} uses unregistered action ${type}`);
@@ -173,6 +185,18 @@ test('wave II route cards add full-scale support across all 24 route tags', () =
       assert.ok((countByRoute.get(routeTag) ?? 0) >= 3, `${routeTag} should have at least 3 explicit route cards`);
     }
   }
+});
+
+test('wave II polished assets have unique runtime identities', () => {
+  const paths = [
+    ...WAVE_II_CARD_IDS.map((id) => resolve('public', `.${localCardArt(id)}`)),
+    ...WAVE_II_RELIC_IDS.map((id) => resolve('public/assets/relics', `${id}.png`)),
+    ...WAVE_II_ENEMY_IDS.map((id) => resolve('public', `.${localEnemyArt(id)}`)),
+  ];
+  const hashes = paths.map(sha256);
+
+  assert.equal(paths.length, 40);
+  assert.equal(new Set(hashes).size, paths.length, 'wave II assets should not reuse identical files');
 });
 
 test('wave II relics make every character route easier to surface in shop decisions', () => {

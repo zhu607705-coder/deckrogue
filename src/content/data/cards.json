@@ -13857,7 +13857,7 @@
     "id": "minute_tax",
     "name": "???",
     "rarity": "Common",
-    "cost": 0,
+    "cost": 1,
     "type": "Skill",
     "targeting": "Self",
     "tags": [

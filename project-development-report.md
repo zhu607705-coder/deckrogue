@@ -1,5 +1,30 @@
 # Project Development Report
 
+## Wave II Visual Polish and Balance Closure - 2026-05-09
+
+- Continued from the remaining non-blocking risks around hand-authored visual polish and longform numeric balance.
+- Added a deterministic Pillow-based asset polish generator: `scripts/assets/generate_wave2_polish_assets.py`.
+  - Generated distinct runtime art for all 40 Wave II assets: 24 cards, 8 relics, and 8 route-pressure enemies.
+  - Wrote hash/count evidence to `output/assets/wave2_visual_polish_manifest.json`.
+  - Reduced the 8 Wave II enemy PNGs from copied multi-megabyte source variants to unique optimized runtime portraits.
+- Tightened the clearest Wave II balance risk:
+  - `minute_tax` now costs `1` instead of `0`, removing the zero-cost immediate draw plus route-resource pattern.
+  - Added a regression guard so Wave II zero-cost cards cannot combine immediate draw with immediate route-resource gain.
+- Strengthened `tests/unit/fullExpansionScale.test.ts`:
+  - Wave II asset hashes must be unique across card, relic, and enemy runtime assets.
+  - Wave II cards must avoid zero-cost immediate draw plus route resource.
+- Verification completed before final commit:
+  - `py scripts/assets/generate_wave2_polish_assets.py`: generated 24 card assets, 8 relic assets, 8 enemy assets.
+  - `npx tsx --test tests/unit/fullExpansionScale.test.ts`: `5/5` passed.
+  - `npm run check:content-authoring`: cards `354/354`, enemies `58/58`, relics `106/106`.
+  - `npm run check:enemy-visual-identity`: OK, `14` variants.
+  - `npm run test:supplemental-units`: `153/153` passed.
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`.
+  - `npm run build`: exit `0`.
+- Release readiness note:
+  - A pre-commit `npm run check:release-readiness` correctly failed on stale desktop/doctor/flow/security reports for the new workspace state.
+  - Final release readiness must be refreshed after this commit through `npm run doctor:game` and `npm run check:release-readiness`.
+
 ## Wave II Full-Scale Expansion Closure - 2026-05-09
 
 - User requested that the plan's future multi-pass expansion be completed in this pass and asked for team execution.
