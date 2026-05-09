@@ -12,7 +12,7 @@
   - 24 new card WebP assets, 8 relic PNG assets, and 8 enemy PNG assets.
 - Added `tests/unit/fullExpansionScale.test.ts` and wired it into `npm run test:supplemental-units`.
 - Updated `.omx/plans/2026-05-08-sts-inspired-original-expansion.md` so the former future full-scale follow-up is marked as executed by Wave II; remaining work is tuning only.
-- Verification completed so far:
+- Verification completed:
   - `npx tsx --test tests/unit/fullExpansionScale.test.ts`: `4/4` passed.
   - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`.
   - `npm run check:content-authoring`: cards `354/354`, enemies `58/58`, relics `106/106`.
@@ -50,8 +50,14 @@
   - `npm run check:release-readiness`: `41/41` passed, `warn=0`, `fail=0`.
 - Scope clarification:
   - The approved Phase 1 / scoped execution plans are complete.
-  - The planning note that “full expansion scale” needs multiple passes remains future scope, not a failed acceptance item for this closure.
-  - The older “branch still not pushed” risk below is historical; current branch and upstream are synchronized.
+  - The former “full expansion scale needs multiple passes” note has been superseded by the Wave II closure above: the route-card, route-relic, route-event, and route-pressure enemy expansion was executed in this pass.
+  - Remaining scope is iterative polish only: hand-authored unique art direction and longform numeric balance.
+  - The older push-risk note below is resolved; current branch and upstream are synchronized.
+- Post-push closure verification:
+  - Latest pushed commit before this audit: `3d39ff0ef9190c8ebeed82c34748278e36d681e8`.
+  - `npm run check:release-readiness`: `41` passed, `0` warned, `0` failed.
+  - `reports/doctor/report.json`: `44/44` passed, `gitHead=3d39ff0e`, `gitDirty=false`.
+  - `git rev-parse HEAD` matched `git rev-parse @{u}`.
 
 ## Map Responsive Smoke Pass - 2026-05-03
 
@@ -616,8 +622,8 @@
   - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`
   - `npm run build`: exit `0`
   - `git status --short --branch`: clean, branch ahead `origin/codex/test-auto/ui-click-30` by local commits
-- 剩余风险：
-  - 分支仍未 push 到远端。
+- 当时剩余风险：
+  - 已解决：分支曾未 push 到远端；当前分支已同步到 upstream。
   - `public/assets/music/` 属于大体积运行资源，已提交到 Git；后续若远端体积策略严格，应单独评估 LFS 或资源分发方案。
 
 ## One-by-one Change Trace - 2026-05-08
