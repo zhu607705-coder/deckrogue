@@ -13089,10 +13089,10 @@
               "target": "AllEnemies"
             },
             {
-            "type": "ApplyStatus",
-            "status": "Fear",
-            "stacks": 1,
-            "target": "AllEnemies"
+              "type": "ApplyStatus",
+              "status": "Fear",
+              "stacks": 1,
+              "target": "AllEnemies"
             },
             {
               "type": "GainBlock",
@@ -13301,5 +13301,1128 @@
     "background": "反奇迹会把神迹发生的位置从世界中剪掉，只留下可被封印师短暂握住的空洞。",
     "loreText": "护符上没有圣名，只刻着“此处不得发生”，像一道拒绝奇迹的伤口。",
     "lastWords": "我祈祷没有回应，于是我活了下来。"
+  },
+  {
+    "id": "cipher_dead_drop",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "intel",
+      "draw",
+      "wave2"
+    ],
+    "text": "?? 5 ????? 1 ???",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 5,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 7 ????? 1 ???",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 7,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A sealed data capsule hidden inside a candle niche, gothic sci-fi card art, no text.",
+    "character": "informant",
+    "background": "??????????????????????????",
+    "loreText": "?????????????????????????",
+    "lastWords": "????????????????????"
+  },
+  {
+    "id": "shadow_ledger_route",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "stealth",
+      "evidence",
+      "wave2"
+    ],
+    "text": "?? 7 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 7,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A black ledger unfolding into an alley map made of candle smoke, gothic sci-fi card art, no text.",
+    "character": "informant",
+    "background": "?????????????????? ??????????????????",
+    "loreText": "??????????????????????",
+    "lastWords": "?????????????????"
+  },
+  {
+    "id": "witness_box_trap",
+    "name": "?????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "evidence",
+      "attack",
+      "wave2"
+    ],
+    "text": "?? 12 ?????? 2 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 12,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 2,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 16 ?????? 2 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 16,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A witness stand wired with red lenses and hidden pistons, gothic sci-fi card art, no text.",
+    "character": "informant",
+    "background": "???????????????????????????",
+    "loreText": "?????????????????????",
+    "lastWords": "????????????????????"
+  },
+  {
+    "id": "sainted_sinew",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "strength",
+      "attack",
+      "wave2"
+    ],
+    "text": "?? 8 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 8,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A bruised arm wrapped in votive wire and red wax seals, gothic sci-fi card art, no text.",
+    "character": "brute",
+    "background": "?????????????????????",
+    "loreText": "????????????? ????????????????",
+    "lastWords": "?????????????????"
+  },
+  {
+    "id": "nailwall_stance",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "block",
+      "armor",
+      "wave2"
+    ],
+    "text": "?? 11 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 11,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 14 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A shield wall made of riveted coffin plates and industrial nails, gothic sci-fi card art, no text.",
+    "character": "brute",
+    "background": "?????????????????????????",
+    "loreText": "??????????????? ????????????????",
+    "lastWords": "?????????????????"
+  },
+  {
+    "id": "redline_bellow",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "rage",
+      "wrath",
+      "attack",
+      "wave2"
+    ],
+    "text": "?? 15 ???????? 3 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 15,
+        "target": "Enemy"
+      },
+      {
+        "type": "LoseHP",
+        "amount": 3
+      }
+    ],
+    "upgrade": {
+      "text": "?? 20 ???????? 2 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 20,
+          "target": "Enemy"
+        },
+        {
+          "type": "LoseHP",
+          "amount": 2
+        }
+      ]
+    },
+    "art_prompt": "A warrior roaring through cracked respirator gauges glowing red, gothic sci-fi card art, no text.",
+    "character": "brute",
+    "background": "????????????????????????",
+    "loreText": "???????????????? ????????????????",
+    "lastWords": "???????????????????"
+  },
+  {
+    "id": "venom_grid",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "poison",
+      "control",
+      "wave2"
+    ],
+    "text": "?? 4 ?????? 4 ????",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 4,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 4,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 5 ?????? 6 ????",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 6,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A tactical grid projected over green ampoules and black trenches, gothic sci-fi card art, no text.",
+    "character": "tactician",
+    "background": "????????????????? ??????????????????",
+    "loreText": "?????????????? ????????????????",
+    "lastWords": "????????????????????"
+  },
+  {
+    "id": "command_canticle",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "command",
+      "draw",
+      "wave2"
+    ],
+    "text": "? 1 ????? 1 ????",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "? 2 ????? 1 ????",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A vox banner singing orders as luminous command sigils align, gothic sci-fi card art, no text.",
+    "character": "tactician",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "??????????????? ????????????????",
+    "lastWords": "????????????????"
+  },
+  {
+    "id": "bastion_geometry",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "formation",
+      "block",
+      "wave2"
+    ],
+    "text": "?? 16 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 16,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "command",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 20 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 20,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "command",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A fortress diagram folding into a glowing triangular shield, gothic sci-fi card art, no text.",
+    "character": "tactician",
+    "background": "?????????????????????",
+    "loreText": "??????????????????????",
+    "lastWords": "????????????????"
+  },
+  {
+    "id": "choir_thread",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "thread",
+      "threads",
+      "wave2"
+    ],
+    "text": "?? 8 ????? 1 ???",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ????? 1 ???",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "Silver puppet strings vibrating like choir lines over a black chapel floor, gothic sci-fi card art, no text.",
+    "character": "puppeteer",
+    "background": "?????????????????? ??????????????????",
+    "loreText": "????????????????? ????????????????",
+    "lastWords": "????????????????????"
+  },
+  {
+    "id": "reliquary_golem",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "summon",
+      "construct",
+      "wave2"
+    ],
+    "text": "?? 12 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 16 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 16,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A small reliquary golem unfolding bone-white shield arms, gothic sci-fi card art, no text.",
+    "character": "puppeteer",
+    "background": "??????????????????????",
+    "loreText": "??????????????????? ????????????????",
+    "lastWords": "?????????????????"
+  },
+  {
+    "id": "severance_pact",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "sacrifice",
+      "attack",
+      "wave2"
+    ],
+    "text": "?? 14 ????? 1 ???",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 14,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 18 ????? 1 ???",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 18,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A contract severed by scissors, each cut releasing red puppet sparks, gothic sci-fi card art, no text.",
+    "character": "puppeteer",
+    "background": "????????????????? ??????????????????",
+    "loreText": "???????????????????? ????????????????",
+    "lastWords": "???????????????????"
+  },
+  {
+    "id": "minute_tax",
+    "name": "???",
+    "rarity": "Common",
+    "cost": 0,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "layer",
+      "echo",
+      "wave2"
+    ],
+    "text": "?? 1 ?????? 1 ???",
+    "actions": [
+      {
+        "type": "GainTimeLayer",
+        "amount": 1
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 2 ?????? 1 ???",
+      "actions": [
+        {
+          "type": "GainTimeLayer",
+          "amount": 2
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A tax seal stamped onto a dripping hourglass minute, gothic sci-fi card art, no text.",
+    "character": "chronomancer",
+    "background": "????????????????????????",
+    "loreText": "?????????? ????????????????",
+    "lastWords": "???????????????"
+  },
+  {
+    "id": "delayed_funeral",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "delay",
+      "attack",
+      "wave2"
+    ],
+    "text": "?? 7 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A coffin receipt dated tomorrow burning beside a stopped clock, gothic sci-fi card art, no text.",
+    "character": "chronomancer",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "?????????? ????????????????",
+    "lastWords": "?????????????"
+  },
+  {
+    "id": "warp_notary",
+    "name": "?????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "warp",
+      "draw",
+      "wave2"
+    ],
+    "text": "? 2 ????? 1 ????",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "? 2 ????? 2 ????",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 2,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A faceless notary stamping a portal contract in impossible blue fire, gothic sci-fi card art, no text.",
+    "character": "chronomancer",
+    "background": "??????????????????????",
+    "loreText": "??????????????????? ????????????????",
+    "lastWords": "???????????????"
+  },
+  {
+    "id": "ember_distillate",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "fire",
+      "concoction",
+      "wave2"
+    ],
+    "text": "?? 7 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 7,
+        "target": "Enemy"
+      },
+      {
+        "type": "ApplyStatus",
+        "status": "Strength",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 10 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A vial of ember distillate glowing inside a brass reliquary, gothic sci-fi card art, no text.",
+    "character": "alchemist",
+    "background": "??????????????????????",
+    "loreText": "???????????????? ????????????????",
+    "lastWords": "???????????????????"
+  },
+  {
+    "id": "acidic_catechism",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "acid",
+      "poison",
+      "wave2"
+    ],
+    "text": "?? 5 ????? 1 ???",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Poison",
+        "amount": 5,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 7 ????? 1 ???",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "An acid-green catechism page dissolving into laboratory glass, gothic sci-fi card art, no text.",
+    "character": "alchemist",
+    "background": "????????????????????????",
+    "loreText": "??????????????? ????????????????",
+    "lastWords": "????????????"
+  },
+  {
+    "id": "choir_reagent",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "concoction",
+      "brew",
+      "wave2"
+    ],
+    "text": "? 2 ????? 10 ????",
+    "actions": [
+      {
+        "type": "Draw",
+        "amount": 2,
+        "target": "Self"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 10,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "? 2 ????? 14 ????",
+      "actions": [
+        {
+          "type": "Draw",
+          "amount": 2,
+          "target": "Self"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "Multiple reagent vials humming as a small choir inside stained glass tubes, gothic sci-fi card art, no text.",
+    "character": "alchemist",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "???????????????????? ????????????????",
+    "lastWords": "????????????????"
+  },
+  {
+    "id": "docket_of_bones",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "verdict",
+      "warrant",
+      "wave2"
+    ],
+    "text": "?? 6 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 6,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "verdict",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 9 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 9,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "verdict",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A legal docket made of thin bone pages chained to a black lectern, gothic sci-fi card art, no text.",
+    "character": "penitent_judge",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "????????????????? ????????????????",
+    "lastWords": "????????????"
+  },
+  {
+    "id": "execution_hour",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "execution",
+      "bolt",
+      "wave2"
+    ],
+    "text": "?? 16 ????????????? 1 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 16,
+        "target": "Enemy"
+      },
+      {
+        "type": "ConditionalApply",
+        "condition": {
+          "type": "HasResource",
+          "resource": "verdict",
+          "amount": 1
+        },
+        "status": "Vulnerable",
+        "amount": 1,
+        "target": "Enemy"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 21 ????????????? 2 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 21,
+          "target": "Enemy"
+        },
+        {
+          "type": "ConditionalApply",
+          "condition": {
+            "type": "HasResource",
+            "resource": "verdict",
+            "amount": 1
+          },
+          "status": "Vulnerable",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "art_prompt": "A black clock bell striking above an execution rail, gothic sci-fi card art, no text.",
+    "character": "penitent_judge",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "?????????????? ????????????????",
+    "lastWords": "????????????????????"
+  },
+  {
+    "id": "compelled_confession",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "confession",
+      "trial",
+      "wave2"
+    ],
+    "text": "?? 2 ????? 1 ???",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "Draw",
+        "amount": 1,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ????? 1 ???",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 3,
+          "target": "Enemy"
+        },
+        {
+          "type": "Draw",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A confession grille glowing white as a voice is pulled into red script, gothic sci-fi card art, no text.",
+    "character": "penitent_judge",
+    "background": "??????????????????????",
+    "loreText": "??????????????? ????????????????",
+    "lastWords": "??????????????"
+  },
+  {
+    "id": "seal_of_stillwater",
+    "name": "????",
+    "rarity": "Common",
+    "cost": 1,
+    "type": "Skill",
+    "targeting": "Self",
+    "tags": [
+      "seal",
+      "null",
+      "wave2"
+    ],
+    "text": "?? 8 ?????? 1 ????",
+    "actions": [
+      {
+        "type": "GainBlock",
+        "amount": 8,
+        "target": "Self"
+      },
+      {
+        "type": "GainResource",
+        "resource": "seal",
+        "amount": 1
+      }
+    ],
+    "upgrade": {
+      "text": "?? 11 ?????? 1 ????",
+      "actions": [
+        {
+          "type": "GainBlock",
+          "amount": 11,
+          "target": "Self"
+        },
+        {
+          "type": "GainResource",
+          "resource": "seal",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A still black water seal holding a starless reflection flat, gothic sci-fi card art, no text.",
+    "character": "void_sanctioner",
+    "background": "??????????????????? ??????????????????",
+    "loreText": "????????????? ????????????????",
+    "lastWords": "?????????????"
+  },
+  {
+    "id": "suppression_field",
+    "name": "????",
+    "rarity": "Rare",
+    "cost": 2,
+    "type": "Skill",
+    "targeting": "Enemy",
+    "tags": [
+      "suppression",
+      "cage",
+      "wave2"
+    ],
+    "text": "?? 2 ?????? 12 ????",
+    "actions": [
+      {
+        "type": "ApplyStatus",
+        "status": "Weak",
+        "amount": 2,
+        "target": "Enemy"
+      },
+      {
+        "type": "GainBlock",
+        "amount": 12,
+        "target": "Self"
+      }
+    ],
+    "upgrade": {
+      "text": "?? 3 ?????? 14 ????",
+      "actions": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 3,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        }
+      ]
+    },
+    "art_prompt": "A square field of blue-white pressure pinning armor to the floor, gothic sci-fi card art, no text.",
+    "character": "void_sanctioner",
+    "background": "?????????????????????",
+    "loreText": "?????????? ????????????????",
+    "lastWords": "???????????????"
+  },
+  {
+    "id": "rift_liability",
+    "name": "????",
+    "rarity": "Uncommon",
+    "cost": 1,
+    "type": "Attack",
+    "targeting": "Enemy",
+    "tags": [
+      "risk",
+      "rift",
+      "wave2"
+    ],
+    "text": "?? 9 ???????? 2 ????",
+    "actions": [
+      {
+        "type": "DealDamage",
+        "amount": 9,
+        "target": "Enemy"
+      },
+      {
+        "type": "LoseHP",
+        "amount": 2
+      }
+    ],
+    "upgrade": {
+      "text": "?? 13 ???????? 1 ????",
+      "actions": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "Enemy"
+        },
+        {
+          "type": "LoseHP",
+          "amount": 1
+        }
+      ]
+    },
+    "art_prompt": "A contract chain hooked into a small blue rift, gothic sci-fi card art, no text.",
+    "character": "void_sanctioner",
+    "background": "?????????????????????????",
+    "loreText": "????????????????? ????????????????",
+    "lastWords": "????????????????"
   }
 ]

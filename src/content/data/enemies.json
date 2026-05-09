@@ -4727,5 +4727,761 @@
         ]
       }
     }
+  },
+  {
+    "id": "cipher_surgeon",
+    "name": "?????",
+    "hp_range": [
+      62,
+      72
+    ],
+    "tier": 2,
+    "variant_of": "scrap_surgeon",
+    "keywords": [
+      "variant",
+      "humanoid",
+      "support",
+      "wave2_route_enemy",
+      "informant_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "extract_file",
+        "weight": 4
+      },
+      {
+        "intent": "quiet_cut",
+        "weight": 3
+      },
+      {
+        "intent": "blackmail_stitch",
+        "weight": 2
+      }
+    ],
+    "moves": {
+      "extract_file": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "GainBlock",
+          "amount": 10,
+          "target": "Self"
+        }
+      ],
+      "quiet_cut": [
+        {
+          "type": "DealDamage",
+          "amount": 11,
+          "target": "Enemy"
+        }
+      ],
+      "blackmail_stitch": [
+        {
+          "type": "DealDamage",
+          "amount": 7,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "keywords_note": "Counters intel decks by forcing defense before payoff.",
+    "ai_profile": {
+      "perceptionAccuracy": 0.72,
+      "personality": {
+        "aggression": 0.44,
+        "defensiveness": 0.68,
+        "unpredictability": 0.24,
+        "revengefulness": 0.5
+      },
+      "intentBiases": [
+        {
+          "intent": "extract_file",
+          "defenseIntentBand": "low",
+          "multiplier": 1.4
+        },
+        {
+          "intent": "blackmail_stitch",
+          "comboThreatBand": "high",
+          "multiplier": 1.5
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.5,
+        "suppressedIntents": [
+          "extract_file"
+        ]
+      }
+    },
+    "art": "??????????????????????????????",
+    "description": "????????????????????????????"
+  },
+  {
+    "id": "redline_penitent",
+    "name": "?????",
+    "hp_range": [
+      68,
+      82
+    ],
+    "tier": 2,
+    "variant_of": "reactor_thrall",
+    "keywords": [
+      "variant",
+      "humanoid",
+      "rage",
+      "wave2_route_enemy",
+      "brute_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "redline_charge",
+        "weight": 4
+      },
+      {
+        "intent": "pain_armor",
+        "weight": 3
+      },
+      {
+        "intent": "martyr_swing",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "redline_charge": [
+        {
+          "type": "DealDamage",
+          "amount": 14,
+          "target": "Enemy"
+        }
+      ],
+      "pain_armor": [
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ],
+      "martyr_swing": [
+        {
+          "type": "DealDamage",
+          "amount": 10,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.66,
+      "personality": {
+        "aggression": 0.82,
+        "defensiveness": 0.36,
+        "unpredictability": 0.2,
+        "revengefulness": 0.7
+      },
+      "intentBiases": [
+        {
+          "intent": "redline_charge",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        },
+        {
+          "intent": "pain_armor",
+          "defenseIntentBand": "high",
+          "multiplier": 1.3
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 1,
+        "forcedAttackMultiplier": 1.7,
+        "suppressedIntents": [
+          "pain_armor"
+        ]
+      }
+    },
+    "art": "?????????????????????????????",
+    "description": "????????????????????????"
+  },
+  {
+    "id": "banner_tax_collector",
+    "name": "????",
+    "hp_range": [
+      58,
+      70
+    ],
+    "tier": 2,
+    "variant_of": "intelligence_officer",
+    "keywords": [
+      "variant",
+      "humanoid",
+      "command",
+      "wave2_route_enemy",
+      "tactician_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "audit_line",
+        "weight": 4
+      },
+      {
+        "intent": "poison_tariff",
+        "weight": 3
+      },
+      {
+        "intent": "raise_banner",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "audit_line": [
+        {
+          "type": "DealDamage",
+          "amount": 9,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "poison_tariff": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 5,
+          "target": "Enemy"
+        }
+      ],
+      "raise_banner": [
+        {
+          "type": "GainBlock",
+          "amount": 12,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.78,
+      "personality": {
+        "aggression": 0.52,
+        "defensiveness": 0.62,
+        "unpredictability": 0.18,
+        "revengefulness": 0.45
+      },
+      "intentBiases": [
+        {
+          "intent": "raise_banner",
+          "defenseIntentBand": "high",
+          "multiplier": 1.5
+        },
+        {
+          "intent": "poison_tariff",
+          "comboThreatBand": "high",
+          "multiplier": 1.4
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.5,
+        "suppressedIntents": [
+          "raise_banner"
+        ]
+      }
+    },
+    "art": "???????????????????????????????",
+    "description": "????????????????????"
+  },
+  {
+    "id": "reliquary_string_host",
+    "name": "?????",
+    "hp_range": [
+      60,
+      74
+    ],
+    "tier": 2,
+    "variant_of": "servo_confessor",
+    "keywords": [
+      "variant",
+      "mechanical",
+      "threads",
+      "wave2_route_enemy",
+      "puppeteer_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "string_lock",
+        "weight": 4
+      },
+      {
+        "intent": "host_guard",
+        "weight": 3
+      },
+      {
+        "intent": "snap_joint",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "string_lock": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "host_guard": [
+        {
+          "type": "GainBlock",
+          "amount": 16,
+          "target": "Self"
+        }
+      ],
+      "snap_joint": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.7,
+      "personality": {
+        "aggression": 0.5,
+        "defensiveness": 0.7,
+        "unpredictability": 0.28,
+        "revengefulness": 0.4
+      },
+      "intentBiases": [
+        {
+          "intent": "string_lock",
+          "comboThreatBand": "high",
+          "multiplier": 1.5
+        },
+        {
+          "intent": "snap_joint",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.6
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.5,
+        "suppressedIntents": [
+          "host_guard"
+        ]
+      }
+    },
+    "art": "????????????????????????????",
+    "description": "????????????????????"
+  },
+  {
+    "id": "morgue_timekeeper",
+    "name": "?????",
+    "hp_range": [
+      64,
+      78
+    ],
+    "tier": 2,
+    "variant_of": "time_guardian",
+    "keywords": [
+      "variant",
+      "time",
+      "delay",
+      "wave2_route_enemy",
+      "chronomancer_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "stamp_minute",
+        "weight": 4
+      },
+      {
+        "intent": "borrow_wound",
+        "weight": 3
+      },
+      {
+        "intent": "close_drawer",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "stamp_minute": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        },
+        {
+          "type": "DealDamage",
+          "amount": 8,
+          "target": "Enemy"
+        }
+      ],
+      "borrow_wound": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "Enemy"
+        }
+      ],
+      "close_drawer": [
+        {
+          "type": "GainBlock",
+          "amount": 12,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Strength",
+          "amount": 1,
+          "target": "Self"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.76,
+      "personality": {
+        "aggression": 0.56,
+        "defensiveness": 0.58,
+        "unpredictability": 0.34,
+        "revengefulness": 0.42
+      },
+      "intentBiases": [
+        {
+          "intent": "borrow_wound",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.7
+        },
+        {
+          "intent": "stamp_minute",
+          "comboThreatBand": "high",
+          "multiplier": 1.4
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.5,
+        "suppressedIntents": [
+          "close_drawer"
+        ]
+      }
+    },
+    "art": "???????????????????????????",
+    "description": "????????????????????"
+  },
+  {
+    "id": "crucible_deacon",
+    "name": "????",
+    "hp_range": [
+      62,
+      76
+    ],
+    "tier": 2,
+    "variant_of": "alchemy_master",
+    "keywords": [
+      "variant",
+      "alchemy",
+      "fire",
+      "acid",
+      "wave2_route_enemy",
+      "alchemist_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "acid_sermon",
+        "weight": 4
+      },
+      {
+        "intent": "ember_tithe",
+        "weight": 3
+      },
+      {
+        "intent": "seal_vat",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "acid_sermon": [
+        {
+          "type": "ApplyStatus",
+          "status": "Poison",
+          "amount": 6,
+          "target": "Enemy"
+        }
+      ],
+      "ember_tithe": [
+        {
+          "type": "DealDamage",
+          "amount": 12,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "seal_vat": [
+        {
+          "type": "GainBlock",
+          "amount": 15,
+          "target": "Self"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.72,
+      "personality": {
+        "aggression": 0.62,
+        "defensiveness": 0.5,
+        "unpredictability": 0.3,
+        "revengefulness": 0.46
+      },
+      "intentBiases": [
+        {
+          "intent": "acid_sermon",
+          "comboThreatBand": "high",
+          "multiplier": 1.5
+        },
+        {
+          "intent": "ember_tithe",
+          "attackIntentBand": "high",
+          "multiplier": 1.4
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.6,
+        "suppressedIntents": [
+          "seal_vat"
+        ]
+      }
+    },
+    "art": "??????????????????????????????",
+    "description": "???????????????????????"
+  },
+  {
+    "id": "catacomb_bailiff",
+    "name": "?????",
+    "hp_range": [
+      70,
+      84
+    ],
+    "tier": 2,
+    "variant_of": "grave_mender",
+    "keywords": [
+      "variant",
+      "judge",
+      "verdict",
+      "wave2_route_enemy",
+      "penitent_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "serve_warrant",
+        "weight": 4
+      },
+      {
+        "intent": "ring_sentence",
+        "weight": 3
+      },
+      {
+        "intent": "seal_record",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "serve_warrant": [
+        {
+          "type": "DealDamage",
+          "amount": 11,
+          "target": "Enemy"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Vulnerable",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "ring_sentence": [
+        {
+          "type": "DealDamage",
+          "amount": 15,
+          "target": "Enemy"
+        }
+      ],
+      "seal_record": [
+        {
+          "type": "GainBlock",
+          "amount": 15,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.8,
+      "personality": {
+        "aggression": 0.55,
+        "defensiveness": 0.68,
+        "unpredictability": 0.16,
+        "revengefulness": 0.55
+      },
+      "intentBiases": [
+        {
+          "intent": "serve_warrant",
+          "comboThreatBand": "high",
+          "multiplier": 1.6
+        },
+        {
+          "intent": "ring_sentence",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.8
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.6,
+        "suppressedIntents": [
+          "seal_record"
+        ]
+      }
+    },
+    "art": "??????????????????????????",
+    "description": "?????????????????????????"
+  },
+  {
+    "id": "null_cup_bearer",
+    "name": "?????",
+    "hp_range": [
+      66,
+      80
+    ],
+    "tier": 2,
+    "variant_of": "data_leech",
+    "keywords": [
+      "variant",
+      "void",
+      "seal",
+      "wave2_route_enemy",
+      "void_pressure"
+    ],
+    "intent_policy": [
+      {
+        "intent": "offer_silence",
+        "weight": 4
+      },
+      {
+        "intent": "lower_field",
+        "weight": 3
+      },
+      {
+        "intent": "void_invoice",
+        "weight": 3
+      }
+    ],
+    "moves": {
+      "offer_silence": [
+        {
+          "type": "ApplyStatus",
+          "status": "Weak",
+          "amount": 2,
+          "target": "Enemy"
+        }
+      ],
+      "lower_field": [
+        {
+          "type": "GainBlock",
+          "amount": 14,
+          "target": "Self"
+        },
+        {
+          "type": "ApplyStatus",
+          "status": "Frail",
+          "amount": 1,
+          "target": "Enemy"
+        }
+      ],
+      "void_invoice": [
+        {
+          "type": "DealDamage",
+          "amount": 13,
+          "target": "Enemy"
+        }
+      ]
+    },
+    "ai_profile": {
+      "perceptionAccuracy": 0.78,
+      "personality": {
+        "aggression": 0.48,
+        "defensiveness": 0.7,
+        "unpredictability": 0.24,
+        "revengefulness": 0.5
+      },
+      "intentBiases": [
+        {
+          "intent": "lower_field",
+          "defenseIntentBand": "high",
+          "multiplier": 1.5
+        },
+        {
+          "intent": "void_invoice",
+          "playerHpBand": "kill_range",
+          "multiplier": 1.7
+        }
+      ],
+      "antiStall": {
+        "maxNonAttackTurns": 2,
+        "forcedAttackMultiplier": 1.5,
+        "suppressedIntents": [
+          "lower_field"
+        ]
+      }
+    },
+    "art": "???????????????????????????",
+    "description": "?????????????????????????"
   }
 ]

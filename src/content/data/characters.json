@@ -29,7 +29,10 @@
       "predictive_strike",
       "shadow_meld",
       "information_broker",
-      "deadly_secrets"
+      "deadly_secrets",
+      "cipher_dead_drop",
+      "shadow_ledger_route",
+      "witness_box_trap"
     ],
     "rewardWeights": {
       "newCardBonus": 0.2,
@@ -73,7 +76,10 @@
       "thick_skin",
       "berserker_rage",
       "last_stand",
-      "unbreakable"
+      "unbreakable",
+      "sainted_sinew",
+      "nailwall_stance",
+      "redline_bellow"
     ],
     "rewardWeights": {
       "controlCardPenalty": -0.25,
@@ -118,7 +124,10 @@
       "calculated_risk",
       "tactical_superiority",
       "perfect_defense",
-      "checkmate"
+      "checkmate",
+      "venom_grid",
+      "command_canticle",
+      "bastion_geometry"
     ],
     "rewardWeights": {
       "attritionPlanBonus": 0.15,
@@ -160,7 +169,10 @@
       "soul_binding",
       "clockwork_soldier",
       "puppet_mastery",
-      "grand_design"
+      "grand_design",
+      "choir_thread",
+      "reliquary_golem",
+      "severance_pact"
     ],
     "specialResource": "thread",
     "rewardWeights": {
@@ -204,7 +216,10 @@
       "paradox_wave",
       "future_sight",
       "time_warp",
-      "eternal_return"
+      "eternal_return",
+      "minute_tax",
+      "delayed_funeral",
+      "warp_notary"
     ],
     "specialResource": "timeLayer",
     "rewardWeights": {
@@ -247,7 +262,10 @@
       "volatile_mixture",
       "philosopher_stone",
       "grand_transmutation",
-      "catalyst_overload"
+      "catalyst_overload",
+      "ember_distillate",
+      "acidic_catechism",
+      "choir_reagent"
     ],
     "specialResource": "concoction",
     "rewardWeights": {
@@ -294,7 +312,10 @@
       "black_trial",
       "last_warrant",
       "burning_crossfile",
-      "seal_the_sin"
+      "seal_the_sin",
+      "docket_of_bones",
+      "execution_hour",
+      "compelled_confession"
     ],
     "background": "忏罪裁断官来自一支被抹除番号的巡回审判团。她把死者姓名钉在甲胄内侧，认为每一次判决都必须先割伤自己。",
     "mechanicNarrative": "判令是罪证化成的资源。先通过易伤、虚弱和供述牌建立判令，再用处刑牌穿透护盾、追加伤害或触发击杀奖励。",
@@ -340,7 +361,10 @@
       "hollow_vow",
       "gravetic_cage",
       "event_horizon",
-      "anti_miracle"
+      "anti_miracle",
+      "seal_of_stillwater",
+      "suppression_field",
+      "rift_liability"
     ],
     "background": "虚空封印师守过一扇不该存在的门。门后没有怪物，只有安静；所有听见那份安静的人都会开始少一拍心跳。",
     "mechanicNarrative": "封印来自自损、护持和压制。它可以换成抽牌、群体虚弱、额外伤害和防护，但资源积累往往伴随生命或节奏代价。",

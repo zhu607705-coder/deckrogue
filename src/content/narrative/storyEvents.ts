@@ -1117,6 +1117,310 @@ export const STORY_EVENTS: StoryEventDef[] = [
         danger: 'low'
       }
     ]
+  },
+  {
+    id: 'cipher_bazaar',
+    title: '暗码集市',
+    imagePath: '/assets/events/event_trial.png',
+    floorMin: 2,
+    floorMax: 10,
+    weight: 0.75,
+    loreText: [
+      '一排没有摊主的黑伞撑在废弃月台上。每把伞下都挂着蜡封纸条，纸条上的名字会在你靠近时换成另一种拼写。',
+      '集市只卖三样东西：真相、逃路、能让真相变得昂贵的沉默。'
+    ],
+    options: [
+      {
+        id: 'cipher_bazaar_decode',
+        text: '[解读暗码]',
+        description: '花时间把纸条按路线重新排序。',
+        gains: ['获得 1 张情报路线牌', 'Intel +20'],
+        costs: ['失去 8 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'cipher_bazaar_shadow',
+        text: '[购买影账]',
+        description: '买下一份可以误导追兵的账本。',
+        gains: ['获得 90 金币', '下一场战斗敌人开局 1 层虚弱'],
+        costs: ['牌库加入诅咒《伪证烙印》'],
+        danger: 'high'
+      },
+      {
+        id: 'cipher_bazaar_blackmail',
+        text: '[勒索中间人]',
+        description: '把你知道的证据换成一次更大的回报。',
+        gains: ['获得 1 件随机路线支撑奇物'],
+        costs: ['腐化值 +12'],
+        danger: 'medium'
+      }
+    ]
+  },
+  {
+    id: 'redoubt_of_nails',
+    title: '钉誓堡垒',
+    imagePath: '/assets/events/event_forge.png',
+    floorMin: 3,
+    floorMax: 12,
+    weight: 0.7,
+    loreText: [
+      '堡垒的大门由无数旧盾牌钉成，盾牌背面刻着失败者的誓言。',
+      '守门的修士说，只有愿意把痛苦钉进骨头里的人，才能带走这里的铁。'
+    ],
+    options: [
+      {
+        id: 'redoubt_lift_rebar',
+        text: '[拔起圣化钢筋]',
+        description: '把一截仍带热度的钢筋扛走。',
+        gains: ['获得 1 张力量路线牌', '获得 1 层力量直到下场战斗结束'],
+        costs: ['失去 10 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'redoubt_hold_gate',
+        text: '[替他们守门]',
+        description: '站在盾门前承受一次试炼。',
+        gains: ['最大生命值 +6', '获得 1 张护甲路线牌'],
+        costs: ['下一场战斗开局 1 层脆弱'],
+        danger: 'medium'
+      },
+      {
+        id: 'redoubt_break_oath',
+        text: '[折断旧誓]',
+        description: '把失败者的誓言拆下来改成武器。',
+        gains: ['获得 1 件随机稀有奇物'],
+        costs: ['虔诚值 -25', '腐化值 +15'],
+        danger: 'high'
+      }
+    ]
+  },
+  {
+    id: 'banner_court',
+    title: '军旗裁量庭',
+    imagePath: '/assets/events/event_trial.png',
+    floorMin: 3,
+    floorMax: 12,
+    weight: 0.7,
+    loreText: [
+      '三面旧军旗挂在裁量庭中央：一面滴着毒，一面写满命令，一面折成堡垒的形状。',
+      '书记员要求你选择一面旗，并承担它在后续战斗里带来的战术债务。'
+    ],
+    options: [
+      {
+        id: 'banner_poison_wind',
+        text: '[释放毒风旗]',
+        description: '让旗面上的绿色尘雾覆盖战场。',
+        gains: ['获得 1 张毒性路线牌', '下一场战斗敌人开局 4 层中毒'],
+        costs: ['你也在下一场战斗开局 1 层脆弱'],
+        danger: 'medium'
+      },
+      {
+        id: 'banner_issue_order',
+        text: '[盖下号令印]',
+        description: '把裁量庭的印章压在你的作战图上。',
+        gains: ['获得 1 张号令路线牌', '获得 80 金币'],
+        costs: ['移除牌费用 +15'],
+        danger: 'medium'
+      },
+      {
+        id: 'banner_lock_formation',
+        text: '[锁定阵列]',
+        description: '把军旗折成一座可携带的小型堡垒。',
+        gains: ['获得 1 张阵列路线牌', '最大生命值 +4'],
+        costs: ['下一场战斗少抽 1 张牌'],
+        danger: 'high'
+      }
+    ]
+  },
+  {
+    id: 'string_scriptorium',
+    title: '牵线抄经院',
+    imagePath: '/assets/events/event_shrine.png',
+    floorMin: 4,
+    floorMax: 13,
+    weight: 0.7,
+    loreText: [
+      '抄经院里没有笔，只有从天花板垂下的银线。每条线都牵着一只已经写到磨损的机械手。',
+      '院长允许你借走一段经文，只要你愿意留下某个选择的控制权。'
+    ],
+    options: [
+      {
+        id: 'scriptorium_splice_thread',
+        text: '[接上银线]',
+        description: '让一段新线缝进你的袖口。',
+        gains: ['获得 1 张丝线路线牌', '抽 1 张牌'],
+        costs: ['失去 6 点生命'],
+        danger: 'low'
+      },
+      {
+        id: 'scriptorium_wake_shell',
+        text: '[唤醒空壳]',
+        description: '把一具沉默构偶从祷台上扶起。',
+        gains: ['获得 1 张召构路线牌', '获得 1 件普通奇物'],
+        costs: ['腐化值 +10'],
+        danger: 'medium'
+      },
+      {
+        id: 'scriptorium_cut_strings',
+        text: '[剪断旧线]',
+        description: '以断线换取一次更大的回响。',
+        gains: ['获得 1 张献祭路线牌', '移除 1 张牌'],
+        costs: ['最大生命值 -5'],
+        danger: 'medium'
+      }
+    ]
+  },
+  {
+    id: 'hourglass_morgue',
+    title: '沙漏停尸房',
+    imagePath: '/assets/events/event_warp.png',
+    floorMin: 5,
+    floorMax: 14,
+    weight: 0.65,
+    loreText: [
+      '停尸房的抽屉没有编号，只有日期。部分日期尚未发生，部分日期已经发生了不止一次。',
+      '值班人问你要取回哪一具未来：较轻的、较慢的，或已经被跃迁撕开过的。'
+    ],
+    options: [
+      {
+        id: 'morgue_tax_minute',
+        text: '[缴纳分秒税]',
+        description: '用一段记忆换取更稳定的时间层。',
+        gains: ['获得 1 张时间层路线牌', '抽 2 张牌'],
+        costs: ['失去 8 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'morgue_delay_debt',
+        text: '[登记延期葬礼]',
+        description: '把某个威胁推迟到它无法忽视的时刻。',
+        gains: ['获得 1 张延时路线牌', '下一场战斗敌人开局 1 层易伤'],
+        costs: ['下场战斗你开局 1 层虚弱'],
+        danger: 'medium'
+      },
+      {
+        id: 'morgue_warp_record',
+        text: '[签署跃迁记录]',
+        description: '承认一条不该存在的路径曾经属于你。',
+        gains: ['获得 1 张跃迁路线牌', '获得 120 金币'],
+        costs: ['腐化值 +18'],
+        danger: 'high'
+      }
+    ]
+  },
+  {
+    id: 'choir_crucible',
+    title: '合唱坩埚',
+    imagePath: '/assets/events/event_forge.png',
+    floorMin: 4,
+    floorMax: 13,
+    weight: 0.7,
+    loreText: [
+      '坩埚群围成半圆，每一只都在用不同的沸腾声唱同一段圣歌。',
+      '炼金执事说，真正的配方不是材料表，而是你愿意让哪一种反应先开口。'
+    ],
+    options: [
+      {
+        id: 'crucible_feed_ember',
+        text: '[喂入余烬]',
+        description: '让火相先取得主旋律。',
+        gains: ['获得 1 张火相路线牌', '获得 1 层力量直到下场战斗结束'],
+        costs: ['失去 7 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'crucible_distill_acid',
+        text: '[蒸馏酸雾]',
+        description: '收集能在金属上留下问题的绿色蒸汽。',
+        gains: ['获得 1 张酸蚀路线牌', '获得 1 瓶随机药水'],
+        costs: ['最大生命值 -3'],
+        danger: 'medium'
+      },
+      {
+        id: 'crucible_bind_formula',
+        text: '[绑定合唱配方]',
+        description: '让所有坩埚同时承认同一个答案。',
+        gains: ['获得 1 张配方路线牌', '获得 1 件路线支撑奇物'],
+        costs: ['腐化值 +14'],
+        danger: 'high'
+      }
+    ]
+  },
+  {
+    id: 'verdict_catacomb',
+    title: '判词地窖',
+    imagePath: '/assets/events/event_shrine.png',
+    floorMin: 5,
+    floorMax: 15,
+    weight: 0.65,
+    loreText: [
+      '地窖墙上嵌满骨页案卷。每一页都在等待被朗读，像等待第二次死亡。',
+      '黑钟悬在中央，钟舌由一枚没有名字的判令构成。'
+    ],
+    options: [
+      {
+        id: 'catacomb_read_docket',
+        text: '[朗读骨页案卷]',
+        description: '把一份判词读到最后。',
+        gains: ['获得 1 张判令路线牌', '获得 1 点判令'],
+        costs: ['失去 8 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'catacomb_ring_bell',
+        text: '[敲响处刑钟]',
+        description: '让钟声替你宣布时辰。',
+        gains: ['获得 1 张处刑路线牌', '下一场战斗敌人开局 1 层易伤'],
+        costs: ['虔诚值 -20'],
+        danger: 'high'
+      },
+      {
+        id: 'catacomb_take_confession',
+        text: '[收走供述格栅]',
+        description: '带走一块仍在逼供的铁格。',
+        gains: ['获得 1 张供述路线牌', '移除 1 张牌'],
+        costs: ['腐化值 +10'],
+        danger: 'medium'
+      }
+    ]
+  },
+  {
+    id: 'null_well',
+    title: '静默圣井',
+    imagePath: '/assets/events/event_warp.png',
+    floorMin: 5,
+    floorMax: 15,
+    weight: 0.65,
+    loreText: [
+      '井中没有倒影，也没有回声。井口的经文只剩半句：“凡被回答者，皆已失守。”',
+      '你可以封住它，利用它，或者喝下一点不会回应你的沉默。'
+    ],
+    options: [
+      {
+        id: 'null_well_seal_surface',
+        text: '[封住井面]',
+        description: '把静水封印按进井口。',
+        gains: ['获得 1 张封印路线牌', '获得 1 点封印'],
+        costs: ['失去 8 点生命'],
+        danger: 'medium'
+      },
+      {
+        id: 'null_well_lower_cage',
+        text: '[降下压制笼]',
+        description: '让力场在井中合拢。',
+        gains: ['获得 1 张压制路线牌', '下一场战斗敌人开局 2 层虚弱'],
+        costs: ['最大生命值 -4'],
+        danger: 'medium'
+      },
+      {
+        id: 'null_well_drink_silence',
+        text: '[饮下沉默]',
+        description: '把一小口虚空当作誓言吞下。',
+        gains: ['获得 1 张代价路线牌', '获得 1 件随机稀有奇物'],
+        costs: ['腐化值 +18', '下场战斗你开局 1 层脆弱'],
+        danger: 'high'
+      }
+    ]
   }
 
 ];

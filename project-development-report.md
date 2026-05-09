@@ -1,5 +1,42 @@
 # Project Development Report
 
+## Wave II Full-Scale Expansion Closure - 2026-05-09
+
+- User requested that the plan's future multi-pass expansion be completed in this pass and asked for team execution.
+- OMX `team` preflight found `omx` and `tmux`, but the current Codex App session was not inside tmux (`TMUX` unset), so the tmux team runtime could not be safely launched. I used Codex-native parallel lanes where available and completed the integration in the main thread.
+- Implemented Wave II full-scale original content:
+  - 24 new route cards, one for each of the 24 route tags across 8 characters.
+  - 8 new route keystone relics, one per character, wired into all three routes for that character.
+  - 8 new route-readable story events, one per character route set, with route choice roles.
+  - 8 new midgame route-pressure enemy variants with AI profiles, intent policies, move sets, and local enemy art.
+  - 24 new card WebP assets, 8 relic PNG assets, and 8 enemy PNG assets.
+- Added `tests/unit/fullExpansionScale.test.ts` and wired it into `npm run test:supplemental-units`.
+- Updated `.omx/plans/2026-05-08-sts-inspired-original-expansion.md` so the former future full-scale follow-up is marked as executed by Wave II; remaining work is tuning only.
+- Verification completed so far:
+  - `npx tsx --test tests/unit/fullExpansionScale.test.ts`: `4/4` passed.
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`.
+  - `npm run check:content-authoring`: cards `354/354`, enemies `58/58`, relics `106/106`.
+  - `npm run check:route-taxonomy-guardrails`: `24` routes, `failureCount=0`.
+  - `npm run check:content-contract-layer`: OK.
+  - `npm run check:content-bundle`: `7/7` passed.
+  - `npm run check:enemy-visual-identity`: `14` variants OK.
+  - `npm run check:enemy-variant-behavior`: `14` variants checked.
+  - `npm run check:enemy-first3-exposure`: OK.
+  - `npm run test:supplemental-units`: `152/152` passed.
+  - `npm run check:growth-route-formation`: `160/160`, `formationRate=100%`.
+  - `npm run check:reward-tradeoff-quality`: `160/160`, `tradeoffRate=100%`.
+  - `npm run check:shop-event-growth-nodes`: `shopRate=100%`, `eventRate=100%`, `characterPassCount=8/8`.
+  - `npm run check:content-reachability`: `11/11` reachable, broken edges `0`.
+  - `npm run check:deep-reachability`: `22/22` reachable, broken edges `0`.
+  - `npm run report:translation-audit`: total `0`.
+  - `npm run accept:expansion-content`: `3/3` suites passed, `456` tests total.
+  - `npm run build`: exit `0`.
+  - `npm run test:event-flow-smoke`: exit `0`.
+  - `npm run test:shop-flow-smoke`: exit `0`.
+- Remaining risk:
+  - Wave II uses existing local art as source variants for the new card/relic/enemy assets. They are valid local runtime assets, but future hand-authored visual polish can still improve uniqueness.
+  - Longform balance remains an iterative tuning activity; current automated route, shop, event, authoring, and smoke gates are green.
+
 ## Plan Completion Audit - 2026-05-09
 
 - Rechecked the user concern that the approved plans might still be incomplete.
