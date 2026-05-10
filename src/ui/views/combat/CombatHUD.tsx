@@ -15,7 +15,7 @@ import type { GameEngine, PotionDef, RelicDef } from '@/core';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { getPotionRuntimeConfig, potionsData, relicsData } from '@/content/narrative/numericSystem';
 import { grimdarkTerminology } from '@/ui/theme';
-import { clampCombatInteger, getCharacterResourceSnapshot, type SecondaryResourceState } from './combatViewModel';
+import { clampCombatInteger, getCharacterResourceSnapshot, type SecondaryResourceState } from '@/ui/views/combat/combatViewModel';
 import { COMBAT_BEATS, triggerCombatBeat, getMotionConfig } from '@/ui/motion';
 
 interface CombatHUDProps {

@@ -8,10 +8,10 @@
  * - 管理黑暗哥特术语切换配置
  */
 
-export * from './grimdark';
+export * from '@/ui/theme/grimdark';
 
 // 主题工具函数
-import { grimdarkColors, grimdarkTerminology } from './grimdark';
+import { grimdarkColors, grimdarkTerminology } from '@/ui/theme/grimdark';
 import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 
 /**

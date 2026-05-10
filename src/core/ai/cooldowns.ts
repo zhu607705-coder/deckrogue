@@ -7,7 +7,7 @@
  * - 记录已使用的意图并设置冷却计时
  * - 防止 AI 连续使用相同意图
  */
-import type { IntentCooldownState } from './intentSelector';
+import type { IntentCooldownState } from '@/core/ai/intentSelector';
 
 export function cooldownsReducer(current: IntentCooldownState, usedIntent: string): IntentCooldownState {
   const next: IntentCooldownState = {};

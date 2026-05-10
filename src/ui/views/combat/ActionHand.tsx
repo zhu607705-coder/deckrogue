@@ -14,7 +14,7 @@ import { CardView } from '@/ui/views/CardView';
 import type { GameEngine } from '@/core';
 import { getCardNameZh } from '@/ui/content/terminology';
 import { grimdarkTerminology } from '@/ui/theme';
-import { getCardPlayabilitySnapshot } from './combatViewModel';
+import { getCardPlayabilitySnapshot } from '@/ui/views/combat/combatViewModel';
 
 interface ActionHandProps {
   engine: GameEngine;

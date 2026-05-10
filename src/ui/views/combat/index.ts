@@ -7,8 +7,8 @@
  * - 导出 modals 子模块
  */
 
-export { CombatHUD } from './CombatHUD';
-export { WarpEye } from './WarpEye';
-export { Battlefield } from './Battlefield';
-export { ActionHand } from './ActionHand';
-export * from './modals';
+export { CombatHUD } from '@/ui/views/combat/CombatHUD';
+export { WarpEye } from '@/ui/views/combat/WarpEye';
+export { Battlefield } from '@/ui/views/combat/Battlefield';
+export { ActionHand } from '@/ui/views/combat/ActionHand';
+export * from '@/ui/views/combat/modals';

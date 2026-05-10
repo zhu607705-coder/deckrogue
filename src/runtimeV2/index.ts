@@ -23,31 +23,31 @@ export type {
   RuleRuntimeAdapter,
   RuleSnapshot,
   SaveGameV2,
-} from './contracts';
-export { normalizeLegacyGameState } from './normalizeLegacyGameState';
+} from '@/runtimeV2/contracts';
+export { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 export {
   projectRuleActiveEventForParity,
   readLegacyActiveEventOutcome,
   readRuleActiveEventOutcome,
   type ActiveEventParityProjection,
   type ActiveEventOutcomeProjection,
-} from './activeEventOutcome';
-export { migrateLegacySaveDataToSaveGameV2 } from './migration';
-export { createRenderModel } from './renderModel';
-export { createLegacyRenderModel } from './legacyRenderBridge';
-export { EngineHost, createEngineHost } from './bridge/engineHost';
-export { LegacyOracleAdapter, createLegacyOracleAdapter } from './bridge/legacyOracleAdapter';
-export { PythonWasmAdapter, createPythonWasmAdapter } from './bridge/pythonWasmAdapter';
-export { buildRuntimeV2ContentBundle } from './content/buildContentBundle';
-export { ContentService, getContentService, resetContentService } from './content/contentService';
-export type { CardData, CharacterData, EnemyData, RelicData } from './content/contentService';
+} from '@/runtimeV2/activeEventOutcome';
+export { migrateLegacySaveDataToSaveGameV2 } from '@/runtimeV2/migration';
+export { createRenderModel } from '@/runtimeV2/renderModel';
+export { createLegacyRenderModel } from '@/runtimeV2/legacyRenderBridge';
+export { EngineHost, createEngineHost } from '@/runtimeV2/bridge/engineHost';
+export { LegacyOracleAdapter, createLegacyOracleAdapter } from '@/runtimeV2/bridge/legacyOracleAdapter';
+export { PythonWasmAdapter, createPythonWasmAdapter } from '@/runtimeV2/bridge/pythonWasmAdapter';
+export { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
+export { ContentService, getContentService, resetContentService } from '@/runtimeV2/content/contentService';
+export type { CardData, CharacterData, EnemyData, RelicData } from '@/runtimeV2/content/contentService';
 export {
   runParityScenario,
   runResolvedParityScenario,
   type ParityDiff,
   type ParityScenarioResult,
   type ParityStep,
-} from './parity';
+} from '@/runtimeV2/parity';
 export {
   compareMapSnapshots,
   isPerfectParityReport,
@@ -56,11 +56,11 @@ export {
   type ParityReportEntry,
   type ParityReportSummary,
   type RuleCommandSemanticCode,
-} from './parityReport';
+} from '@/runtimeV2/parityReport';
 export {
   appendReplayCommand,
   createReplayLogV1,
   createSaveGameV2,
   replayOnAdapter,
   restoreSnapshotFromSaveGame,
-} from './persistence';
+} from '@/runtimeV2/persistence';

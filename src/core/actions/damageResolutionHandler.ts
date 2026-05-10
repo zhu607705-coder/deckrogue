@@ -20,7 +20,7 @@ import type {
   TriggerWindow,
   ResolutionSideEffect,
   ResolutionStepResult,
-} from './resolutionTypes';
+} from '@/core/actions/resolutionTypes';
 
 export interface DamageResolutionContext extends ResolutionContext {
   damageContext: {

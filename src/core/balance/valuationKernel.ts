@@ -8,10 +8,10 @@
  * - 定义 DEFAULT_VALUATION_WEIGHTS 默认权重配置
  * - 提供稀有度因子 (RARITY_FACTORS) 和类型因子 (TYPE_FACTORS)
  */
-import type { VarianceClass } from './numericsTypes';
-import { VARIANCE_FACTORS } from './numericsFormulas';
+import type { VarianceClass } from '@/core/balance/numericsTypes';
+import { VARIANCE_FACTORS } from '@/core/balance/numericsFormulas';
 
-export type { VarianceClass } from './numericsTypes';
+export type { VarianceClass } from '@/core/balance/numericsTypes';
 export interface ValuationWeights {
   energy: number;
   damage: number;

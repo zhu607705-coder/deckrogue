@@ -8,7 +8,7 @@
  * - 提供旧版事件状态的奇偶校验投影
  */
 import type { ActiveEventState } from '@/core/types';
-import type { RuleSnapshot } from './contracts';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
 
 export type ActiveEventChoiceRole = 'confirm' | 'payoff' | 'pivot' | 'support' | null;
 export type ActiveEventOutcomeKind = 'confirm' | 'payoff' | 'pivot' | 'support' | 'neutral' | null;

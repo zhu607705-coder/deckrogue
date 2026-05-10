@@ -8,8 +8,8 @@
  * - 记录解析上下文 (回合、战斗ID、房间ID)
  * - 为调试和审计提供解析过程的完整记录
  */
-import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep } from '../actions/resolutionTypes';
-import type { ResourceMutation } from '../actions/mechanicDescriptor';
+import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep } from '@/core/actions/resolutionTypes';
+import type { ResourceMutation } from '@/core/actions/mechanicDescriptor';
 
 export interface ResolutionTrace {
   traceId: string;

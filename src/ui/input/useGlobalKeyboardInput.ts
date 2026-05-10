@@ -9,8 +9,8 @@
  */
 
 import { useEffect } from 'react';
-import type { AppKeyboardContext, KeyboardActionId, KeybindMap } from './keybinds';
-import { resolveKeyboardAction } from './keybinds';
+import type { AppKeyboardContext, KeyboardActionId, KeybindMap } from '@/ui/input/keybinds';
+import { resolveKeyboardAction } from '@/ui/input/keybinds';
 
 interface GlobalKeyboardInputOptions {
   context: AppKeyboardContext;

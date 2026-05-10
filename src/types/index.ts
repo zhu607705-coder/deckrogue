@@ -7,4 +7,4 @@
  * - 作为类型系统的唯一访问入口
  */
 
-export * from './combat';
+export * from '@/types/combat';

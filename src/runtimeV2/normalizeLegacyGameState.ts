@@ -10,11 +10,11 @@
 import type { GameState } from '@/core/types';
 import { screenToRunPhase } from '@/core/events/runStateMachine';
 import { deriveSurfaceContextFromLegacyState } from '@/core/events/surfaceContext';
-import type { RuleSnapshot } from './contracts';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
 import { deriveRouteStateFromDeck } from '@/content/narrative/routeState';
 import { getKnownRouteTagsForCharacter } from '@/content/narrative/routeSignals';
 import { getPotionDefById, getRelicDefById, resolveShopOfferPrice } from '@/content/narrative/numericSystem';
-import { readLegacyActiveEventOutcome } from './activeEventOutcome';
+import { readLegacyActiveEventOutcome } from '@/runtimeV2/activeEventOutcome';
 
 function cloneRouteState(routeState: GameState['routeState']): RuleSnapshot['routeState'] {
   if (!routeState) return null;

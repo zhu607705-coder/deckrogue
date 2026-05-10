@@ -5,4 +5,4 @@
  * 主要职责:
  * - 汇总并导出卡牌相关功能 (CardUpgrade)
  */
-export * from './CardUpgrade';
+export * from '@/core/cards/CardUpgrade';

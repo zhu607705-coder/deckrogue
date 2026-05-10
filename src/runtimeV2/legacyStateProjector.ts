@@ -8,7 +8,7 @@
  * - 定义 LegacyStateProjection 投影接口
  */
 import type { GameState } from '@/core/types';
-import type { RuleSnapshot } from './contracts';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
 
 type LegacyScreen = GameState['screen'];
 

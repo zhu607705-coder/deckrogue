@@ -6,6 +6,6 @@
  * - 导出牌组/抽牌堆/弃牌堆模态框
  */
 
-export { DeckModal } from './DeckModal';
-export { DrawPileModal } from './DrawPileModal';
-export { DiscardPileModal } from './DiscardPileModal';
+export { DeckModal } from '@/ui/views/combat/modals/DeckModal';
+export { DrawPileModal } from '@/ui/views/combat/modals/DrawPileModal';
+export { DiscardPileModal } from '@/ui/views/combat/modals/DiscardPileModal';

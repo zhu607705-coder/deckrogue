@@ -7,9 +7,9 @@
  * - 导出效果清理类 Hooks 工具
  */
 
-export { useIntentMasquerade } from './useIntentMasquerade';
-export { useCardPreview } from './useCardPreview';
-export { useCombatTelemetry } from './useCombatTelemetry';
+export { useIntentMasquerade } from '@/ui/hooks/useIntentMasquerade';
+export { useCardPreview } from '@/ui/hooks/useCardPreview';
+export { useCombatTelemetry } from '@/ui/hooks/useCombatTelemetry';
 export {
   useEffectCleanup,
   useEventListenerCleanup,
@@ -17,4 +17,4 @@ export {
   useTimeoutCleanup,
   useAnimationFrameCleanup,
   useWeakRefCleanup
-} from './useEffectCleanup';
+} from '@/ui/hooks/useEffectCleanup';

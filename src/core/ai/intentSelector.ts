@@ -8,8 +8,8 @@
  * - 定义 IntentCooldownState 接口，管理意图冷却
  * - 实现基于难度、性格、AI档案的意图选择策略
  */
-import { intentTagger, type IntentCategory, type IntentTag } from './intentTags';
-import { combatMemory, type PlayerPatternAnalysis } from './combatMemory';
+import { intentTagger, type IntentCategory, type IntentTag } from '@/core/ai/intentTags';
+import { combatMemory, type PlayerPatternAnalysis } from '@/core/ai/combatMemory';
 import {
   extractPlayerStatus,
   extractEnemyStatus,
@@ -17,17 +17,17 @@ import {
   type PlayerStatusSnapshot,
   type EnemyStatusSnapshot,
   type CombatSituationAssessment
-} from './statePerception';
+} from '@/core/ai/statePerception';
 import {
   assessEnemyRisk,
   type RiskProfile,
   DEFAULT_RISK_THRESHOLDS
-} from './riskAssessment';
+} from '@/core/ai/riskAssessment';
 import {
   calculateIntentDistribution,
   detectIntentConflicts,
   adjustIntentWeightForGroup
-} from './groupCoordination';
+} from '@/core/ai/groupCoordination';
 import { applyDifficultyToCombat, type DifficultyProfile } from '@/core/difficulty/DynamicDifficulty';
 import type { GameState, CombatState } from '@/core/types';
 import type { EnemyAiPersonality, EnemyAiProfile, EnemyAntiStallProfile, EnemyIntentBiasRule } from '@/core/types/enemyAI';

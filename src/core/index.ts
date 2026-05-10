@@ -14,4 +14,5 @@ export * from '@/core/events';
 export * from '@/core/persistence';
 export { AudioManager } from '@/features/audio/AudioManager';
 export { musicEngine } from '@/features/audio/MusicEngine';
+export { SFXPlayer, sfxPlayer } from '@/features/audio/SFXPlayer';
 export { MusicDispatcher } from '@/core/events/MusicDispatcher';

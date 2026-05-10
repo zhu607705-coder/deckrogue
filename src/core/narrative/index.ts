@@ -5,4 +5,4 @@
  * 主要职责:
  * - 汇总并导出叙事相关功能 (BranchingOutcomes)
  */
-export * from './BranchingOutcomes';
+export * from '@/core/narrative/BranchingOutcomes';

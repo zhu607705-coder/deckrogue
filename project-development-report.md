@@ -672,3 +672,33 @@
   - `npm run build`: exit `0`
   - `npm run doctor:game`: `44/44` passed
   - `npm run check:release-readiness`: `41/41` passed after doctor refreshed generated artifacts
+
+## Ultrawork Implementation Audit - 2026-05-10
+
+- 对现有音频功能和代码边界进行审计；Codex 子代理并行审计因上游 `429 Too Many Requests` 失败，已切回主线程本地并行检查。
+- 关闭 SFX 孤岛问题：
+  - 新增 `src/content/data/sfxManifest.ts` 作为合成音效清单，覆盖 combat/card/ui/power/ambient/status。
+  - 新增 `src/features/audio/SFXPlayer.ts`，使用 Web Audio API lazy init，支持 master/category volume、未知音效安全返回、无 AudioContext 环境安全降级。
+  - `src/core/events/MusicDispatcher.ts` 接入战斗、回合、卡牌、伤害、格挡、状态、遗物、屏幕切换、角色选择、事件开始/结束的 SFX 调度。
+  - `src/core/index.ts` 导出 `SFXPlayer` 与 `sfxPlayer`，让运行时入口可复用。
+- 补齐音频单测与补充测试入口：
+  - 新增 `tests/unit/sfxManifest.test.ts`、`tests/unit/sfxPlayer.test.ts`、`tests/unit/musicDispatcherSfx.test.ts`。
+  - `package.json` 的 `test:supplemental-units` 已纳入音频 manifest/player/dispatcher 覆盖。
+- 修复 import boundary 红灯：
+  - 将 `src` 内部相对 import/export 统一改写为 `@/` alias。
+  - `npm run check:import-boundaries` 从 98 项违规降为 0。
+- 当前已验证：
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`
+  - `npx tsx --test tests/unit/sfxManifest.test.ts`: `4/4` passed
+  - `npm run check:content-bundle`: `7/7` passed
+  - `npm run check:content-authoring`: cards `354/354`, enemies `58/58`, relics `106/106`
+  - `npx tsx --test tests/unit/sfxManifest.test.ts tests/unit/sfxPlayer.test.ts tests/unit/musicDispatcherSfx.test.ts tests/unit/audioManager.test.ts tests/unit/musicManifest.test.ts`: `12/12` passed
+  - `npm run test:supplemental-units`: `165/165` passed
+  - `npm run build`: exit `0`
+  - `npm run check:content-contract-layer`: OK
+  - `npm run check:import-boundaries`: OK
+  - `npm run check:deprecated-imports`: OK
+  - `npm run check:vulnerability-scan`: critical `0`, high `0`, total issues `154`
+- 待最终提交后刷新：
+  - `npm run doctor:game`
+  - `npm run check:release-readiness`

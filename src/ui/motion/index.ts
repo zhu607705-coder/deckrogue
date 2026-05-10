@@ -40,7 +40,7 @@ export {
   prefersReducedMotion,
   shouldReduceAnimations,
   initMotionConfig,
-} from './motionSystem';
+} from '@/ui/motion/motionSystem';
 
-export { ToastContainer } from './ToastContainer';
-export { SceneTransitionWrapper, AmbientLayer, SceneContainer } from './SceneTransition';
+export { ToastContainer } from '@/ui/motion/ToastContainer';
+export { SceneTransitionWrapper, AmbientLayer, SceneContainer } from '@/ui/motion/SceneTransition';

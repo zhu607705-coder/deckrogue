@@ -19,9 +19,9 @@ import { WarpDeceptionText } from '@/ui/overlays/WarpDeceptionText';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
 import { getPotionRuntimeConfig } from '@/content/narrative/numericSystem';
 import { grimdarkTerminology } from '@/ui/theme';
-import { clampCombatInteger, clampCombatPercent } from './combatViewModel';
+import { clampCombatInteger, clampCombatPercent } from '@/ui/views/combat/combatViewModel';
 import { COMBAT_BEATS, triggerCombatBeat, triggerScreenShake } from '@/ui/motion';
-import { EnemyStandee } from './EnemyStandee';
+import { EnemyStandee } from '@/ui/views/combat/EnemyStandee';
 
 type RuntimeCombat = NonNullable<GameEngine['state']['combat']>;
 type RuntimeEnemy = RuntimeCombat['enemies'][number];

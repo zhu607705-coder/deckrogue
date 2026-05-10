@@ -8,7 +8,7 @@
  * - 实现 detectIntentConflicts，检测多个敌人的意图冲突
  * - 实现 adjustIntentWeightForGroup，为群体战斗调整个体意图权重
  */
-import { intentTagger, type IntentCategory } from './intentTags';
+import { intentTagger, type IntentCategory } from '@/core/ai/intentTags';
 
 export interface IntentDistribution {
   attackWeight: number;

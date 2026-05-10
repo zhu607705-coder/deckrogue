@@ -1,4 +1,4 @@
-import { AudioManager, type AudioLayer } from './AudioManager';
+import { AudioManager, type AudioLayer } from '@/features/audio/AudioManager';
 import {
   SCENE_MUSIC,
   CHARACTER_THEMES,

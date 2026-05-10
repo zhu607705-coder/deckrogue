@@ -17,7 +17,7 @@ import type { IntentDisplay } from '@/types';
 import { WarpDeceptionText } from '@/ui/overlays/WarpDeceptionText';
 import { ASSET_PLACEHOLDERS, bindImgFallback, localEnemyArt } from '@/ui/components/assetHelpers';
 import { grimdarkTerminology } from '@/ui/theme';
-import { getIntentThreatLevel } from './combatViewModel';
+import { getIntentThreatLevel } from '@/ui/views/combat/combatViewModel';
 
 type RuntimeEnemy = NonNullable<GameEngine['state']['combat']>['enemies'][number];
 

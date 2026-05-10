@@ -9,7 +9,7 @@
  * - 支持效果的作用域管理 (persistent/combat/room)
  */
 import type { GameState, CombatState } from '@/core/types';
-import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep, ResolutionContext, ResolutionStepResult } from './resolutionTypes';
+import type { TriggerWindow, TriggerSource, ResolutionIntent, ResolutionStep, ResolutionContext, ResolutionStepResult } from '@/core/actions/resolutionTypes';
 
 export interface ResourceMutation {
   resource: 'intel' | 'devotion' | 'corruption' | 'thread' | 'timeLayer' | 'concoction' | 'verdict' | 'seal';

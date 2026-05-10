@@ -10,9 +10,9 @@
 import type { GameEngine } from '@/core/events/gameEngine';
 import { getPotionDefById, getRelicDefById } from '@/content/narrative/numericSystem';
 
-import type { RenderModel } from './contracts';
-import { normalizeLegacyGameState } from './normalizeLegacyGameState';
-import { createRenderModel } from './renderModel';
+import type { RenderModel } from '@/runtimeV2/contracts';
+import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
+import { createRenderModel } from '@/runtimeV2/renderModel';
 
 export function createLegacyRenderModel(engine: GameEngine): RenderModel {
   const base = createRenderModel(normalizeLegacyGameState(engine.state, engine.getSaveData()));

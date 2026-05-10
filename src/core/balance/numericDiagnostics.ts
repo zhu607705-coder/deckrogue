@@ -7,11 +7,11 @@
  * - 生成 NumericDiagnosticReport，列出所有受影响的内容项
  * - 提供数值平衡调整的诊断和验证功能
  */
-import type { ValuationWeights } from './valuationKernel';
-import { DEFAULT_VALUATION_WEIGHTS, calculateCardStaticEVU, calculateRelicStaticEVU } from './valuationKernel';
-import type { CompiledCardProfile, CompiledRelicProfile, CompiledEventOptionProfile, CompiledEnemyIntentProfile } from './numericProfileCompiler';
-import type { RuntimeCoefficients } from './runtimeCoefficients';
-import { DEFAULT_RUNTIME_COEFFICIENTS, calculateDamage } from './runtimeCoefficients';
+import type { ValuationWeights } from '@/core/balance/valuationKernel';
+import { DEFAULT_VALUATION_WEIGHTS, calculateCardStaticEVU, calculateRelicStaticEVU } from '@/core/balance/valuationKernel';
+import type { CompiledCardProfile, CompiledRelicProfile, CompiledEventOptionProfile, CompiledEnemyIntentProfile } from '@/core/balance/numericProfileCompiler';
+import type { RuntimeCoefficients } from '@/core/balance/runtimeCoefficients';
+import { DEFAULT_RUNTIME_COEFFICIENTS, calculateDamage } from '@/core/balance/runtimeCoefficients';
 
 export interface WeightChangeImpact {
   weightKey: string;

@@ -9,8 +9,8 @@
  * - 追踪玩家表现数据用于动态难度调整
  */
 import type { GameState, CombatState } from '@/core/types';
-import type { ResolutionPipelineDiagnostics } from '../actions/resolutionTypes';
-import type { MechanicAuditSnapshot } from '../actions/mechanicDescriptor';
+import type { ResolutionPipelineDiagnostics } from '@/core/actions/resolutionTypes';
+import type { MechanicAuditSnapshot } from '@/core/actions/mechanicDescriptor';
 
 export interface SurvivabilityMetrics {
   averageHpPerCombat: number;

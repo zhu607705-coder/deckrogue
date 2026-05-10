@@ -7,7 +7,7 @@
  * - 定义 MapSnapshotComparison 地图对比结果
  * - 定义 RuleCommandSemanticCode 语义错误码
  */
-import type { RuleSnapshot } from './contracts';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
 
 export type RuleCommandSemanticCode =
   | 'selector_out_of_range'

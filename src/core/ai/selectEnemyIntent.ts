@@ -10,9 +10,9 @@
  */
 import type { ActionSpec, GameState, RunCardInstance } from '@/core/types';
 
-import { combatMemory, type PlayerPatternAnalysis } from './combatMemory';
-import { handKnowledgeSystem } from './handKnowledge';
-import { intentTagger } from './intentTags';
+import { combatMemory, type PlayerPatternAnalysis } from '@/core/ai/combatMemory';
+import { handKnowledgeSystem } from '@/core/ai/handKnowledge';
+import { intentTagger } from '@/core/ai/intentTags';
 import {
   intentSelector,
   type EnemyAiProfile,
@@ -21,13 +21,13 @@ import {
   type EnemyStateBase,
   type IntentCooldownState,
   type PersonalityProfile,
-} from './intentSelector';
+} from '@/core/ai/intentSelector';
 import {
   assessCombatSituation,
   extractEnemyStatus,
   extractPlayerStatus,
   type CombatSituationAssessment,
-} from './statePerception';
+} from '@/core/ai/statePerception';
 
 type CombatEnemyState = NonNullable<GameState['combat']>['enemies'][number];
 type IntentBand = 'low' | 'medium' | 'high';

@@ -7,7 +7,7 @@
  * - 编译 CompiledCardProfile、CompiledRelicProfile 等档案
  * - 为数值诊断系统提供预编译的数值特征数据
  */
-import type { ValuationWeights, VarianceClass } from './valuationKernel';
+import type { ValuationWeights, VarianceClass } from '@/core/balance/valuationKernel';
 import {
   DEFAULT_VALUATION_WEIGHTS,
   calculateDamageEVU,
@@ -18,8 +18,8 @@ import {
   calculateResourceEVU,
   RARITY_FACTORS,
   TYPE_FACTORS,
-} from './valuationKernel';
-import { VARIANCE_FACTORS } from './numericsFormulas';
+} from '@/core/balance/valuationKernel';
+import { VARIANCE_FACTORS } from '@/core/balance/numericsFormulas';
 
 export interface NumericVector {
   damage: number;

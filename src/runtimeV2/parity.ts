@@ -8,7 +8,7 @@
  * - 支持 strictStableFields 严格模式校验
  */
 import type { RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
-import { projectRuleActiveEventForParity } from './activeEventOutcome';
+import { projectRuleActiveEventForParity } from '@/runtimeV2/activeEventOutcome';
 
 export interface ParityDiff {
   field: string;

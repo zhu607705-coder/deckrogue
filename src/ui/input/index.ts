@@ -7,5 +7,5 @@
  * - 导出全局键盘输入 Hook
  */
 
-export * from './keybinds';
-export * from './useGlobalKeyboardInput';
+export * from '@/ui/input/keybinds';
+export * from '@/ui/input/useGlobalKeyboardInput';

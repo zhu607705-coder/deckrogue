@@ -9,8 +9,8 @@
  * - 支持从配置创建 RunSession 实例
  */
 import type { GameState } from '@/core/types';
-import { deriveRunTransitionState, transitionRunState, type RunAction, type RunTransitionState } from './runStateMachine';
-import { runPhaseToScreen } from './runStateMachine';
+import { deriveRunTransitionState, transitionRunState, type RunAction, type RunTransitionState } from '@/core/events/runStateMachine';
+import { runPhaseToScreen } from '@/core/events/runStateMachine';
 
 export interface RunSessionConfig {
   seed?: number;

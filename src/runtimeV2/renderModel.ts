@@ -13,14 +13,14 @@ import type {
   RuleSnapshot,
   RenderModelRoom,
   RenderModelRewardCard,
-} from './contracts';
+} from '@/runtimeV2/contracts';
 import {
   getEventChoiceCommitTags,
   getEventChoiceRouteRole,
   getRouteTaxonomy,
   getStoryEventDef,
 } from '@/content/narrative/numericSystem';
-import { getContentService } from './content/contentService';
+import { getContentService } from '@/runtimeV2/content/contentService';
 
 function deriveAvailableNodeIds(snapshot: RuleSnapshot): string[] {
   if (!snapshot.map.currentNodeId) {

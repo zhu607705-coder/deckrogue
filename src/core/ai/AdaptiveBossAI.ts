@@ -8,7 +8,7 @@
  * - 定义 LearnedBehavior，记录玩家触发条件和响应模式
  * - 实现 counterStrategy，根据玩家类型选择克制策略
  */
-import type { DetailedPlayerPatternAnalysis } from './combatMemory';
+import type { DetailedPlayerPatternAnalysis } from '@/core/ai/combatMemory';
 
 export type PlayerType = 'aggressive' | 'defensive' | 'balanced' | 'opportunistic' | 'unknown';
 
