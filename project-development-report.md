@@ -732,3 +732,8 @@
   - 普通 git：源码、内容数据、轻量运行资源、验证脚本、项目报告。
   - GitHub Release：本轮预计无新增 Release asset。
   - 本地排除：`node_modules/`、`dist/`、`release/`、`.desktop-build/`、`.omx/`、`.claude/`、`.trae/`、`.minimax/`、`output/generated_images/`、Playwright 和报告输出等本地缓存或生成物。
+- 合并后补充：
+  - `origin/main` 与当前开发历史没有共同祖先，最终用 merge commit 记录远端历史父节点，同时保留已验证 DeckRogue 工作区作为 canonical mainline 树。
+  - 临时 clean worktree 首次 `npm install` 后，`npm run lint --silent` / `npx tsc --noEmit --pretty false --project tsconfig.json` 暴露 `@types/react` 与 `@types/react-dom` 未声明问题；原工作区能通过是因为旧 `node_modules` 中存在 extraneous 类型包。
+  - 已将 `@types/react`、`@types/react-dom` 加入 devDependencies，并刷新 `package-lock.json`，让新 clone / fresh install 可重建。
+  - 合并后确认最终树不包含旧 `origin/main` 中的根目录依赖包路径，例如 `@google/`、`@rollup/`、`@pkgjs/`、`@protobufjs/`。
