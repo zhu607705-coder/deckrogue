@@ -303,7 +303,7 @@ class RuleRuntime:
             "ruined_reactor": {1: 180, 2: 250},
             "martyrs_censer": {1: 150, 2: 220},
             "thorns_armor": {1: 130, 2: 190},
-            "chaos_sanctum_relic": {1: 200, 2: 280},
+            "entropy_sanctum_relic": {1: 200, 2: 280},
         }
         return int(upgrade_costs.get(relic_id, {}).get(current_level, 0))
 

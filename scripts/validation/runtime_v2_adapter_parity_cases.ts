@@ -130,8 +130,8 @@ function buildRestRelicUpgradeSnapshot(): RuleSnapshot {
       ?? null;
     engine.state.screen = 'Rest';
     engine.state.player.gold = 999;
-    engine.state.player.relics.push('chaos_sanctum_relic');
-    engine.state.player.relicStates.chaos_sanctum_relic = {
+    engine.state.player.relics.push('entropy_sanctum_relic');
+    engine.state.player.relicStates.entropy_sanctum_relic = {
       level: 1,
       progress: 0,
       corrupted: true,
@@ -353,8 +353,8 @@ export function buildRuntimeV2AdapterParityScenarioCatalog(): AdapterParityScena
         },
         {
           label: 'upgrade_relic',
-          legacyCommand: { type: 'upgrade_relic', relicId: 'chaos_sanctum_relic' },
-          candidateCommand: { type: 'upgrade_relic', relicId: 'chaos_sanctum_relic' },
+          legacyCommand: { type: 'upgrade_relic', relicId: 'entropy_sanctum_relic' },
+          candidateCommand: { type: 'upgrade_relic', relicId: 'entropy_sanctum_relic' },
         },
         {
           label: 'cancel_relic_upgrade',

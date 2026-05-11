@@ -702,3 +702,33 @@
 - 待最终提交后刷新：
   - `npm run doctor:game`
   - `npm run check:release-readiness`
+
+## GitHub Mainline Upload - 2026-05-11
+
+- 按 `workspace-mainline-unifier` 流程冻结并检查当前仓库状态：
+  - 仓库根目录：`E:\deckrogue\deckrogue`
+  - 当前工作分支：`codex/test-auto/ui-click-30`
+  - GitHub 目标：`origin/main`
+  - 当前待入库最大文件约 `0.34MB`，没有超过 GitHub 普通 blob 限制的文件，因此本轮不需要 Release asset。
+- 合并准备中发现 `origin/main` 与本地长期开发线分叉：
+  - 保留远端 `origin/main` 的 `Polish portfolio README` 更新。
+  - 将当前工作分支完整合并到本地 `main` 后再推送，避免改写远端历史。
+- 上传前修复的门禁问题：
+  - `npm run check:asset-polish` 首次发现 3 个 relic 图片引用缺失。
+  - 将 `fractured hourglass.png`、`mirror shard.png`、`silver locket.png` 规范重命名为下划线路径，匹配内容 ID 推导规则。
+  - 清理 `src/content/data/relics.json` 尾部多余空行。
+- 本轮验证：
+  - `npm run lint --silent`: exit `0`
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`
+  - `npm run check:asset-polish`: `errors=0`, `warnings=0`
+  - `npm run check:content-authoring`: cards `354/354`, enemies `58/58`, relics `0/0`, pass rate `100%`
+  - `git diff --check`: exit `0`，仅 LF/CRLF 规范化提示
+  - `npm run build`: exit `0`
+  - `npm run test:runtime-v2:ts`: tests `94`, pass `93`, skipped `1`
+  - `npx tsx --test tests/unit/relicUpgradeFlow.test.ts tests/unit/runtimeV2Parity.test.ts`: tests `31/31` passed
+  - `npm run check:content-bundle`: `7/7` passed
+  - `npm run check:tuanjie-assets`: passed
+- GitHub 到达清单待推送后刷新：
+  - 普通 git：源码、内容数据、轻量运行资源、验证脚本、项目报告。
+  - GitHub Release：本轮预计无新增 Release asset。
+  - 本地排除：`node_modules/`、`dist/`、`release/`、`.desktop-build/`、`.omx/`、`.claude/`、`.trae/`、`.minimax/`、`output/generated_images/`、Playwright 和报告输出等本地缓存或生成物。

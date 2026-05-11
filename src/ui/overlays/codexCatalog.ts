@@ -700,7 +700,7 @@ function buildEventEntries(): CodexCatalogEntry[] {
         { id: 'accept_corruption', text: '接受腐化', description: '获得腐化遗物与腐化值', gains: ['获得遗物'], costs: ['腐化 +10'] },
         { id: 'decline', text: '拒绝', description: '离开祭坛', gains: [], costs: [] }
       ],
-      imagePath: '/assets/events/event_altar.png'
+      imagePath: '/assets/events/event_heretic_altar.png'
     }
   ];
 

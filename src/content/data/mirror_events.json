@@ -1,12 +1,12 @@
 [
   {
     "id": "mirror_invitation",
-    "name": "Mirror Invitation",
+    "name": "镜宫邀约",
     "chapter": "any",
-    "description": "A mysterious reflection beckons you toward the Mirror Palace.",
+    "description": "神秘的倒影向你招手，引导你踏入镜宫的深处。",
     "options": [
       {
-        "text": "Accept the invitation",
+        "text": "接受邀请",
         "effects": [
           {
             "type": "EnterMirrorZone"
@@ -15,7 +15,7 @@
         "danger": "low"
       },
       {
-        "text": "Decline politely",
+        "text": "礼貌拒绝",
         "effects": [],
         "danger": "none"
       }
@@ -23,12 +23,12 @@
   },
   {
     "id": "borrowed_name",
-    "name": "Borrowed Name",
+    "name": "借名者",
     "chapter": "any",
-    "description": "A shadow offers to exchange your name for power.",
+    "description": "阴影提出用你的名字换取未知的力量。",
     "options": [
       {
-        "text": "Lose 10 HP for 1 Branch Uncommon card",
+        "text": "失去 10 点生命获得 1 张分支稀有卡",
         "effects": [
           {
             "type": "LoseHP",
@@ -45,7 +45,7 @@
         "danger": "medium"
       },
       {
-        "text": "Decline",
+        "text": "拒绝",
         "effects": [],
         "danger": "none"
       }
@@ -53,12 +53,12 @@
   },
   {
     "id": "silver_confessional",
-    "name": "Silver Confessional",
+    "name": "银色忏悔室",
     "chapter": "any",
-    "description": "A silver booth offers absolution or reward.",
+    "description": "银色忏悔室提供救赎，也提供隐藏的奖励。",
     "options": [
       {
-        "text": "Remove 1 card from deck",
+        "text": "移除 1 张牌",
         "effects": [
           {
             "type": "RemoveCard",
@@ -68,7 +68,7 @@
         "danger": "low"
       },
       {
-        "text": "Gain 1 Mirror relic",
+        "text": "获得 1 件镜宫遗物",
         "effects": [
           {
             "type": "GainRelic",
@@ -78,7 +78,7 @@
         "danger": "low"
       },
       {
-        "text": "Leave",
+        "text": "离开",
         "effects": [],
         "danger": "none"
       }
@@ -86,12 +86,12 @@
   },
   {
     "id": "hallway_of_echoes",
-    "name": "Hallway of Echoes",
+    "name": "回响长廊",
     "chapter": "any",
-    "description": "Voices in the corridor whisper of duplication.",
+    "description": "走廊中的回声低语着复制的可能，你似乎可以变成任何人。",
     "options": [
       {
-        "text": "Copy 1 Common card and add a curse",
+        "text": "复制 1 张普通卡并添加 1 张诅咒",
         "effects": [
           {
             "type": "AddCardToDeck",
@@ -105,7 +105,7 @@
         "danger": "medium"
       },
       {
-        "text": "Leave",
+        "text": "离开",
         "effects": [],
         "danger": "none"
       }
@@ -113,12 +113,12 @@
   },
   {
     "id": "fractured_rehearsal",
-    "name": "Fractured Rehearsal",
+    "name": "裂痕排演",
     "chapter": "any",
-    "description": "A cracked mirror shows your potential.",
+    "description": "一面破裂的镜子展现了你潜在的另一个自己。",
     "options": [
       {
-        "text": "Upgrade 1 Skill. Start next 2 combats with 1 Weak.",
+        "text": "升级 1 张技能牌。下 2 场战斗开始时获得 1 层虚弱。",
         "effects": [
           {
             "type": "Skill"
@@ -131,7 +131,7 @@
         "danger": "high"
       },
       {
-        "text": "Leave",
+        "text": "离开",
         "effects": [],
         "danger": "none"
       }
@@ -139,12 +139,12 @@
   },
   {
     "id": "masked_auction",
-    "name": "Masked Auction",
+    "name": "面具拍卖会",
     "chapter": "any",
-    "description": "Masked figures auction unknown treasures.",
+    "description": "面具人拍卖着未知的宝藏，每件都有隐藏的代价。",
     "options": [
       {
-        "text": "Pay 70 Gold for 1 of 3 Branch cards",
+        "text": "支付 70 金币从 3 张分支卡中选择 1 张",
         "effects": [
           {
             "type": "SpendGold",
@@ -159,7 +159,7 @@
         "danger": "medium"
       },
       {
-        "text": "Leave empty-handed",
+        "text": "空手离开",
         "effects": [],
         "danger": "none"
       }
@@ -167,12 +167,12 @@
   },
   {
     "id": "palace_wager",
-    "name": "Palace Wager",
+    "name": "宫廷赌局",
     "chapter": "any",
-    "description": "A golden wager with high stakes.",
+    "description": "一场高风险的黄金赌局，押上你的金币，赢取未知的宝藏。",
     "options": [
       {
-        "text": "Combat for a Rare relic. Failure costs 15 HP.",
+        "text": "为一件稀有遗物而战。失败损失 15 点生命。",
         "effects": [
           {
             "type": "CombatChallenge",
@@ -188,7 +188,7 @@
         "danger": "high"
       },
       {
-        "text": "Decline",
+        "text": "拒绝",
         "effects": [],
         "danger": "none"
       }
@@ -196,12 +196,12 @@
   },
   {
     "id": "shattered_archive",
-    "name": "Shattered Archive",
+    "name": "碎镜档案馆",
     "chapter": "any",
-    "description": "A library of broken mirrors reveals paths unseen.",
+    "description": "一面破碎的镜子展现了通往你未曾踏足的命运之路的可能。",
     "options": [
       {
-        "text": "Reveal the rest of the map and gain resources equal to your Intel",
+        "text": "揭示剩余节点，并根据你的情报值获得对应资源",
         "effects": [
           {
             "type": "RevealMap"
@@ -214,7 +214,7 @@
         "danger": "low"
       },
       {
-        "text": "Leave",
+        "text": "离开",
         "effects": [],
         "danger": "none"
       }
@@ -222,12 +222,12 @@
   },
   {
     "id": "court_of_copies",
-    "name": "Court of Copies",
+    "name": "复制者法庭",
     "chapter": "mirror",
-    "description": "Mirrors show cards that match your deck.",
+    "description": "镜子展示着与你牌组密切相关的卡牌，似乎在诉说着某种预言。",
     "options": [
       {
-        "text": "Choose 1 of 3 mirror cards related to your deck",
+        "text": "从 3 张与你牌组相关的镜宫卡牌中选择 1 张",
         "effects": [
           {
             "type": "ChooseCardFromPool",
@@ -238,7 +238,7 @@
         "danger": "low"
       },
       {
-        "text": "Leave without choosing",
+        "text": "不选择直接离开",
         "effects": [],
         "danger": "none"
       }
@@ -246,12 +246,12 @@
   },
   {
     "id": "silent_corridor",
-    "name": "Silent Corridor",
+    "name": "寂静走廊",
     "chapter": "mirror",
-    "description": "A quiet path offers restoration.",
+    "description": "一条安静的路径通向休憩之所，你的灵魂在此稍作停歇。",
     "options": [
       {
-        "text": "Heal 18% of max HP",
+        "text": "恢复 18% 最大生命",
         "effects": [
           {
             "type": "HealPercent",
@@ -261,7 +261,7 @@
         "danger": "none"
       },
       {
-        "text": "Remove 1 card from deck",
+        "text": "移除 1 张牌",
         "effects": [
           {
             "type": "RemoveCard",
@@ -271,7 +271,7 @@
         "danger": "low"
       },
       {
-        "text": "Continue without resting",
+        "text": "不休息继续前进",
         "effects": [],
         "danger": "none"
       }
@@ -279,12 +279,12 @@
   },
   {
     "id": "broken_throne",
-    "name": "Broken Throne",
+    "name": "破碎王座",
     "chapter": "mirror",
-    "description": "A shattered throne offers one gift.",
+    "description": "破碎的王座散发着腐朽的威严，却仍提供着一份神秘的礼物。",
     "options": [
       {
-        "text": "Gain 1 High-Value Mirror relic (adds a curse)",
+        "text": "获得 1 件高价值镜宫遗物（附带 1 张诅咒）",
         "effects": [
           {
             "type": "GainRelic",
@@ -298,7 +298,7 @@
         "danger": "medium"
       },
       {
-        "text": "Leave empty-handed",
+        "text": "空手离开",
         "effects": [],
         "danger": "none"
       }
@@ -306,12 +306,12 @@
   },
   {
     "id": "rehearsal_pit",
-    "name": "Rehearsal Pit",
+    "name": "排演深坑",
     "chapter": "mirror",
-    "description": "A combat arena for practice.",
+    "description": "一个神秘的战斗训练场，供你在此磨砺技巧。",
     "options": [
       {
-        "text": "Fight an enhanced enemy. Victory upgrades 2 cards.",
+        "text": "与强化敌人战斗。胜利可升级 2 张牌。",
         "effects": [
           {
             "type": "CombatChallenge",
@@ -323,7 +323,7 @@
         "danger": "high"
       },
       {
-        "text": "Back away",
+        "text": "退后",
         "effects": [],
         "danger": "none"
       }
@@ -331,12 +331,12 @@
   },
   {
     "id": "one_true_face",
-    "name": "One True Face",
+    "name": "唯一真容",
     "chapter": "mirror",
-    "description": "A mirror shows two possible selves.",
+    "description": "镜子中映照出两个可能的自我，一个代表着你现在的道路，另一个通向未知的命运。",
     "options": [
       {
-        "text": "Gain +1 Branch Resource engine",
+        "text": "获得 1 点分支引擎（分支资源）",
         "effects": [
           {
             "type": "GainResource",
@@ -347,7 +347,7 @@
         "danger": "none"
       },
       {
-        "text": "Gain 40 Gold",
+        "text": "获得 40 金币",
         "effects": [
           {
             "type": "GainGold",
@@ -360,12 +360,12 @@
   },
   {
     "id": "mirror_exit",
-    "name": "Mirror Exit",
+    "name": "镜宫出口",
     "chapter": "mirror",
-    "description": "The exit offers three treasures.",
+    "description": "镜宫的出口散发着三份神秘宝藏的光芒，等待着你的抉择。",
     "options": [
       {
-        "text": "Choose: Branch card",
+        "text": "选择：分支卡牌",
         "effects": [
           {
             "type": "ChooseCardFromPool",
@@ -376,7 +376,7 @@
         "danger": "none"
       },
       {
-        "text": "Choose: Mirror relic",
+        "text": "选择：镜宫遗物",
         "effects": [
           {
             "type": "GainRelic",
@@ -386,7 +386,7 @@
         "danger": "none"
       },
       {
-        "text": "Choose: Heal 25% HP",
+        "text": "选择：恢复 25% 生命",
         "effects": [
           {
             "type": "HealPercent",

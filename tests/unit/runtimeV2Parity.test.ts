@@ -634,10 +634,10 @@ test('python wasm snapshot normalization preserves snake_case relic state keys',
       devotion: 0,
       corruption: 0,
       deck: ['dead_drop'],
-      relic_ids: ['chaos_sanctum_relic'],
+      relic_ids: ['entropy_sanctum_relic'],
       potion_ids: [],
       relic_states: {
-        chaos_sanctum_relic: {
+        entropy_sanctum_relic: {
           level: 2,
           progress: 0,
           corrupted: false,
@@ -662,7 +662,7 @@ test('python wasm snapshot normalization preserves snake_case relic state keys',
   });
 
   assert.deepEqual(normalized.player.relicStates, {
-    chaos_sanctum_relic: {
+    entropy_sanctum_relic: {
       level: 2,
       progress: 0,
       corrupted: false,

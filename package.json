@@ -51,6 +51,7 @@
     "check:keyword-registry": "tsx scripts/validation/check_keyword_registry.ts",
     "check:content-authoring": "tsx scripts/validation/check_content_authoring.ts",
     "check:experience-polish": "tsx scripts/validation/check_experience_polish.ts",
+    "check:asset-polish": "tsx scripts/validation/check_asset_polish.ts",
     "check:system-assertions": "tsx scripts/validation/check_system_assertions.ts",
     "check:vulnerability-scan": "tsx scripts/validation/vulnerability_scan_ast.ts",
     "test:vulnerability-scan": "tsx --test tests/unit/vulnerabilityScanAst.test.ts",

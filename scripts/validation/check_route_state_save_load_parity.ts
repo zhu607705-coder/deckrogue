@@ -320,8 +320,8 @@ function buildRestRelicUpgradeCancelCase(): CaseResult {
     source.state.screen = 'RelicUpgrade';
     source.state.relicUpgradeReturnScreen = 'Rest';
     source.state.player.gold = 999;
-    source.state.player.relics.push('chaos_sanctum_relic');
-    source.state.player.relicStates.chaos_sanctum_relic = {
+    source.state.player.relics.push('entropy_sanctum_relic');
+    source.state.player.relicStates.entropy_sanctum_relic = {
       level: 1,
       progress: 0,
       corrupted: true,
@@ -374,8 +374,8 @@ function buildRestRelicUpgradeConfirmCase(): CaseResult {
     source.state.screen = 'RelicUpgrade';
     source.state.relicUpgradeReturnScreen = 'Rest';
     source.state.player.gold = 999;
-    source.state.player.relics.push('chaos_sanctum_relic');
-    source.state.player.relicStates.chaos_sanctum_relic = {
+    source.state.player.relics.push('entropy_sanctum_relic');
+    source.state.player.relicStates.entropy_sanctum_relic = {
       level: 1,
       progress: 0,
       corrupted: true,
@@ -400,15 +400,15 @@ function buildRestRelicUpgradeConfirmCase(): CaseResult {
       },
       rngState: source.state.rngState,
     });
-    const upgraded = restored.upgradeRelic('chaos_sanctum_relic');
+    const upgraded = restored.upgradeRelic('entropy_sanctum_relic');
 
     return {
       label: 'rest-relic-upgrade-confirm',
       pass:
         upgraded
         && restored.state.routeState?.primaryTag === 'informant:evidence'
-        && restored.state.player.relicStates.chaos_sanctum_relic?.level === 2
-        && restored.state.player.relicStates.chaos_sanctum_relic?.corrupted === false,
+        && restored.state.player.relicStates.entropy_sanctum_relic?.level === 2
+        && restored.state.player.relicStates.entropy_sanctum_relic?.corrupted === false,
       restoredScreen: restored.state.screen,
       restoredRouteTag: restored.state.routeState?.primaryTag ?? null,
       restoredRouteConfidence: restored.state.routeState?.confidence ?? null,

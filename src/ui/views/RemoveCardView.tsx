@@ -24,7 +24,7 @@ interface WorldLoreData {
 export function RemoveCardView({ engine }: { engine: GameEngine }) {
   const WORLD_LORE = uiWorldLore as WorldLoreData;
   const player = engine.state.player;
-  const background = '/assets/upgrade/upgrade_forge.png';
+  const background = '/assets/upgrade/upgrade_forge.svg';
   const isEventRemoval = engine.isEventFreeCardRemovalMode();
   const remaining = engine.getEventFreeRemovalsRemaining();
 

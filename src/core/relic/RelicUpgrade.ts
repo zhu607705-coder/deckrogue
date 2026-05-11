@@ -102,7 +102,7 @@ export const RELIC_UPGRADE_CONFIGS: RelicUpgradeConfig[] = [
     ]
   },
   {
-    relicId: 'chaos_sanctum_relic',
+    relicId: 'entropy_sanctum_relic',
     maxLevel: 3,
     levels: [
       { level: 1, cost: 150, effect: { triggerBoost: 1 } },

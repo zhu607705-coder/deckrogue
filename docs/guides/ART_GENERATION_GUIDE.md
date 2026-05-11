@@ -70,7 +70,7 @@ A red wax vow seal with a scorched parchment scroll attached, original gothic sc
 ```
 **风格建议**：红色蜡封，羊皮纸卷轴，誓约印记
 
-### 4. Seal of Exterminatus (灭绝令印记)
+### 4. Seal of Final Purge (终末净除印记)
 ```
 A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic
 ```
@@ -150,7 +150,7 @@ python scripts/txt2img.py --prompt "A void-sensitive exile staring into a violet
 | rot_reliquary_blessing | 腐败圣匣赐福 | A rotting green reliquary with flies, fungal blooms, and anonymous disease sigils |
 | machine_canticle_coolant | 机械冷却液 | A vial of glowing blue coolant with original machine-liturgical markings |
 | seal_of_martyrdom | 殉道者印记 | A red wax vow seal with a scorched parchment scroll attached, original gothic sci-fi relic |
-| seal_of_exterminatus | 灭绝令印记 | A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic |
+| seal_of_final_purge | 终末净除印记 | A black wax verdict seal with abstract bone geometry and flames, original gothic sci-fi relic |
 | seal_of_defiance | 不屈印记 | A golden wax resistance seal with a cracked shield symbol, original gothic sci-fi relic |
 | seal_of_machine_vow | 万机誓印 | A copper wax machine-vow seal with an original cog sigil, cathedral-industrial relic |
 | zealots_chain | 狂热者锁链 | A chain of oath beads glowing with sacred industrial light, original gothic sci-fi faith style |

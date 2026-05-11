@@ -28,7 +28,7 @@ export const CURSE_RELIC_IDS: string[] = [
   'rot_reliquary_blessing',
   'mark_of_entropy',
   'heretics_metronome',
-  'seal_of_exterminatus'
+  'seal_of_final_purge'
 ];
 
 export const CURSE_RELIC_CONFIGS: CurseRelicConfig[] = [
@@ -89,7 +89,7 @@ export const CURSE_RELIC_CONFIGS: CurseRelicConfig[] = [
     }
   },
   {
-    relicId: 'seal_of_exterminatus',
+    relicId: 'seal_of_final_purge',
     curseEffect: {
       type: 'stat_penalty',
       value: 10,

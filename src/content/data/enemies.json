@@ -1,7 +1,7 @@
 [
   {
     "id": "slime_small",
-    "name": "Small Slime",
+    "name": "小型史莱姆",
     "hp_range": [
       18,
       24
@@ -65,7 +65,7 @@
   },
   {
     "id": "goblin",
-    "name": "Goblin Scout",
+    "name": "哥布林斥候",
     "hp_range": [
       22,
       28
@@ -178,7 +178,7 @@
   },
   {
     "id": "cultist",
-    "name": "Cultist",
+    "name": "邪教信徒",
     "hp_range": [
       48,
       54
@@ -247,7 +247,7 @@
   },
   {
     "id": "jaw_worm",
-    "name": "Jaw Worm",
+    "name": "颚齿虫",
     "hp_range": [
       40,
       44
@@ -348,7 +348,7 @@
   },
   {
     "id": "gremlin_nob",
-    "name": "Gremlin Nob",
+    "name": "小鬼头目",
     "hp_range": [
       80,
       85
@@ -436,7 +436,7 @@
   },
   {
     "id": "lagavulin",
-    "name": "Lagavulin",
+    "name": "拉加武林",
     "hp_range": [
       95,
       100
@@ -523,7 +523,7 @@
   },
   {
     "id": "slime_boss",
-    "name": "Slime Boss",
+    "name": "史莱姆首领",
     "hp_range": [
       150,
       165
@@ -593,7 +593,7 @@
   },
   {
     "id": "hexaghost",
-    "name": "Hexaghost",
+    "name": "六焰鬼",
     "hp_range": [
       250,
       250
@@ -702,7 +702,7 @@
   },
   {
     "id": "predictor",
-    "name": "Predictor",
+    "name": "预言者",
     "hp_range": [
       34,
       40
@@ -747,7 +747,7 @@
   },
   {
     "id": "fission",
-    "name": "Fission Core",
+    "name": "分裂核心",
     "hp_range": [
       42,
       48
@@ -799,7 +799,7 @@
   },
   {
     "id": "fission_small",
-    "name": "Fission Shard",
+    "name": "分裂碎片",
     "hp_range": [
       15,
       20
@@ -849,7 +849,7 @@
   },
   {
     "id": "barrier",
-    "name": "Barrier Guard",
+    "name": "屏障守卫",
     "hp_range": [
       25,
       30
@@ -925,7 +925,7 @@
   },
   {
     "id": "symbiote_a",
-    "name": "Symbiote Alpha",
+    "name": "共生体阿尔法",
     "hp_range": [
       50,
       50
@@ -977,7 +977,7 @@
   },
   {
     "id": "symbiote_b",
-    "name": "Symbiote Beta",
+    "name": "共生体贝塔",
     "hp_range": [
       50,
       50
@@ -1029,7 +1029,7 @@
   },
   {
     "id": "intelligence_officer",
-    "name": "Intelligence Officer",
+    "name": "情报官",
     "hp_range": [
       90,
       100
@@ -1126,7 +1126,7 @@
   },
   {
     "id": "alchemy_master",
-    "name": "Alchemy Master",
+    "name": "炼金大师",
     "hp_range": [
       210,
       230
@@ -1232,7 +1232,7 @@
   },
   {
     "id": "time_guardian",
-    "name": "Time Guardian",
+    "name": "时间守护者",
     "hp_range": [
       250,
       275
@@ -1301,7 +1301,7 @@
   },
   {
     "id": "puppet_queen",
-    "name": "Puppet Queen",
+    "name": "傀儡女王",
     "hp_range": [
       190,
       215
@@ -1802,7 +1802,7 @@
   },
   {
     "id": "iron_choir_twin_a",
-    "name": "铁唱双生体-A",
+    "name": "铁唱双生体甲",
     "maxHp": 40,
     "minHp": 36,
     "tier": 2,
@@ -1917,7 +1917,7 @@
   },
   {
     "id": "iron_choir_twin_b",
-    "name": "铁唱双生体-B",
+    "name": "铁唱双生体乙",
     "maxHp": 40,
     "minHp": 36,
     "tier": 2,
@@ -4111,7 +4111,7 @@
   },
   {
     "id": "psychic_infiltrator",
-    "name": "Psychic Infiltrator",
+    "name": "灵能渗透者",
     "type": "Elite",
     "maxHp": 65,
     "minHp": 65,
@@ -4216,7 +4216,7 @@
   {
     "id": "slime_small_glass",
     "variant_of": "slime_small",
-    "name": "Glass Slime",
+    "name": "玻璃史莱姆",
     "description": "A brittle crystal-fed slime that alternates between sharp rams and shimmering shell folds.",
     "hp_range": [
       20,
@@ -4287,7 +4287,7 @@
   {
     "id": "slime_small_rot",
     "variant_of": "slime_small",
-    "name": "Rot-Bloom Slime",
+    "name": "腐花史莱姆",
     "description": "A diseased slime that blooms into toxic spores and punishes careless openings with venomous ooze.",
     "hp_range": [
       19,
@@ -4369,7 +4369,7 @@
   {
     "id": "goblin_trapper",
     "variant_of": "goblin",
-    "name": "Goblin Wirebinder",
+    "name": "哥布林缚线师",
     "description": "A wire-snaring goblin hunter that opens with crippling shots and evasive repositioning.",
     "hp_range": [
       23,
@@ -4468,7 +4468,7 @@
   {
     "id": "barrier_redeemer",
     "variant_of": "barrier",
-    "name": "Redeemer Bulwark",
+    "name": "救赎壁垒",
     "description": "A lantern-bearing sentinel that alternates shield hymns with punishing redemption strikes.",
     "hp_range": [
       24,
@@ -4546,7 +4546,7 @@
   {
     "id": "cultist_herald",
     "variant_of": "cultist",
-    "name": "Ashen Herald",
+    "name": "灰烬使者",
     "description": "A censer-swinging herald who empowers the enemy line before lunging through the smoke.",
     "hp_range": [
       46,
@@ -4633,7 +4633,7 @@
   {
     "id": "jaw_worm_burrower",
     "variant_of": "jaw_worm",
-    "name": "Burrow Maw",
+    "name": "掘穴巨颚",
     "description": "A burrowing worm that braces beneath the earth and erupts with sudden sand-choked bites.",
     "hp_range": [
       38,

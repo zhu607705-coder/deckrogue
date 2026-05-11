@@ -173,7 +173,7 @@ export class RelicSystem {
       }
     ]);
 
-    this.relicEffects.set('chaos_sanctum_relic', [
+    this.relicEffects.set('entropy_sanctum_relic', [
       {
         trigger: 'CardPlayed',
         action: (state) => {
@@ -186,7 +186,7 @@ export class RelicSystem {
           combatSystem.applyDamage(state, {
             amount: damage,
             sourceType: 'system',
-            sourceId: 'chaos_sanctum_relic',
+            sourceId: 'entropy_sanctum_relic',
             targetType: 'enemy',
             targetId: target.id,
             modifiers: [],

@@ -144,15 +144,15 @@ function generateBattleBackground(name, primaryColor, secondaryColor, accentColo
       <circle cx="150" cy="250" r="25" fill="${accentColor}" opacity="0.4"/>
       <circle cx="850" cy="650" r="35" fill="${accentColor}" opacity="0.3"/>
     `,
-    'imperium': `
+    'oathbound': `
       <defs>
-        <linearGradient id="imperiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="oathboundGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${primaryColor};stop-opacity:0.6"/>
           <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1"/>
           <stop offset="100%" style="stop-color:${secondaryColor};stop-opacity:0.5"/>
         </linearGradient>
       </defs>
-      <rect width="1024" height="768" fill="url(#imperiumGrad)"/>
+      <rect width="1024" height="768" fill="url(#oathboundGrad)"/>
       <path d="M512 100 L532 180 L620 180 L550 230 L575 310 L512 260 L449 310 L474 230 L404 180 L492 180 Z" fill="${accentColor}" opacity="0.15"/>
       <rect x="0" y="680" width="1024" height="88" fill="${secondaryColor}" opacity="0.25"/>
     `,
@@ -473,7 +473,7 @@ const backgroundConfigs = [
   { name: 'bg_iron_chapel_forge', primary: '#2d2d1a', secondary: '#78716c', accent: '#f59e0b', style: 'forge', dir: backgroundsDir },
   { name: 'bg_ancient_machine_tomb', primary: '#0a1a0a', secondary: '#3d4f3d', accent: '#22c55e', style: 'necron', dir: backgroundsDir },
   { name: 'bg_plague_garden', primary: '#0a1a0a', secondary: '#1a3d1a', accent: '#22c55e', style: 'plague_reliquary', dir: backgroundsDir },
-  { name: 'bg_oathbound_palace', primary: '#1a1a2e', secondary: '#b45309', accent: '#fbbf24', style: 'imperium', dir: backgroundsDir },
+  { name: 'bg_oathbound_palace', primary: '#1a1a2e', secondary: '#b45309', accent: '#fbbf24', style: 'oathbound', dir: backgroundsDir },
   { name: 'bg_starless_archive', primary: '#0a0a1a', secondary: '#1e3a5f', accent: '#60a5fa', style: 'void', dir: backgroundsDir },
   { name: 'bg_martyr_chapel', primary: '#1a1a1a', secondary: '#b91c1c', accent: '#fbbf24', style: 'temple', dir: backgroundsDir },
 ];
@@ -494,7 +494,7 @@ const relicConfigs = [
   { name: 'rot_reliquary_blessing', color: '#22c55e', icon: '🦠', subtitle: 'Rot Reliquary', dir: relicsDir },
   { name: 'machine_canticle_coolant', color: '#3b82f6', icon: '❄', subtitle: 'Machine Canticle', dir: relicsDir },
   { name: 'seal_of_martyrdom', color: '#dc2626', icon: '📜', subtitle: 'Purity Seal', dir: relicsDir },
-  { name: 'seal_of_exterminatus', color: '#1f2937', icon: '💀', subtitle: 'Purity Seal', dir: relicsDir },
+  { name: 'seal_of_final_purge', color: '#1f2937', icon: '💀', subtitle: 'Purity Seal', dir: relicsDir },
   { name: 'seal_of_defiance', color: '#fbbf24', icon: '🛡', subtitle: 'Purity Seal', dir: relicsDir },
   { name: 'seal_of_machine_vow', color: '#f59e0b', icon: '⚙', subtitle: 'Purity Seal', dir: relicsDir },
 ];

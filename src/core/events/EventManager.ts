@@ -434,7 +434,7 @@ export class EventManager {
         if (choice === 'legacy_open_casket') {
           state.player.hp = Math.max(1, state.player.hp - Math.max(1, Number(n.openCasketCurrentHpLoss ?? 1)));
           runEffects.enemyHuntBonusPct = Math.max(runEffects.enemyHuntBonusPct || 0, Math.max(0, Number(n.openCasketEnemyHuntBonusPct ?? 0.1)));
-          this.grantRelicDirect('chaos_sanctum_relic');
+          this.grantRelicDirect('entropy_sanctum_relic');
           state.activeEvent = null;
           this.deps.leaveCurrentRoomToMap();
           return;

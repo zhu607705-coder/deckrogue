@@ -116,7 +116,7 @@
       "intel",
       "strike"
     ],
-    "text": "若你拥有 1 点情报，则消耗它并造成 9 点伤害；否则造成 6 点伤害。",
+    "text": "若有 1 点情报，则消耗它并造成 9 点伤害；否则造成 6 点伤害。",
     "actions": [
       {
         "type": "Conditional",
@@ -148,7 +148,7 @@
     "art_prompt": "A sniper's crosshair locking onto a glowing weak point on a monster's armor, high tech fantasy art style",
     "upgrade": {
       "name": "精准打击+",
-      "text": "若你拥有 1 点情报，则消耗它并造成 16 点伤害；否则造成 8 点伤害。",
+      "text": "若有 1 点情报，则消耗它并造成 16 点伤害；否则造成 8 点伤害。",
       "actions": [
         {
           "type": "Conditional",
@@ -348,7 +348,7 @@
     "tags": [
       "intel"
     ],
-    "text": "消耗 2 点情报：施加 3 层易伤和 2 层虚弱。",
+    "text": "消耗 2 点情报：施加 2 层易伤和 2 层虚弱。",
     "actions": [
       {
         "type": "Conditional",
@@ -7003,7 +7003,7 @@
       "defense",
       "card_draw"
     ],
-    "text": "获得 7 护盾并抽 1 张牌；若有 减益状态，再获得 5 护盾。",
+    "text": "获得 7 点护盾并抽 1 张牌；若有减益状态，再获得 5 点护盾。",
     "actions": [
       {
         "type": "GainBlock",
@@ -11224,7 +11224,7 @@
   },
   {
     "id": "needle_servo",
-    "name": "????",
+    "name": "针线偶",
     "rarity": "Common",
     "cost": 1,
     "type": "Skill",
@@ -11234,7 +11234,7 @@
       "summon",
       "thread"
     ],
-    "text": "???? 2/2 ???????? 1 ????",
+    "text": "召唤1个2/2针线偶。获得1点丝线。",
     "actions": [
       {
         "type": "Summon",
@@ -11250,7 +11250,7 @@
       }
     ],
     "upgrade": {
-      "text": "???? 3/3 ???????? 1 ????",
+      "text": "召唤1个3/3针线偶。获得1点丝线。",
       "actions": [
         {
           "type": "Summon",

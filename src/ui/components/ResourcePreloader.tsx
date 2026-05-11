@@ -248,13 +248,13 @@ export function preloadRouteAssets(screen: string): PreloadableResource[] {
       `${assetBase}/events/event_forge.png`,
     ],
     Rest: [
-      `${assetBase}/rest/rest_camp.png`,
-      `${assetBase}/rest/rest_station.png`,
-      `${assetBase}/rest/rest_wasteland.png`,
+      `${assetBase}/rest/rest_camp.svg`,
+      `${assetBase}/rest/rest_station.svg`,
+      `${assetBase}/rest/rest_wasteland.svg`,
     ],
     Reward: [
-      `${assetBase}/reward/reward_loot.png`,
-      `${assetBase}/reward/reward_vault.png`,
+      `${assetBase}/reward/reward_loot.svg`,
+      `${assetBase}/reward/reward_vault.svg`,
     ],
   };
 

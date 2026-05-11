@@ -422,7 +422,7 @@ const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
     routeTag: 'chronomancer:warp',
     characterId: 'chronomancer',
     label: '跃迁链',
-    supportRelicIds: ['lantern', 'ruined_reactor', 'warp_distorter', 'chaos_sanctum_relic', 'minute_censer'],
+    supportRelicIds: ['lantern', 'ruined_reactor', 'warp_distorter', 'entropy_sanctum_relic', 'minute_censer'],
   },
   'alchemist:fire': {
     routeTag: 'alchemist:fire',

@@ -123,9 +123,9 @@ export function ResponsiveBackground({
 
 export const VIEW_BACKGROUNDS = {
   characterSelect: {
-    desktop: '/assets/char_select/char_select_hall.png',
-    tablet: '/assets/char_select/char_select_hall.png',
-    mobile: '/assets/char_select/char_select_hall.png'
+    desktop: '/assets/char_select/char_select_hall.svg',
+    tablet: '/assets/char_select/char_select_hall.svg',
+    mobile: '/assets/char_select/char_select_hall.svg'
   },
   map: {
     desktop: '/assets/backgrounds/bg_gemini_map.png',
@@ -134,19 +134,19 @@ export const VIEW_BACKGROUNDS = {
   },
   rest: [
     {
-      desktop: '/assets/rest/rest_camp.png',
-      tablet: '/assets/rest/rest_camp.png',
-      mobile: '/assets/rest/rest_camp.png'
+      desktop: '/assets/rest/rest_camp.svg',
+      tablet: '/assets/rest/rest_camp.svg',
+      mobile: '/assets/rest/rest_camp.svg'
     },
     {
-      desktop: '/assets/rest/rest_wasteland.png',
-      tablet: '/assets/rest/rest_wasteland.png',
-      mobile: '/assets/rest/rest_wasteland.png'
+      desktop: '/assets/rest/rest_wasteland.svg',
+      tablet: '/assets/rest/rest_wasteland.svg',
+      mobile: '/assets/rest/rest_wasteland.svg'
     },
     {
-      desktop: '/assets/rest/rest_station.png',
-      tablet: '/assets/rest/rest_station.png',
-      mobile: '/assets/rest/rest_station.png'
+      desktop: '/assets/rest/rest_station.svg',
+      tablet: '/assets/rest/rest_station.svg',
+      mobile: '/assets/rest/rest_station.svg'
     }
   ],
   shop: [
@@ -173,20 +173,20 @@ export const VIEW_BACKGROUNDS = {
   ],
   reward: [
     {
-      desktop: '/assets/reward/reward_loot.png',
-      tablet: '/assets/reward/reward_loot.png',
-      mobile: '/assets/reward/reward_loot.png'
+      desktop: '/assets/reward/reward_loot.svg',
+      tablet: '/assets/reward/reward_loot.svg',
+      mobile: '/assets/reward/reward_loot.svg'
     },
     {
-      desktop: '/assets/reward/reward_vault.png',
-      tablet: '/assets/reward/reward_vault.png',
-      mobile: '/assets/reward/reward_vault.png'
+      desktop: '/assets/reward/reward_vault.svg',
+      tablet: '/assets/reward/reward_vault.svg',
+      mobile: '/assets/reward/reward_vault.svg'
     }
   ],
   upgrade: {
-    desktop: '/assets/upgrade/upgrade_forge.png',
-    tablet: '/assets/upgrade/upgrade_forge.png',
-    mobile: '/assets/upgrade/upgrade_forge.png'
+    desktop: '/assets/upgrade/upgrade_forge.svg',
+    tablet: '/assets/upgrade/upgrade_forge.svg',
+    mobile: '/assets/upgrade/upgrade_forge.svg'
   },
   events: {
     forge: '/assets/events/event_forge.png',
