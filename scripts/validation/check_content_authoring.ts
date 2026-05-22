@@ -9,10 +9,13 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { resolve } from 'path';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/content-authoring.json`;
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(SCRIPT_DIR, '..', '..');
 
 interface CardSpec {
   id: string;
@@ -82,6 +85,90 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function loadRegisteredActionTypes(): Set<string> {
+  const actionFactoryPath = resolve(REPO_ROOT, 'src/core/actions/v2/ActionFactory.ts');
+  const source = readFileSync(actionFactoryPath, 'utf-8');
+  const entriesStart = source.indexOf('private static actionMapEntries');
+  const listStart = entriesStart >= 0 ? source.indexOf('= [', entriesStart) : -1;
+  const listEnd = listStart >= 0 ? source.indexOf('\n  ];', listStart) : -1;
+  const entriesSource = listStart >= 0 && listEnd >= 0 ? source.slice(listStart, listEnd) : '';
+  const types = new Set([...entriesSource.matchAll(/\[\s*['"]([^'"]+)['"]\s*,/g)].map((match) => match[1]));
+
+  if (types.size === 0) {
+    throw new Error(`Could not load action registry from ${actionFactoryPath}`);
+  }
+
+  return types;
+}
+
+const CARD_ACTION_TYPES = loadRegisteredActionTypes();
+const ENEMY_ACTION_TYPES = new Set([
+  ...CARD_ACTION_TYPES,
+  'DamageBoost',
+  'HealSelf',
+  'SummonEnemy',
+  'BuffAllEnemies',
+  'PlayerDrawLess',
+  'RandomCardCostIncrease',
+  'OnDeath',
+  'RevealHand',
+  'SwapCards',
+]);
+
+const ACTION_NUMERIC_FIELDS = new Set([
+  'alpha',
+  'amount',
+  'armorIgnore',
+  'atk',
+  'atkBonus',
+  'atkPerConstruct',
+  'attack',
+  'baseAtk',
+  'baseHp',
+  'block',
+  'blockThreshold',
+  'bonus',
+  'chanceReduction',
+  'constructAtkBonus',
+  'consumeOtherConstructs',
+  'costModifier',
+  'costReduction',
+  'damage',
+  'damagePerPoison',
+  'divisor',
+  'drawAmount',
+  'effectPercent',
+  'emptyPenaltyTrueDamage',
+  'failureConstructAtk',
+  'failureConstructHp',
+  'falseDamage',
+  'healAmount',
+  'hp',
+  'hpBonus',
+  'hpPerConstruct',
+  'maxAmount',
+  'maxPoisonRemoval',
+  'minimum',
+  'multiplier',
+  'perDebuff',
+  'percent',
+  'poisonThreshold',
+  'sensitivity',
+  'stacks',
+  'threshold',
+  'times',
+  'turns',
+  'zealPerBuff',
+]);
+
+const ACTION_ARRAY_FIELDS = ['actions', 'effects', 'trueActions', 'falseActions'] as const;
+const ACTION_OBJECT_FIELDS = ['effect', 'ifTrue', 'ifFalse'] as const;
+const ACTION_NUMERIC_OBJECT_FIELDS = ['condition', 'scaling', 'trigger'] as const;
+
 function loadJsonFile(filepath: string): any {
   try {
     const content = readFileSync(filepath, 'utf-8');
@@ -102,6 +189,124 @@ function isUnplayableCard(card: CardSpec): boolean {
     tags.includes('curse') ||
     text.includes('unplayable')
   );
+}
+
+function formatValue(value: unknown): string {
+  return typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
+function validateNumericFieldsInObject(value: Record<string, unknown>, path: string): string[] {
+  const issues: string[] = [];
+
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (!ACTION_NUMERIC_FIELDS.has(key)) {
+      continue;
+    }
+
+    if (!isFiniteNumber(fieldValue)) {
+      issues.push(`Invalid action numeric field at ${path}.${key}: ${formatValue(fieldValue)}`);
+    }
+  }
+
+  return issues;
+}
+
+function validateNumericFieldTree(value: unknown, path: string): string[] {
+  const issues: string[] = [];
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      issues.push(...validateNumericFieldTree(item, `${path}[${index}]`));
+    });
+    return issues;
+  }
+
+  if (!isRecord(value)) {
+    return issues;
+  }
+
+  issues.push(...validateNumericFieldsInObject(value, path));
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (isRecord(fieldValue) || Array.isArray(fieldValue)) {
+      issues.push(...validateNumericFieldTree(fieldValue, `${path}.${key}`));
+    }
+  }
+
+  return issues;
+}
+
+function validateActionSpec(
+  value: unknown,
+  path: string,
+  allowedTypes: Set<string>,
+  unknownTypeLabel: string,
+): string[] {
+  const issues: string[] = [];
+
+  if (!isRecord(value)) {
+    return [`Invalid action at ${path}: expected object`];
+  }
+
+  const actionType = value.type;
+  if (typeof actionType !== 'string' || actionType.trim() === '') {
+    issues.push(`Missing action type at ${path}`);
+  } else if (!allowedTypes.has(actionType)) {
+    issues.push(`${unknownTypeLabel} at ${path}: ${actionType}`);
+  }
+
+  issues.push(...validateNumericFieldsInObject(value, path));
+
+  for (const field of ACTION_NUMERIC_OBJECT_FIELDS) {
+    if (value[field] !== undefined) {
+      issues.push(...validateNumericFieldTree(value[field], `${path}.${field}`));
+    }
+  }
+
+  for (const field of ACTION_ARRAY_FIELDS) {
+    if (value[field] === undefined) {
+      continue;
+    }
+
+    if (!Array.isArray(value[field])) {
+      issues.push(`Invalid nested action list at ${path}.${field}: expected array`);
+      continue;
+    }
+
+    value[field].forEach((child, index) => {
+      issues.push(...validateActionSpec(child, `${path}.${field}[${index}]`, allowedTypes, unknownTypeLabel));
+    });
+  }
+
+  for (const field of ACTION_OBJECT_FIELDS) {
+    if (value[field] === undefined) {
+      continue;
+    }
+
+    const fieldValue = value[field];
+    if (Array.isArray(fieldValue)) {
+      fieldValue.forEach((child, index) => {
+        issues.push(...validateActionSpec(child, `${path}.${field}[${index}]`, allowedTypes, unknownTypeLabel));
+      });
+      continue;
+    }
+
+    issues.push(...validateActionSpec(fieldValue, `${path}.${field}`, allowedTypes, unknownTypeLabel));
+  }
+
+  return issues;
+}
+
+function validateActionList(
+  value: unknown,
+  path: string,
+  allowedTypes: Set<string>,
+  unknownTypeLabel: string,
+): string[] {
+  if (!Array.isArray(value)) {
+    return [`Invalid action list at ${path}: expected array`];
+  }
+
+  return value.flatMap((action, index) => validateActionSpec(action, `${path}[${index}]`, allowedTypes, unknownTypeLabel));
 }
 
 function checkCard(card: CardSpec): string[] {
@@ -135,6 +340,12 @@ function checkCard(card: CardSpec): string[] {
     issues.push('Missing actions array');
   } else if (card.actions.length === 0 && !isUnplayableCard(card)) {
     issues.push('Missing actions');
+  } else {
+    issues.push(...validateActionList(card.actions, 'actions', CARD_ACTION_TYPES, 'Unknown card action type'));
+  }
+
+  if (isRecord(card.upgrade) && card.upgrade.actions !== undefined) {
+    issues.push(...validateActionList(card.upgrade.actions, 'upgrade.actions', CARD_ACTION_TYPES, 'Unknown card action type'));
   }
 
   if (card.type === 'Attack' && !card.targeting) {
@@ -189,6 +400,12 @@ function checkEnemy(enemy: EnemySpec): string[] {
       if (policy?.weight !== undefined && (typeof policy.weight !== 'number' || !Number.isFinite(policy.weight))) {
         issues.push(`Intent has non-number weight: ${intent || 'unknown'}`);
       }
+    }
+  }
+
+  if (moves) {
+    for (const [intent, actions] of Object.entries(moves)) {
+      issues.push(...validateActionList(actions, `moves.${intent}`, ENEMY_ACTION_TYPES, 'Unknown enemy action type'));
     }
   }
 

@@ -215,6 +215,78 @@ test('content authoring gate rejects card costs encoded as strings', () => {
   }
 });
 
+test('content authoring gate rejects invalid card action schema', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-actions-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'string_action_amount_card',
+          name: 'String Action Amount Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Attack',
+          targeting: 'Enemy',
+          text: 'Deal 4 damage.',
+          actions: [{ type: 'DealDamage', amount: '4' }],
+        },
+        {
+          id: 'unknown_action_card',
+          name: 'Unknown Action Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          text: 'Do a missing action.',
+          actions: [{ type: 'MissingActionType', amount: 1 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected invalid card actions to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Invalid action numeric field/);
+    assert.match(result.stdout, /Unknown card action type/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test('script debt repair keeps route and Python runtime checks gated', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
   const reviewCi = readFileSync('scripts/validation/review_ci.ts', 'utf-8');

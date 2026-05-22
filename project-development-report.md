@@ -8159,3 +8159,33 @@
   - content authoring gate 不再吞掉 stringly numeric card cost。
   - doctor/release 组合不再因自身历史日志累积撞文件数上限。
   - 下一轮可继续查 runtimeV2 browser/Pyodide edge、UI 渲染证据契约或更深层 action schema 校验。
+
+## DeckRogue Fix Batch 014 - Content Action Schema Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 013 报告、`git status`、当前 HEAD 和 DeckRogue 记忆约束，确认工作树从 `deeacc8` 干净状态开始。
+  - 源码审计 `scripts\validation\check_content_authoring.ts` 发现：`card.actions` 只检查数组存在/非空，没有检查 action object、action type 是否注册，也没有拒绝 `amount: "4"` 这类 stringly numeric action 字段。
+  - 只读内容审计确认真实卡牌 action surface 均在 ActionFactory registry 内，且当前内容没有 stringly numeric action 字段；敌人 move 另有 `BuffAllEnemies`、`OnDeath`、`RevealHand` 等 enemy-only 类型，不能用卡牌 ActionFactory 规则一刀切。
+  - 红灯复现：新增真实脚本 fixture 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`；临时 cards 中 `actions: [{ type: 'DealDamage', amount: '4' }]` 和 `MissingActionType` 被旧脚本输出 `Cards: 2/2 valid`、`✅ Content authoring check passed`。
+- 修复内容：
+  - **CONTENT-AUTHORING-ACTION-SCHEMA-PASS-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 新增 action schema 校验：action 必须是 object，`type` 必须是非空 string，卡牌 action/upgrade action 必须匹配 `ActionFactory.ts` registry。
+    - 对 action、condition、trigger、scaling 以及 nested `actions`、`effects`、`trueActions`、`falseActions`、`effect`、`ifTrue`、`ifFalse` 中的已知 numeric 字段执行严格 `number` + finite 校验，拒绝字符串、布尔、null 等隐式 coercion。
+    - 敌人 move 使用 ActionFactory registry + enemy-only action allowlist，避免误拒 `BuffAllEnemies`、`OnDeath`、`RevealHand` 等现有运行时 move。
+    - registry 读取改为从脚本所在 repo root 解析 `src\core\actions\v2\ActionFactory.ts`，避免 fixture cwd 下直接 alias import 导致 validator 启动期失败。
+  - `tests\unit\validationScripts.test.ts` 新增临时 content fixture + 真实 `tsx` 脚本执行回归，锁定 invalid card action schema 必须非零退出并输出 `Invalid action numeric field` 与 `Unknown card action type`。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/validationScripts.test.ts` 修复前 exit `1`，`content authoring gate rejects invalid card action schema` 失败，旧脚本误报 `Cards: 2/2 valid`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`15/15` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，`Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Pass rate: 100%`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed，包含 Lint、Build、Desktop Build、Supplemental Unit Tests、Check Content Authoring、UI Smoke Expansion、全部 flow smoke、Desktop Smoke、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - content authoring gate 不再吞掉 stringly numeric action schema drift 或未知卡牌 action type。
+  - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 browser/Pyodide edge、Python WASM adaptation 或 UI/rendering evidence gate。
