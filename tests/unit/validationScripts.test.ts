@@ -82,6 +82,15 @@ test('desktop smoke isolates production runs', () => {
   assert.match(source, /desktop_\$\{runId\}_launcher\.png/);
 });
 
+test('real UI round stress treats missing or invalid scenario reports as failures', () => {
+  const source = readFileSync('scripts/validation/playwright_real_ui_30_rounds.ts', 'utf-8');
+
+  assert.match(source, /if\s*\(!reportData\.reportGenerated\)/);
+  assert.match(source, /reportSummary\?\.\s*parseError/);
+  assert.match(source, /Scenario report was not generated/);
+  assert.match(source, /Scenario report could not be parsed/);
+});
+
 test('script debt repair keeps route and Python runtime checks gated', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
   const reviewCi = readFileSync('scripts/validation/review_ci.ts', 'utf-8');

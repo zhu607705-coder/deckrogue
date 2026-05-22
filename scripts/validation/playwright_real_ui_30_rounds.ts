@@ -271,6 +271,33 @@ function runRound(plannedRound: PlannedRound): RoundResult {
     });
 
     const reportData = readScenarioReport(plannedRound.scenario.reportPath);
+    if (!reportData.reportGenerated) {
+      return {
+        round: plannedRound.round,
+        cycle: plannedRound.cycle,
+        scenario: plannedRound.scenario.name,
+        script: plannedRound.scenario.script,
+        durationMs: Date.now() - started,
+        status: 'fail',
+        reportPath: plannedRound.scenario.reportPath,
+        reportGenerated: false,
+        error: `Scenario report was not generated: ${plannedRound.scenario.reportPath}`,
+      };
+    }
+    if (reportData.reportSummary?.parseError) {
+      return {
+        round: plannedRound.round,
+        cycle: plannedRound.cycle,
+        scenario: plannedRound.scenario.name,
+        script: plannedRound.scenario.script,
+        durationMs: Date.now() - started,
+        status: 'fail',
+        reportPath: plannedRound.scenario.reportPath,
+        reportGenerated: true,
+        reportSummary: reportData.reportSummary,
+        error: `Scenario report could not be parsed: ${String(reportData.reportSummary.parseError)}`,
+      };
+    }
     return {
       round: plannedRound.round,
       cycle: plannedRound.cycle,

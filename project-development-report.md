@@ -8077,3 +8077,28 @@
 - 状态：
   - remove-card rest flow 已从可复现 P2 smoke failure 转为单测 + Playwright smoke 双重覆盖。
   - release readiness 当前为全绿；下一轮可继续从未覆盖 UI/rendering、runtimeV2 或 content schema 面寻找新的 P1/P2。
+
+## DeckRogue Fix Batch 011 - Real UI Stress Report Evidence Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 010 报告、`git status`、最近脚本入口，再运行边缘门禁：`check:asset-polish`、`check:readme-consistency`、`check:python-wasm-runtime-sync`、`report:bundle` 均通过且工作树保持干净。
+  - 源码审计 `scripts\validation\playwright_real_ui_30_rounds.ts` 发现：子脚本 exit `0` 后只读取 scenario report 摘要；若 report 缺失或 JSON 解析失败，`runRound()` 仍返回 `status: 'pass'`，最终 `test:real-ui-30-rounds` 可在证据缺失时通过。
+- 修复内容：
+  - **REAL-UI-ROUNDS-MISSING-SCENARIO-REPORT-PASS-001：已修。**
+    - `scripts\validation\playwright_real_ui_30_rounds.ts` 在子脚本成功后强制检查 `reportGenerated` 与 `reportSummary.parseError`。
+    - 缺失 report 现在返回 fail，错误为 `Scenario report was not generated: ...`；坏 JSON 现在返回 fail，错误为 `Scenario report could not be parsed: ...`。
+    - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 real UI stress runner 必须将缺失/无效 scenario report 当作失败。
+- Fresh 验证输出：
+  - 红灯复现：新增回归在修复前运行 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，`real UI round stress treats missing or invalid scenario reports as failures` 失败。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`11/11` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npx tsx scripts/validation/playwright_real_ui_30_rounds.ts --rounds=1`：exit `0`，Vite `http://127.0.0.1:51802/`，`real-ui-1-rounds` 中 `round 1 pass` 且 `report=yes`。
+  - `reports\flows\real-ui-1-rounds.json`：`passedRounds=1`、`failedRounds=0`、`rounds[0].reportGenerated=true`、`consoleErrorsCount=0`、`pageErrorsCount=0`、`failedRequestsCount=0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因是当前脚本/test 改动让 build、doctor、desktop、UI/flow smoke 报告按预期 stale；需用完整 doctor 刷新后再作为最终 release evidence。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；覆盖 Build、Desktop Build、Supplemental Unit Tests、UI Smoke Expansion、全部 flow smoke、Desktop Smoke、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - real UI stress runner 不再接受缺失或坏 JSON 的 scenario evidence。
+  - release readiness 已重新刷新到全绿；本批修复可提交。
