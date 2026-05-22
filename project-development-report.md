@@ -8049,3 +8049,31 @@
   - UI expansion evidence gate 现在能拒绝旧报告、半截报告和旧截图。
   - Experience polish 与 release readiness 对 UI expansion evidence 使用同一 contract，降低后续 gate 漂移风险。
   - 本批未刷新 desktop smoke、doctor/security、单项 flow smoke 报告；这些仍是 release readiness 的独立 stale artifact 后续目标。
+
+## DeckRogue Fix Batch 010 - Remove Card Room Transition And AI Boundary Closure - 2026-05-22
+
+- 发现证据：
+  - 本轮先读 Batch 009 报告、`git status`、最近 release readiness 结果，再复跑目标 smoke。
+  - `npm run test:remove-card-flow-smoke --silent` 修复前可复现：`returnedToMap=false`，console error 为 `Illegal run transition: REST_COMPLETED cannot resolve from map`，等待 `button[data-node-id]` 超时。
+  - `npm run doctor:game:full --silent` 初次刷新报告时还暴露 `check:enemy-ai-boundaries` 失败：`gameEngine.ts` 与 `buildContentBundle.ts` 仍从 `@/core/ai/...` deep import。
+- 修复内容：
+  - **REMOVE-CARD-FLOW-REST-ROOM-TRANSITION-001：已修。**
+    - `src\core\events\gameEngine.ts` 在 `RemoveCard` 仍保留 nested room surface 时调用 `leaveCurrentRoomToMap()`，避免先把 `screen` 改成 `Map` 再提交 `REST_COMPLETED`。
+    - `tests\unit\actionManagerAndRoomFlow.test.ts` 新增回归：rest disperse 后移除卡牌必须回到 Map、清空 room token/session，且不能记录 `Illegal run transition`。
+  - **ENEMY-AI-DEEP-IMPORT-BOUNDARY-001：已修。**
+    - `src\core\events\gameEngine.ts` 和 `src\runtimeV2\content\buildContentBundle.ts` 改为通过 `@/core/ai` 统一入口导入 AI 层能力。
+- Fresh 验证输出：
+  - 红灯复现：新增单测修复前在 `npx tsx --test tests/unit/actionManagerAndRoomFlow.test.ts` 中失败，断言捕获到 `Illegal run transition`。
+  - `npx tsx --test tests/unit/actionManagerAndRoomFlow.test.ts`：exit `0`，`9/9` pass。
+  - `npm run test:remove-card-flow-smoke --silent`：exit `0`，Vite `http://127.0.0.1:57217/`，`returnedToMap=true`，console/page errors 均为 `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`109` tests，`108` pass，`1` skip。
+  - `npm run build --silent`：exit `0`，Vite `2265 modules transformed`，`built in 3.65s`。
+  - `npm run check:enemy-ai-boundaries --silent`：exit `0`，`[check_enemy_ai_boundaries] OK`。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；覆盖 UI Smoke Expansion、全部 flow smoke、Desktop Smoke、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - remove-card rest flow 已从可复现 P2 smoke failure 转为单测 + Playwright smoke 双重覆盖。
+  - release readiness 当前为全绿；下一轮可继续从未覆盖 UI/rendering、runtimeV2 或 content schema 面寻找新的 P1/P2。

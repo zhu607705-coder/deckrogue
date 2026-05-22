@@ -14,7 +14,7 @@ import potionsDataRaw from '@/content/data/potions.json';
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
 import { charactersData, getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 import { getCardRouteSignal } from '@/content/narrative/routeSignals';
-import { normalizeIntentPolicyIntent, parseIntentPolicyWeight, resolveIntentPolicyList } from '@/core/ai/intentPolicy';
+import { normalizeIntentPolicyIntent, parseIntentPolicyWeight, resolveIntentPolicyList } from '@/core/ai';
 import type { ContentBundle } from '@/runtimeV2/contracts';
 
 type CharacterEntry = {

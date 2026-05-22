@@ -57,7 +57,7 @@ import { runPhaseToScreen } from '@/core/events/runStateMachine';
 import { projectRuleSnapshotToLegacyState, type LegacyStateProjection } from '@/runtimeV2/legacyStateProjector';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
-import { combatMemory } from '@/core/ai/combatMemory';
+import { combatMemory } from '@/core/ai';
 import { calculateRewardRuntime } from '@/core/balance/numericsRuntime';
 import { combatSystem } from '@/core/combat/combatSystem';
 import { cloneJsonValue } from '@/core/utils/safeJson';
@@ -882,10 +882,22 @@ export class GameEngine {
         this.recordDelegationFallback(error);
       }
     }
+    const isEventFreeCardRemovalMode = this.eventManager.isEventFreeCardRemovalMode();
+    const nestedRoomRemovalKind = this.state.roomSession?.resolverKind ?? this.state.roomResolutionKind ?? null;
+    const returnScreenAfterRemoval = this.state.upgradeReturnScreen;
+    const shouldResolveRoomAfterRemoval =
+      this.state.screen === 'RemoveCard'
+      && (
+        isEventFreeCardRemovalMode
+        || nestedRoomRemovalKind === 'event'
+        || nestedRoomRemovalKind === 'rest'
+        || returnScreenAfterRemoval === 'Rest'
+        || this.state.campfireChoiceLocked
+      );
     const requiresPaidRemoval =
       this.state.screen === 'RemoveCard'
       && this.state.upgradeReturnScreen === 'Shop'
-      && !this.eventManager.isEventFreeCardRemovalMode();
+      && !isEventFreeCardRemovalMode;
     if (requiresPaidRemoval) {
       const removalCost = this.state.cardRemovalCost ?? 75;
       if (this.state.player.gold < removalCost) {
@@ -895,14 +907,21 @@ export class GameEngine {
     }
     this.state.player.deck = this.state.player.deck.filter(c => c.instanceId !== cardInstanceId);
     syncRouteStateFromLegacyState(this.state);
-    this.state.screen = this.state.upgradeReturnScreen || 'Map';
+    if (shouldResolveRoomAfterRemoval) {
+      this.leaveCurrentRoomToMap();
+      if (this.state.screen === 'Map' && !this.state.pendingNodeResolution) {
+        this.state.upgradeReturnScreen = undefined;
+      }
+      return;
+    }
+    this.state.screen = returnScreenAfterRemoval || 'Map';
     this.state.upgradeReturnScreen = undefined;
     if (this.state.screen === 'Map') {
       this.leaveCurrentRoomToMap();
       return;
     }
     syncRoomSessionFromLegacyState(this.state, {
-      isEventFreeCardRemovalMode: this.eventManager.isEventFreeCardRemovalMode(),
+      isEventFreeCardRemovalMode,
     });
     this.notify();
   }

@@ -214,6 +214,44 @@ test('restDisperse enters remove-card mode instead of leaving the room immediate
   engine.dispose();
 });
 
+test('rest remove-card completion resolves the rest room before returning to map', () => {
+  const engine = new GameEngine(24601, null, { enableRuntimeDelegation: false });
+  engine.selectCharacter('informant');
+  const cardId = engine.state.player.deck[0]?.instanceId;
+  assert.ok(cardId);
+  engine.state.map = [{ id: 'rest-node', type: 'Rest', revealed: true, next: [], x: 0, y: 0 }];
+  engine.state.currentNodeId = 'rest-node';
+  engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'rest_room_token';
+  engine.state.roomResolutionKind = 'rest';
+  engine.state.screen = 'Rest';
+  engine.state.player.relics.push('mark_of_entropy');
+  engine.state.player.relicStates['mark_of_entropy'] = { level: 1, progress: 0, corrupted: true };
+
+  engine.restDisperse();
+
+  const errors: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+  };
+
+  try {
+    engine.removeCard(cardId);
+  } finally {
+    console.error = originalError;
+    engine.dispose();
+  }
+
+  assert.equal(engine.state.screen, 'Map');
+  assert.equal(engine.state.pendingNodeResolution, false);
+  assert.equal(engine.state.roomResolutionToken, null);
+  assert.equal(engine.state.roomResolutionKind, null);
+  assert.equal(engine.state.roomSession, null);
+  assert.equal(engine.state.player.deck.some((card) => card.instanceId === cardId), false);
+  assert.equal(errors.some((entry) => entry.includes('Illegal run transition')), false);
+});
+
 test('handleCombatVictory preserves room contract metadata through reward transition', () => {
   const engine = new GameEngine(9753, null, { enableRuntimeDelegation: false });
   engine.selectCharacter('informant');
