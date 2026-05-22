@@ -7915,3 +7915,26 @@
 - 状态：
   - 本地 `main` 跟踪 `origin/main`，工作树干净。
   - 远端 `refs/heads/main` 通过 GitHub API 验证到最新合并提交。
+
+## DeckRogue Fix Batch 005 - Dead Scan CI Closure - 2026-05-22
+
+- 修复内容：
+  - **CI-DEAD-FILE-SCAN-ALIAS-AND-ENTRYPOINT-001：已修。**
+    - `scripts\validation\dead_file_scan.ts` 现在解析 Vite `@/` source alias、side-effect imports，并把 `tests/`、`scripts/`、`electron/` 中的真实代码 import 纳入 source reachability graph。
+    - `scan:dead -- --ci` 不再把 runtimeV2、Tuanjie manifest、runtimeKernel 等测试/工具入口维护的源码误判为 app-only orphan。
+  - **CI-DEAD-FILE-SCAN-STALE-SOURCE-ORPHANS-001：已清理。**
+    - 删除未被 app、测试、脚本或 Electron 入口引用的旧实现/旧 UI 文件，包括旧 resolution pipeline、未接入诊断/EA/report 模块、旧 CardUpgrade barrel、旧 Loading/Performance/lazy image hooks 等。
+    - 保留 `src\core\narrative\BranchingOutcomes.ts`，因为 `scripts\test-ai-features.ts` 仍真实编译并运行它。
+    - 仅保留 `src\engine\engine.ts` 与 `src\engine\index.ts` 作为显式 compatibility allowlist。
+  - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 alias 解析、side-effect import 解析和 test/tool source entrypoint 扫描逻辑。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`6/6` pass。
+  - `npm run scan:dead -- --ci`：exit `0`，`Source files: 195/197 reachable from src/main.tsx plus 96 test/tool source entrypoint(s)`，`Source orphan files: none`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2265 modules transformed`，`built in 5.44s`。
+  - `npx tsx scripts/test-ai-features.ts`：exit `0`，`20` pass，`0` fail。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`109` tests，`108` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`191/191` pass。
+- 状态：
+  - `scan:dead -- --ci` 已从旧的真实 orphan failure 转为可用门禁。
+  - 脚本层仍报告若干 likely unused scripts；本批只修 source orphan 与 CI gate，不把脚本启发式项合并进 source 修复。

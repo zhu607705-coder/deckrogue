@@ -121,17 +121,17 @@ export function checkOutcomeCondition(
       }
 
       const playedCards = recentActions
-        .filter(a => a.cardPlayed)
-        .map(a => a.cardPlayed!);
+        .filter((action) => action.cardPlayed)
+        .map((action) => action.cardPlayed!);
 
       if (orderMatters) {
         return JSON.stringify(playedCards.slice(-cardSequence.length)) ===
-               JSON.stringify(cardSequence);
-      } else {
-        const sortedPlayed = [...playedCards.slice(-cardSequence.length)].sort();
-        const sortedRequired = [...cardSequence].sort();
-        return JSON.stringify(sortedPlayed) === JSON.stringify(sortedRequired);
+          JSON.stringify(cardSequence);
       }
+
+      const sortedPlayed = [...playedCards.slice(-cardSequence.length)].sort();
+      const sortedRequired = [...cardSequence].sort();
+      return JSON.stringify(sortedPlayed) === JSON.stringify(sortedRequired);
     }
 
     case 'relic_owned': {
@@ -165,7 +165,7 @@ export function detectAvailableOutcomes(
   combatHistory: CombatActionRecord[],
   config: BranchingOutcome[]
 ): BranchingOutcome[] {
-  return config.filter(outcome =>
+  return config.filter((outcome) =>
     checkOutcomeCondition(outcome.triggerCondition, combatState, playerRelics, combatHistory)
   );
 }
@@ -228,12 +228,12 @@ function applyPenalty(
       break;
     case 'relic':
       if (penalty.id) {
-        context.player.relics = context.player.relics.filter(r => r !== penalty.id);
+        context.player.relics = context.player.relics.filter((relic) => relic !== penalty.id);
       }
       break;
     case 'potion':
       if (penalty.id) {
-        context.player.potions = context.player.potions.filter(p => p !== penalty.id);
+        context.player.potions = context.player.potions.filter((potion) => potion !== penalty.id);
       }
       break;
     case 'card':
@@ -325,7 +325,7 @@ export function applyCombatModification(
   }
 
   if (modification.removeEnemy && newState.enemies.length > 0) {
-    newState.enemies = newState.enemies.filter(e => e.id !== modification.removeEnemy);
+    newState.enemies = newState.enemies.filter((enemy) => enemy.id !== modification.removeEnemy);
   }
 
   if (modification.modifyHp !== undefined && newState.enemies.length > 0) {

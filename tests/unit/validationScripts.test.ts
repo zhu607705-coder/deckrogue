@@ -14,6 +14,24 @@ test('dead file scan resolves the repository root above scripts/validation', () 
   assert.doesNotMatch(source, /const ROOT = path\.resolve\(__dirname,\s*'\.\.'\);/);
 });
 
+test('dead file scan resolves Vite source aliases', () => {
+  const source = readFileSync('scripts/validation/dead_file_scan.ts', 'utf-8');
+
+  assert.match(source, /spec\.startsWith\('@\/'\)/);
+  assert.match(source, /path\.join\(ROOT,\s*'src',\s*spec\.slice\(2\)\)/);
+  assert.match(source, /\\bimport\\s\*\['"\]\(\[\^'"\]\+\)\['"\]/);
+});
+
+test('dead file scan includes test and tool source entrypoints', () => {
+  const source = readFileSync('scripts/validation/dead_file_scan.ts', 'utf-8');
+
+  assert.match(source, /externalEntrypoints/);
+  assert.match(source, /collectExternalSourceEntrypoints/);
+  assert.match(source, /EXTERNAL_SOURCE_REFERENCE_PREFIXES/);
+  assert.match(source, /'tests\/'/);
+  assert.match(source, /'scripts\/'/);
+});
+
 test('content contract layer guards character raw data imports', () => {
   const source = readFileSync('scripts/validation/check_content_contract_layer.ts', 'utf-8');
 

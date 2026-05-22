@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 interface DeadFileReport {
   source: {
     entrypoints: string[];
+    externalEntrypoints: string[];
     totalSourceFiles: number;
     reachableSourceFiles: number;
     orphanSourceFiles: string[];
@@ -40,6 +41,7 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
+const CODE_IMPORT_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.cjs', '.mjs']);
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.cjs', '.mjs', '.jsx',
   '.json', '.css', '.html', '.md', '.txt', '.toml', '.yml', '.yaml', '.svg'
@@ -49,7 +51,13 @@ const SKIP_DIRS = new Set([
 ]);
 
 const SOURCE_ENTRYPOINTS = ['src/main.tsx'];
+const EXTERNAL_SOURCE_REFERENCE_PREFIXES = [
+  'tests/',
+  'scripts/',
+  'electron/',
+];
 const SOURCE_ORPHAN_ALLOWLIST = new Set([
+  'src/engine/engine.ts',
   'src/engine/index.ts',
 ]);
 
@@ -113,8 +121,14 @@ function readTextIfSupported(absPath: string): string | null {
 }
 
 function resolveImport(fromFileAbs: string, spec: string): string | null {
-  if (!spec.startsWith('.')) return null;
-  const base = path.resolve(path.dirname(fromFileAbs), spec);
+  let base: string | null = null;
+  if (spec.startsWith('@/')) {
+    base = path.join(ROOT, 'src', spec.slice(2));
+  } else if (spec.startsWith('.')) {
+    base = path.resolve(path.dirname(fromFileAbs), spec);
+  }
+  if (base == null) return null;
+
   const candidates = [
     base,
     `${base}.ts`,
@@ -141,6 +155,7 @@ function extractSourceDeps(relPath: string, sourceText: string): string[] {
   const deps = new Set<string>();
   const patterns = [
     /\bimport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
+    /\bimport\s*['"]([^'"]+)['"]/g,
     /\bexport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
     /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
   ];
@@ -156,10 +171,30 @@ function extractSourceDeps(relPath: string, sourceText: string): string[] {
   return [...deps];
 }
 
-function buildSourceGraphReport(allSourceFiles: string[]): DeadFileReport['source'] {
+function isExternalCodeImportSurface(relPath: string): boolean {
+  if (relPath.startsWith('src/')) return false;
+  if (!CODE_IMPORT_EXTENSIONS.has(path.extname(relPath).toLowerCase())) return false;
+  return EXTERNAL_SOURCE_REFERENCE_PREFIXES.some((prefix) => relPath.startsWith(prefix));
+}
+
+function collectExternalSourceEntrypoints(allSourceFiles: string[], corpus: Map<string, string>): string[] {
+  const sourceFilesSet = new Set(allSourceFiles);
+  const externalEntrypoints = new Set<string>();
+  for (const [relPath, sourceText] of corpus.entries()) {
+    if (!isExternalCodeImportSurface(relPath)) continue;
+    for (const dep of extractSourceDeps(relPath, sourceText)) {
+      if (sourceFilesSet.has(dep)) externalEntrypoints.add(dep);
+    }
+  }
+  return [...externalEntrypoints].sort();
+}
+
+function buildSourceGraphReport(allSourceFiles: string[], externalEntrypoints: string[]): DeadFileReport['source'] {
   const sourceFilesSet = new Set(allSourceFiles);
   const reachable = new Set<string>();
-  const queue = SOURCE_ENTRYPOINTS.filter((p) => sourceFilesSet.has(p));
+  const graphEntrypoints = [...SOURCE_ENTRYPOINTS, ...externalEntrypoints]
+    .filter((p) => sourceFilesSet.has(p));
+  const queue = [...graphEntrypoints];
   while (queue.length) {
     const current = queue.shift()!;
     if (reachable.has(current)) continue;
@@ -181,6 +216,7 @@ function buildSourceGraphReport(allSourceFiles: string[]): DeadFileReport['sourc
 
   return {
     entrypoints: [...SOURCE_ENTRYPOINTS],
+    externalEntrypoints,
     totalSourceFiles: allSourceFiles.length,
     reachableSourceFiles: reachable.size,
     orphanSourceFiles,
@@ -317,9 +353,10 @@ function buildReport(): DeadFileReport {
     .sort();
 
   const corpus = collectRepoTextCorpus();
+  const externalEntrypoints = collectExternalSourceEntrypoints(allSourceFiles, corpus);
 
   return {
-    source: buildSourceGraphReport(allSourceFiles),
+    source: buildSourceGraphReport(allSourceFiles, externalEntrypoints),
     publicAssets: buildPublicAssetReport(corpus),
     scripts: buildScriptsReport(corpus),
   };
@@ -327,7 +364,10 @@ function buildReport(): DeadFileReport {
 
 function printHuman(report: DeadFileReport): void {
   console.log('== Dead File Scan ==');
-  console.log(`Source files: ${report.source.reachableSourceFiles}/${report.source.totalSourceFiles} reachable from ${report.source.entrypoints.join(', ')}`);
+  const externalSummary = report.source.externalEntrypoints.length > 0
+    ? ` plus ${report.source.externalEntrypoints.length} test/tool source entrypoint(s)`
+    : '';
+  console.log(`Source files: ${report.source.reachableSourceFiles}/${report.source.totalSourceFiles} reachable from ${report.source.entrypoints.join(', ')}${externalSummary}`);
   if (report.source.ignoredOrphanSourceFiles.length) {
     console.log(`Allowed source orphans: ${report.source.ignoredOrphanSourceFiles.join(', ')}`);
   }
