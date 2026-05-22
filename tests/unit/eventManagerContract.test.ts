@@ -111,3 +111,48 @@ test('neutral story event follow-up choices do not inherit route commit tags', (
     engine.dispose();
   }
 });
+
+test('generic story event card drafts open a real reward choice instead of auto-granting one card', () => {
+  const engine = new GameEngine(2234, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+    const initialDeckCount = engine.state.player.deck.length;
+    engine.state.activeEvent = { id: 'abbot_confession', data: {} };
+    engine.state.screen = 'Event';
+
+    engine.resolveEventChoice('abbot_confession_interrogate');
+
+    assert.equal(engine.state.screen, 'Reward');
+    assert.equal(engine.state.activeEvent, null);
+    assert.equal(engine.state.rewardCards.length, 3);
+    assert.equal(engine.state.player.deck.length, initialDeckCount);
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('generic story event relic drafts keep the event open until a specific relic is chosen', () => {
+  const engine = new GameEngine(2235, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+    engine.state.activeEvent = { id: 'servo_reliquary', data: {} };
+    engine.state.screen = 'Event';
+
+    engine.resolveEventChoice('servo_reliquary_open');
+
+    assert.equal(engine.state.screen, 'Event');
+    assert.equal(engine.state.activeEvent?.stage, 'generic_relic_choice');
+    const offeredRelicIds = engine.state.activeEvent?.data?.offeredRelicIds;
+    assert.equal(Array.isArray(offeredRelicIds), true);
+    assert.equal(offeredRelicIds.length, 3);
+    assert.equal(engine.state.player.relics.some((relicId) => offeredRelicIds.includes(relicId)), false);
+
+    engine.resolveEventChoice(`generic_relic:${offeredRelicIds[1]}`);
+
+    assert.equal(engine.state.screen, 'Map');
+    assert.equal(engine.state.activeEvent, null);
+    assert.equal(engine.state.player.relics.includes(offeredRelicIds[1]), true);
+  } finally {
+    engine.dispose();
+  }
+});

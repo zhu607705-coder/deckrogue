@@ -12,7 +12,7 @@
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -24,16 +24,23 @@ const viteCli = path.join(path.dirname(require.resolve('vite/package.json')), 'b
 
 const REPORT_DIR = path.join(process.cwd(), 'reports', 'desktop');
 const OUTPUT_DIR = path.join(process.cwd(), 'output', 'playwright');
+const PRODUCTION_LOCK_PATH = path.join(REPORT_DIR, 'desktop-smoke-production.lock');
 
 interface DesktopSmokeReport {
   timestamp: string;
   mode: 'development' | 'production';
   overallStatus: 'pass' | 'fail';
+  closeStatus: 'pending' | 'pass' | 'fail';
+  closeError?: string;
   screenshots: string[];
   steps: string[];
   consoleErrors: string[];
   pageErrors: string[];
   failedRequests: string[];
+}
+
+function createRunId(): string {
+  return `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function parseArgs() {
@@ -50,6 +57,27 @@ function getReportPath(mode: DesktopSmokeReport['mode']) {
 function writeReport(report: DesktopSmokeReport) {
   mkdirSync(REPORT_DIR, { recursive: true });
   writeFileSync(getReportPath(report.mode), JSON.stringify(report, null, 2));
+}
+
+async function acquireProductionSmokeLock(): Promise<() => void> {
+  mkdirSync(REPORT_DIR, { recursive: true });
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    try {
+      const fd = openSync(PRODUCTION_LOCK_PATH, 'wx');
+      writeFileSync(fd, JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() }));
+      return () => {
+        try {
+          closeSync(fd);
+        } catch {}
+        rmSync(PRODUCTION_LOCK_PATH, { force: true });
+      };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST') throw error;
+      await delay(500);
+    }
+  }
+  throw new Error(`Timed out waiting for production desktop smoke lock: ${PRODUCTION_LOCK_PATH}`);
 }
 
 function ensureVisible(label: string, count: number) {
@@ -130,11 +158,13 @@ async function closeElectronApp(app: ElectronApplication) {
 async function main() {
   const { mode } = parseArgs();
   mkdirSync(OUTPUT_DIR, { recursive: true });
+  const runId = createRunId();
 
   const report: DesktopSmokeReport = {
     timestamp: new Date().toISOString(),
     mode,
     overallStatus: 'fail',
+    closeStatus: 'pending',
     screenshots: [],
     steps: [],
     consoleErrors: [],
@@ -143,12 +173,14 @@ async function main() {
   };
 
   let devServer: ChildProcess | null = null;
-  const tempUserDataDir = path.join(os.tmpdir(), 'deckrogue-electron-smoke-user-data');
+  let releaseProductionLock: (() => void) | null = null;
+  const tempUserDataDir = path.join(os.tmpdir(), `deckrogue-electron-smoke-user-data-${runId}`);
   rmSync(tempUserDataDir, { recursive: true, force: true });
   mkdirSync(tempUserDataDir, { recursive: true });
 
   try {
     if (mode === 'production') {
+      releaseProductionLock = await acquireProductionSmokeLock();
       execSync('npm run build:desktop', {
         cwd: process.cwd(),
         stdio: 'inherit',
@@ -194,14 +226,14 @@ async function main() {
 
     await page.waitForLoadState('domcontentloaded');
     await page.getByText('战区启动器').waitFor({ timeout: 15_000 });
-    const launcherShot = path.join(OUTPUT_DIR, 'desktop_launcher.png');
+    const launcherShot = path.join(OUTPUT_DIR, `desktop_${runId}_launcher.png`);
     await page.screenshot({ path: launcherShot, fullPage: true });
     report.screenshots.push(launcherShot);
     report.steps.push('launcher');
 
     await page.getByRole('button', { name: /战区教程/i }).click();
     await page.getByText('新手战区教程').waitFor({ timeout: 10_000 });
-    const tutorialShot = path.join(OUTPUT_DIR, 'desktop_tutorial.png');
+    const tutorialShot = path.join(OUTPUT_DIR, `desktop_${runId}_tutorial.png`);
     await page.screenshot({ path: tutorialShot, fullPage: true });
     report.screenshots.push(tutorialShot);
     report.steps.push('tutorial');
@@ -211,7 +243,7 @@ async function main() {
 
     await page.locator('button').filter({ hasText: /开始新战区/i }).first().click();
     await page.getByText('选择你的执行体').waitFor({ timeout: 10_000 });
-    const characterShot = path.join(OUTPUT_DIR, 'desktop_character_select.png');
+    const characterShot = path.join(OUTPUT_DIR, `desktop_${runId}_character_select.png`);
     await page.screenshot({ path: characterShot, fullPage: true });
     report.screenshots.push(characterShot);
     report.steps.push('character_select');
@@ -224,18 +256,27 @@ async function main() {
 
     const mapNodes = await page.locator('button[data-node-id]').count();
     ensureVisible('map nodes', mapNodes);
-    const mapShot = path.join(OUTPUT_DIR, 'desktop_map.png');
+    const mapShot = path.join(OUTPUT_DIR, `desktop_${runId}_map.png`);
     await page.screenshot({ path: mapShot, fullPage: true });
     report.screenshots.push(mapShot);
     report.steps.push('map');
 
     await enterFirstCombat(page);
-    const combatShot = path.join(OUTPUT_DIR, 'desktop_combat.png');
+    const combatShot = path.join(OUTPUT_DIR, `desktop_${runId}_combat.png`);
     await page.screenshot({ path: combatShot, fullPage: true });
     report.screenshots.push(combatShot);
     report.steps.push('combat');
 
+    try {
+      await closeElectronApp(app);
+      report.closeStatus = 'pass';
+    } catch (error) {
+      report.closeStatus = 'fail';
+      report.closeError = error instanceof Error ? error.message : String(error);
+    }
+
     report.overallStatus =
+      report.closeStatus === 'pass' &&
       report.consoleErrors.length === 0 &&
       report.pageErrors.length === 0 &&
       report.failedRequests.length === 0
@@ -243,7 +284,6 @@ async function main() {
         : 'fail';
 
     writeReport(report);
-    await closeElectronApp(app);
 
     if (report.overallStatus === 'fail') {
       throw new Error('Desktop smoke detected console, page, or network errors');
@@ -255,6 +295,9 @@ async function main() {
   } finally {
     if (devServer && !devServer.killed) {
       devServer.kill('SIGTERM');
+    }
+    if (releaseProductionLock) {
+      releaseProductionLock();
     }
   }
 }

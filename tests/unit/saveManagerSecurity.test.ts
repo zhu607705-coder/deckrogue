@@ -1,6 +1,9 @@
 /**
  * @file saveManagerSecurity.test.ts
  * @description Unit tests for save validation and checksum handling.
+ *
+ * These checks cover local, non-adversarial save integrity. Browser-local saves
+ * are not an anti-cheat boundary because a user can rewrite storage metadata.
  */
 
 import test from 'node:test';
@@ -68,6 +71,23 @@ test('loadGame rejects saves when slot checksum no longer matches stored data', 
   }
 });
 
+test('loadGame rejects saves when slot checksum metadata is missing', () => {
+  const storage = attachStorage();
+  const manager = new SaveManager();
+  const engine = new GameEngine(124, null, { enableRuntimeDelegation: false });
+
+  try {
+    assert.equal(manager.saveGame('slot-no-checksum', engine.state, 1000), true);
+    const slots = JSON.parse(storage.getItem('deckrogue_save_slots') || '[]');
+    delete slots[0].checksum;
+    storage.setItem('deckrogue_save_slots', JSON.stringify(slots));
+
+    assert.equal(manager.loadGame('slot-no-checksum'), null);
+  } finally {
+    engine.dispose();
+  }
+});
+
 test('importSave rejects malformed payloads before writing a save slot', () => {
   const storage = attachStorage();
   const manager = new SaveManager();
@@ -95,5 +115,144 @@ test('importSave writes migrated validated data and checksum for imported slots'
     assert.ok(manager.getSaveSlots().find((slot) => slot.id === 'imported')?.checksum);
   } finally {
     engine.dispose();
+  }
+});
+
+test('importSave rejects same-major versions without an explicit migration', () => {
+  attachStorage();
+  const manager = new SaveManager();
+  const engine = new GameEngine(789, null, { enableRuntimeDelegation: false });
+
+  try {
+    assert.equal(manager.saveGame('source', engine.state, 500), true);
+    const exported = manager.exportSave('source');
+    assert.ok(exported, 'export should return payload');
+    const payload = JSON.parse(atob(exported));
+    payload.version = '1.0.1';
+
+    assert.equal(manager.importSave('unknown-version', btoa(JSON.stringify(payload))), false);
+    assert.equal(manager.loadGame('unknown-version'), null);
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('clearActiveSaves removes save slots and payloads without deleting profile or settings data', () => {
+  const storage = attachStorage();
+  const manager = new SaveManager();
+  const engine = new GameEngine(790, null, { enableRuntimeDelegation: false });
+  storage.setItem('deckrogue_settings', JSON.stringify({ volume: 0.5 }));
+  storage.setItem('deckrogue_unlocks', JSON.stringify({ characters: ['warrior', 'informant'] }));
+  storage.setItem('deckrogue_stats', JSON.stringify({ totalRuns: 3 }));
+  storage.setItem('deckrogue_recent_runs', JSON.stringify([{ seed: 1 }]));
+  storage.setItem('deckrogue_difficulty_profile', JSON.stringify({ currentDifficulty: 2 }));
+  storage.setItem('deckrogue_meta_profile_v1', JSON.stringify({ currencies: { requisition: 4 } }));
+  storage.setItem('deckrogue_animation_speed', 'fast');
+
+  try {
+    assert.equal(manager.saveGame('active-slot', engine.state, 100), true);
+    assert.equal((manager as any).clearActiveSaves(), true);
+
+    assert.deepEqual(manager.getSaveSlots(), []);
+    assert.equal(storage.getItem('deckrogue_save_active-slot'), null);
+    assert.equal(storage.getItem('deckrogue_settings'), JSON.stringify({ volume: 0.5 }));
+    assert.equal(storage.getItem('deckrogue_unlocks'), JSON.stringify({ characters: ['warrior', 'informant'] }));
+    assert.equal(storage.getItem('deckrogue_stats'), JSON.stringify({ totalRuns: 3 }));
+    assert.equal(storage.getItem('deckrogue_recent_runs'), JSON.stringify([{ seed: 1 }]));
+    assert.equal(storage.getItem('deckrogue_difficulty_profile'), JSON.stringify({ currentDifficulty: 2 }));
+    assert.equal(storage.getItem('deckrogue_meta_profile_v1'), JSON.stringify({ currencies: { requisition: 4 } }));
+    assert.equal(storage.getItem('deckrogue_animation_speed'), 'fast');
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('clearAllUserData removes saves and progression while preserving local presentation preferences', () => {
+  const storage = attachStorage();
+  const manager = new SaveManager();
+  const engine = new GameEngine(791, null, { enableRuntimeDelegation: false });
+  storage.setItem('deckrogue_settings', JSON.stringify({ keybinds: { endTurn: 'KeyQ' } }));
+  storage.setItem('deckrogue_unlocks', JSON.stringify({ characters: ['informant'] }));
+  storage.setItem('deckrogue_stats', JSON.stringify({ totalRuns: 7 }));
+  storage.setItem('deckrogue_recent_runs', JSON.stringify([{ seed: 2 }]));
+  storage.setItem('deckrogue_difficulty_profile', JSON.stringify({ currentDifficulty: 3 }));
+  storage.setItem('deckrogue_meta_profile_v1', JSON.stringify({ runHistory: [{ runId: 'r1' }] }));
+  storage.setItem('deckrogue_codex_profile_v1', JSON.stringify({ unlocked: ['term'] }));
+  storage.setItem('deckrogue_animation_speed', 'slow');
+  storage.setItem('deckrogue_grimdark_terms', 'false');
+
+  try {
+    assert.equal(manager.saveGame('user-slot', engine.state, 100), true);
+    assert.equal((manager as any).clearAllUserData(), true);
+
+    assert.deepEqual(manager.getSaveSlots(), []);
+    assert.equal(storage.getItem('deckrogue_save_user-slot'), null);
+    assert.equal(storage.getItem('deckrogue_settings'), null);
+    assert.equal(storage.getItem('deckrogue_unlocks'), null);
+    assert.equal(storage.getItem('deckrogue_stats'), null);
+    assert.equal(storage.getItem('deckrogue_recent_runs'), null);
+    assert.equal(storage.getItem('deckrogue_difficulty_profile'), null);
+    assert.equal(storage.getItem('deckrogue_meta_profile_v1'), null);
+    assert.equal(storage.getItem('deckrogue_codex_profile_v1'), null);
+    assert.equal(storage.getItem('deckrogue_animation_speed'), 'slow');
+    assert.equal(storage.getItem('deckrogue_grimdark_terms'), 'false');
+  } finally {
+    engine.dispose();
+  }
+});
+
+test('factoryReset removes every deckrogue key while preserving unrelated localStorage entries', () => {
+  const storage = attachStorage();
+  const manager = new SaveManager();
+  storage.setItem('deckrogue_settings', '{}');
+  storage.setItem('deckrogue_unlocks', '{}');
+  storage.setItem('deckrogue_animation_speed', 'normal');
+  storage.setItem('deckrogue_meta_profile_v1', '{}');
+  storage.setItem('other_app_settings', 'keep');
+
+  assert.equal((manager as any).factoryReset(), true);
+
+  assert.equal(storage.getItem('deckrogue_settings'), null);
+  assert.equal(storage.getItem('deckrogue_unlocks'), null);
+  assert.equal(storage.getItem('deckrogue_animation_speed'), null);
+  assert.equal(storage.getItem('deckrogue_meta_profile_v1'), null);
+  assert.equal(storage.getItem('other_app_settings'), 'keep');
+});
+
+test('save/load preserves nameless martyr free-removal event state', () => {
+  attachStorage();
+  const manager = new SaveManager();
+  const engine = new GameEngine(792, null, { enableRuntimeDelegation: false });
+  const restored = new GameEngine(793, null, { enableRuntimeDelegation: false });
+
+  try {
+    engine.selectCharacter('informant');
+    engine.state.map = [{ id: 'event-node', type: 'Event', revealed: true, next: [], x: 0, y: 0 }];
+    engine.state.currentNodeId = 'event-node';
+    engine.state.pendingNodeResolution = true;
+    engine.state.roomResolutionToken = 'event_room_token';
+    engine.state.roomResolutionKind = 'event';
+    engine.state.screen = 'Event';
+    engine.state.player.gold = 100;
+    engine.state.activeEvent = { id: 'nameless_martyr_shrine', data: {} } as any;
+
+    engine.resolveEventChoice('martyr_offer_wealth');
+    assert.equal(engine.state.screen, 'RemoveCard');
+    assert.equal(engine.state.activeEvent?.stage, 'free_remove');
+    assert.equal(Number(engine.state.activeEvent?.data?.freeRemovalsRemaining || 0) > 0, true);
+
+    assert.equal(manager.saveGame('martyr-free-remove', engine.state, 1000), true);
+    const loaded = manager.loadGame('martyr-free-remove');
+    assert.ok(loaded, 'free-removal save should load');
+    restored.loadSaveData(loaded!);
+
+    assert.equal(restored.state.screen, 'RemoveCard');
+    assert.equal(restored.state.activeEvent?.id, 'nameless_martyr_shrine');
+    assert.equal(restored.state.activeEvent?.stage, 'free_remove');
+    assert.equal(Number(restored.state.activeEvent?.data?.freeRemovalsRemaining || 0) > 0, true);
+    assert.equal(restored.isEventFreeCardRemovalMode(), true);
+  } finally {
+    engine.dispose();
+    restored.dispose();
   }
 });

@@ -99,6 +99,8 @@ type DesktopBuildReport = {
 type DesktopSmokeReport = {
   mode?: string;
   overallStatus?: string;
+  closeStatus?: string;
+  closeError?: string;
   steps?: string[];
   consoleErrors?: unknown[];
   pageErrors?: unknown[];
@@ -236,14 +238,15 @@ function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
     const stepsCovered = expectedSteps.every((step) => smokeReport?.steps?.includes(step));
     const healthy =
       smokeReport?.overallStatus === 'pass' &&
+      smokeReport?.closeStatus === 'pass' &&
       smokeReport?.mode === 'production' &&
       (smokeReport.consoleErrors?.length || 0) === 0 &&
       (smokeReport.pageErrors?.length || 0) === 0 &&
       (smokeReport.failedRequests?.length || 0) === 0 &&
       stepsCovered;
     checks.push(healthy && fresh
-      ? { id: 'desktop_smoke_report', status: 'pass', evidence: 'desktop smoke report is green, production-mode, and fresh' }
-      : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, not production-mode, or misses required flow steps' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
+      ? { id: 'desktop_smoke_report', status: 'pass', evidence: 'desktop smoke report is green, closed cleanly, production-mode, and fresh' }
+      : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, did not close cleanly, is not production-mode, or misses required flow steps' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
   }
 
   return checks;

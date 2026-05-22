@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 
 import { ActionManager, createActionManager, getActionManager } from '@/core/actions/actionManager';
 import { GameEngine } from '@/core/events/gameEngine';
+import { globalEventBus } from '@/core/events/eventBus';
 
 function createMinimalState() {
   return {
@@ -117,6 +118,81 @@ test('event resolution leaves the room without illegal transition noise when a r
   assert.equal(engine.state.pendingNodeResolution, false);
   assert.equal((engine.state as any).roomResolutionToken, null);
   assert.equal(errors.some((entry) => entry.includes('Illegal run transition')), false);
+});
+
+test('leaveCurrentRoomToMap rejects nested exits when room ownership cannot be inferred', () => {
+  const engine = new GameEngine(1122, null, { enableRuntimeDelegation: false });
+  engine.selectCharacter('informant');
+  engine.state.map = [{ id: 'event-node', type: 'Event', revealed: true, next: [], x: 0, y: 0 }];
+  engine.state.currentNodeId = 'event-node';
+  engine.state.screen = 'Enchant';
+  engine.state.pendingNodeResolution = true;
+  engine.state.roomResolutionToken = 'legacy_enchant_token';
+  engine.state.roomResolutionKind = null;
+  engine.state.roomSession = null;
+  engine.state.enchantContext = null;
+  engine.state.campfireChoiceLocked = false;
+
+  const errors: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+  };
+
+  try {
+    engine.leaveCurrentRoomToMap();
+  } finally {
+    console.error = originalError;
+    engine.dispose();
+  }
+
+  assert.equal(engine.state.screen, 'Enchant');
+  assert.equal(engine.state.pendingNodeResolution, true);
+  assert.equal(engine.state.roomResolutionToken, 'legacy_enchant_token');
+  assert.equal(errors.some((entry) => entry.includes('Cannot resolve room exit action')), true);
+});
+
+test('leaveCurrentRoomToMap does not publish completion when transition fails', () => {
+  const engine = new GameEngine(1133, null, { enableRuntimeDelegation: false });
+  engine.selectCharacter('informant');
+  engine.state.map = [{ id: 'combat-node', type: 'Combat', revealed: true, next: [], x: 0, y: 0 }];
+  engine.state.currentNodeId = 'combat-node';
+  engine.state.screen = 'Combat';
+  engine.state.pendingNodeResolution = true;
+  engine.state.roomSession = {
+    token: 'bad_shop_token',
+    nodeId: 'combat-node',
+    ownerKind: 'shop',
+    resolverKind: 'shop',
+    surfaceStack: ['shop'],
+    status: 'active',
+  } as any;
+  engine.state.roomResolutionToken = 'bad_shop_token';
+  engine.state.roomResolutionKind = 'shop';
+
+  let completedEvents = 0;
+  const unsubscribe = globalEventBus.subscribe('NodeCompleted', () => {
+    completedEvents += 1;
+  });
+  const errors: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args.map(String).join(' '));
+  };
+
+  try {
+    engine.leaveCurrentRoomToMap();
+  } finally {
+    console.error = originalError;
+    unsubscribe();
+    engine.dispose();
+  }
+
+  assert.equal(engine.state.screen, 'Combat');
+  assert.equal(engine.state.pendingNodeResolution, true);
+  assert.equal(engine.state.roomResolutionToken, 'bad_shop_token');
+  assert.equal(completedEvents, 0);
+  assert.equal(errors.some((entry) => entry.includes('Illegal run transition')), true);
 });
 
 test('restDisperse enters remove-card mode instead of leaving the room immediately', () => {

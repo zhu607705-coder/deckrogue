@@ -404,14 +404,28 @@ export function createGameOverFixture(seed = 5103): SaveSlotFixture {
   return buildSaveData(engine, 'terminal_flow_gameover', 'Terminal Flow GameOver');
 }
 
+export function calculateSaveChecksum(data: string): string {
+  let hash = 0;
+  for (let i = 0; i < data.length; i += 1) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash &= hash;
+  }
+  return hash.toString(16);
+}
+
 export function buildStoragePayload(fixtures: SaveSlotFixture[]) {
   const metaProfile = createDefaultMetaProfile();
   metaProfile.unlocks.characters = charactersData.map((character) => character.id);
+  const saveEntries = Object.fromEntries(
+    fixtures.map((fixture) => [`deckrogue_save_${fixture.slotId}`, JSON.stringify(fixture.saveData)])
+  );
   return {
-    slots: fixtures.map((fixture) => fixture.slot),
-    saveEntries: Object.fromEntries(
-      fixtures.map((fixture) => [`deckrogue_save_${fixture.slotId}`, JSON.stringify(fixture.saveData)])
-    ),
+    slots: fixtures.map((fixture) => ({
+      ...fixture.slot,
+      checksum: calculateSaveChecksum(saveEntries[`deckrogue_save_${fixture.slotId}`]),
+    })),
+    saveEntries,
     metaProfile: JSON.stringify(metaProfile),
   };
 }

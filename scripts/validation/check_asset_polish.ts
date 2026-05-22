@@ -8,15 +8,12 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import cardsData from '@/content/data/cards.json';
 import charactersData from '@/content/data/characters.json';
-import enemiesData from '@/content/data/enemies.json';
-import potionsData from '@/content/data/potions.json';
-import relicsData from '@/content/data/relics.json';
 import battleBackgrounds from '@/content/data/battleBackgrounds.json';
 import { localCardArt, localCharacterArt, localEnemyArt } from '@/content/assets/standeeArt';
 import { TUANJIE_MODEL_MANIFEST } from '@/content/assets/tuanjieModelManifest';
 import { STORY_EVENTS } from '@/content/narrative/storyEvents';
+import { cardsData, enemiesData, potionsData, relicsData } from '@/content/narrative/numericSystem';
 
 type Severity = 'error' | 'warning';
 

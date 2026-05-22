@@ -59,7 +59,28 @@ interface UiSmokeExpansionReport {
   pageErrors?: string[];
   failedRequests?: string[];
   audits?: UiSmokeAudit[];
+  slotsLoaded?: string[];
+  tutorialChecked?: boolean;
 }
+
+const REQUIRED_UI_AUDIT_LABELS = [
+  'launcher',
+  'tutorial',
+  'character_select',
+  'map',
+  'combat',
+  'reward',
+  'shop',
+  'event',
+  'upgrade',
+];
+
+const REQUIRED_UI_SMOKE_SLOTS = [
+  'UI Smoke Reward',
+  'UI Smoke Shop',
+  'UI Smoke Event',
+  'UI Smoke Upgrade',
+];
 
 function log(msg: string) {
   console.log(`[experience-polish] ${msg}`);
@@ -102,6 +123,28 @@ function hasCleanAudit(report: UiSmokeExpansionReport | null, label: string): bo
   const audit = report?.audits?.find((item) => item.label === label);
   if (!audit) return false;
   return (audit.brokenImages?.length || 0) === 0 && (audit.layoutIssues?.length || 0) === 0;
+}
+
+function validateUiSmokeExpansionReport(report: UiSmokeExpansionReport | null): string[] {
+  if (!report) return ['missing ui_smoke_expansion_report.json'];
+  const failures: string[] = [];
+  const auditLabels = new Set((report.audits || []).map((audit) => audit.label));
+  for (const label of REQUIRED_UI_AUDIT_LABELS) {
+    if (!auditLabels.has(label)) failures.push(`missing audit: ${label}`);
+  }
+  const slotsLoaded = new Set(report.slotsLoaded || []);
+  for (const slot of REQUIRED_UI_SMOKE_SLOTS) {
+    if (!slotsLoaded.has(slot)) failures.push(`missing loaded slot: ${slot}`);
+  }
+  if (report.tutorialChecked !== true) failures.push('tutorial was not checked');
+  if ((report.consoleErrors || []).length > 0) failures.push(`consoleErrors=${report.consoleErrors?.length ?? 0}`);
+  if ((report.pageErrors || []).length > 0) failures.push(`pageErrors=${report.pageErrors?.length ?? 0}`);
+  if ((report.failedRequests || []).length > 0) failures.push(`failedRequests=${report.failedRequests?.length ?? 0}`);
+  for (const audit of report.audits || []) {
+    if ((audit.brokenImages || []).length > 0) failures.push(`${audit.label}: brokenImages=${audit.brokenImages?.length ?? 0}`);
+    if ((audit.layoutIssues || []).length > 0) failures.push(`${audit.label}: layoutIssues=${audit.layoutIssues?.length ?? 0}`);
+  }
+  return failures;
 }
 
 function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): ExperienceReport['combat'] {
@@ -358,19 +401,24 @@ function main() {
   log(`  Partial: ${report.summary.partial}`);
   log(`  Missing: ${report.summary.missing}`);
   const uiReport = loadUiSmokeExpansionReport();
+  const uiReportFailures = validateUiSmokeExpansionReport(uiReport);
   if (uiReport) {
     log(`  UI audits: ${(uiReport.audits || []).length}`);
     log(`  Console/page/request issues: ${(uiReport.consoleErrors || []).length}/${(uiReport.pageErrors || []).length}/${(uiReport.failedRequests || []).length}`);
   } else {
     log('  UI audits: missing ui_smoke_expansion_report.json');
   }
+  if (uiReportFailures.length > 0) {
+    log(`  UI expansion gate failures: ${uiReportFailures.join('; ')}`);
+  }
 
   log(`\nReport saved to: ${REPORT_PATH}`);
 
-  if (report.summary.passRate >= 70) {
+  if (report.summary.passRate >= 70 && uiReportFailures.length === 0) {
     log('\n✅ Experience polish check passed');
   } else {
     log('\n⚠️ Experience polish needs improvement');
+    process.exit(1);
   }
 }
 

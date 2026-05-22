@@ -7,6 +7,6 @@
  * - 提供类型安全的角色资源访问
  */
 
-import charactersData from '@/content/data/characters.json';
+import { charactersData } from '@/content/narrative/numericSystem';
 
 export const uiCharacters = charactersData;

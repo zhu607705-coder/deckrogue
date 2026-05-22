@@ -56,6 +56,7 @@ export type EventListener = (event: GameEvent) => void;
 
 export class EventBus {
   private listeners: Map<string, EventListener[]> = new Map();
+  private allListeners: EventListener[] = [];
 
   subscribe(eventType: string, listener: EventListener): () => void {
     if (!this.listeners.has(eventType)) {
@@ -71,6 +72,14 @@ export class EventBus {
     };
   }
 
+  subscribeAll(listener: EventListener): () => void {
+    this.allListeners.push(listener);
+
+    return () => {
+      this.allListeners = this.allListeners.filter(l => l !== listener);
+    };
+  }
+
   publish(event: GameEvent): void {
     const eventType = event.type;
     const eventListeners = this.listeners.get(eventType) || [];
@@ -81,10 +90,18 @@ export class EventBus {
         console.error(`Error in event listener for ${eventType}:`, error);
       }
     });
+    this.allListeners.forEach(listener => {
+      try {
+        listener(event);
+      } catch (error) {
+        console.error(`Error in global event listener for ${eventType}:`, error);
+      }
+    });
   }
 
   clear(): void {
     this.listeners.clear();
+    this.allListeners = [];
   }
 }
 

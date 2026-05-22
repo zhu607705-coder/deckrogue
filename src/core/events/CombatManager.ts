@@ -29,7 +29,7 @@ import { globalEventBus } from '@/core/events/eventBus';
 import { metricsTracker } from '@/core/events/metricsTracker';
 import { getBossPhaseEncounter, getBossPhaseForHpPct } from '@/core/events/bossPhaseSystem';
 import { BossPhaseManager } from '@/core/combat/BossPhaseManager';
-import { cooldownsReducer, intentTagger, selectEnemyIntentForCombat } from '@/core/ai';
+import { combatMemory, cooldownsReducer, intentTagger, selectEnemyIntentForCombat } from '@/core/ai';
 import {
   enemiesData,
   getSingleSlimeRoomBoostConfig,
@@ -54,7 +54,7 @@ export interface CombatManagerDeps {
   appendVoxLog: (message: string) => void;
   notify: () => void;
   getCurrentFloorNumber: () => number;
-  applyRunTransition: (action: { type: string; phase?: string }) => void;
+  applyRunTransition: (action: { type: string; phase?: string }) => boolean;
   syncPlayerStateFromCombat: () => void;
   clearCombatAfflictionsForRunCards: () => void;
   generateCardRewards: (count: number, options?: { source?: 'combat' | 'shop' }) => RunCardInstance[];
@@ -133,6 +133,71 @@ export class CombatManager {
     } else {
       this.actionManager.enqueueUrgent(actionOrSpec, ctx, 'relic');
     }
+  }
+
+  private snapshotEnemyHp(combat: NonNullable<GameState['combat']>): Map<string, number> {
+    return new Map(combat.enemies.map((enemy) => [enemy.id, Math.max(0, Number(enemy.hp || 0))]));
+  }
+
+  private sumEnemyHp(combat: NonNullable<GameState['combat']>): number {
+    return combat.enemies.reduce((sum, enemy) => sum + Math.max(0, Number(enemy.hp || 0)), 0);
+  }
+
+  private recordPlayerCombatMemory(
+    combat: NonNullable<GameState['combat']>,
+    card: RunCardInstance,
+    targetId: string | undefined,
+    playerHpBefore: number,
+    playerBlockBefore: number,
+    energyBefore: number,
+    enemyHpBeforeById: Map<string, number>,
+    totalEnemyHpBefore: number,
+  ): void {
+    const playerHpAfter = Math.max(0, Number(combat.player.hp || 0));
+    const blockGained = Math.max(0, Math.max(0, Number(combat.player.block || 0)) - playerBlockBefore);
+    const totalEnemyHpAfter = this.sumEnemyHp(combat);
+    const damageDealt = Math.max(0, totalEnemyHpBefore - totalEnemyHpAfter);
+    const targetEnemy = targetId ? combat.enemies.find((enemy) => enemy.id === targetId) : null;
+    const enemyHpBefore = targetId ? enemyHpBeforeById.get(targetId) : undefined;
+
+    combatMemory.recordAction({
+      turn: Math.max(0, Number(combat.turn || 0)),
+      actor: 'player',
+      enemyId: targetEnemy?.id || targetId,
+      cardPlayed: card.id,
+      damageDealt,
+      blockGained,
+      playerHpBefore,
+      playerHpAfter,
+      enemyHpBefore,
+      enemyHpAfter: targetEnemy ? Math.max(0, Number(targetEnemy.hp || 0)) : undefined,
+    });
+    combatMemory.recordHandState(
+      combat.hand.map((handCard) => handCard.id),
+      Math.max(0, energyBefore - Math.max(0, Number(combat.player.energy || 0))),
+      Math.max(0, Number(combat.player.energy || 0)),
+    );
+  }
+
+  private recordEnemyCombatMemory(
+    combat: NonNullable<GameState['combat']>,
+    enemy: any,
+    intent: string,
+    playerHpBefore: number,
+    enemyHpBefore: number,
+  ): void {
+    const playerHpAfter = Math.max(0, Number(combat.player.hp || 0));
+    combatMemory.recordAction({
+      turn: Math.max(0, Number(combat.turn || 0)),
+      actor: 'enemy',
+      enemyId: enemy.id,
+      intent,
+      damageDealt: Math.max(0, playerHpBefore - playerHpAfter),
+      playerHpBefore,
+      playerHpAfter,
+      enemyHpBefore,
+      enemyHpAfter: Math.max(0, Number(enemy.hp || 0)),
+    });
   }
 
   startCombat(nodeType: 'Combat' | 'Elite' | 'Boss'): void {
@@ -482,7 +547,12 @@ export class CombatManager {
     const combat = state.combat;
     if (state.screen !== 'Combat' || !combat || combat.enemies.length === 0) return false;
     if (!combat.enemies.every(enemy => enemy.hp <= 0)) return false;
+    const combatResolution = combat as typeof combat & { victoryResolved?: boolean };
+    if (combatResolution.victoryResolved) {
+      return state.screen !== 'Combat' || !state.combat;
+    }
 
+    combatResolution.victoryResolved = true;
     globalEventBus.publish({ type: 'CombatVictory' } as any);
     return state.screen !== 'Combat' || !state.combat;
   }
@@ -715,6 +785,12 @@ export class CombatManager {
       return;
     }
 
+    const playerHpBefore = Math.max(0, Number(combat.player.hp || 0));
+    const playerBlockBefore = Math.max(0, Number(combat.player.block || 0));
+    const energyBefore = Math.max(0, Number(combat.player.energy || 0));
+    const enemyHpBeforeById = this.snapshotEnemyHp(combat);
+    const totalEnemyHpBefore = this.sumEnemyHp(combat);
+
     combat.player.energy -= card.cost;
     combat.hand.splice(cardIndex, 1);
     combat.discardPile.push(card);
@@ -738,6 +814,18 @@ export class CombatManager {
 
     this.actionManager.enqueueAll(card.actions, context, 0, 'card');
     await this.actionManager.executeAll();
+    if (state.combat === combat) {
+      this.recordPlayerCombatMemory(
+        combat,
+        card,
+        targetId,
+        playerHpBefore,
+        playerBlockBefore,
+        energyBefore,
+        enemyHpBeforeById,
+        totalEnemyHpBefore,
+      );
+    }
     this.tryResolveCombatVictoryFromState();
 
     globalEventBus.publish({
@@ -1186,18 +1274,26 @@ export class CombatManager {
 
       const intent = enemy.nextIntent || 'Attack';
       const move = enemyDef.moves?.[intent];
+      const playerHpBefore = Math.max(0, Number(combat.player.hp || 0));
+      const enemyHpBefore = Math.max(0, Number(enemy.hp || 0));
+      let memoryRecorded = false;
 
       if (move && Array.isArray(move)) {
         for (const actionSpec of move) {
           this.executeEnemyActionSpec(enemy, actionSpec);
           if (!state.combat || state.screen !== 'Combat') return;
           if (state.combat.player.hp <= 0) {
+            this.recordEnemyCombatMemory(combat, enemy, intent, playerHpBefore, enemyHpBefore);
+            memoryRecorded = true;
             this.handleCombatDefeat();
             return;
           }
         }
       }
 
+      if (!memoryRecorded) {
+        this.recordEnemyCombatMemory(combat, enemy, intent, playerHpBefore, enemyHpBefore);
+      }
       enemy.lastUsedIntent = intent;
       enemy.intentCooldowns = cooldownsReducer(enemy.intentCooldowns || {}, intent);
       enemy.nonAttackIntentStreak = intentTagger.isCategory(intent, 'attack')
@@ -1270,7 +1366,7 @@ export class CombatManager {
       state.rewardCards = this.deps.generateCardRewards(3);
       state.combat = null;
       state.combatRestartCheckpoint = undefined;
-      this.deps.applyRunTransition({ type: 'COMBAT_WON' });
+      if (!this.deps.applyRunTransition({ type: 'COMBAT_WON' })) return;
       this.deps.notify();
     } finally {
       this.combatVictoryInProgress = false;
@@ -1288,7 +1384,7 @@ export class CombatManager {
       this.deps.clearCombatAfflictionsForRunCards();
       state.combatRestartCheckpoint = undefined;
       metricsTracker.recordRunEnd(false, this.deps.getCurrentFloorNumber());
-      this.deps.applyRunTransition({ type: 'PLAYER_DIED' });
+      if (!this.deps.applyRunTransition({ type: 'PLAYER_DIED' })) return;
       globalEventBus.publish({
         type: 'PlayerDefeated',
         timestamp: Date.now()

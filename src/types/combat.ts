@@ -262,6 +262,7 @@ export interface RelicDef {
   flavorText?: string;
   rarity: CardRarity;
   tags: string[];
+  priority?: number;
   resonanceGroup?: string;
   image: string;
   effects: RelicEffect[];

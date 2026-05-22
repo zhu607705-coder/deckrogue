@@ -7,11 +7,25 @@
  * - 提供数值配置和路线系统相关数据的统一访问入口
  */
 import rawEnemiesData from '@/content/data/enemies.json';
+import rawCharactersData from '@/content/data/characters.json';
 import rawPotionsData from '@/content/data/potions.json';
 import rawRelicsData from '@/content/data/relics.json';
 import rawNumericConfig from '@/content/data/numericConfig.json';
 import rawCardEnchantmentsData from '@/content/data/cardEnchantments.json';
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
+import {
+  createEntityMap,
+  validateCardModifiersData,
+  validateCardsData,
+  validateCharactersData,
+  validateEnemiesData,
+  validateNumericConfig,
+  validatePotionsData,
+  validateRelicsData,
+  validateStoryEventDefs,
+  validateStoryEventsData,
+  type NumericConfig,
+} from '@/content/narrative/contentSchema';
 import { STORY_EVENTS as RAW_STORY_EVENTS } from '@/content/narrative/storyEvents';
 import {
   analyzeRouteSignals as analyzeRouteSignalsFromCards,
@@ -41,86 +55,9 @@ import {
   maybeRecordRouteCommit,
   syncRouteStateFromLegacyState,
 } from '@/content/narrative/routeState';
-import type { CardDef, CardAfflictionDef, CardEnchantmentDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core/types';
+import type { CardDef, CardAfflictionDef, CardEnchantmentDef, CharacterDef, EnemyDef, GameState, PotionDef, RelicDef, StoryEventDef } from '@/core/types';
 
-export interface NumericConfig {
-  version: number;
-  chapters?: {
-    chapter2?: {
-      nodeWeights?: {
-        floor_11_12?: Record<string, number>;
-        floor_13_15?: Record<string, number>;
-        floor_16?: Record<string, number>;
-      };
-      enemyFloorEligibility?: {
-        floor_11_12?: { allow?: string[]; exclude?: string[] };
-        floor_13_15?: { allow?: string[]; exclude?: string[] };
-        floor_16?: { allow?: string[]; exclude?: string[] };
-      };
-      bossPool?: string[];
-    };
-    chapter3?: {
-      nodeWeights?: {
-        floor_19_20?: Record<string, number>;
-        floor_21_23?: Record<string, number>;
-        floor_24?: Record<string, number>;
-      };
-      enemyFloorEligibility?: {
-        floor_19_20?: { allow?: string[]; exclude?: string[] };
-        floor_21_23?: { allow?: string[]; exclude?: string[] };
-        floor_24?: { allow?: string[]; exclude?: string[] };
-      };
-      bossPool?: string[];
-    };
-  };
-  map?: {
-    runtime?: {
-      floorTypeCaps?: Record<string, number>;
-      openingRouteExpectation?: {
-        maxSpread?: number;
-        traversalDepth?: number;
-        weights?: Record<string, number>;
-        maxBranchesPerFloor?: Record<string, number>;
-      };
-      openingRouteContrast?: {
-        maxFloor?: number;
-        requireThirdFlavorOnFloor1?: boolean;
-        utilityTypes?: string[];
-      };
-    };
-  };
-  cards: { byId: Record<string, Record<string, unknown>> };
-  potions: {
-    byId: Record<string, Record<string, unknown>>;
-    runtime?: { slotLimit?: number; toxicityOverloadThreshold?: number };
-  };
-  relics: { byId: Record<string, Record<string, unknown>> };
-  enemies: {
-    byId: Record<string, Record<string, unknown>>;
-    runtime?: {
-      earlyCombatHpSoftCaps?: Record<string, number>;
-      earlyEliteHpSoftCaps?: Record<string, number>;
-      bossHpSoftCaps?: Record<string, number>;
-      singleSlimeRoomBoost?: {
-        enabled?: boolean;
-        maxFloor?: number;
-        hpBonusRatio?: number;
-        minHpBonus?: number;
-        strengthBonus?: number;
-        innateStatus?: Record<string, number>;
-      };
-      floorEligibility?: {
-        elite?: Record<string, number>;
-        combat?: Record<string, number>;
-      };
-    };
-  };
-  events: {
-    runtime?: { minSelectableWeight?: number };
-    defs?: Record<string, Partial<Pick<StoryEventDef, 'floorMin' | 'floorMax' | 'weight'>>>;
-    outcomes?: Record<string, any>;
-  };
-}
+export type { NumericConfig } from '@/content/narrative/contentSchema';
 
 export interface MapRuntimeConfig {
   floorTypeCaps: Record<'Event' | 'Shop' | 'Rest' | 'Elite', number>;
@@ -137,8 +74,87 @@ export interface MapRuntimeConfig {
   };
 }
 
-const numericConfig = rawNumericConfig as NumericConfig;
+const numericConfig = validateNumericConfig(rawNumericConfig);
 type EntityPatch = Record<string, unknown> & { $set?: Record<string, unknown> };
+type EntityKind = 'cards' | 'enemies' | 'potions' | 'relics';
+type EntityListValidator<T extends { id: string }> = (value: unknown, context?: string) => T[];
+
+const ENTITY_PATCH_KEYS: Record<EntityKind, Set<string>> = {
+  cards: new Set([
+    'achievementUnlockId',
+    'actions',
+    'art_prompt',
+    'artUrl',
+    'background',
+    'character',
+    'cost',
+    'difficultyRequired',
+    'earlyGameRole',
+    'id',
+    'instanceId',
+    'isUpgraded',
+    'lastWords',
+    'loreText',
+    'name',
+    'rarity',
+    'routeSignalStrength',
+    'routeTags',
+    'sealSlots',
+    'tags',
+    'targeting',
+    'text',
+    'type',
+    'upgrade',
+  ]),
+  enemies: new Set([
+    'ai_profile',
+    'art',
+    'art_prompt',
+    'can_manipulate_cards',
+    'chapterUnlock',
+    'damage',
+    'description',
+    'hp_range',
+    'id',
+    'intel_level',
+    'intentPolicy',
+    'intent_policy',
+    'isBoss',
+    'isElite',
+    'keywords',
+    'keywords_note',
+    'maxHp',
+    'minHp',
+    'moves',
+    'name',
+    'tier',
+    'type',
+    'variant_of',
+  ]),
+  potions: new Set(['description', 'effect', 'id', 'name', 'price', 'tags', 'toxicity']),
+  relics: new Set([
+    'background',
+    'condition',
+    'corrupted',
+    'description',
+    'effect',
+    'effects',
+    'flavorText',
+    'id',
+    'inscription',
+    'isStartingRelic',
+    'loreText',
+    'name',
+    'passiveEffect',
+    'pool',
+    'price',
+    'priority',
+    'rarity',
+    'resonanceGroup',
+    'tags',
+    'trigger',
+  ]),
+};
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -180,6 +196,39 @@ function isValidPatchPath(path: string, tokens: Array<string | number>): boolean
   );
 }
 
+function assertKnownEntityPatchKey(kind: EntityKind, itemId: string, key: string): void {
+  if (key === '$set') return;
+  if (!ENTITY_PATCH_KEYS[kind].has(key)) {
+    throw new Error(`[numericSystem] ${kind}.${itemId}: unknown patch field '${key}'`);
+  }
+}
+
+function assertKnownEntityPatchPath(kind: EntityKind, itemId: string, path: string): void {
+  const tokens = parsePath(path);
+  if (!isValidPatchPath(path, tokens)) {
+    throw new Error(`[numericSystem] ${kind}.${itemId}: invalid patch path '${path}'`);
+  }
+  const first = tokens[0];
+  if (typeof first !== 'string' || !ENTITY_PATCH_KEYS[kind].has(first)) {
+    throw new Error(`[numericSystem] ${kind}.${itemId}: unknown patch path '${path}'`);
+  }
+}
+
+function validateEntityPatch(kind: EntityKind, itemId: string, patch: Record<string, unknown>): void {
+  const setPatch = patch.$set;
+  for (const key of Object.keys(patch)) {
+    assertKnownEntityPatchKey(kind, itemId, key);
+  }
+  if (setPatch !== undefined) {
+    if (!isPlainObject(setPatch)) {
+      throw new Error(`[numericSystem] ${kind}.${itemId}: $set patch must be an object`);
+    }
+    for (const path of Object.keys(setPatch)) {
+      assertKnownEntityPatchPath(kind, itemId, path);
+    }
+  }
+}
+
 function setByPathMutable(target: unknown, path: string, value: unknown): void {
   const tokens = parsePath(path);
   if (!isPlainObject(target) && !Array.isArray(target)) return;
@@ -212,8 +261,19 @@ function applyPathOverrides<T>(target: T, pathOverrides?: Record<string, unknown
 
 export const __numericSystemTesting = {
   applyPathOverrides,
+  applyEntityOverrides,
+  applyStoryEventOverrides,
+  createEntityMap,
   isValidPatchPath,
   parsePath,
+  validateCardsData,
+  validateCardModifiersData,
+  validateCharactersData,
+  validateEnemiesData,
+  validateNumericConfig,
+  validatePotionsData,
+  validateRelicsData,
+  validateStoryEventDefs,
 };
 
 function deepMergePatch<T>(base: T, patch: unknown): T {
@@ -239,7 +299,9 @@ function deepMergePatch<T>(base: T, patch: unknown): T {
 
 function applyEntityOverrides<T extends { id: string }>(
   source: T[],
-  byId: Record<string, Record<string, unknown>> | undefined
+  byId: Record<string, Record<string, unknown>> | undefined,
+  kind: EntityKind,
+  validateEntities: EntityListValidator<T>
 ): T[] {
   const patches = byId || {};
   return source.map((item) => {
@@ -247,30 +309,43 @@ function applyEntityOverrides<T extends { id: string }>(
     const rawPatch = patches[item.id] as EntityPatch | undefined;
     if (!rawPatch || !isPlainObject(rawPatch)) return base;
     const patchObj = rawPatch as Record<string, unknown>;
+    validateEntityPatch(kind, item.id, patchObj);
     const { $set, ...mergePatch } = patchObj;
     const merged = deepMergePatch(base, mergePatch);
-    return applyPathOverrides(merged, isPlainObject($set) ? ($set as Record<string, unknown>) : undefined);
+    const patched = applyPathOverrides(merged, isPlainObject($set) ? ($set as Record<string, unknown>) : undefined);
+    return validateEntities([patched], `${kind}.${item.id}`)[0];
   });
 }
 
-function applyStoryEventOverrides(source: StoryEventDef[]): StoryEventDef[] {
-  const defs = numericConfig.events?.defs || {};
-  return source.map((event) => deepMergePatch(deepClone(event), defs[event.id]));
+function applyStoryEventOverrides(
+  source: StoryEventDef[],
+  defs: Record<string, unknown> | undefined = numericConfig.events?.defs
+): StoryEventDef[] {
+  const validatedDefs = validateStoryEventDefs(defs);
+  return source.map((event) => {
+    const patch = validatedDefs[event.id];
+    if (!patch) return deepClone(event);
+    return validateStoryEventsData(
+      [deepMergePatch(deepClone(event), patch)],
+      `storyEvents.${event.id}`
+    )[0];
+  });
 }
 
-export const cardsData: CardDef[] = enrichCardRouteSignals(applyEntityOverrides(baseCardsData, numericConfig.cards?.byId));
-export const enemiesData: EnemyDef[] = applyEntityOverrides(rawEnemiesData as unknown as EnemyDef[], numericConfig.enemies?.byId);
-export const potionsData: PotionDef[] = applyEntityOverrides(rawPotionsData as unknown as PotionDef[], numericConfig.potions?.byId);
-export const relicsData: RelicDef[] = applyEntityOverrides(rawRelicsData as unknown as RelicDef[], numericConfig.relics?.byId);
-export const STORY_EVENTS: StoryEventDef[] = applyStoryEventOverrides(RAW_STORY_EVENTS);
-export const cardEnchantmentsData: Array<CardEnchantmentDef | CardAfflictionDef> = deepClone(rawCardEnchantmentsData as Array<CardEnchantmentDef | CardAfflictionDef>);
+export const cardsData: CardDef[] = enrichCardRouteSignals(applyEntityOverrides(baseCardsData, numericConfig.cards?.byId, 'cards', validateCardsData));
+export const charactersData: CharacterDef[] = validateCharactersData(rawCharactersData, 'characters.json');
+export const enemiesData: EnemyDef[] = applyEntityOverrides(validateEnemiesData(rawEnemiesData, 'enemies.json'), numericConfig.enemies?.byId, 'enemies', validateEnemiesData);
+export const potionsData: PotionDef[] = applyEntityOverrides(validatePotionsData(rawPotionsData, 'potions.json'), numericConfig.potions?.byId, 'potions', validatePotionsData);
+export const relicsData: RelicDef[] = applyEntityOverrides(validateRelicsData(rawRelicsData, 'relics.json'), numericConfig.relics?.byId, 'relics', validateRelicsData);
+export const STORY_EVENTS: StoryEventDef[] = applyStoryEventOverrides(validateStoryEventsData(RAW_STORY_EVENTS, 'storyEvents.ts'));
+export const cardEnchantmentsData: Array<CardEnchantmentDef | CardAfflictionDef> = validateCardModifiersData(deepClone(rawCardEnchantmentsData), 'cardEnchantments.json');
 
-const cardMap = new Map(cardsData.map((c) => [c.id, c]));
-const enemyMap = new Map(enemiesData.map((e) => [e.id, e]));
-const potionMap = new Map(potionsData.map((p) => [p.id, p]));
-const relicMap = new Map(relicsData.map((r) => [r.id, r]));
-const storyEventMap = new Map(STORY_EVENTS.map((e) => [e.id, e]));
-const cardEnchantmentMap = new Map(cardEnchantmentsData.map((entry) => [entry.id, entry]));
+const cardMap = createEntityMap('cards', cardsData);
+const enemyMap = createEntityMap('enemies', enemiesData);
+const potionMap = createEntityMap('potions', potionsData);
+const relicMap = createEntityMap('relics', relicsData);
+const storyEventMap = createEntityMap('storyEvents', STORY_EVENTS);
+const cardEnchantmentMap = createEntityMap('cardEnchantments', cardEnchantmentsData);
 
 export type ShopOfferKind = 'card' | 'relic' | 'potion';
 
@@ -354,13 +429,17 @@ export function getPotionRuntimeConfig(): Required<NonNullable<NumericConfig['po
   };
 }
 
+let cachedMapRuntimeConfig: MapRuntimeConfig | null = null;
+
 export function getMapRuntimeConfig(): MapRuntimeConfig {
+  if (cachedMapRuntimeConfig) return cachedMapRuntimeConfig;
+
   const runtime = numericConfig.map?.runtime;
   const floorTypeCaps = runtime?.floorTypeCaps || {};
   const openingRouteExpectation = runtime?.openingRouteExpectation;
   const openingRouteContrast = runtime?.openingRouteContrast;
 
-  return {
+  cachedMapRuntimeConfig = {
     floorTypeCaps: {
       Event: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Event ?? 1)))),
       Shop: Math.max(0, Math.min(4, Math.floor(Number(floorTypeCaps.Shop ?? 1)))),
@@ -391,6 +470,7 @@ export function getMapRuntimeConfig(): MapRuntimeConfig {
         : ['Event', 'Shop', 'Rest'],
     },
   };
+  return cachedMapRuntimeConfig;
 }
 
 function clampInt(value: number, min = 0, max = Number.POSITIVE_INFINITY): number {

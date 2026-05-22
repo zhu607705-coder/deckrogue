@@ -244,6 +244,12 @@ export class EventManager {
     const state = this.deps.getState();
     const event = state.activeEvent;
     if (!event) return;
+
+    if (event.stage === 'generic_relic_choice') {
+      this.resolveGenericRelicChoice(choice);
+      return;
+    }
+
     const routeSignal = getEventRouteSignal(event.id);
     const routeCommitWeight = getEventChoiceRouteCommitWeight(event.id, choice);
     const choiceRole = getEventChoiceRouteRole(event.id, choice);
@@ -504,6 +510,10 @@ export class EventManager {
     const allText = `${gainText} ${costText}`.toLowerCase();
     const runEffects = this.deps.ensureRunEffects();
 
+    if (this.openGenericChoiceSurface(option, allText)) {
+      return;
+    }
+
     const dangerHpLossRatio = option.danger === 'high' ? 0.18 : option.danger === 'medium' ? 0.1 : 0.04;
     const explicitMaxHpLoss = this.extractNumber(costText, /(?:-|loss|lose)\s*(\d+)\s*(?:max hp|最大生命|maxHp)/i)
       ?? this.extractNumber(costText, /(?:max hp|最大生命|maxHp)\s*(?:-|loss|lose)\s*(\d+)/i);
@@ -603,6 +613,104 @@ export class EventManager {
       resolvedChoiceId: option.id,
       danger: option.danger ?? 'medium',
     };
+    state.activeEvent = null;
+    this.deps.leaveCurrentRoomToMap();
+  }
+
+  private openGenericChoiceSurface(option: EventOption, allText: string): boolean {
+    const isChooseThree = /choose\s+1\s+of\s+3/.test(allText) || allText.includes('三选一');
+    if (!isChooseThree) return false;
+
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return false;
+
+    if (allText.includes('relic') || allText.includes('遗物')) {
+      const offeredRelicIds = this.generateRelicChoiceIds(3, {
+        normalOnly: option.danger !== 'high',
+        warpBiased: allText.includes('warp') || allText.includes('corruption'),
+      });
+      if (offeredRelicIds.length === 0) return false;
+      event.stage = 'generic_relic_choice';
+      event.data = {
+        ...(event.data || {}),
+        genericChoiceSourceId: option.id,
+        offeredRelicIds,
+      };
+      state.screen = 'Event';
+      this.deps.notify();
+      return true;
+    }
+
+    if (allText.includes('card') || allText.includes('cards') || allText.includes('牌')) {
+      state.rewardCards = this.generateCardRewards(3, { source: 'combat' });
+      event.data = {
+        ...(event.data || {}),
+        genericChoiceSourceId: option.id,
+        offeredCardIds: state.rewardCards.map((card) => card.id),
+      };
+      state.activeEvent = null;
+      state.screen = 'Reward';
+      this.deps.notify();
+      return true;
+    }
+
+    return false;
+  }
+
+  private generateRelicChoiceIds(
+    count: number,
+    options: { normalOnly?: boolean; corruptedOnly?: boolean; warpBiased?: boolean } = {},
+  ): string[] {
+    const state = this.deps.getState();
+    const eventId = state.activeEvent?.id ?? 'event';
+    let pool = (relicsData as RelicDef[]).filter((relic) => !state.player.relics.includes(relic.id));
+    if (options.normalOnly) {
+      pool = pool.filter((relic) => !relic.corrupted && (relic.price ?? 0) <= 220);
+    }
+    if (options.corruptedOnly) {
+      pool = pool.filter((relic) => !!relic.corrupted || String(relic.id).includes('warp') || String(relic.id).includes('chaos'));
+    }
+    if (options.warpBiased) {
+      const warpPool = pool.filter((relic) => String(relic.id).includes('warp') || !!relic.corrupted || String(relic.name || '').toLowerCase().includes('chaos'));
+      if (warpPool.length > 0) pool = warpPool;
+    }
+
+    const routeTagsForCharacter = state.character?.id ? getKnownRouteTagsForCharacter(state.character.id) : [];
+    const preferredRouteTag = resolveCurrentRouteTag(state.player.deck, routeTagsForCharacter, state.routeState ?? null);
+    const supportRelicIds = new Set(preferredRouteTag ? getRouteSupportRelicIds(preferredRouteTag) : []);
+    const routePool = pool.filter((relic) => supportRelicIds.has(relic.id));
+    const sourcePool = routePool.length > 0 ? [...routePool, ...pool.filter((relic) => !supportRelicIds.has(relic.id))] : pool;
+    const chosen: string[] = [];
+
+    for (let i = 0; i < count; i += 1) {
+      const available = sourcePool.filter((relic) => !chosen.includes(relic.id));
+      if (available.length === 0) break;
+      const key = `${state.seed}:${eventId}:relic-choice:${this.deps.getCurrentFloorNumber()}:${i}:${available.map((relic) => relic.id).join('|')}`;
+      const relic = available[stableHash(key) % available.length];
+      if (relic?.id) chosen.push(relic.id);
+    }
+
+    return chosen;
+  }
+
+  private resolveGenericRelicChoice(choice: string): void {
+    const state = this.deps.getState();
+    const event = state.activeEvent;
+    if (!event) return;
+
+    const offeredRelicIds = Array.isArray(event.data?.offeredRelicIds)
+      ? event.data.offeredRelicIds.map(String)
+      : [];
+    const relicId = choice.startsWith('generic_relic:') ? choice.slice('generic_relic:'.length) : choice;
+    if (!offeredRelicIds.includes(relicId)) return;
+
+    event.data = {
+      ...(event.data || {}),
+      lastChoiceId: choice,
+      resolvedRelicId: relicId,
+    };
+    this.addRelicToPlayerInventory(relicId);
     state.activeEvent = null;
     this.deps.leaveCurrentRoomToMap();
   }

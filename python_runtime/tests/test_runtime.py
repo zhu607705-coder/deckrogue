@@ -17,12 +17,14 @@ def build_content_bundle():
             {
                 "id": "informant",
                 "max_hp": 70,
+                "secondary_resource": "evidence",
                 "starting_gold": 99,
                 "starting_deck": ["strike", "strike", "defend", "gather_intel"],
             },
             {
                 "id": "brute",
                 "max_hp": 80,
+                "secondary_resource": "rage",
                 "starting_gold": 99,
                 "starting_deck": ["strike", "strike", "defend", "bash"],
             },
@@ -41,6 +43,8 @@ class RuleRuntimeTests(unittest.TestCase):
         result = runtime.dispatch({"type": "select_character", "character_id": "informant"})
 
         self.assertEqual(result["snapshot"]["player"]["character_id"], "informant")
+        self.assertEqual(result["snapshot"]["player"]["secondary_resources"]["evidence"], 0)
+        self.assertEqual(result["snapshot"]["player"]["evidence"], 0)
         self.assertEqual(result["snapshot"]["lifecycle"]["screen"], "Map")
         self.assertGreater(len(result["snapshot"]["player"]["deck"]), 0)
         self.assertGreater(len(result["snapshot"]["map"]["nodes"]), 0)

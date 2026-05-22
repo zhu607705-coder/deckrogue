@@ -25,6 +25,7 @@ import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext'
 import {
   analyzeRouteSignals,
   cardsData,
+  charactersData,
   getCardEnchantmentDefById,
   getKnownRouteTagsForCharacter,
   getPreferredRouteTagFromState,
@@ -40,10 +41,6 @@ import {
 } from '@/content/narrative/numericSystem';
 import { balanceSystem } from '@/core/balance/balanceSystem';
 import { normalizeRunCardInstance, deriveRunCardInstance } from '@/core/combat/runCardInstance';
-import charactersDataRaw from '@/content/data/characters.json';
-import type { CharacterDef } from '@/core/types';
-
-const charactersData = charactersDataRaw as CharacterDef[];
 
 function isRuntimeCard(card: RunCardInstance | null): card is RunCardInstance {
   return card !== null;
@@ -95,19 +92,36 @@ export interface RunFlowManagerDeps {
 export class RunFlowManager {
   constructor(private deps: RunFlowManagerDeps) {}
 
-  applyRunTransition(action: RunAction): void {
+  private resolveRoomExitAction(roomResolutionKind: GameState['roomResolutionKind'], roomResolutionToken: string | null): RunAction | null {
+    switch (roomResolutionKind) {
+      case 'reward':
+        return { type: 'REWARD_TAKEN', roomResolutionToken };
+      case 'event':
+        return { type: 'EVENT_RESOLVED', roomResolutionToken };
+      case 'shop':
+        return { type: 'SHOP_LEFT', roomResolutionToken };
+      case 'rest':
+        return { type: 'REST_COMPLETED', roomResolutionToken };
+      default:
+        return null;
+    }
+  }
+
+  applyRunTransition(action: RunAction): boolean {
     const state = this.deps.getState();
-    if (action.type === 'COMBAT_WON' && state.screen === 'Reward') return;
+    if (action.type === 'COMBAT_WON' && state.screen === 'Reward') return true;
     try {
       const next = transitionRunState(deriveRunTransitionState(state), action);
       state.screen = runPhaseToScreen(next.phase);
       syncRoomSessionFromTransition(state, next);
+      return true;
     } catch (error: any) {
       console.error('[RunFlowManager] Illegal run transition:', {
         action: action.type,
         fromPhase: state.screen,
         error: error.message
       });
+      return false;
     }
   }
 
@@ -147,7 +161,7 @@ export class RunFlowManager {
       state.player.runEffects = { ...runEffects, skipNextNode: false };
       const roomResolutionToken = state.roomResolutionToken ?? `room_${node.id}_${this.deps.generateId()}`;
       state.roomResolutionToken = roomResolutionToken;
-      this.applyRunTransition({ type: 'EVENT_RESOLVED', roomResolutionToken });
+      if (!this.applyRunTransition({ type: 'EVENT_RESOLVED', roomResolutionToken })) return;
       this.deps.syncRuntimeFromLegacyState('skip_node');
       this.deps.notify();
       return;
@@ -206,7 +220,7 @@ export class RunFlowManager {
     const state = this.deps.getState();
     state.combat = null;
     state.combatRestartCheckpoint = undefined;
-    this.applyRunTransition({ type: 'COMBAT_WON', roomResolutionToken: state.roomResolutionToken ?? undefined });
+    if (!this.applyRunTransition({ type: 'COMBAT_WON', roomResolutionToken: state.roomResolutionToken ?? undefined })) return;
     this.deps.notify();
   }
 
@@ -214,7 +228,7 @@ export class RunFlowManager {
     const state = this.deps.getState();
     state.combatRestartCheckpoint = undefined;
     metricsTracker.recordRunEnd(false, this.deps.getCurrentFloorNumber());
-    this.applyRunTransition({ type: 'PLAYER_DIED' });
+    if (!this.applyRunTransition({ type: 'PLAYER_DIED' })) return;
     globalEventBus.publish({
       type: RuntimeEventType.PlayerDefeated,
       timestamp: Date.now()
@@ -225,7 +239,7 @@ export class RunFlowManager {
   handleRunVictory(): void {
     const state = this.deps.getState();
     metricsTracker.recordRunEnd(true, this.deps.getCurrentFloorNumber());
-    this.applyRunTransition({ type: 'RUN_ENDED', phase: 'victory' });
+    if (!this.applyRunTransition({ type: 'RUN_ENDED', phase: 'victory' })) return;
     globalEventBus.publish({ type: RuntimeEventType.RunVictory, timestamp: Date.now() });
     this.deps.notify();
   }
@@ -236,25 +250,52 @@ export class RunFlowManager {
       ? state.map.find((n) => n.id === state.currentNodeId)
       : null;
     const isFinalBossNode = currentNode?.type === 'Boss' && (!currentNode.next || currentNode.next.length === 0);
-    state.activeEvent = null;
-    state.enchantContext = null;
+    const previousRoomMarkers = {
+      roomSession: state.roomSession ?? null,
+      pendingNodeResolution: state.pendingNodeResolution,
+      roomResolutionToken: state.roomResolutionToken ?? null,
+      roomResolutionKind: state.roomResolutionKind ?? null,
+      screen: state.screen,
+      activeEvent: state.activeEvent ?? null,
+      enchantContext: state.enchantContext ?? null,
+    };
     const roomSession = syncRoomSessionFromLegacyState(state, {
       isEventFreeCardRemovalMode: this.deps.isEventFreeCardRemovalMode(),
     });
     const roomResolutionToken = roomSession?.token ?? null;
     const roomResolutionKind = roomSession?.resolverKind ?? null;
+    const action = this.resolveRoomExitAction(roomResolutionKind, roomResolutionToken);
+
+    if (!isFinalBossNode && !action) {
+      state.roomSession = previousRoomMarkers.roomSession;
+      state.pendingNodeResolution = previousRoomMarkers.pendingNodeResolution;
+      state.roomResolutionToken = previousRoomMarkers.roomResolutionToken;
+      state.roomResolutionKind = previousRoomMarkers.roomResolutionKind;
+      console.error('[RunFlowManager] Cannot resolve room exit action:', {
+        screen: state.screen,
+        currentNodeId: state.currentNodeId,
+        roomResolutionKind,
+      });
+      return;
+    }
+
+    state.activeEvent = null;
+    state.enchantContext = null;
 
     if (isFinalBossNode) {
       this.handleRunVictory();
     } else {
-      const actionByKind: Partial<Record<NonNullable<GameState['roomResolutionKind']>, RunAction>> = {
-        reward: { type: 'REWARD_TAKEN', roomResolutionToken },
-        event: { type: 'EVENT_RESOLVED', roomResolutionToken },
-        shop: { type: 'SHOP_LEFT', roomResolutionToken },
-        rest: { type: 'REST_COMPLETED', roomResolutionToken }
-      };
-      const action = (roomResolutionKind ? actionByKind[roomResolutionKind] : null) ?? { type: 'EVENT_RESOLVED', roomResolutionToken };
-      this.applyRunTransition(action);
+      const applied = this.applyRunTransition(action);
+      if (!applied) {
+        state.roomSession = previousRoomMarkers.roomSession;
+        state.pendingNodeResolution = previousRoomMarkers.pendingNodeResolution;
+        state.roomResolutionToken = previousRoomMarkers.roomResolutionToken;
+        state.roomResolutionKind = previousRoomMarkers.roomResolutionKind;
+        state.screen = previousRoomMarkers.screen;
+        state.activeEvent = previousRoomMarkers.activeEvent;
+        state.enchantContext = previousRoomMarkers.enchantContext;
+        return;
+      }
     }
 
     globalEventBus.publish({

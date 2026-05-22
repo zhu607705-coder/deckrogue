@@ -114,6 +114,15 @@ export function normalizePythonSnapshot(
   const meta = converted.meta ?? ({} as RuleSnapshot['meta']);
   const generatedAtFallback = options.generatedAtFallback ?? (() => new Date().toISOString());
   const rawPlayer = (snapshot.player as Record<string, unknown> | undefined) ?? {};
+  const rawSecondaryResources = (rawPlayer.secondary_resources as Record<string, unknown> | undefined)
+    ?? (rawPlayer.secondaryResources as Record<string, unknown> | undefined)
+    ?? {};
+  const secondaryResources = Object.fromEntries(
+    Object.entries(rawSecondaryResources)
+      .map(([key, value]) => [snakeToCamelKey(key), Number(value)])
+      .filter(([, value]) => Number.isFinite(value))
+      .map(([key, value]) => [key, Math.max(0, Math.floor(value as number))]),
+  );
   const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
     ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
     ?? {};
@@ -139,6 +148,12 @@ export function normalizePythonSnapshot(
       intel: player.intel ?? 0,
       devotion: player.devotion ?? 0,
       corruption: player.corruption ?? 0,
+      secondaryResources,
+      evidence: secondaryResources.evidence ?? player.evidence ?? 0,
+      rage: secondaryResources.rage ?? player.rage ?? 0,
+      command: secondaryResources.command ?? player.command ?? 0,
+      verdict: secondaryResources.verdict ?? player.verdict ?? 0,
+      seal: secondaryResources.seal ?? player.seal ?? 0,
       deck: player.deck ?? [],
       relicIds: player.relicIds ?? [],
       potionIds: player.potionIds ?? [],

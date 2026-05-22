@@ -98,6 +98,12 @@ export interface RuleEvent {
   payload?: Record<string, unknown>;
 }
 
+export interface RuleResultError {
+  name: string;
+  message: string;
+  commandType: RuleCommand['type'];
+}
+
 export interface RuleSnapshotNode {
   id: string;
   type: string;
@@ -175,6 +181,12 @@ export interface RuleSnapshot {
     intel: number;
     devotion: number;
     corruption: number;
+    secondaryResources?: Record<string, number>;
+    evidence?: number;
+    rage?: number;
+    command?: number;
+    verdict?: number;
+    seal?: number;
     deck: string[];
     relicIds: string[];
     potionIds: string[];
@@ -245,6 +257,7 @@ export interface RuleSnapshot {
 }
 
 export interface RuleResult {
+  ok: boolean;
   snapshot: RuleSnapshot;
   diff: RuleDiff;
   events: RuleEvent[];
@@ -252,6 +265,7 @@ export interface RuleResult {
     dispatchMs: number;
   };
   source: RuleSnapshot['meta']['adapter'];
+  error?: RuleResultError;
 }
 
 export type RuleCommand =

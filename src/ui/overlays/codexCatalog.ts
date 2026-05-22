@@ -359,7 +359,7 @@ function createCardDemo(card: any): CodexDemoPanelDef | undefined {
 }
 
 function createEnemyDemo(enemy: any): CodexDemoPanelDef | undefined {
-  const intentPolicy = Array.isArray(enemy.intent_policy) ? enemy.intent_policy : [];
+  const intentPolicy = getEnemyIntentPolicy(enemy);
   const moves = enemy.moves || {};
   if (intentPolicy.length === 0) return undefined;
   const totalWeight = intentPolicy.reduce((s: number, p: any) => s + Math.max(0, Number(p.weight) || 0), 0);
@@ -427,7 +427,7 @@ function parseEnemyMoves(enemy: any): { mechanics: string[]; interactions: strin
   const interactions: string[] = [];
   const examples: string[] = [];
   const moves = enemy.moves || {};
-  const intentPolicy = Array.isArray(enemy.intent_policy) ? enemy.intent_policy : [];
+  const intentPolicy = getEnemyIntentPolicy(enemy);
   const weightTotal = intentPolicy.reduce((s: number, p: any) => s + Math.max(0, Number(p.weight) || 0), 0);
 
   for (const policy of intentPolicy) {
@@ -451,6 +451,27 @@ function parseEnemyMoves(enemy: any): { mechanics: string[]; interactions: strin
     interactions: uniqStrings(interactions),
     examples: uniqStrings(examples)
   };
+}
+
+function getEnemyIntentPolicy(enemy: any): Array<{ intent: string; weight: number }> {
+  const policy = Array.isArray(enemy.intent_policy)
+    ? enemy.intent_policy
+    : Array.isArray(enemy.intentPolicy)
+      ? enemy.intentPolicy
+      : [];
+  return policy.filter((entry: any) => typeof entry?.intent === 'string');
+}
+
+function getEnemyHpRangeLabel(enemy: any): string {
+  if (Array.isArray(enemy.hp_range)) {
+    return `${enemy.hp_range[0]}-${enemy.hp_range[1]}`;
+  }
+  const minHp = Number(enemy.minHp);
+  const maxHp = Number(enemy.maxHp);
+  if (Number.isFinite(minHp) && Number.isFinite(maxHp)) {
+    return `${minHp}-${maxHp}`;
+  }
+  return '-';
 }
 
 function buildCardEntries(): CodexCatalogEntry[] {
@@ -632,12 +653,13 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
     const isEliteLike = !!enemy.keywords?.includes('elite') || !!enemy.keywords?.includes('boss');
     const category: CodexCategory = isEliteLike ? 'elites' : 'enemies';
     const parsed = parseEnemyMoves(enemy);
-    const hpRange = Array.isArray(enemy.hp_range) ? `${enemy.hp_range[0]}-${enemy.hp_range[1]}` : '-';
+    const hpRange = getEnemyHpRangeLabel(enemy);
+    const intentPolicy = getEnemyIntentPolicy(enemy);
     const badges = uniqStrings([
       ...(enemy.keywords || []),
       isEliteLike ? (enemy.keywords?.includes('boss') ? 'Boss' : 'Elite') : 'Normal'
     ]);
-    const summary = `生命值 ${hpRange} · ${Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0} 种意图`;
+    const summary = `生命值 ${hpRange} · ${intentPolicy.length} 种意图`;
     const mechanics = [`生命区间：${hpRange}`].concat(parsed.mechanics);
     const interactions = uniqStrings([
       ...parsed.interactions,
@@ -663,7 +685,7 @@ function buildEnemyEntries(): CodexCatalogEntry[] {
       searchText: [...keywords, summary, ...mechanics, ...interactions, ...examples, ...loreFragments.map((x) => `${x.label} ${x.text}`)].join(' ').toLowerCase(),
       dataPoints: [
         { label: '生命值', value: hpRange },
-        { label: '意图数', value: String(Array.isArray(enemy.intent_policy) ? enemy.intent_policy.length : 0) },
+        { label: '意图数', value: String(intentPolicy.length) },
         { label: '分类', value: enemy.keywords?.includes('boss') ? 'Boss' : enemy.keywords?.includes('elite') ? 'Elite' : 'Normal' }
       ],
       notes: Object.keys(enemy.moves || {}).length > 0 ? [`招式池：${Object.keys(enemy.moves).join(' / ')}`] : undefined,

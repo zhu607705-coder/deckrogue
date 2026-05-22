@@ -29,6 +29,7 @@ import { setupActionManager } from '@/core/actions/v2/ActionFactory';
 import { normalizeRunCardInstance, deriveRunCardInstance, applyCombatAfflictionToInstance, clearCombatAfflictionsFromInstance } from '@/core/combat/runCardInstance';
 import {
   cardsData,
+  charactersData,
   relicsData,
   potionsData,
   getPotionRuntimeConfig,
@@ -37,7 +38,6 @@ import {
   syncRouteStateFromLegacyState,
 } from '@/content/narrative/numericSystem';
 import type { IActionContext } from '@/core/actions/actionQueue';
-import charactersDataRaw from '@/content/data/characters.json';
 import { localCharacterArt } from '@/content/assets/standeeArt';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RuntimeEventType } from '@/core/events/eventContract';
@@ -54,10 +54,10 @@ import { CombatManager, type CombatManagerDeps } from '@/core/events/CombatManag
 import { MusicDispatcher } from '@/core/events/MusicDispatcher';
 import { runPhaseToScreen } from '@/core/events/runStateMachine';
 
-const charactersData = charactersDataRaw as CharacterDef[];
 import { projectRuleSnapshotToLegacyState, type LegacyStateProjection } from '@/runtimeV2/legacyStateProjector';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
+import { combatMemory } from '@/core/ai/combatMemory';
 import { calculateRewardRuntime } from '@/core/balance/numericsRuntime';
 import { combatSystem } from '@/core/combat/combatSystem';
 import { cloneJsonValue } from '@/core/utils/safeJson';
@@ -319,6 +319,7 @@ export class GameEngine {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    combatMemory.clear();
     this.combatManager.dispose();
     ActionManager.clearIfCurrent(this.actionManager);
     this.musicDispatcher?.dispose();
@@ -734,16 +735,18 @@ export class GameEngine {
     });
   }
 
-  private applyRunTransition(action: import('@/core/events/runStateMachine').RunAction): void {
+  private applyRunTransition(action: import('@/core/events/runStateMachine').RunAction): boolean {
     try {
-      if (action.type === 'COMBAT_WON' && this.state.screen !== 'Combat') return;
-      this.runFlowManager.applyRunTransition(action);
+      if (action.type === 'COMBAT_WON' && this.state.screen !== 'Combat') return true;
+      return this.runFlowManager.applyRunTransition(action);
     } catch (error) {
       console.error('[GameEngine] Failed to apply run transition:', error);
+      return false;
     }
   }
 
   selectCharacter(characterId: string): void {
+    combatMemory.clear();
     if (!this.supportsBootAndMapDelegation()) {
       this.selectCharacterLegacyInternal(characterId);
       this.musicDispatcher?.onCharacterSelected(characterId);

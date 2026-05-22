@@ -182,6 +182,9 @@ function checkEnemy(enemy: EnemySpec): string[] {
       if (!intent || !moves[intent]) {
         issues.push(`Intent references missing move: ${intent || 'unknown'}`);
       }
+      if (policy?.weight !== undefined && (typeof policy.weight !== 'number' || !Number.isFinite(policy.weight))) {
+        issues.push(`Intent has non-number weight: ${intent || 'unknown'}`);
+      }
     }
   }
 

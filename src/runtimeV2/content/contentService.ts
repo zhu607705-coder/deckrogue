@@ -8,7 +8,7 @@
  * - 支持 ActionSpec 卡牌动作定义解析
  */
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
-import charactersData from '@/content/data/characters.json';
+import { charactersData } from '@/content/narrative/numericSystem';
 import enemiesData from '@/content/data/enemies.json';
 import potionsData from '@/content/data/potions.json';
 import relicsData from '@/content/data/relics.json';

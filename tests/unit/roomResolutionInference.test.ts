@@ -80,3 +80,18 @@ test('inferRoomResolutionKindFromLegacyState keeps shop ownership for shop neste
   assert.equal(upgradeKind, 'shop');
   assert.equal(enchantKind, 'shop');
 });
+
+test('inferRoomResolutionKindFromLegacyState does not synthesize nested ownership without a return context', () => {
+  const base = {
+    activeEvent: null,
+    campfireChoiceLocked: false,
+    upgradeReturnScreen: undefined,
+    relicUpgradeReturnScreen: undefined,
+    enchantContext: null,
+  };
+
+  assert.equal(inferRoomResolutionKindFromLegacyState({ ...base, screen: 'Upgrade' }), null);
+  assert.equal(inferRoomResolutionKindFromLegacyState({ ...base, screen: 'RemoveCard' }), null);
+  assert.equal(inferRoomResolutionKindFromLegacyState({ ...base, screen: 'Enchant' }), null);
+  assert.equal(inferRoomResolutionKindFromLegacyState({ ...base, screen: 'RelicUpgrade' }), null);
+});

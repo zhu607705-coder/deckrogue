@@ -19,7 +19,7 @@ import { syncSurfaceContextFromLegacyState } from '@/core/events/surfaceContext'
 import { syncRouteStateFromLegacyState } from '@/content/narrative/numericSystem';
 import charactersData from '@/content/data/characters.json';
 import type { RoomOwnerKind } from '@/core/types';
-import { checkServer, getDefaultSmokeUrl, spawnDevServer, waitForServer } from './flow_smoke_helpers';
+import { calculateSaveChecksum, checkServer, getDefaultSmokeUrl, spawnDevServer, waitForServer } from './flow_smoke_helpers';
 
 interface UiAuditIssue {
   selector: string;
@@ -304,6 +304,9 @@ function createExpansionSaveFixtures(): SaveSlotFixture[] {
 
 function buildStoragePayload() {
   const slots = createExpansionSaveFixtures();
+  const saveEntries = Object.fromEntries(
+    slots.map((fixture) => [`deckrogue_save_${fixture.slotId}`, JSON.stringify(fixture.saveData)])
+  );
   const metaProfile = createDefaultMetaProfile();
   metaProfile.unlocks.characters = charactersData.map((character) => character.id);
   metaProfile.progression.ascensionUnlockedLevelByCharacter = {
@@ -319,10 +322,11 @@ function buildStoragePayload() {
   metaProfile.preferences.selectedAscension = 2;
 
   return {
-    slots: slots.map((fixture) => fixture.slot),
-    saveEntries: Object.fromEntries(
-      slots.map((fixture) => [`deckrogue_save_${fixture.slotId}`, JSON.stringify(fixture.saveData)])
-    ),
+    slots: slots.map((fixture) => ({
+      ...fixture.slot,
+      checksum: calculateSaveChecksum(saveEntries[`deckrogue_save_${fixture.slotId}`]),
+    })),
+    saveEntries,
     metaProfile: JSON.stringify(metaProfile)
   };
 }

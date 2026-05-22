@@ -18,7 +18,7 @@ import {
   warpPerilChance,
   warpPowerMultiplier
 } from '@/core/balance';
-import { __numericSystemTesting } from '@/content/narrative/numericSystem';
+import { __numericSystemTesting, getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 
 test('energy and damage EVU use the unified baseline', () => {
   assert.equal(energyToEVU(1), NUMERICS_BASELINE.evu.energy);
@@ -93,4 +93,114 @@ test('numeric path overrides allow safe keys containing unsafe-token substrings'
 
   assert.deepEqual(target.prototypeBonus, { amount: 3 });
   assert.deepEqual(target.constructorNote, { amount: 4 });
+});
+
+test('numeric config schema rejects missing and nonnumeric versions', () => {
+  const validateNumericConfig = (__numericSystemTesting as any).validateNumericConfig as (value: unknown) => unknown;
+
+  assert.throws(
+    () => validateNumericConfig({ cards: { byId: {} }, potions: { byId: {} }, relics: { byId: {} }, enemies: { byId: {} }, events: {} }),
+    /version/
+  );
+  assert.throws(
+    () => validateNumericConfig({ version: '1', cards: { byId: {} }, potions: { byId: {} }, relics: { byId: {} }, enemies: { byId: {} }, events: {} }),
+    /version/
+  );
+});
+
+test('content entity schema rejects numeric field typos before runtime use', () => {
+  const validateCardsData = (__numericSystemTesting as any).validateCardsData as (value: unknown) => unknown;
+  const validateEnemiesData = (__numericSystemTesting as any).validateEnemiesData as (value: unknown) => unknown;
+
+  assert.throws(
+    () => validateCardsData([
+      { id: 'bad_card', name: 'Bad', rarity: 'Common', cost: 'free', type: 'Attack', targeting: 'Enemy', tags: [], text: '', actions: [] },
+    ]),
+    /cost/
+  );
+  assert.throws(
+    () => validateEnemiesData([
+      { id: 'bad_enemy', name: 'Bad', hp_range: [5, 'ten'], intent_policy: [{ intent: 'Attack', weight: 1 }], moves: { Attack: [] }, keywords: [] },
+    ]),
+    /hp_range/
+  );
+});
+
+test('card modifier schema rejects unsupported effect contracts', () => {
+  const validateCardModifiersData = (__numericSystemTesting as any).validateCardModifiersData as (value: unknown) => unknown;
+  const base = {
+    id: 'bad_modifier',
+    name: 'Bad Modifier',
+    scope: 'persistent',
+    description: 'Invalid modifier fixture.',
+    effect: { type: 'damage', amount: 1 },
+  };
+
+  assert.doesNotThrow(() => validateCardModifiersData([base]));
+  assert.throws(
+    () => validateCardModifiersData([{ ...base, effect: { type: 'unknownEffect', amount: 1 } }]),
+    /unsupported card modifier effect type/
+  );
+  assert.throws(
+    () => validateCardModifiersData([{ ...base, effect: { type: 'professionResource', amount: 1 } }]),
+    /resource/
+  );
+  assert.throws(
+    () => validateCardModifiersData([{ ...base, effect: { type: 'professionResource', amount: 1, resource: 'missing' } }]),
+    /unsupported profession resource/
+  );
+});
+
+test('numeric entity overrides reject bad patch types and undeclared fields', () => {
+  const applyEntityOverrides = (__numericSystemTesting as any).applyEntityOverrides as (
+    source: unknown[],
+    patches: Record<string, Record<string, unknown>>,
+    kind: string,
+    validate: (value: unknown, context?: string) => unknown
+  ) => unknown[];
+  const validateCardsData = (__numericSystemTesting as any).validateCardsData as (value: unknown, context?: string) => unknown;
+  const source = [
+    { id: 'strike', name: 'Strike', rarity: 'Common', cost: 1, type: 'Attack', targeting: 'Enemy', tags: [], text: '', actions: [{ type: 'DealDamage', amount: 5 }] },
+  ];
+
+  assert.throws(
+    () => applyEntityOverrides(source, { strike: { cost: 'free' } }, 'cards', validateCardsData),
+    /cost/
+  );
+  assert.throws(
+    () => applyEntityOverrides(source, { strike: { $set: { 'stealthBonusActions.amount': 3 } } }, 'cards', validateCardsData),
+    /unknown patch path/
+  );
+});
+
+test('story event numeric defs reject nonnumeric and non-authorized fields', () => {
+  const applyStoryEventOverrides = (__numericSystemTesting as any).applyStoryEventOverrides as (
+    source: unknown[],
+    defs: Record<string, unknown>
+  ) => unknown[];
+  const source = [
+    { id: 'event_a', title: 'Event A', loreText: [], floorMin: 1, floorMax: 3, weight: 1, options: [] },
+  ];
+
+  assert.throws(
+    () => applyStoryEventOverrides(source, { event_a: { options: [] } }),
+    /options/
+  );
+  assert.throws(
+    () => applyStoryEventOverrides(source, { event_a: { weight: 'heavy' } }),
+    /weight/
+  );
+});
+
+test('entity maps reject duplicate ids instead of silently overwriting', () => {
+  const createEntityMap = (__numericSystemTesting as any).createEntityMap as (kind: string, items: Array<{ id: string }>) => Map<string, unknown>;
+
+  assert.throws(
+    () => createEntityMap('cards', [{ id: 'strike' }, { id: 'strike' }]),
+    /Duplicate cards id/
+  );
+});
+
+test('map runtime config is cached after schema validation', () => {
+  assert.strictEqual(getMapRuntimeConfig(), getMapRuntimeConfig());
 });

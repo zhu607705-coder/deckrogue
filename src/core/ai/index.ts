@@ -9,6 +9,7 @@ export * from '@/core/ai/statePerception';
 export * from '@/core/ai/combatMemory';
 export * from '@/core/ai/intentSelector';
 export * from '@/core/ai/selectEnemyIntent';
+export * from '@/core/ai/intentPolicy';
 export * from '@/core/ai/cooldowns';
 export * from '@/core/ai/intentTags';
 export * from '@/core/ai/AdaptiveBossAI';

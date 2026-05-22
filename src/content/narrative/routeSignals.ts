@@ -350,7 +350,7 @@ const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
     routeTag: 'informant:evidence',
     characterId: 'informant',
     label: '证据链',
-    supportRelicIds: ['ledger_mask', 'fatal_index', 'mirror shard', 'silver locket', 'cipher_lantern'],
+    supportRelicIds: ['ledger_mask', 'fatal_index', 'mirror_shard', 'silver_locket', 'cipher_lantern'],
   },
   'brute:strength': {
     routeTag: 'brute:strength',
@@ -410,7 +410,7 @@ const ROUTE_TAXONOMY_BY_TAG: Record<string, RouteTaxonomyEntry> = {
     routeTag: 'chronomancer:time_layer',
     characterId: 'chronomancer',
     label: '时间层链',
-    supportRelicIds: ['fractured hourglass', 'echo_buckle', 'dream_sheath', 'prophetic_eye', 'minute_censer'],
+    supportRelicIds: ['fractured_hourglass', 'echo_buckle', 'dream_sheath', 'prophetic_eye', 'minute_censer'],
   },
   'chronomancer:delay': {
     routeTag: 'chronomancer:delay',

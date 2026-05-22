@@ -11,13 +11,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { GameState } from '@/core/types';
-import { cardsData, getCardDefById, getRelicDefById } from '@/content/narrative/numericSystem';
+import { cardsData, getCardDefById, getRelicDefById, relicsData } from '@/content/narrative/numericSystem';
 import { createRunCardInstance } from '@/core/combat/runCardInstance';
 import { ActionManager } from '@/core/actions/actionManager';
 import { ActionFactoryV2, setupActionManager } from '@/core/actions/v2/ActionFactory';
 import { GameEngine } from '@/core/events/gameEngine';
 import { globalEventBus } from '@/core/events/eventBus';
-import { relicSystem } from '@/features/relics/relicSystem';
+import { RelicSystem, relicSystem } from '@/features/relics/relicSystem';
 
 function makeState(): GameState {
   return {
@@ -101,6 +101,17 @@ function addEnemy(state: GameState, statuses: Record<string, number> = {}) {
   } as NonNullable<GameState['combat']>['enemies'][number];
   state.combat!.enemies = [enemy];
   return enemy;
+}
+
+function withTemporaryRelicDefs<T>(defs: any[], run: () => T): T {
+  const data = relicsData as any[];
+  const originalLength = data.length;
+  data.push(...defs);
+  try {
+    return run();
+  } finally {
+    data.splice(originalLength);
+  }
 }
 
 test('ReturnLastCard creates a valid run-card instance and preserves temp cost override', () => {
@@ -224,14 +235,14 @@ test('legacy relic utility actions draw, heal, and fractured hourglass gains con
   const state = makeState();
   const manager = makeManager(state);
   const drawCard = getCardDefById('calculated_strike');
-  const hourglass = getRelicDefById('fractured hourglass');
+  const hourglass = getRelicDefById('fractured_hourglass');
   assert.ok(drawCard);
   assert.ok(hourglass);
   assert.equal(hourglass!.effect?.type, 'ConditionalEnergyGain');
   assert.equal(hourglass!.effect?.condition?.type, 'ResourceAmount');
   state.combat!.drawPile.push(createRunCardInstance(drawCard!, 'draw_heal_card'));
   state.combat!.player.hp = 10;
-  state.player.relics = ['fractured hourglass'];
+  state.player.relics = ['fractured_hourglass'];
   const player = state.player as typeof state.player & { command?: number; secondaryResources?: Record<string, number> };
   player.command = 1;
   player.secondaryResources = { command: 1 };
@@ -302,6 +313,233 @@ test('card-played relic events flush queued effects immediately', () => {
   globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
 
   assert.equal(state.combat!.player.block, 2);
+});
+
+test('JSON-defined relic events resolve on the event-bus path', () => {
+  withTemporaryRelicDefs([
+    {
+      id: 'json_card_play_block',
+      name: 'JSON Card Play Block',
+      description: 'Gain block on card played.',
+      price: 1,
+      trigger: 'CardPlayed',
+      tags: [],
+      effect: { type: 'GainBlock', amount: 5, target: 'Self' },
+    },
+  ], () => {
+    const state = makeState();
+    makeManager(state);
+    state.player.relics = ['json_card_play_block'];
+    relicSystem.bindStateTracker(() => state);
+
+    globalEventBus.publish({ type: 'CardPlayed', cardId: 'calculated_strike', cardType: 'Attack' } as any);
+
+    assert.equal(state.combat!.player.block, 5);
+  });
+});
+
+test('JSON-defined card-played wrappers trigger only on their configured card count', () => {
+  const state = makeState();
+  makeManager(state);
+  state.player.relics = ['echo_buckle'];
+  relicSystem.bindStateTracker(() => state);
+
+  state.combat!.player.cardsPlayedThisTurn = 4;
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'calculated_strike', cardType: 'Attack' } as any);
+  assert.equal(state.combat!.player.block, 4);
+
+  state.combat!.player.cardsPlayedThisTurn = 5;
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'calculated_strike', cardType: 'Attack' } as any);
+  assert.equal(state.combat!.player.block, 4);
+});
+
+test('JSON-defined RelicAcquired effects trigger only for the acquired relic itself', () => {
+  withTemporaryRelicDefs([
+    {
+      id: 'json_acquired_block',
+      name: 'JSON Acquired Block',
+      description: 'Gain block when this relic is acquired.',
+      price: 1,
+      trigger: 'RelicAcquired',
+      tags: [],
+      effect: { type: 'GainBlock', amount: 7, target: 'Self' },
+    },
+    {
+      id: 'json_other_pickup',
+      name: 'JSON Other Pickup',
+      description: 'Passive fixture relic.',
+      price: 1,
+      trigger: 'Passive',
+      tags: [],
+      effect: { type: 'Passive' },
+    },
+  ], () => {
+    const state = makeState();
+    makeManager(state);
+    state.player.relics = ['json_acquired_block'];
+    relicSystem.bindStateTracker(() => state);
+
+    globalEventBus.publish({ type: 'RelicAcquired', relicId: 'json_other_pickup' } as any);
+    assert.equal(state.combat!.player.block, 0);
+
+    globalEventBus.publish({ type: 'RelicAcquired', relicId: 'json_acquired_block' } as any);
+    assert.equal(state.combat!.player.block, 7);
+  });
+});
+
+test('relic event ordering uses data priority instead of pickup order', () => {
+  withTemporaryRelicDefs([
+    {
+      id: 'priority_late_relic',
+      name: 'Priority Late Relic',
+      description: 'Runs after the higher priority relic.',
+      price: 1,
+      trigger: 'CardPlayed',
+      tags: [],
+      priority: 0,
+      effect: { type: 'Passive' },
+    },
+    {
+      id: 'priority_early_relic',
+      name: 'Priority Early Relic',
+      description: 'Runs before the lower priority relic.',
+      price: 1,
+      trigger: 'CardPlayed',
+      tags: [],
+      priority: 10,
+      effect: { type: 'Passive' },
+    },
+  ], () => {
+    const state = makeState();
+    makeManager(state);
+    state.player.relics = ['priority_late_relic', 'priority_early_relic'];
+    relicSystem.bindStateTracker(() => state);
+
+    const order: string[] = [];
+    const effectMap = (relicSystem as any).relicEffects as Map<string, any[]>;
+    const previousLate = effectMap.get('priority_late_relic');
+    const previousEarly = effectMap.get('priority_early_relic');
+    effectMap.set('priority_late_relic', [{ trigger: 'CardPlayed', action: () => order.push('late') }]);
+    effectMap.set('priority_early_relic', [{ trigger: 'CardPlayed', action: () => order.push('early') }]);
+    try {
+      globalEventBus.publish({ type: 'CardPlayed', cardId: 'calculated_strike', cardType: 'Attack' } as any);
+    } finally {
+      if (previousLate) effectMap.set('priority_late_relic', previousLate);
+      else effectMap.delete('priority_late_relic');
+      if (previousEarly) effectMap.set('priority_early_relic', previousEarly);
+      else effectMap.delete('priority_early_relic');
+    }
+
+    assert.deepEqual(order, ['early', 'late']);
+  });
+});
+
+test('relic event dispatch isolates a throwing relic effect and still runs later relics', () => {
+  withTemporaryRelicDefs([
+    {
+      id: 'throwing_relic',
+      name: 'Throwing Relic',
+      description: 'Throws during event dispatch.',
+      price: 1,
+      trigger: 'CardPlayed',
+      tags: [],
+      priority: 10,
+      effect: { type: 'Passive' },
+    },
+    {
+      id: 'resilient_relic',
+      name: 'Resilient Relic',
+      description: 'Runs after the throwing relic.',
+      price: 1,
+      trigger: 'CardPlayed',
+      tags: [],
+      priority: 0,
+      effect: { type: 'Passive' },
+    },
+  ], () => {
+    const state = makeState();
+    makeManager(state);
+    state.player.relics = ['throwing_relic', 'resilient_relic'];
+    relicSystem.bindStateTracker(() => state);
+
+    const effectMap = (relicSystem as any).relicEffects as Map<string, any[]>;
+    const previousThrowing = effectMap.get('throwing_relic');
+    const previousResilient = effectMap.get('resilient_relic');
+    const originalError = console.error;
+    const errors: string[] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args.map(String).join(' '));
+    };
+    effectMap.set('throwing_relic', [{
+      trigger: 'CardPlayed',
+      action: () => {
+        throw new Error('fixture relic failure');
+      },
+    }]);
+    effectMap.set('resilient_relic', [{
+      trigger: 'CardPlayed',
+      action: (_state: GameState, _event: any, enqueueUrgent: any) => {
+        enqueueUrgent(ActionFactoryV2.createAction({ type: 'GainBlock', amount: 4, target: 'Self' }), {
+          source: 'relic_resilient_relic',
+        });
+      },
+    }]);
+    try {
+      globalEventBus.publish({ type: 'CardPlayed', cardId: 'calculated_strike', cardType: 'Attack' } as any);
+    } finally {
+      console.error = originalError;
+      if (previousThrowing) effectMap.set('throwing_relic', previousThrowing);
+      else effectMap.delete('throwing_relic');
+      if (previousResilient) effectMap.set('resilient_relic', previousResilient);
+      else effectMap.delete('resilient_relic');
+    }
+
+    assert.equal(state.combat!.player.block, 4);
+    assert.ok(errors.some((entry) => entry.includes('fixture relic failure')));
+  });
+});
+
+test('RelicSystem constructor is lazy until a state tracker is bound', () => {
+  const state = makeState();
+  makeManager(state);
+  state.player.relics = ['confessor_sigil'];
+  globalEventBus.clear();
+
+  const lazySystem = new RelicSystem(() => state);
+  const listeners = (globalEventBus as any).listeners as Map<string, unknown[]>;
+  assert.equal((listeners.get('CardPlayed') || []).length, 0);
+
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
+  assert.equal(state.combat!.player.block, 0);
+
+  lazySystem.bindStateTracker(() => state);
+  assert.ok((listeners.get('CardPlayed') || []).length > 0);
+
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
+  assert.equal(state.combat!.player.block, 2);
+
+  lazySystem.dispose();
+});
+
+test('exported relicSystem singleton is lazy until a state tracker is bound', () => {
+  const state = makeState();
+  makeManager(state);
+  state.player.relics = ['confessor_sigil'];
+  globalEventBus.clear();
+
+  const listeners = (globalEventBus as any).listeners as Map<string, unknown[]>;
+  assert.equal((listeners.get('CardPlayed') || []).length, 0);
+
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
+  assert.equal(state.combat!.player.block, 0);
+
+  relicSystem.bindStateTracker(() => state);
+  assert.ok((listeners.get('CardPlayed') || []).length > 0);
+
+  globalEventBus.publish({ type: 'CardPlayed', cardId: 'edict_mark', cardType: 'Skill' } as any);
+  assert.equal(state.combat!.player.block, 2);
+
+  relicSystem.dispose();
 });
 
 test('conditional payoff damage and next-debuff bonuses execute through the queue', () => {

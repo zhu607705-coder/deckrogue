@@ -15,6 +15,9 @@ import math
 from random import Random
 from typing import Any
 
+SECONDARY_RESOURCES = ("evidence", "rage", "command", "verdict", "seal")
+SPECIAL_RESOURCES = ("time_layer", "thread", "concoction")
+
 
 def _int32(value: int) -> int:
     value &= 0xFFFFFFFF
@@ -107,6 +110,7 @@ class RuleRuntime:
         if character is None:
             raise ValueError(f"Unknown character: {character_id}")
 
+        secondary_resources = {resource: 0 for resource in SECONDARY_RESOURCES}
         self._snapshot["player"] = {
             "character_id": character_id,
             "hp": int(character["max_hp"]),
@@ -115,6 +119,9 @@ class RuleRuntime:
             "intel": 0,
             "devotion": 0,
             "corruption": 0,
+            "secondary_resources": secondary_resources,
+            **secondary_resources,
+            **{resource: 0 for resource in SPECIAL_RESOURCES},
             "deck": list(character.get("starting_deck", [])),
             "relic_ids": [],
             "potion_ids": [],
@@ -1762,6 +1769,9 @@ class RuleRuntime:
                 "intel": 0,
                 "devotion": 0,
                 "corruption": 0,
+                "secondary_resources": {resource: 0 for resource in SECONDARY_RESOURCES},
+                **{resource: 0 for resource in SECONDARY_RESOURCES},
+                **{resource: 0 for resource in SPECIAL_RESOURCES},
                 "deck": [],
                 "relic_ids": [],
                 "potion_ids": [],

@@ -31,6 +31,36 @@ export interface DamageContext {
   ignoreBlock: boolean;
 }
 
+type StatusMergeMode = 'additive' | 'stacking_duration' | 'refresh';
+
+const STATUS_MERGE_MODES: Record<string, StatusMergeMode> = {
+  Vulnerable: 'stacking_duration',
+  Weak: 'stacking_duration',
+  Frail: 'stacking_duration',
+  Fear: 'stacking_duration',
+  Regen: 'stacking_duration',
+  Energized: 'stacking_duration',
+  Berserk: 'stacking_duration',
+  BlockBlocked: 'stacking_duration',
+  Stealth: 'refresh',
+  SkipDraw: 'refresh',
+  Intangible: 'refresh',
+  Strength: 'additive',
+  Dexterity: 'additive',
+  Poison: 'additive',
+  Burn: 'additive',
+  Corruption: 'additive',
+};
+
+function mergeStatusValue(currentValue: unknown, amount: number, mode: StatusMergeMode): number {
+  const current = Math.max(0, Math.floor(Number(currentValue || 0)));
+  const delta = Math.floor(amount);
+  if (!Number.isFinite(delta)) return current;
+  if (delta <= 0) return Math.max(0, current + delta);
+  if (mode === 'refresh') return Math.max(current, delta);
+  return Math.max(0, current + delta);
+}
+
 export class CombatSystem {
   private damageModifiers: Map<string, DamageModifier[]> = new Map();
 
@@ -251,6 +281,10 @@ export class CombatSystem {
 
   public applyStatus(state: GameState, targetType: 'player' | 'enemy', targetId: string, status: string, amount: number): void {
     if (!state.combat) return;
+    if (!Number.isFinite(amount)) {
+      console.error('[CombatSystem] Illegal status amount:', { targetType, targetId, status, amount });
+      return;
+    }
 
     let target: any;
     if (targetType === 'player') {
@@ -261,11 +295,8 @@ export class CombatSystem {
 
     if (!target) return;
 
-    target.statuses[status] = (target.statuses[status] || 0) + amount;
-
-    if (target.statuses[status] < 0) {
-      target.statuses[status] = 0;
-    }
+    const mode = STATUS_MERGE_MODES[status] || 'stacking_duration';
+    target.statuses[status] = mergeStatusValue(target.statuses[status], amount, mode);
 
     globalEventBus.publish({
       type: 'StatusApplied',
@@ -304,11 +335,12 @@ export class CombatSystem {
       });
     }
     target.block = nextBlock;
+    const gainedAmount = Math.max(0, nextBlock - previousBlock);
     if (targetType === 'player') {
-      target.blockGainedThisTurn = Math.max(0, Number(target.blockGainedThisTurn || 0)) + Math.max(0, nextBlock - previousBlock);
+      target.blockGainedThisTurn = Math.max(0, Number(target.blockGainedThisTurn || 0)) + gainedAmount;
     }
 
-    globalEventBus.publish({ type: 'BlockGained', amount, targetType, targetId } as any);
+    globalEventBus.publish({ type: 'BlockGained', amount: gainedAmount, targetType, targetId } as any);
   }
 
   public processTurnEnd(state: GameState, playerTurn: boolean): void {

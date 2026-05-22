@@ -80,6 +80,18 @@ export class SaveManager {
   private static readonly SETTINGS_KEY = 'deckrogue_settings';
   private static readonly UNLOCKS_KEY = 'deckrogue_unlocks';
   private static readonly STATS_KEY = 'deckrogue_stats';
+  private static readonly DIFFICULTY_PROFILE_KEY = 'deckrogue_difficulty_profile';
+  private static readonly RECENT_RUNS_KEY = 'deckrogue_recent_runs';
+  private static readonly USER_DATA_KEYS = new Set([
+    SaveManager.SETTINGS_KEY,
+    SaveManager.UNLOCKS_KEY,
+    SaveManager.STATS_KEY,
+    SaveManager.DIFFICULTY_PROFILE_KEY,
+    SaveManager.RECENT_RUNS_KEY,
+    'deckrogue_meta_profile_v1',
+    'deckrogue_codex_profile_v1',
+  ]);
+  private static readonly SAVE_MIGRATIONS: Record<string, (data: SaveData) => SaveData> = {};
 
   private currentRunStartTime: number = 0;
   private accumulatedPlayTime: number = 0;
@@ -239,7 +251,11 @@ export class SaveManager {
       if (!data) return null;
 
       const slot = this.getSaveSlot(slotId);
-      if (slot?.checksum && slot.checksum !== this.calculateChecksum(data)) {
+      if (!slot?.checksum) {
+        globalEventBus.publish({ type: 'LoadFailed', error: 'Save checksum missing' });
+        return null;
+      }
+      if (slot.checksum !== this.calculateChecksum(data)) {
         globalEventBus.publish({ type: 'LoadFailed', error: 'Save checksum mismatch' });
         return null;
       }
@@ -486,8 +502,7 @@ export class SaveManager {
 
   loadDifficultyProfile(): DifficultyProfile | null {
     try {
-      const key = 'deckrogue_difficulty_profile';
-      const data = localStorage.getItem(key);
+      const data = localStorage.getItem(SaveManager.DIFFICULTY_PROFILE_KEY);
       if (!data) return null;
 
       const saved = JSON.parse(data);
@@ -514,8 +529,7 @@ export class SaveManager {
   private persistDifficultyProfile(): void {
     if (!this.difficultyProfileData) return;
     try {
-      const key = 'deckrogue_difficulty_profile';
-      localStorage.setItem(key, JSON.stringify(this.difficultyProfileData));
+      localStorage.setItem(SaveManager.DIFFICULTY_PROFILE_KEY, JSON.stringify(this.difficultyProfileData));
     } catch (error) {
       console.error('Failed to persist difficulty profile:', error);
     }
@@ -549,8 +563,7 @@ export class SaveManager {
   private persistRecentRuns(): void {
     if (!this.recentRunsData) return;
     try {
-      const key = 'deckrogue_recent_runs';
-      localStorage.setItem(key, JSON.stringify(this.recentRunsData));
+      localStorage.setItem(SaveManager.RECENT_RUNS_KEY, JSON.stringify(this.recentRunsData));
     } catch (error) {
       console.error('Failed to persist recent runs:', error);
     }
@@ -603,16 +616,14 @@ export class SaveManager {
       return null;
     }
 
-    const versionParts = oldData.version.split('.').map(Number);
-    const currentParts = SaveManager.SAVE_VERSION.split('.').map(Number);
-
-    if (versionParts.length > 0 && currentParts.length > 0 && versionParts[0] < currentParts[0]) {
-      globalEventBus.publish({ type: 'LoadFailed', error: 'Major version mismatch, cannot migrate' });
+    const migration = SaveManager.SAVE_MIGRATIONS[oldData.version];
+    if (!migration) {
+      globalEventBus.publish({ type: 'LoadFailed', error: `Unsupported save version: ${oldData.version}` });
       return null;
     }
 
     return {
-      ...oldData,
+      ...migration(oldData),
       version: SaveManager.SAVE_VERSION
     };
   }
@@ -658,27 +669,62 @@ export class SaveManager {
     }
   }
 
-  // ==================== Clear All Data ====================
+  // ==================== Data Clearing ====================
 
-  clearAllData(): boolean {
-    try {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith('deckrogue_')) {
-          keysToRemove.push(key);
-        }
+  private isSaveStorageKey(key: string): boolean {
+    return key === SaveManager.SLOTS_KEY || key.startsWith(SaveManager.SAVE_KEY_PREFIX);
+  }
+
+  private removeStorageKeys(predicate: (key: string) => boolean): void {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && predicate(key)) {
+        keysToRemove.push(key);
       }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  }
 
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-
-      globalEventBus.publish({ type: 'AllDataCleared' });
-
+  clearActiveSaves(): boolean {
+    try {
+      this.removeStorageKeys(key => this.isSaveStorageKey(key));
+      globalEventBus.publish({ type: 'ActiveSavesCleared' });
       return true;
     } catch (error) {
-      console.error('Failed to clear all data:', error);
+      console.error('Failed to clear active saves:', error);
       return false;
     }
+  }
+
+  clearAllUserData(): boolean {
+    try {
+      this.removeStorageKeys(key => this.isSaveStorageKey(key) || SaveManager.USER_DATA_KEYS.has(key));
+      this.difficultyProfileData = null;
+      this.recentRunsData = null;
+      globalEventBus.publish({ type: 'UserDataCleared' });
+      return true;
+    } catch (error) {
+      console.error('Failed to clear user data:', error);
+      return false;
+    }
+  }
+
+  factoryReset(): boolean {
+    try {
+      this.removeStorageKeys(key => key.startsWith('deckrogue_'));
+      this.difficultyProfileData = null;
+      this.recentRunsData = null;
+      globalEventBus.publish({ type: 'FactoryReset' });
+      return true;
+    } catch (error) {
+      console.error('Failed to factory reset data:', error);
+      return false;
+    }
+  }
+
+  clearAllData(): boolean {
+    return this.factoryReset();
   }
 
   // ==================== Play Time Tracking ====================

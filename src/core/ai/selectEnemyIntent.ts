@@ -12,6 +12,7 @@ import type { ActionSpec, GameState, RunCardInstance } from '@/core/types';
 
 import { combatMemory, type PlayerPatternAnalysis } from '@/core/ai/combatMemory';
 import { handKnowledgeSystem } from '@/core/ai/handKnowledge';
+import { parseIntentPolicyWeight, resolveIntentPolicyList } from '@/core/ai/intentPolicy';
 import { intentTagger } from '@/core/ai/intentTags';
 import {
   intentSelector,
@@ -343,12 +344,13 @@ function applyIntentProfile(
   perception: EnemyPerceptionSnapshot,
 ): EnemyDefBase {
   const profile = enemyDef.ai_profile;
-  if (!profile || !Array.isArray(enemyDef.intent_policy)) {
+  const intentPolicy = resolveIntentPolicyList(enemyDef);
+  if (!profile || intentPolicy.length === 0) {
     return enemyDef;
   }
 
-  const adjustedPolicies = enemyDef.intent_policy.map((policy) => {
-    let weight = Math.max(0, Number(policy.weight) || 0);
+  const adjustedPolicies = intentPolicy.map((policy) => {
+    let weight = parseIntentPolicyWeight(policy.weight, enemyDef.id, policy.intent);
 
     for (const rule of profile.intentBiases || []) {
       if (rule.intent !== policy.intent) continue;

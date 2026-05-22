@@ -86,6 +86,11 @@ export class ActionQueue {
       return;
     }
     this.queue.sort((a, b) => {
+      const aIsFront = a.sequence < 0;
+      const bIsFront = b.sequence < 0;
+      if (aIsFront !== bIsFront) {
+        return aIsFront ? -1 : 1;
+      }
       if (b.priority !== a.priority) {
         return b.priority - a.priority;
       }
@@ -93,13 +98,17 @@ export class ActionQueue {
     });
   }
 
-  enqueue(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
-    const queuedAction = this.createQueuedAction(action, context, priority, 'back');
-
+  private trimForCapacity(): void {
     if (this.queue.length >= this.config.maxQueueSize) {
       console.warn('Action queue is full, dropping oldest action');
       this.queue.shift();
     }
+  }
+
+  enqueue(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
+    const queuedAction = this.createQueuedAction(action, context, priority, 'back');
+
+    this.trimForCapacity();
 
     this.queue.push(queuedAction);
     this.sortQueue();
@@ -114,6 +123,7 @@ export class ActionQueue {
   pushBack(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
     const queuedAction = this.createQueuedAction(action, context, priority, 'back');
 
+    this.trimForCapacity();
     this.queue.push(queuedAction);
     this.sortQueue();
 
@@ -123,7 +133,9 @@ export class ActionQueue {
   pushFront(action: IAction, context: IActionContext = { source: 'player' }, priority: number = 0): ActionId {
     const queuedAction = this.createQueuedAction(action, context, priority, 'front');
 
+    this.trimForCapacity();
     this.queue.unshift(queuedAction);
+    this.sortQueue();
     return queuedAction.id;
   }
 

@@ -29,15 +29,28 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
   const canHeal = roomSummary?.canHeal ?? (player.hp < player.maxHp);
   const canUpgrade = roomSummary?.canUpgrade ?? player.deck.some(c => !c.isUpgraded && c.upgrade);
   const canEnchant = roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!(c as any).persistentEnchantments || (c as any).persistentEnchantments.length === 0));
-  const canUpgradeRelic = RELIC_UPGRADE_CONFIGS.some(config => player.relics.includes(config.relicId));
+  const canUpgradeRelic = roomSummary?.canRelicUpgrade ?? RELIC_UPGRADE_CONFIGS.some(config => player.relics.includes(config.relicId));
   const [mixA, setMixA] = useState<number>(0);
   const [mixB, setMixB] = useState<number>(1);
-  const potionChoices = player.potions.map((id, idx) => ({
+  const runtimePotionChoices = roomSummary?.potions?.map((potion, idx) => ({
+    index: idx,
+    id: potion.id,
+    label: potion.name,
+    description: potion.description,
+    def: (potionsData as any[]).find(p => p.id === potion.id),
+  })) ?? [];
+  const legacyPotionChoices = player.potions.map((id, idx) => ({
     index: idx,
     id,
+    label: undefined as string | undefined,
+    description: undefined as string | undefined,
     def: (potionsData as any[]).find(p => p.id === id)
   }));
-  const canMix = (roomSummary?.canMix ?? (player.potions.length >= 2)) && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
+  const potionChoices = runtimePotionChoices.length > 0 ? runtimePotionChoices : legacyPotionChoices;
+  const canMix = (roomSummary?.canMix ?? (player.potions.length >= 2))
+    && mixA !== mixB
+    && !!potionChoices[mixA]
+    && !!potionChoices[mixB];
   const restRouteAdvice = buildRestRouteAdvice({
     characterId: engine.state.character?.id,
     deck: player.deck,
@@ -209,7 +222,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
             >
               {potionChoices.map(p => (
                 <option key={`a_${p.index}`} value={p.index}>
-                  {p.def?.name || p.id}
+                  {p.label || p.def?.name || p.id}
                 </option>
               ))}
             </select>
@@ -224,7 +237,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
             >
               {potionChoices.map(p => (
                 <option key={`b_${p.index}`} value={p.index}>
-                  {p.def?.name || p.id}
+                  {p.label || p.def?.name || p.id}
                 </option>
               ))}
             </select>
@@ -243,7 +256,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
                 ? 'bg-emerald-900/40 border-emerald-500 text-emerald-300 hover:bg-emerald-900/60'
                 : 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
             }`}
-            data-keyboard-option="4"
+            data-keyboard-option="6"
             data-keyboard-focus="true"
           >
             <Sparkles size={16} /> 蒸馏配方

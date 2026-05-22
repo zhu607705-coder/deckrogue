@@ -82,6 +82,47 @@ test('ActionQueue keeps deterministic order for front inserts and equal-priority
   assert.deepEqual(order, ['front-2', 'front-1', 'base-1', 'base-2', 'base-3']);
 });
 
+test('ActionQueue executes front-inserted urgent actions before later high-priority back entries', () => {
+  const queue = new ActionQueue();
+  const order: string[] = [];
+  const state = makeState();
+
+  class MockAction implements IAction {
+    constructor(readonly type: string, private readonly label: string) {}
+    execute(): void {
+      order.push(this.label);
+    }
+  }
+
+  queue.pushFront(new MockAction('Urgent', 'urgent'), { source: 'system' }, 0);
+  queue.enqueue(new MockAction('HighPriority', 'high-priority'), { source: 'player' }, 99);
+
+  queue.processQueue(state);
+
+  assert.deepEqual(order, ['urgent', 'high-priority']);
+});
+
+test('ActionQueue applies maxQueueSize consistently to front and back insertion APIs', () => {
+  const queue = new ActionQueue({
+    maxQueueSize: 2,
+    processingMode: 'sequential',
+    priorityOrder: 'priority',
+  });
+
+  class MockAction implements IAction {
+    constructor(readonly type: string) {}
+    execute(): void {}
+  }
+
+  queue.enqueue(new MockAction('BaseOne'), { source: 'player' }, 0);
+  queue.pushBack(new MockAction('BaseTwo'), { source: 'player' }, 0);
+  queue.pushFront(new MockAction('UrgentThree'), { source: 'system' }, 0);
+
+  const snapshot = queue.getQueueSnapshot();
+  assert.equal(snapshot.length, 2);
+  assert.deepEqual(snapshot.map((entry) => entry.action.type), ['UrgentThree', 'BaseTwo']);
+});
+
 test('ActionManager publishes ActionStart and ActionEnd with real execution context metadata', () => {
   const manager = new ActionManager(makeState());
   const starts: Array<Extract<GameEvent, { type: 'ActionStart' }>> = [];

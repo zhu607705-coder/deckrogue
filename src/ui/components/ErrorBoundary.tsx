@@ -58,10 +58,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           }}
         >
           <h2 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>
-            Something went wrong
+            界面渲染异常
           </h2>
           <p style={{ color: '#888', marginBottom: '1rem' }}>
-            {this.state.error?.message || 'An unexpected error occurred'}
+            {this.state.error?.message || '发生了未预期的界面错误'}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
@@ -74,7 +74,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               cursor: 'pointer',
             }}
           >
-            Try Again
+            重试
           </button>
         </div>
       );

@@ -181,6 +181,23 @@ function buildStoryEventOptions(engine: GameEngine): EventOptionVm[] {
   const def = getStoryEventDef(event.id);
   if (!def) return [];
 
+  if (event.stage === 'generic_relic_choice') {
+    const offeredRelicIds = Array.isArray(event.data?.offeredRelicIds)
+      ? event.data.offeredRelicIds.map(String)
+      : [];
+    return offeredRelicIds.map((relicId) => {
+      const relic = relicsData.find((entry) => entry.id === relicId);
+      return {
+        id: `generic_relic:${relicId}`,
+        text: `[选择] ${relic?.name ?? relicId}`,
+        description: relic?.description ?? relicId,
+        gains: ['获得该遗物'],
+        costs: [],
+        danger: relic?.corrupted ? 'medium' : 'low',
+      };
+    });
+  }
+
   if (event.id === 'rusting_medicae' && event.stage === 'salvage_aftermath') {
     const fightCopy = getStoryEventOptionPresentation(event.id, 'medicae_salvage_fight', engine.state);
     const fleeCopy = getStoryEventOptionPresentation(event.id, 'medicae_salvage_flee', engine.state);

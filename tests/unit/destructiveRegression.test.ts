@@ -14,6 +14,8 @@ import type { GameState, RunCardInstance } from '@/core/types';
 import { ActionQueue } from '@/core/actions/actionQueue';
 import { ActionFactoryV2 } from '@/core/actions/v2/ActionFactory';
 import { combatSystem } from '@/core/combat/combatSystem';
+import { globalEventBus, type GameEvent } from '@/core/events/eventBus';
+import { stateRandom } from '@/infrastructure/rng/stateRandom';
 
 function makeCard(id: string, instanceId: string): RunCardInstance {
   return {
@@ -180,6 +182,25 @@ test('destructive: negative block grants should not underflow block below zero',
   assert.equal(state.combat!.player.block, 0);
 });
 
+test('destructive: negative block grants publish the actual non-negative gained amount', () => {
+  const state = makeState();
+  const events: Array<Extract<GameEvent, { type: 'BlockGained' }>> = [];
+  const unsubscribe = globalEventBus.subscribe('BlockGained', (event) => {
+    events.push(event as Extract<GameEvent, { type: 'BlockGained' }>);
+  });
+  state.combat!.player.block = 5;
+
+  try {
+    combatSystem.gainBlock(state, 'player', 'player', -10);
+  } finally {
+    unsubscribe();
+  }
+
+  assert.equal(state.combat!.player.block, 0);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].amount, 0);
+});
+
 test('destructive: extreme energy gain should stay finite and deterministic', () => {
   const state = makeState();
   const action = ActionFactoryV2.createAction({ type: 'ModifyEnergy', amount: 999 });
@@ -197,4 +218,42 @@ test('destructive: extreme status reduction should clamp to zero', () => {
   combatSystem.applyStatus(state, 'enemy', 'boss_extreme', 'Vulnerable', -5000);
 
   assert.equal(state.combat!.enemies[0].statuses.Vulnerable, 0);
+});
+
+test('destructive: status schema separates stacking duration, additive, and refresh statuses', () => {
+  const state = makeState();
+  const enemy = state.combat!.enemies[0];
+
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Vulnerable', 2);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Vulnerable', 2);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Vulnerable', -1);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Weak', 1);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Weak', 1);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Strength', 2);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Strength', 3);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Poison', 2);
+  combatSystem.applyStatus(state, 'enemy', enemy.id, 'Poison', 3);
+  combatSystem.applyStatus(state, 'player', 'player', 'Stealth', 1);
+  combatSystem.applyStatus(state, 'player', 'player', 'Stealth', 1);
+
+  assert.equal(enemy.statuses.Vulnerable, 3);
+  assert.equal(enemy.statuses.Weak, 2);
+  assert.equal(enemy.statuses.Strength, 5);
+  assert.equal(enemy.statuses.Poison, 5);
+  assert.equal(state.combat!.player.statuses.Stealth, 1);
+});
+
+test('destructive: cloned states derive deterministic RNG instead of falling back to system entropy', () => {
+  const source = makeState();
+  source.seed = 12345;
+  source.rngState = 67890;
+  const cloneA = JSON.parse(JSON.stringify(source)) as GameState;
+  const cloneB = JSON.parse(JSON.stringify(source)) as GameState;
+
+  const rollA = stateRandom(cloneA);
+  const rollB = stateRandom(cloneB);
+
+  assert.equal(rollA, rollB);
+  assert.equal(cloneA.rngState, cloneB.rngState);
+  assert.notEqual(cloneA.rngState, source.rngState);
 });

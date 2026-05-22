@@ -10,6 +10,7 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { RunGenerator } from '@/core/events/runGenerator';
+import { STORY_EVENTS } from '@/content/narrative/numericSystem';
 import { REACHABILITY_CONFIG } from './fixtures/contentReachabilityConfig';
 
 const REPORT_DIR = 'reports/content';
@@ -39,6 +40,9 @@ interface ChapterPoolAnalysis {
   chapter1Pool: string[];
   chapter2Pool: string[];
   chapter3Pool: string[];
+  chapter1EventPool: string[];
+  chapter2EventPool: string[];
+  chapter3EventPool: string[];
   hasChapterSpecificEnemies: boolean;
   hasChapterSpecificEvents: boolean;
   brokenEdges: string[];
@@ -142,7 +146,6 @@ function analyzeMirrorFlow(): MirrorFlowAnalysis {
 }
 
 function analyzeChapterPools(): ChapterPoolAnalysis {
-  const mirrorEvents = loadMirrorEventsFromData();
   const enemies = loadJsonFile('src/content/data/enemies.json');
   const enemyEntries = Array.isArray(enemies)
     ? enemies as Array<{ id?: string; chapterUnlock?: number }>
@@ -151,12 +154,22 @@ function analyzeChapterPools(): ChapterPoolAnalysis {
     .filter((enemy) => Number(enemy.chapterUnlock ?? 1) === chapter && typeof enemy.id === 'string')
     .map((enemy) => enemy.id!)
     .slice(0, 3);
+  const storyEventIdsForChapter = (chapter: number) => {
+    const [floorMin, floorMax] = chapter === 1 ? [1, 10] : chapter === 2 ? [11, 18] : [19, 26];
+    return STORY_EVENTS
+      .filter((event) => Number(event.floorMin ?? 1) <= floorMax && Number(event.floorMax ?? 1) >= floorMin)
+      .map((event) => event.id)
+      .sort();
+  };
   const analysis: ChapterPoolAnalysis = {
     chapter1Pool: idsForChapter(1),
     chapter2Pool: idsForChapter(2),
     chapter3Pool: idsForChapter(3),
+    chapter1EventPool: storyEventIdsForChapter(1),
+    chapter2EventPool: storyEventIdsForChapter(2),
+    chapter3EventPool: storyEventIdsForChapter(3),
     hasChapterSpecificEnemies: false,
-    hasChapterSpecificEvents: mirrorEvents.length >= 14,
+    hasChapterSpecificEvents: false,
     brokenEdges: [],
   };
 
@@ -164,6 +177,10 @@ function analyzeChapterPools(): ChapterPoolAnalysis {
     analysis.chapter1Pool.length > 0 &&
     analysis.chapter2Pool.length > 0 &&
     analysis.chapter3Pool.length > 0;
+  analysis.hasChapterSpecificEvents =
+    analysis.chapter1EventPool.length > 0 &&
+    analysis.chapter2EventPool.length > 0 &&
+    analysis.chapter3EventPool.length > 0;
 
   if (!analysis.hasChapterSpecificEnemies) {
     analysis.brokenEdges.push('no_chapter_specific_enemy_definitions');
@@ -303,6 +320,9 @@ async function main(): Promise<void> {
   console.log(`  Chapter 1 pool: ${chapterPools.chapter1Pool.join(', ')}`);
   console.log(`  Chapter 2 pool: ${chapterPools.chapter2Pool.join(', ')}`);
   console.log(`  Chapter 3 pool: ${chapterPools.chapter3Pool.join(', ')}`);
+  console.log(`  Chapter 1 events (${chapterPools.chapter1EventPool.length}): ${chapterPools.chapter1EventPool.join(', ')}`);
+  console.log(`  Chapter 2 events (${chapterPools.chapter2EventPool.length}): ${chapterPools.chapter2EventPool.join(', ')}`);
+  console.log(`  Chapter 3 events (${chapterPools.chapter3EventPool.length}): ${chapterPools.chapter3EventPool.join(', ')}`);
   if (chapterPools.brokenEdges.length > 0) {
     console.log(`  Broken edges: ${chapterPools.brokenEdges.join(', ')}`);
   }

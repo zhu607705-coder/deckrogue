@@ -13,7 +13,9 @@ import assert from 'node:assert/strict';
 import type { GameState } from '@/core/types';
 import { GameEngine } from '@/core/events/gameEngine';
 import { createRunCardInstance } from '@/core/combat/runCardInstance';
+import { TargetingService } from '@/core/combat/targetingService';
 import { getCardDefById } from '@/content/narrative/numericSystem';
+import { combatMemory } from '@/core/ai';
 
 function makeState(): GameState {
   return {
@@ -151,6 +153,30 @@ test('enemy variants can apply player debuffs during the active enemy turn path'
   assert.equal(engine.state.combat?.player.statuses.Vulnerable, 2);
   assert.equal(engine.state.combat?.player.hp, 14);
   engine.dispose();
+});
+
+test('real enemy turns write enemy combat memory records', async () => {
+  combatMemory.clear();
+  const engine = new GameEngine(40101, null, { enableRuntimeDelegation: false });
+  const state = makeState();
+  state.combat!.enemies = [state.combat!.enemies[0]];
+  (engine as any).state = state;
+
+  try {
+    await engine.executeEnemyTurn();
+
+    const recent = combatMemory.getRecentRecords(1);
+    const enemyRecord = recent.find((record) => record.actor === 'enemy');
+
+    assert.ok(enemyRecord);
+    assert.equal(enemyRecord.enemyId, 'enemy_variant_1');
+    assert.equal(enemyRecord.intent, 'mark_prey');
+    assert.ok((enemyRecord.damageDealt || 0) > 0);
+    assert.equal(combatMemory.getTotalDamageTakenByPlayer(), enemyRecord.damageDealt);
+  } finally {
+    engine.dispose();
+    combatMemory.clear();
+  }
 });
 
 test('enemy variants can gain self block and self buffs during the active enemy turn path', async () => {
@@ -351,4 +377,39 @@ test('enemy target resolver separates all enemies, allies, and explicit enemy id
   manager.executeEnemyActionSpec(caster, { type: 'Heal', target: 'ally', amount: 4 });
   assert.equal(ally.hp, 12);
   engine.dispose();
+});
+
+test('target resolver treats the player as the player-side AllAllies target', () => {
+  const state = makeState();
+  const targets = TargetingService.resolveTargets(state, { source: 'player' }, 'AllAllies');
+
+  assert.deepEqual(targets.map((target) => `${target.type}:${target.id}`), ['player:player']);
+});
+
+test('target resolver lets enemy RandomEnemy select living enemy-side allies', () => {
+  const state = makeState();
+  state.combat!.enemies = [
+    {
+      ...state.combat!.enemies[0],
+      id: 'caster',
+      hp: 12,
+      statuses: {},
+    },
+    {
+      ...state.combat!.enemies[1],
+      id: 'ally',
+      hp: 8,
+      statuses: {},
+    },
+    {
+      ...state.combat!.enemies[2],
+      id: 'dead_ally',
+      hp: 0,
+      statuses: {},
+    },
+  ];
+
+  const targets = TargetingService.resolveTargets(state, { source: 'caster' }, 'RandomEnemy');
+
+  assert.deepEqual(targets.map((target) => `${target.type}:${target.id}`), ['enemy:ally']);
 });

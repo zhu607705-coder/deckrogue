@@ -37,7 +37,7 @@ interface DeadFileReport {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const TEXT_EXTENSIONS = new Set([

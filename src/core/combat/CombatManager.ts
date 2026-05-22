@@ -435,7 +435,9 @@ export class CombatManager {
 
   private handleCombatVictory(): void {
     const state = this.deps.getState();
-    if (!state.combat) return;
+    const combat = state.combat as (NonNullable<GameState['combat']> & { victoryResolved?: boolean }) | null;
+    if (!combat || combat.victoryResolved) return;
+    combat.victoryResolved = true;
 
     this.deps.appendVoxLog(`战斗胜利！`);
 

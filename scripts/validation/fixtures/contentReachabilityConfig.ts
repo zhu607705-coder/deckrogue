@@ -41,14 +41,14 @@ export const REACHABILITY_CONFIG: ReachabilityConfig = {
     'shard_harvest',
   ],
   mirrorRelicIds: [
-    'mirror shard',
-    'silver locket',
-    'fractured hourglass',
+    'mirror_shard',
+    'silver_locket',
+    'fractured_hourglass',
   ],
   mirrorHighValueRelicIds: [
-    'mirror shard',
-    'silver locket',
-    'fractured hourglass',
+    'mirror_shard',
+    'silver_locket',
+    'fractured_hourglass',
   ],
   mirrorEnemyIds: [
     'mirror scout',

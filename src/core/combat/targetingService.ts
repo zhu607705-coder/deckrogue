@@ -79,7 +79,12 @@ export class TargetingService {
           }
           return [];
         }
-        return [{ entity: combat.player, type: 'player', id: 'player' }];
+        const aliveAllies = combat.enemies.filter(e => e.hp > 0 && e.id !== context.source);
+        if (aliveAllies.length > 0) {
+          const randomAlly = aliveAllies[stateRandomInt(state, aliveAllies.length)];
+          return [{ entity: randomAlly, type: 'enemy', id: randomAlly.id }];
+        }
+        return [];
       }
 
       case 'Player': {
@@ -92,7 +97,7 @@ export class TargetingService {
             .filter(e => e.hp > 0 && e.id !== context.source)
             .map(e => ({ entity: e, type: 'enemy' as const, id: e.id }));
         }
-        return [];
+        return [{ entity: combat.player, type: 'player', id: 'player' }];
       }
 
       default:

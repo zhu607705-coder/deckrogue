@@ -65,8 +65,8 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
   }
 
   async dispatch(command: RuleCommand): Promise<RuleSnapshot> {
-    if (!this.pyodide) {
-      await this.ensurePyodide();
+    if (!this.snapshot) {
+      await this.start();
     }
 
     if (!this.pyodide) {

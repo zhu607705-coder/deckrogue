@@ -25,6 +25,44 @@ export interface RelicEffect {
   action: (state: GameState, event: GameEvent, enqueueUrgent: any) => void;
 }
 
+type RelicDefinition = (typeof relicsData)[number] & {
+  priority?: number;
+  trigger?: string;
+  condition?: any;
+  effect?: any;
+};
+
+type RelicEnqueue = (actionOrSpec: any, context: any) => void;
+type GenericActionSpec = Record<string, any>;
+
+const GENERIC_RELIC_TRIGGER_MAP: Record<string, string> = {
+  StartCombat: 'CombatStart',
+  EndCombat: 'CombatEnd',
+  CombatStart: 'CombatStart',
+  CombatEnd: 'CombatEnd',
+  StartTurn: 'TurnStart',
+  EndTurn: 'TurnEnd',
+  StartOfTurn: 'TurnStart',
+  EndOfTurn: 'TurnEnd',
+  TurnStart: 'TurnStart',
+  TurnEnd: 'TurnEnd',
+  CardPlayed: 'CardPlayed',
+  OnCardPlayed: 'CardPlayed',
+  OnPlayCard: 'CardPlayed',
+  DamageReceived: 'DamageReceived',
+  OnTakeDamage: 'DamageReceived',
+  TriggerOnDamageTaken: 'DamageReceived',
+  RouteResourceGained: 'RouteResourceGained',
+  OnResourceGain: 'RouteResourceGained',
+  TriggerOnResourceGain: 'RouteResourceGained',
+  OnGainResource: 'RouteResourceGained',
+  RouteResourceSpent: 'RouteResourceSpent',
+  OnResourceSpent: 'RouteResourceSpent',
+  OnSpendResource: 'RouteResourceSpent',
+  OnFirstResourceSpend: 'RouteResourceSpent',
+  RelicAcquired: 'RelicAcquired',
+};
+
 export class RelicSystem {
   private relicEffects: Map<string, RelicEffect[]> = new Map();
   private getState: () => GameState;
@@ -33,12 +71,15 @@ export class RelicSystem {
   constructor(getStateTracker: () => GameState) {
     this.getState = getStateTracker;
     this.initializeRelicEffects();
-    this.setupEventListeners();
   }
 
   public bindStateTracker(getStateTracker: () => GameState): void {
     this.getState = getStateTracker;
     this.setupEventListeners();
+  }
+
+  public dispose(): void {
+    this.eventDisposables.splice(0).forEach((dispose) => dispose());
   }
 
   private initializeRelicEffects() {
@@ -283,8 +324,169 @@ export class RelicSystem {
     ]);
   }
 
+  private getRelicDefinition(relicId: string): RelicDefinition | undefined {
+    return relicsData.find(r => r.id === relicId) as RelicDefinition | undefined;
+  }
+
+  private getRelicRegistrationIndex(relicId: string): number {
+    const index = relicsData.findIndex(r => r.id === relicId);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  }
+
+  private getRelicPriority(relicId: string): number {
+    return Math.floor(Number(this.getRelicDefinition(relicId)?.priority || 0));
+  }
+
+  private getOrderedRelicIds(relicIds: string[]): string[] {
+    return [...relicIds].sort((left, right) => {
+      const priorityDelta = this.getRelicPriority(right) - this.getRelicPriority(left);
+      if (priorityDelta !== 0) return priorityDelta;
+
+      const registrationDelta = this.getRelicRegistrationIndex(left) - this.getRelicRegistrationIndex(right);
+      if (registrationDelta !== 0) return registrationDelta;
+
+      return left.localeCompare(right);
+    });
+  }
+
+  private normalizeGenericTrigger(relic: RelicDefinition): string | null {
+    const explicitTrigger = String(relic.trigger || '');
+    if (explicitTrigger && explicitTrigger !== 'Passive') {
+      return GENERIC_RELIC_TRIGGER_MAP[explicitTrigger] || explicitTrigger;
+    }
+
+    const effectType = String(relic.effect?.type || '');
+    if (!effectType) return null;
+    return GENERIC_RELIC_TRIGGER_MAP[effectType] || null;
+  }
+
+  private normalizeGenericActionSpec(effect: any): any | null {
+    if (!effect || !effect.type || effect.type === 'Passive' || effect.type === 'Seal') return null;
+
+    if (effect.type === 'OnCardPlayed' || effect.type === 'OnPlayCard') {
+      return this.normalizeGenericActionSpec(effect.effect);
+    }
+
+    if (
+      effect.type === 'TriggerOnResourceGain' ||
+      effect.type === 'OnResourceGain' ||
+      effect.type === 'OnResourceSpent' ||
+      effect.type === 'OnSpendResource' ||
+      effect.type === 'OnFirstResourceSpend' ||
+      effect.type === 'TriggerOnDamageTaken' ||
+      effect.type === 'OnTakeDamage'
+    ) {
+      return this.normalizeGenericActionSpec(effect.effect);
+    }
+
+    const spec = { ...effect };
+    if (spec.type === 'DrawCards') spec.type = 'Draw';
+    if (spec.type === 'GainBlockAndRemoveDebuff') {
+      return [
+        { type: 'GainBlock', amount: Math.max(1, Number(spec.blockAmount || spec.amount || 1)), target: 'Self' },
+        { type: 'RemoveAnyDebuff', amount: Math.max(1, Number(spec.debuffAmount || 1)), target: 'Self' },
+      ];
+    }
+    if (!ActionFactory.getRegisteredTypes().includes(String(spec.type))) return null;
+    return spec;
+  }
+
+  private markGenericRelicOncePerTurn(state: GameState, relicId: string, key: string): boolean {
+    const turn = Number(state.combat?.turn || 0);
+    if (turn <= 0) return false;
+    const relicState = (state.player.relicStates[relicId] ||= { level: 0, progress: 0 });
+    const marker = `${key}Turn`;
+    if (Number((relicState as any)[marker] || 0) === turn) return false;
+    (relicState as any)[marker] = turn;
+    return true;
+  }
+
+  private genericEffectMatchesEvent(state: GameState, relic: RelicDefinition, event: GameEvent): boolean {
+    const effect = relic.effect || {};
+
+    if ((event as any).type === 'RelicAcquired' && (event as any).relicId !== relic.id) {
+      return false;
+    }
+
+    if ((effect.type === 'OnCardPlayed' || effect.type === 'OnPlayCard') && effect.tag) {
+      const card = cardsData.find((entry) => entry.id === (event as any).cardId);
+      if (!card || !(card.tags || []).includes(String(effect.tag))) return false;
+    }
+
+    if ((effect.type === 'OnCardPlayed' || effect.type === 'OnPlayCard') && Number(effect.count || 0) > 0) {
+      const played = Number(state.combat?.player.cardsPlayedThisTurn || 0);
+      if (played !== Number(effect.count)) return false;
+    }
+
+    if (
+      effect.type === 'TriggerOnResourceGain' ||
+      effect.type === 'OnResourceGain' ||
+      effect.type === 'OnResourceSpent' ||
+      effect.type === 'OnSpendResource' ||
+      effect.type === 'OnFirstResourceSpend'
+    ) {
+      const resource = String(effect.resource || '');
+      if (resource && resource !== String((event as any).resource || '')) return false;
+    }
+
+    if (effect.type === 'OnFirstResourceSpend') {
+      if ((event as any).type !== 'RouteResourceSpent') return false;
+      if (!this.markGenericRelicOncePerTurn(state, relic.id, 'firstResourceSpend')) return false;
+    }
+
+    if ((effect.type === 'TriggerOnDamageTaken' || effect.type === 'OnTakeDamage') && Number(effect.threshold || 0) > 0) {
+      if (Number((event as any).amount || 0) < Number(effect.threshold)) return false;
+    }
+
+    const condition = relic.condition || effect.condition;
+    if (condition?.type === 'FirstSpendThisTurn') {
+      if ((event as any).type !== 'RouteResourceSpent') return false;
+      return this.markGenericRelicOncePerTurn(state, relic.id, 'firstResourceSpend');
+    }
+
+    if (condition?.type === 'CardCountThisTurn') {
+      return Number(state.combat?.player.cardsPlayedThisTurn || 0) === Number(condition.count || 0);
+    }
+
+    if (condition?.type === 'ResourceAmount' || condition?.type === 'HasResource') {
+      const resource = String(condition.resource || '');
+      const required = Number(condition.amount ?? 1);
+      const player = state.player as typeof state.player & { secondaryResources?: Record<string, number> } & Record<string, any>;
+      const value = Number(player.secondaryResources?.[resource] ?? player[resource] ?? 0);
+      return value >= required;
+    }
+
+    return true;
+  }
+
+  private enqueueGenericRelicEffect(
+    relicId: string,
+    trigger: string,
+    event: GameEvent,
+    state: GameState,
+    enqueue: RelicEnqueue
+  ): boolean {
+    const relic = this.getRelicDefinition(relicId);
+    if (!relic || !relic.effect) return false;
+    if (this.normalizeGenericTrigger(relic) !== trigger) return false;
+    if (!this.genericEffectMatchesEvent(state, relic, event)) return false;
+
+    const specOrSpecs = this.normalizeGenericActionSpec(relic.effect);
+    if (!specOrSpecs) return false;
+
+    const specs = (Array.isArray(specOrSpecs) ? specOrSpecs : [specOrSpecs]) as GenericActionSpec[];
+    for (const spec of specs) {
+      enqueue(spec, {
+        source: 'player',
+        sourceId: 'player',
+        targetId: spec.target === 'Self' ? 'player' : (event as any).targetId,
+      });
+    }
+    return true;
+  }
+
   private setupEventListeners() {
-    this.eventDisposables.splice(0).forEach((dispose) => dispose());
+    this.dispose();
     this.eventDisposables.push(
       globalEventBus.subscribe('CardPlayed', (event) => this.handleEvent('CardPlayed', event)),
       globalEventBus.subscribe('DamageReceived', (event) => this.handleEvent('DamageReceived', event)),
@@ -320,15 +522,27 @@ export class RelicSystem {
       queuedAction = true;
     };
 
-    for (const relicId of state.player.relics) {
+    for (const relicId of this.getOrderedRelicIds(state.player.relics)) {
       const effects = this.relicEffects.get(relicId);
       if (effects) {
         for (const effect of effects) {
           if (effect.trigger === trigger) {
             if (!effect.condition || effect.condition(state)) {
-              effect.action(state, event, enqueueUrgent);
+              try {
+                effect.action(state, event, enqueueUrgent);
+              } catch (error) {
+                console.error('[RelicSystem] Relic effect failed:', relicId, trigger, error instanceof Error ? error.message : error);
+              }
             }
           }
+        }
+      }
+
+      if (!this.relicEffects.has(relicId)) {
+        try {
+          this.enqueueGenericRelicEffect(relicId, trigger, event, state, enqueueUrgent);
+        } catch (error) {
+          console.error('[RelicSystem] Generic relic effect failed:', relicId, trigger, error instanceof Error ? error.message : error);
         }
       }
     }
@@ -407,41 +621,39 @@ export class RelicSystem {
 
     const event = { ...baseEvent, ...eventOverrides } as GameEvent;
 
-    for (const relicId of state.player.relics) {
+    for (const relicId of this.getOrderedRelicIds(state.player.relics)) {
       const effects = this.relicEffects.get(relicId);
-      let handledByCustom = false;
       if (!effects) continue;
       for (const effect of effects) {
         if (effect.trigger !== eventType) continue;
         if (effect.condition && !effect.condition(state)) continue;
-        handledByCustom = true;
-        effect.action(state, event, enqueue);
+        try {
+          effect.action(state, event, enqueue);
+        } catch (error) {
+          console.error('[RelicSystem] Relic effect failed:', relicId, eventType, error instanceof Error ? error.message : error);
+        }
       }
-      if (handledByCustom) continue;
     }
 
     // Generic JSON-defined relic effects (e.g. Anchor, Vajra, Lantern, Bag of Prep).
-    for (const relicId of state.player.relics) {
+    for (const relicId of this.getOrderedRelicIds(state.player.relics)) {
       if (this.relicEffects.has(relicId)) continue;
-      const relic = relicsData.find(r => r.id === relicId) as any;
-      if (!relic || !relic.effect) continue;
-      const triggerName = relic.trigger === 'StartCombat' ? 'CombatStart'
-        : relic.trigger === 'EndCombat' ? 'CombatEnd'
-        : relic.trigger;
-      if (triggerName !== trigger) continue;
-      const effect = relic.effect;
-      if (!effect.type || effect.type === 'Passive' || effect.type === 'Seal') continue;
-
-      const spec: any = { ...effect };
-      enqueue(spec, { source: 'player', sourceId: 'player', targetId: effect.target === 'Self' ? 'player' : undefined });
+      try {
+        this.enqueueGenericRelicEffect(relicId, eventType, event, state, enqueue);
+      } catch (error) {
+        console.error('[RelicSystem] Generic relic effect failed:', relicId, eventType, error instanceof Error ? error.message : error);
+      }
     }
   }
 }
 
 let globalRelicSystem: RelicSystem | null = null;
+let defaultRelicSystem: RelicSystem | null = null;
 
 export const createRelicSystem = (getState: () => GameState): RelicSystem => {
+  globalRelicSystem?.dispose();
   globalRelicSystem = new RelicSystem(getState);
+  globalRelicSystem.bindStateTracker(getState);
   return globalRelicSystem;
 };
 
@@ -449,4 +661,20 @@ export const getRelicSystem = (): RelicSystem | null => {
   return globalRelicSystem;
 };
 
-export const relicSystem: RelicSystem = new RelicSystem(() => ({} as GameState));
+const getDefaultRelicSystem = (): RelicSystem => {
+  if (!defaultRelicSystem) {
+    defaultRelicSystem = new RelicSystem(() => ({} as GameState));
+  }
+  return defaultRelicSystem;
+};
+
+export const relicSystem: RelicSystem = new Proxy({} as RelicSystem, {
+  get(_target, prop, receiver) {
+    const instance = getDefaultRelicSystem();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  set(_target, prop, value, receiver) {
+    return Reflect.set(getDefaultRelicSystem(), prop, value, receiver);
+  },
+}) as RelicSystem;

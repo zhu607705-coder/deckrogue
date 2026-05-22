@@ -107,7 +107,7 @@ function formatKeyCodeLabel(code: string) {
   return code;
 }
 
-function resolveActiveScreen(screen: string): ScreenId {
+export function resolveActiveScreen(screen: string): ScreenId {
   switch (screen) {
     case 'Launcher':
     case 'CharacterSelect':
@@ -118,6 +118,7 @@ function resolveActiveScreen(screen: string): ScreenId {
     case 'Shop':
     case 'Rest':
     case 'Upgrade':
+    case 'RelicUpgrade':
     case 'RemoveCard':
     case 'Enchant':
     case 'GameOver':
@@ -139,6 +140,7 @@ function AppContent() {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPage, setMenuPage] = useState<'root' | 'save' | 'theme' | 'keybinds'>('root');
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showRestartCombatConfirm, setShowRestartCombatConfirm] = useState(false);
   const [keybinds, setKeybinds] = useState<KeybindMap>(() => {
     const stored = gameSetup.getSaveManager().loadSettings()?.keybinds as Partial<Record<KeyboardActionId, string>> | undefined;
     return buildEffectiveKeybinds(stored);
@@ -269,6 +271,10 @@ function AppContent() {
       setKeybindError(null);
       return true;
     }
+    if (showRestartCombatConfirm) {
+      setShowRestartCombatConfirm(false);
+      return true;
+    }
     if (showMenu) {
       if (menuPage !== 'root') {
         setMenuPage('root');
@@ -278,7 +284,7 @@ function AppContent() {
       return true;
     }
     return clickFirst('[data-keyboard-close="true"]');
-  }, [clickFirst, menuPage, rebindingAction, showMenu]);
+  }, [clickFirst, menuPage, rebindingAction, showMenu, showRestartCombatConfirm]);
 
   const handleKeyboardAction = useCallback((action: KeyboardActionId) => {
     if (action === 'toggleMenu') {
@@ -341,7 +347,7 @@ function AppContent() {
     menuOpen: showMenu,
     menuPage,
     overlay: null,
-    modal: null,
+    modal: showRestartCombatConfirm ? 'restartCombatConfirm' : null,
     rebindingAction
   };
 
@@ -439,8 +445,6 @@ function AppContent() {
       setLauncherError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
     }
   };
-
-  const [showRestartCombatConfirm, setShowRestartCombatConfirm] = useState(false);
 
   const handleRestartCombat = () => {
     setShowMenu(false);
@@ -706,7 +710,7 @@ function AppContent() {
                 <button
                   onClick={handleReturnToLauncher}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100"
-                  data-keyboard-option="5"
+                  data-keyboard-option="6"
                   data-keyboard-focus="true"
                 >
                   返回启动器
@@ -714,7 +718,7 @@ function AppContent() {
                 <button
                   onClick={handleSaveAndQuit}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100"
-                  data-keyboard-option="6"
+                  data-keyboard-option="7"
                   data-keyboard-focus="true"
                 >
                   保存并退出
@@ -723,7 +727,7 @@ function AppContent() {
                   onClick={handleRestartCombat}
                   disabled={!gameSetup.hasCombatRestartCheckpoint()}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  data-keyboard-option="7"
+                  data-keyboard-option="8"
                   data-keyboard-focus="true"
                 >
                   重开当前战斗
@@ -731,39 +735,12 @@ function AppContent() {
                 <button
                   onClick={() => setShowMenu(false)}
                   className="w-full text-left px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400"
-                  data-keyboard-option="8"
+                  data-keyboard-option="9"
                   data-keyboard-focus="true"
                   data-keyboard-close="true"
                 >
                   关闭
                 </button>
-              </div>
-            )}
-
-            {showRestartCombatConfirm && (
-              <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center" onClick={() => setShowRestartCombatConfirm(false)}>
-                <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-lg font-bold text-white mb-2">确认重开当前战斗？</h3>
-                  <p className="text-sm text-slate-300 mb-4">当前战斗进度将丢失，但异端阵列和抽牌堆保持不变。</p>
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      onClick={() => setShowRestartCombatConfirm(false)}
-                      className="px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
-                      data-keyboard-option="1"
-                      data-keyboard-focus="true"
-                    >
-                      取消
-                    </button>
-                    <button
-                      onClick={confirmRestartCombat}
-                      className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-600"
-                      data-keyboard-option="2"
-                      data-keyboard-focus="true"
-                    >
-                      确认重开
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -983,6 +960,33 @@ function AppContent() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showRestartCombatConfirm && (
+        <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center" onClick={() => setShowRestartCombatConfirm(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-2">确认重开当前战斗？</h3>
+            <p className="text-sm text-slate-300 mb-4">当前战斗进度将丢失，但异端阵列和抽牌堆保持不变。</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowRestartCombatConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                data-keyboard-option="1"
+                data-keyboard-focus="true"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmRestartCombat}
+                className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-600"
+                data-keyboard-option="2"
+                data-keyboard-focus="true"
+              >
+                确认重开
+              </button>
+            </div>
           </div>
         </div>
       )}

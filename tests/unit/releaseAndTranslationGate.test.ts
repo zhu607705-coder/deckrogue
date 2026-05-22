@@ -9,8 +9,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
+
+const DESKTOP_SMOKE_SOURCE = readFileSync(resolve('scripts/validation/playwright_electron_smoke.ts'), 'utf-8');
+const RELEASE_READINESS_SOURCE = readFileSync(resolve('scripts/validation/check_release_readiness.ts'), 'utf-8');
 
 test('translation audit flags visible English in data-driven relic and achievement content', () => {
   const fields: AuditDataFieldConfig[] = [
@@ -27,4 +32,12 @@ test('translation audit flags visible English in data-driven relic and achieveme
   assert.ok(items.some((item) => item.excerpt.includes('Gain 1 Energy')));
   assert.ok(items.some((item) => item.excerpt.includes('StartCombat')));
   assert.ok(items.some((item) => item.excerpt.includes('Warp Echoes Hunter')));
+});
+
+test('desktop smoke reports and release readiness require clean Electron close', () => {
+  assert.match(DESKTOP_SMOKE_SOURCE, /closeStatus:\s*'pending'/);
+  assert.match(DESKTOP_SMOKE_SOURCE, /report\.closeStatus\s*=\s*'pass'/);
+  assert.match(DESKTOP_SMOKE_SOURCE, /report\.closeStatus\s*=\s*'fail'/);
+  assert.match(DESKTOP_SMOKE_SOURCE, /report\.closeStatus\s*===\s*'pass'/);
+  assert.match(RELEASE_READINESS_SOURCE, /smokeReport\?\.closeStatus\s*===\s*'pass'/);
 });

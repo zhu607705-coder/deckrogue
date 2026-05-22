@@ -329,6 +329,7 @@ export interface RelicDef {
   background?: string;
   loreText?: string;
   price: number;
+  priority?: number;
   trigger: 'StartCombat' | 'EndCombat' | 'StartTurn' | 'EndTurn' | 'Passive';
   tags?: string[];
   corrupted?: boolean;

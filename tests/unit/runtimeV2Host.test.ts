@@ -9,11 +9,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { GameEngine } from '@/core/events/gameEngine';
+import { globalEventBus } from '@/core/events/eventBus';
 import { potionsData } from '@/content/narrative/numericSystem';
 import {
   createEngineHost,
+  DispatchFailedError,
   createLegacyOracleAdapter,
   createPythonWasmAdapter,
   normalizeLegacyGameState,
@@ -27,6 +31,8 @@ test('engine host can boot a legacy oracle adapter and project a contract snapsh
   await host.start({ seed: 12345 });
   const result = await host.dispatch({ type: 'select_character', characterId: 'informant' });
 
+  assert.equal(result.ok, true);
+  assert.equal(result.error, undefined);
   assert.equal(result.snapshot.player.characterId, 'informant');
   assert.equal(result.snapshot.lifecycle.screen, 'Map');
   assert.ok(result.snapshot.player.deck.length > 0);
@@ -176,6 +182,67 @@ class StubRoomAdapter implements RuleRuntimeAdapter {
   }
 }
 
+class ObservableStubAdapter implements RuleRuntimeAdapter {
+  readonly source = 'python-wasm' as const;
+  private snapshot: RuleSnapshot = createStubSnapshot();
+  private listeners = new Set<(snapshot: RuleSnapshot) => void>();
+  private pendingResolve: ((snapshot: RuleSnapshot) => void) | null = null;
+  private pendingReject: ((error: Error) => void) | null = null;
+
+  async start(): Promise<RuleSnapshot> {
+    this.snapshot = createStubSnapshot();
+    return this.snapshot;
+  }
+
+  async dispatch(command: Parameters<RuleRuntimeAdapter['dispatch']>[0]): Promise<RuleSnapshot> {
+    if (command.type === 'enter_node') {
+      return new Promise<RuleSnapshot>((resolve, reject) => {
+        this.pendingResolve = resolve;
+        this.pendingReject = reject;
+      });
+    }
+    return this.snapshot;
+  }
+
+  emitSnapshot(snapshot: RuleSnapshot): void {
+    this.snapshot = snapshot;
+    for (const listener of this.listeners) {
+      listener(snapshot);
+    }
+  }
+
+  resolveDispatch(snapshot: RuleSnapshot): void {
+    const resolve = this.pendingResolve;
+    this.pendingResolve = null;
+    this.pendingReject = null;
+    this.snapshot = snapshot;
+    resolve?.(snapshot);
+  }
+
+  rejectDispatch(error: Error): void {
+    const reject = this.pendingReject;
+    this.pendingResolve = null;
+    this.pendingReject = null;
+    reject?.(error);
+  }
+
+  getSnapshot(): RuleSnapshot | null {
+    return this.snapshot;
+  }
+
+  subscribe(listener: (snapshot: RuleSnapshot) => void): () => void {
+    this.listeners.add(listener);
+    if (this.snapshot) {
+      listener(this.snapshot);
+    }
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  dispose(): void {}
+}
+
 test('engine host accepts enter_node and leave_room commands for runtime v2 adapters', async () => {
   const host = createEngineHost(new StubRoomAdapter());
 
@@ -190,6 +257,236 @@ test('engine host accepts enter_node and leave_room commands for runtime v2 adap
   assert.equal(left.snapshot.lifecycle.phase, 'map');
   assert.equal(left.snapshot.lifecycle.pendingNodeResolution, false);
   assert.equal(left.snapshot.meta.replayLength, 2);
+});
+
+test('engine host reports narrow array element diffs without stringifying the whole array', async () => {
+  class StubDeckAdapter extends StubRoomAdapter {
+    override async dispatch(): Promise<RuleSnapshot> {
+      return createStubSnapshot({
+        player: {
+          ...createStubSnapshot().player,
+          deck: ['strike', 'guard_protocol'],
+        },
+      });
+    }
+  }
+
+  const host = createEngineHost(new StubDeckAdapter());
+  await host.start({ seed: 7 });
+  const result = await host.dispatch({ type: 'leave_room' });
+
+  assert.ok(result.diff.changedPaths.includes('player.deck.1'));
+  assert.ok(!result.diff.changedPaths.includes('player.deck'));
+});
+
+test('engine host reports object array reorders and value changes with keyed paths', async () => {
+  class StubMapReorderAdapter extends StubRoomAdapter {
+    override async dispatch(): Promise<RuleSnapshot> {
+      return createStubSnapshot({
+        map: {
+          currentNodeId: null,
+          nodes: [
+            { id: 'node-2', type: 'Combat', x: 0.5, y: 1, revealed: false, next: [] },
+            { id: 'node-1', type: 'Event', x: 0.75, y: 0, revealed: true, next: ['node-2'] },
+          ],
+        },
+      });
+    }
+  }
+
+  const host = createEngineHost(new StubMapReorderAdapter());
+  await host.start({ seed: 7 });
+  const result = await host.dispatch({ type: 'leave_room' });
+
+  assert.ok(result.diff.changedPaths.includes('map.nodes.$order'));
+  assert.ok(result.diff.changedPaths.includes('map.nodes[id=node-1].x'));
+  assert.ok(!result.diff.changedPaths.includes('map.nodes'));
+  assert.ok(!result.diff.changedPaths.some((path) => path.startsWith('map.nodes.0.')));
+});
+
+test('engine host discards adapter subscription snapshots when dispatch fails', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const snapshots: RuleSnapshot[] = [];
+  host.subscribe((snapshot) => snapshots.push(snapshot));
+  snapshots.length = 0;
+
+  const partial = createStubSnapshot({
+    lifecycle: { screen: 'Event', phase: 'event', pendingNodeResolution: true },
+  });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+  adapter.emitSnapshot(partial);
+  adapter.rejectDispatch(new Error('adapter exploded'));
+
+  const result = await dispatch;
+  assert.equal(result.ok, false);
+  assert.match(result.error?.message ?? '', /adapter exploded/);
+  assert.equal(result.snapshot.lifecycle.phase, 'map');
+  assert.equal(host.getSnapshot()?.lifecycle.phase, 'map');
+  assert.deepEqual(snapshots.map((snapshot) => snapshot.lifecycle.phase), ['map']);
+});
+
+test('engine host replays rollback snapshot to subscribers added during a failed dispatch', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+  const phases: string[] = [];
+
+  host.subscribe((snapshot) => phases.push(snapshot.lifecycle.phase));
+  assert.deepEqual(phases, []);
+
+  adapter.rejectDispatch(new Error('adapter exploded'));
+
+  const result = await dispatch;
+  assert.equal(result.ok, false);
+  assert.deepEqual(phases, ['map']);
+});
+
+test('engine host dispatch failures expose captured global events for diagnostics', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+
+  globalEventBus.publish({ type: 'CombatStart' } as any);
+  adapter.rejectDispatch(new Error('adapter exploded'));
+
+  const result = await dispatch;
+  assert.equal(result.ok, false);
+  assert.equal(result.snapshot.lifecycle.phase, 'map');
+  assert.ok(result.events.some((event) => event.type === 'CombatStart'));
+  assert.equal(result.error?.name, 'Error');
+  assert.match(result.error?.message ?? '', /adapter exploded/);
+});
+
+test('engine host can still throw failed dispatches when requested', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' }, { throwOnFailure: true });
+
+  globalEventBus.publish({ type: 'CombatStart' } as any);
+  adapter.rejectDispatch(new Error('adapter exploded'));
+
+  await assert.rejects(
+    dispatch,
+    (error: unknown) => {
+      assert.ok(error instanceof DispatchFailedError);
+      assert.ok(error.events.some((event) => event.type === 'CombatStart'));
+      assert.equal(error.result.ok, false);
+      assert.match(String(error.cause), /adapter exploded/);
+      return true;
+    }
+  );
+});
+
+test('engine host emits one startup snapshot when adapter subscribe replays immediately', async () => {
+  const host = createEngineHost(new ObservableStubAdapter());
+  const phases: string[] = [];
+  host.subscribe((snapshot) => phases.push(snapshot.lifecycle.phase));
+
+  await host.start({ seed: 7 });
+
+  assert.deepEqual(phases, ['map']);
+});
+
+test('engine host emits one startup snapshot when adapter subscribe replays asynchronously', async () => {
+  class AsyncReplayAdapter extends ObservableStubAdapter {
+    override subscribe(listener: (snapshot: RuleSnapshot) => void): () => void {
+      const unsubscribe = super.subscribe(() => {});
+      const snapshot = this.getSnapshot();
+      queueMicrotask(() => {
+        if (snapshot) listener(snapshot);
+      });
+      return unsubscribe;
+    }
+  }
+
+  const host = createEngineHost(new AsyncReplayAdapter());
+  const phases: string[] = [];
+  host.subscribe((snapshot) => phases.push(snapshot.lifecycle.phase));
+
+  await host.start({ seed: 7 });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(phases, ['map']);
+});
+
+test('engine host does not immediately replay a stale snapshot to subscribers added during dispatch', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+  const phases: string[] = [];
+
+  host.subscribe((snapshot) => phases.push(snapshot.lifecycle.phase));
+  assert.deepEqual(phases, []);
+
+  adapter.resolveDispatch(createStubSnapshot({
+    lifecycle: { screen: 'Event', phase: 'event', pendingNodeResolution: true },
+  }));
+  await dispatch;
+
+  assert.deepEqual(phases, ['event']);
+});
+
+test('engine host coalesces adapter subscription updates into the successful dispatch result', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const phases: string[] = [];
+  host.subscribe((snapshot) => phases.push(snapshot.lifecycle.phase));
+  phases.length = 0;
+
+  const finalSnapshot = createStubSnapshot({
+    lifecycle: { screen: 'Event', phase: 'event', pendingNodeResolution: true },
+  });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+  adapter.emitSnapshot(finalSnapshot);
+  adapter.resolveDispatch(finalSnapshot);
+  await dispatch;
+
+  assert.deepEqual(phases, ['event']);
+});
+
+test('engine host refuses to repopulate snapshot after dispose races an in-flight dispatch', async () => {
+  const adapter = new ObservableStubAdapter();
+  const host = createEngineHost(adapter);
+  await host.start({ seed: 7 });
+  const dispatch = host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+
+  host.dispose();
+  adapter.resolveDispatch(createStubSnapshot({
+    lifecycle: { screen: 'Event', phase: 'event', pendingNodeResolution: true },
+  }));
+
+  await assert.rejects(dispatch, /disposed/i);
+  assert.equal(host.getSnapshot(), null);
+});
+
+test('engine host includes global events published during a dispatch result', async () => {
+  class EventPublishingAdapter extends StubRoomAdapter {
+    override async dispatch(): Promise<RuleSnapshot> {
+      globalEventBus.publish({ type: 'CombatStart' } as any);
+      return createStubSnapshot({
+        lifecycle: { screen: 'Combat', phase: 'combat', pendingNodeResolution: false },
+      });
+    }
+  }
+
+  const host = createEngineHost(new EventPublishingAdapter());
+  await host.start({ seed: 7 });
+  const result = await host.dispatch({ type: 'enter_node', nodeId: 'node-1' });
+
+  assert.equal(result.events[0]?.type, 'runtime.enter_node');
+  assert.ok(result.events.some((event) => event.type === 'CombatStart'));
+});
+
+test('legacy oracle adapter keeps its GameEngine contract explicit instead of using unknown method probes', () => {
+  const source = readFileSync(resolve('src/runtimeV2/bridge/legacyOracleAdapter.ts'), 'utf-8');
+  assert.equal(source.includes('as unknown as'), false);
 });
 
 test('engine host can surface reward snapshots from runtime v2 adapters', async () => {

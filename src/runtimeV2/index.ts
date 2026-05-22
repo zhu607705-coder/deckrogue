@@ -20,6 +20,7 @@ export type {
   RuleDiff,
   RuleEvent,
   RuleResult,
+  RuleResultError,
   RuleRuntimeAdapter,
   RuleSnapshot,
   SaveGameV2,
@@ -35,7 +36,7 @@ export {
 export { migrateLegacySaveDataToSaveGameV2 } from '@/runtimeV2/migration';
 export { createRenderModel } from '@/runtimeV2/renderModel';
 export { createLegacyRenderModel } from '@/runtimeV2/legacyRenderBridge';
-export { EngineHost, createEngineHost } from '@/runtimeV2/bridge/engineHost';
+export { DispatchFailedError, EngineHost, createEngineHost, type EngineHostDispatchOptions } from '@/runtimeV2/bridge/engineHost';
 export { LegacyOracleAdapter, createLegacyOracleAdapter } from '@/runtimeV2/bridge/legacyOracleAdapter';
 export { PythonWasmAdapter, createPythonWasmAdapter } from '@/runtimeV2/bridge/pythonWasmAdapter';
 export { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';

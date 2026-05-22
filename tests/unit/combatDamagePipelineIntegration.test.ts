@@ -169,6 +169,73 @@ test('construct attacks go through the shared damage pipeline and emit death eve
   }
 });
 
+test('duplicate enemy death signals publish combat victory only once while combat remains unresolved', () => {
+  const state = makeState();
+  state.combat!.enemies = [
+    {
+      id: 'enemy_1',
+      defId: 'goblin',
+      name: 'Test Enemy',
+      hp: 0,
+      maxHp: 10,
+      block: 0,
+      statuses: {},
+      nextIntent: 'Attack',
+      lastUsedIntent: '',
+      intentCooldowns: {},
+      devotion: 0,
+      corruptionAxis: 0,
+      axisDisposition: 'balanced',
+    } as any,
+  ];
+
+  const manager = makeCombatManager(state);
+  const victoryEvents: GameEvent[] = [];
+  const offVictory = globalEventBus.subscribe('CombatVictory', (event) => victoryEvents.push(event));
+
+  try {
+    globalEventBus.publish({ type: 'EnemyDeath', enemyId: 'enemy_1' });
+    globalEventBus.publish({ type: 'EnemyDeath', enemyId: 'enemy_1' });
+
+    assert.equal(victoryEvents.length, 1);
+  } finally {
+    offVictory();
+    manager.dispose();
+  }
+});
+
+test('legacy combat manager victory resolution is idempotent before cleanup completes', async () => {
+  const { CombatManager: LegacyCombatManager } = await import('@/core/combat/CombatManager');
+  const state = makeState();
+  const manager = new LegacyCombatManager({
+    getState: () => state,
+    setState: () => {},
+    actionManager: {} as any,
+    rng: () => 0,
+    appendVoxLog: () => {},
+    notify: () => {},
+    generateId: () => 'legacy-generated-id',
+    shuffleDeck: <T,>(deck: T[]) => deck,
+    getCurrentFloorNumber: () => 1,
+    getCurrentNode: () => ({ y: 0 }),
+    calculateDamage: (base: number) => base,
+    isEnemyEligibleForFloor: () => true,
+    applyEnemyHpTuning: (baseHp: number) => baseHp,
+  });
+  const victoryEvents: GameEvent[] = [];
+  const offVictory = globalEventBus.subscribe('CombatVictory', (event) => victoryEvents.push(event));
+  (manager as any).cleanupCombatState = () => {};
+
+  try {
+    (manager as any).handleCombatVictory();
+    (manager as any).handleCombatVictory();
+
+    assert.equal(victoryEvents.length, 1);
+  } finally {
+    offVictory();
+  }
+});
+
 test('construct attacks retarget living enemies after a kill', () => {
   const state = makeState();
   state.combat!.player.constructs = [

@@ -199,3 +199,13 @@ test('codex catalog exposes upgrade effects and fragmented lore for the expansio
   assert.ok((relicEntry!.loreFragments || []).length >= 2);
   assert.ok(relicEntry!.searchText.includes('mortuary_warrant') || relicEntry!.searchText.includes('停尸拘票'));
 });
+
+test('codex catalog reads modern enemy hp and intent policy fields', () => {
+  const catalog = getCodexCatalog();
+  const coolantHound = catalog.find((entry) => entry.id === 'coolant_hound');
+
+  assert.ok(coolantHound, 'missing coolant_hound codex entry');
+  assert.match(coolantHound!.summary, /生命值 42-45/);
+  assert.match(coolantHound!.summary, /3 种意图/);
+  assert.ok(coolantHound!.demo?.frames.length, 'coolant_hound should expose intent demo frames');
+});

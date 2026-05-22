@@ -34,22 +34,23 @@ export function inferRoomResolutionKindFromLegacyState(
     case 'Upgrade':
       if (state.upgradeReturnScreen === 'Rest' || state.campfireChoiceLocked) return 'rest';
       if (state.upgradeReturnScreen === 'Shop') return 'shop';
-      return 'shop';
+      return null;
     case 'RemoveCard':
       if (options.isEventFreeCardRemovalMode || state.activeEvent) return 'event';
       if (state.upgradeReturnScreen === 'Rest' || state.campfireChoiceLocked) return 'rest';
       if (state.upgradeReturnScreen === 'Shop') return 'shop';
-      return 'shop';
+      return null;
     case 'Enchant': {
       const source = state.enchantContext?.returnScreen ?? state.enchantContext?.source;
       if (source === 'Event') return 'event';
       if (source === 'Rest') return 'rest';
       if (source === 'Shop') return 'shop';
-      return state.campfireChoiceLocked ? 'rest' : 'shop';
+      return state.campfireChoiceLocked ? 'rest' : null;
     }
     case 'RelicUpgrade':
       if (state.relicUpgradeReturnScreen === 'Shop') return 'shop';
-      return 'rest';
+      if (state.relicUpgradeReturnScreen === 'Rest' || state.campfireChoiceLocked) return 'rest';
+      return null;
     default:
       return null;
   }

@@ -298,6 +298,16 @@ test('transitionRunState EVENT_RESOLVED should transition to map when pending', 
   assert.strictEqual(result.roomResolutionKind, null);
 });
 
+test('transitionRunState EVENT_RESOLVED should reject non-event phases even with a token', () => {
+  const combatState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'combat',
+    pendingNodeResolution: true,
+    roomResolutionToken: 'combat_token'
+  };
+  assert.throws(() => transitionRunState(combatState, { type: 'EVENT_RESOLVED' }));
+});
+
 test('transitionRunState EVENT_RESOLVED should throw when no pending resolution', () => {
   const eventState: RunTransitionState = {
     lifecycle: 'in_run',
@@ -317,6 +327,16 @@ test('transitionRunState SHOP_LEFT should transition to map when pending', () =>
   assert.strictEqual(result.phase, 'map');
 });
 
+test('transitionRunState SHOP_LEFT should reject combat phase even with a token', () => {
+  const combatState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'combat',
+    pendingNodeResolution: true,
+    roomResolutionToken: 'combat_token'
+  };
+  assert.throws(() => transitionRunState(combatState, { type: 'SHOP_LEFT' }));
+});
+
 test('transitionRunState REST_COMPLETED should transition to map when pending', () => {
   const restState: RunTransitionState = {
     lifecycle: 'in_run',
@@ -327,6 +347,28 @@ test('transitionRunState REST_COMPLETED should transition to map when pending', 
   assert.strictEqual(result.phase, 'map');
 });
 
+test('transitionRunState REST_COMPLETED should allow rest-owned nested enchant screens', () => {
+  const enchantState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'enchant',
+    pendingNodeResolution: true,
+    roomResolutionToken: 'rest_token',
+    roomResolutionKind: 'rest'
+  };
+  const result = transitionRunState(enchantState, { type: 'REST_COMPLETED' });
+  assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState REST_COMPLETED should reject shop phase even with a token', () => {
+  const shopState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'shop',
+    pendingNodeResolution: true,
+    roomResolutionToken: 'shop_token'
+  };
+  assert.throws(() => transitionRunState(shopState, { type: 'REST_COMPLETED' }));
+});
+
 test('transitionRunState REWARD_TAKEN should transition to map when pending', () => {
   const rewardState: RunTransitionState = {
     lifecycle: 'in_run',
@@ -335,6 +377,16 @@ test('transitionRunState REWARD_TAKEN should transition to map when pending', ()
   };
   const result = transitionRunState(rewardState, { type: 'REWARD_TAKEN' });
   assert.strictEqual(result.phase, 'map');
+});
+
+test('transitionRunState REWARD_TAKEN should reject rest phase even with a token', () => {
+  const restState: RunTransitionState = {
+    lifecycle: 'in_run',
+    phase: 'rest',
+    pendingNodeResolution: true,
+    roomResolutionToken: 'rest_token'
+  };
+  assert.throws(() => transitionRunState(restState, { type: 'REWARD_TAKEN' }));
 });
 
 test('transitionRunState REWARD_SKIPPED should transition to map when pending', () => {

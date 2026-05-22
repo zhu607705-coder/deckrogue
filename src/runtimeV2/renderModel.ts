@@ -19,8 +19,21 @@ import {
   getEventChoiceRouteRole,
   getRouteTaxonomy,
   getStoryEventDef,
+  relicsData,
 } from '@/content/narrative/numericSystem';
 import { getContentService } from '@/runtimeV2/content/contentService';
+
+function normalizeCardContentId(cardId: string): string {
+  return cardId.replace(/[+*]+$/g, '');
+}
+
+function formatCardDisplayName(cardId: string, baseName: string): string {
+  const normalizedId = normalizeCardContentId(cardId);
+  const suffix = cardId.slice(normalizedId.length);
+  const upgraded = suffix.includes('+') ? ' +' : '';
+  const enchanted = suffix.includes('*') ? ' *' : '';
+  return `${baseName}${upgraded}${enchanted}`;
+}
 
 function deriveAvailableNodeIds(snapshot: RuleSnapshot): string[] {
   if (!snapshot.map.currentNodeId) {
@@ -68,11 +81,11 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
     return !!(contentService.getRelic(relicId) as { corrupted?: boolean } | undefined)?.corrupted;
   };
   const deriveDeckSurfaceChoices = () => snapshot.player.deck.map((cardId, index) => {
-    const normalizedCardId = cardId.endsWith('+') ? cardId.slice(0, -1) : cardId;
+    const normalizedCardId = normalizeCardContentId(cardId);
     const cardData = contentService.getCard(normalizedCardId);
     return {
       id: `${index}:${cardId}`,
-      label: cardData?.name ? `${cardData.name}${cardId.endsWith('+') ? ' +' : ''}` : cardId.replace(/_/g, ' '),
+      label: cardData?.name ? formatCardDisplayName(cardId, cardData.name) : cardId.replace(/_/g, ' '),
       description: cardData?.text,
       disabled: false,
     };
@@ -143,6 +156,17 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
 
   if (screen === 'Rest') {
     const healAmount = Math.floor(snapshot.player.maxHp * 0.3);
+    const restPotions = snapshot.player.potionIds.map((potionId) => {
+      const potionData = contentService.getPotion(potionId);
+      return {
+        id: potionId,
+        name: potionData?.name || potionId.replace(/_/g, ' '),
+        price: potionData?.price ?? 0,
+        rarity: potionData?.rarity,
+        type: 'Potion',
+        description: potionData?.description,
+      };
+    });
     return {
       kind: 'rest',
       title: '休整据点',
@@ -157,7 +181,9 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       canRemove: snapshot.player.gold >= 75,
       canEnchant: true,
       canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isCorruptedRelic(relicId)),
+      canMix: snapshot.player.potionIds.length >= 2,
       cardRemovalCost: 75,
+      potions: restPotions,
     };
   }
 
@@ -166,7 +192,20 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
     if (event) {
       const eventDef = getStoryEventDef(event.id);
       if (eventDef) {
-        const choices = eventDef.options.map((opt) => {
+        const offeredRelicIds = event.stage === 'generic_relic_choice' && Array.isArray(event.data?.offeredRelicIds)
+          ? event.data.offeredRelicIds.map(String)
+          : [];
+        const choices = offeredRelicIds.length > 0
+          ? offeredRelicIds.map((relicId) => {
+              const relic = relicsData.find((entry) => entry.id === relicId);
+              return {
+                id: `generic_relic:${relicId}`,
+                label: `[选择] ${relic?.name ?? relicId}`,
+                description: relic?.description ?? relicId,
+                disabled: false,
+              };
+            })
+          : eventDef.options.map((opt) => {
           const routeRole = getEventChoiceRouteRole(event.id, opt.id) ?? undefined;
           const routeTags = getEventChoiceCommitTags(event.id, opt.id);
           const routeLabel = routeTags[0] ? getRouteTaxonomy(routeTags[0])?.label ?? routeTags[0] : undefined;
@@ -299,10 +338,11 @@ function deriveRewardCards(snapshot: RuleSnapshot): RenderModelRewardCard[] {
   const contentService = getContentService();
 
   return snapshot.reward.cardIds.map((cardId) => {
-    const cardData = contentService.getCard(cardId);
+    const normalizedCardId = normalizeCardContentId(cardId);
+    const cardData = contentService.getCard(normalizedCardId);
     return {
       id: cardId,
-      name: cardData?.name || cardId.replace(/_/g, ' '),
+      name: cardData?.name ? formatCardDisplayName(cardId, cardData.name) : cardId.replace(/_/g, ' '),
       cost: cardData?.cost ?? 1,
       rarity: cardData?.rarity || 'Common',
       type: cardData?.type || 'Attack',

@@ -50,6 +50,23 @@ export interface RunTransitionState {
   roomResolutionKind?: RoomResolutionKind | null;
 }
 
+type RoomExitActionType =
+  | 'EVENT_RESOLVED'
+  | 'SHOP_LEFT'
+  | 'REST_COMPLETED'
+  | 'REWARD_TAKEN'
+  | 'REWARD_SKIPPED';
+
+const ROOM_EXIT_PHASES: Record<RoomExitActionType, RunPhaseState> = {
+  EVENT_RESOLVED: 'event',
+  SHOP_LEFT: 'shop',
+  REST_COMPLETED: 'rest',
+  REWARD_TAKEN: 'reward',
+  REWARD_SKIPPED: 'reward',
+};
+
+const NESTED_ROOM_PHASES = new Set<RunPhaseState>(['enchant', 'upgrade', 'relic_upgrade', 'remove_card']);
+
 export function screenToRunPhase(screen: GameState['screen']): RunPhaseState {
   switch (screen) {
     case 'CharacterSelect':
@@ -196,6 +213,12 @@ export function transitionRunState(current: RunTransitionState, action: RunActio
     case 'REST_COMPLETED':
     case 'REWARD_TAKEN':
     case 'REWARD_SKIPPED':
+      if (
+        current.phase !== ROOM_EXIT_PHASES[action.type] &&
+        !(NESTED_ROOM_PHASES.has(current.phase) && current.roomResolutionKind === ROOM_EXIT_PHASES[action.type])
+      ) {
+        throw new Error(`Illegal run transition: ${action.type} cannot resolve from ${current.phase}`);
+      }
       if (!activeRoomResolutionToken) {
         throw new Error(`Illegal run transition: cannot leave room when no node is pending`);
       }

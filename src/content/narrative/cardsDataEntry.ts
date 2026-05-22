@@ -7,7 +7,8 @@
  * - 导出卡牌数组和按 ID 索引的卡牌映射表
  */
 import rawCardsData from '@/content/data/cards.json';
+import { createEntityMap, validateCardsData } from '@/content/narrative/contentSchema';
 import type { CardDef } from '@/core/types';
 
-export const baseCardsData: CardDef[] = rawCardsData as unknown as CardDef[];
-export const baseCardMap = new Map(baseCardsData.map((card) => [card.id, card]));
+export const baseCardsData: CardDef[] = validateCardsData(rawCardsData, 'cards.json');
+export const baseCardMap = createEntityMap('cards', baseCardsData);

@@ -31,6 +31,7 @@ import {
 import { applyDifficultyToCombat, type DifficultyProfile } from '@/core/difficulty/DynamicDifficulty';
 import type { GameState, CombatState } from '@/core/types';
 import type { EnemyAiPersonality, EnemyAiProfile, EnemyAntiStallProfile, EnemyIntentBiasRule } from '@/core/types/enemyAI';
+import { normalizeIntentPolicyIntent, parseIntentPolicyWeight, resolveIntentPolicyList } from '@/core/ai/intentPolicy';
 
 type CombatEnemyState = NonNullable<GameState['combat']>['enemies'][number];
 
@@ -38,6 +39,7 @@ export interface EnemyDefBase {
   id: string;
   keywords?: string[];
   intent_policy?: IntentPolicy[];
+  intentPolicy?: IntentPolicy[];
   name?: string;
   ai_profile?: EnemyAiProfile;
 }
@@ -126,7 +128,8 @@ export class IntentSelector {
     relicResonances?: string[],
     dangerousRelicCombos?: string[]
   ): string {
-    if (!Array.isArray(enemyDef.intent_policy) || enemyDef.intent_policy.length === 0) {
+    const intentPolicy = resolveIntentPolicyList(enemyDef);
+    if (!Array.isArray(intentPolicy) || intentPolicy.length === 0) {
       return 'Attack';
     }
 
@@ -184,9 +187,9 @@ export class IntentSelector {
       .map((e: EnemyState) => e.lastUsedIntent)
       .filter((i: string | null | undefined): i is string => i != null);
 
-    const options: IntentOption[] = enemyDef.intent_policy?.map((policy: IntentPolicy) => {
-      const intent = policy.intent || 'Attack';
-      const baseWeight = Math.max(0, Number(policy.weight) || 0);
+    const options: IntentOption[] = intentPolicy.map((policy: IntentPolicy) => {
+      const intent = normalizeIntentPolicyIntent(policy.intent);
+      const baseWeight = parseIntentPolicyWeight(policy.weight, enemyDef.id, intent);
 
       const cooldownPenalty = this.calculateCooldownPenalty(intent, cooldowns);
 
@@ -217,7 +220,7 @@ export class IntentSelector {
 
     const totalWeight = options.reduce((sum, opt) => sum + opt.finalWeight, 0);
     if (totalWeight <= 0) {
-      return options[0].intent;
+      return this.selectZeroWeightFallback(options);
     }
 
     let roll = rng() * totalWeight;
@@ -229,6 +232,19 @@ export class IntentSelector {
     }
 
     return options[0].intent;
+  }
+
+  private selectZeroWeightFallback(options: IntentOption[]): string {
+    const attack = options.find(option => option.intent === 'Attack');
+    if (attack) return attack.intent;
+
+    const bestBase = options.reduce<IntentOption | null>((best, option) => {
+      if (!best) return option;
+      if (option.baseWeight > best.baseWeight) return option;
+      return best;
+    }, null);
+
+    return bestBase?.intent || 'Attack';
   }
 
   private createStateSnapshot(

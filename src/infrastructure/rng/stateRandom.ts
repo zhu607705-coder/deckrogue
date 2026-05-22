@@ -1,7 +1,6 @@
 import type { GameState } from '@/core/types';
+import { createRNG, type RNG } from '@/infrastructure/rng/rng';
 import { systemRandom } from '@/infrastructure/rng/systemRandom';
-
-type RNG = () => number;
 
 const stateRngRegistry = new WeakMap<GameState, RNG>();
 
@@ -9,8 +8,24 @@ function fallbackRandom(): number {
   return systemRandom();
 }
 
+function deriveRngFromState(state: GameState): RNG | null {
+  const seed = Number((state as any).seed);
+  const rngState = Number((state as any).rngState);
+  if (!Number.isFinite(seed) || !Number.isFinite(rngState)) return null;
+  const rng = createRNG(seed, rngState);
+  stateRngRegistry.set(state, rng);
+  return rng;
+}
+
 function getBoundRng(state: GameState): RNG {
-  return stateRngRegistry.get(state) || fallbackRandom;
+  return stateRngRegistry.get(state) || deriveRngFromState(state) || fallbackRandom;
+}
+
+function syncRngState(state: GameState, rng: RNG): void {
+  const nextState = rng.getState?.();
+  if (Number.isFinite(nextState)) {
+    (state as any).rngState = nextState;
+  }
 }
 
 export function bindStateRng(state: GameState, rng: RNG): void {
@@ -19,7 +34,9 @@ export function bindStateRng(state: GameState, rng: RNG): void {
 }
 
 export function stateRandom(state: GameState): number {
-  const raw = getBoundRng(state)();
+  const rng = getBoundRng(state);
+  const raw = rng();
+  syncRngState(state, rng);
   if (!Number.isFinite(raw)) return 0;
   if (raw <= 0) return 0;
   if (raw >= 1) return 1 - Number.EPSILON;

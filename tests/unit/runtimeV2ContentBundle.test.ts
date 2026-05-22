@@ -70,6 +70,11 @@ test('runtime v2 content bundle projects real character and enemy content for th
   assert.ok(gremlinNob.intent_policy);
   assert.ok(gremlinNob.intent_policy!.length > 0);
 
+  const camelCaseEnemy = bundle.enemies.find((entry) => entry.id === 'coolant_hound');
+  assert.ok(camelCaseEnemy);
+  assert.ok(camelCaseEnemy.intent_policy);
+  assert.ok(camelCaseEnemy.intent_policy!.length > 0);
+
   assert.ok(bundle.cards);
   assert.ok(bundle.cards.length > 0);
   const gatherIntel = bundle.cards.find((entry) => entry.id === 'gather_intel');

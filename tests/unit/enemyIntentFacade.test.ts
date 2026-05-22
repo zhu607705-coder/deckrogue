@@ -12,7 +12,11 @@ import assert from 'node:assert/strict';
 
 import type { GameState } from '@/core/types';
 import { enemiesData } from '@/content/narrative/numericSystem';
+import { GameEngine } from '@/core/events/gameEngine';
 import { buildEnemyPerceptionSnapshot, selectEnemyIntentForCombat } from '@/core/ai';
+import { combatMemory } from '@/core/ai/combatMemory';
+import { intentSelector } from '@/core/ai/intentSelector';
+import { parseIntentPolicyWeight } from '@/core/ai/intentPolicy';
 import { cooldownsReducer } from '@/core/ai/cooldowns';
 
 function makeState(): GameState {
@@ -214,6 +218,127 @@ test('selectEnemyIntentForCombat returns a policy intent through the unified AI 
 
   const intent = selectEnemyIntentForCombat(state, enemyDef, state.combat!.enemies[0], 1, () => 0.2, {});
   assert.ok(['Strike', 'Guard'].includes(intent));
+});
+
+test('intent selector falls back to Attack instead of the first policy when every final weight is zero', () => {
+  const state = makeState();
+  const intent = intentSelector.selectIntent(
+    {
+      id: 'zero_weight_enemy',
+      keywords: [],
+      intent_policy: [
+        { intent: 'RareOpener', weight: 0 },
+        { intent: 'Attack', weight: 0 },
+      ],
+    },
+    state.combat!.enemies[0],
+    state.combat!.player,
+    1,
+    () => 0.99,
+    {},
+  );
+
+  assert.equal(intent, 'Attack');
+});
+
+test('intent selector consumes legacy camelCase intentPolicy definitions', () => {
+  const state = makeState();
+  const intent = intentSelector.selectIntent(
+    {
+      id: 'camel_policy_enemy',
+      keywords: [],
+      intentPolicy: [
+        { intent: 'Guard', weight: 1 },
+      ],
+    },
+    state.combat!.enemies[0],
+    state.combat!.player,
+    1,
+    () => 0.1,
+    {},
+  );
+
+  assert.equal(intent, 'Guard');
+});
+
+test('intent policy weight parser rejects non-number authoring values instead of coercing them', () => {
+  assert.equal(parseIntentPolicyWeight(0.5, 'test_enemy', 'Attack'), 0.5);
+  assert.equal(parseIntentPolicyWeight(undefined, 'test_enemy', 'Attack'), 1);
+  assert.throws(() => parseIntentPolicyWeight('0.5', 'test_enemy', 'Attack'), /number/);
+  assert.throws(() => parseIntentPolicyWeight(true, 'test_enemy', 'Attack'), /number/);
+  assert.throws(() => parseIntentPolicyWeight(null, 'test_enemy', 'Attack'), /number/);
+});
+
+test('authored enemy intent policies keep at least one positive-weight fallback', () => {
+  const offenders = enemiesData
+    .filter((enemy) => Array.isArray(enemy.intent_policy) && enemy.intent_policy.length > 0)
+    .filter((enemy) => !enemy.intent_policy.some((policy) => parseIntentPolicyWeight(policy.weight, enemy.id, policy.intent) > 0))
+    .map((enemy) => enemy.id);
+
+  assert.deepEqual(offenders, []);
+});
+
+test('starting a new GameEngine run clears combat memory from the previous run', () => {
+  combatMemory.clear();
+  combatMemory.recordAction({
+    turn: 1,
+    actor: 'player',
+    cardPlayed: 'heavy_strike',
+    damageDealt: 20,
+    playerHpBefore: 20,
+    playerHpAfter: 20,
+  });
+  assert.equal(combatMemory.analyzePlayerPatterns().aggressivePlaysInLastTurns, 1);
+
+  const engine = new GameEngine(1234, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('informant');
+    assert.equal(combatMemory.analyzePlayerPatterns().aggressivePlaysInLastTurns, 0);
+  } finally {
+    engine.dispose();
+    combatMemory.clear();
+  }
+});
+
+test('real GameEngine card plays write player combat memory patterns', async () => {
+  combatMemory.clear();
+  const engine = new GameEngine(200200, null, { enableRuntimeDelegation: false });
+
+  try {
+    engine.selectCharacter('informant');
+    engine.startCombat('Combat');
+
+    const combat = engine.state.combat;
+    assert.ok(combat);
+    const enemyId = combat.enemies.find((enemy) => enemy.hp > 0)?.id;
+    assert.ok(enemyId);
+
+    const damageCard = combat.hand.find((card) =>
+      card.actions.some((action) => action.type === 'DealDamage')
+    );
+    const blockCard = combat.hand.find((card) =>
+      card.actions.some((action) => action.type === 'GainBlock')
+    );
+    assert.ok(damageCard);
+    assert.ok(blockCard);
+
+    await engine.playCard(damageCard.instanceId, enemyId);
+    await engine.playCard(blockCard.instanceId);
+
+    const patterns = combatMemory.analyzePlayerPatterns();
+    const detailed = combatMemory.getDetailedPlayerPatterns();
+
+    assert.equal(patterns.aggressivePlaysInLastTurns, 1);
+    assert.equal(patterns.defensivePlaysInLastTurns, 1);
+    assert.equal(patterns.averageCardsPerTurn, 2);
+    assert.ok(patterns.averageDamageDealtPerTurn > 0);
+    assert.ok(patterns.averageBlockGainedPerTurn > 0);
+    assert.equal(detailed.cardUsageFrequency[damageCard.id], 1);
+    assert.equal(detailed.cardUsageFrequency[blockCard.id], 1);
+  } finally {
+    engine.dispose();
+    combatMemory.clear();
+  }
 });
 
 test('buildEnemyPerceptionSnapshot converts live hand state into fuzzy intent bands', () => {

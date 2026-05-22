@@ -17,6 +17,8 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
   private snapshot: RuleSnapshot | null = null;
   private engineUnsubscribe: (() => void) | null = null;
   private listeners = new Set<(snapshot: RuleSnapshot) => void>();
+  private dispatchDepth = 0;
+  private pendingEmit = false;
 
   private createEngine(seed?: number): GameEngine {
     return new GameEngine(seed, null, { enableRuntimeDelegation: false });
@@ -27,6 +29,10 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     this.engine = this.createEngine(options.seed);
     this.engineUnsubscribe = this.engine.subscribe(() => {
       this.snapshot = normalizeLegacyGameState(this.engine!.state, this.engine!.getSaveData());
+      if (this.dispatchDepth > 0) {
+        this.pendingEmit = true;
+        return;
+      }
       this.emit();
     });
     this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
@@ -63,6 +69,9 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     if (command.type === 'start_run') {
       return this.start({ seed: command.seed });
     }
+
+    this.dispatchDepth += 1;
+    try {
 
     if (command.type === 'select_character') {
       this.engine.selectCharacter(command.characterId);
@@ -142,35 +151,26 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     }
 
     if (command.type === 'complete_combat') {
-      const completeCombat = (this.engine as unknown as { handleCombatVictory?: () => void }).handleCombatVictory;
-      if (!this.engine.state.combat || typeof completeCombat !== 'function') {
+      if (!this.engine.state.combat) {
         throw new Error('complete_combat requires an active combat in the legacy oracle adapter');
       }
-      completeCombat.call(this.engine);
+      this.engine.handleCombatVictory();
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
     }
 
     if (command.type === 'choose_event_option') {
-      const engine = this.engine as unknown as {
-        chooseEventOption?: (choice: string) => void;
-        resolveEventChoice?: (choice: string) => void;
-      };
-      const chooseMethod = engine.chooseEventOption ?? engine.resolveEventChoice;
-      if (!this.engine.state.activeEvent || typeof chooseMethod !== 'function') {
+      if (!this.engine.state.activeEvent) {
         this.engine.leaveCurrentRoomToMap();
       } else {
-        chooseMethod.call(this.engine, command.choiceId);
+        this.engine.resolveEventChoice(command.choiceId);
       }
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
     }
 
     if (command.type === 'rest') {
-      const engine = this.engine as unknown as { restHeal?: () => void };
-      if (typeof engine.restHeal === 'function') {
-        engine.restHeal();
-      }
+      this.engine.restHeal();
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());
       return this.snapshot;
     }
@@ -224,18 +224,14 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     }
 
     if (command.type === 'upgrade_card') {
-      const engine = this.engine as unknown as {
-        enterUpgrade?: (returnScreen?: 'Rest' | 'Shop') => void;
-        upgradeCard?: (cardInstanceId: string) => void;
-      };
       const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
-      if (resolvedInstanceId && typeof engine.upgradeCard === 'function') {
+      if (resolvedInstanceId) {
         if (this.engine.state.screen !== 'Upgrade') {
           throw new Error('upgrade_card with card selector is only valid during upgrade phase');
         }
-        engine.upgradeCard(resolvedInstanceId);
-      } else if (typeof engine.enterUpgrade === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop')) {
-        engine.enterUpgrade(this.engine.state.screen);
+        this.engine.upgradeCard(resolvedInstanceId);
+      } else if (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop') {
+        this.engine.enterUpgrade(this.engine.state.screen);
       } else if (command.cardInstanceId) {
         throw new Error(`Upgrade target could not be resolved: ${command.cardInstanceId}`);
       }
@@ -244,21 +240,17 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     }
 
     if (command.type === 'remove_card') {
-      const engine = this.engine as unknown as {
-        enterCardRemoval?: () => void;
-        removeCard?: (cardInstanceId: string) => void;
-      };
       const resolvedInstanceId = resolveDeckInstanceId(command.cardInstanceId);
-      if (resolvedInstanceId && typeof engine.removeCard === 'function') {
+      if (resolvedInstanceId) {
         if (this.engine.state.screen !== 'RemoveCard') {
           throw new Error('remove_card with card selector is only valid during remove_card phase');
         }
-        engine.removeCard(resolvedInstanceId);
-      } else if (typeof engine.enterCardRemoval === 'function' && (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop' || this.engine.state.screen === 'Event')) {
+        this.engine.removeCard(resolvedInstanceId);
+      } else if (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop' || this.engine.state.screen === 'Event') {
         if (this.engine.state.screen === 'Rest' || this.engine.state.screen === 'Shop') {
           this.engine.state.upgradeReturnScreen = this.engine.state.screen;
         }
-        engine.enterCardRemoval();
+        this.engine.enterCardRemoval();
       } else if (command.cardInstanceId) {
         throw new Error(`Remove-card target could not be resolved: ${command.cardInstanceId}`);
       } else {
@@ -281,6 +273,13 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
     }
 
     throw new Error(`Unsupported command for legacy oracle adapter: ${(command as RuleCommand).type}`);
+    } finally {
+      this.dispatchDepth = Math.max(0, this.dispatchDepth - 1);
+      if (this.dispatchDepth === 0 && this.pendingEmit) {
+        this.pendingEmit = false;
+        this.emit();
+      }
+    }
   }
 
   getSnapshot(): RuleSnapshot | null {
@@ -311,6 +310,8 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
       this.engine = null;
     }
     this.snapshot = null;
+    this.dispatchDepth = 0;
+    this.pendingEmit = false;
     this.listeners.clear();
   }
 }

@@ -11,6 +11,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildStoragePayload,
+  calculateSaveChecksum,
   createBossTerminalFixture,
   createEventFixture,
   createGameOverFixture,
@@ -82,4 +84,15 @@ test('terminal flow smoke fixtures clear stale room state before serialization',
     assert.equal(state.roomResolutionToken ?? null, null, `${fixture.slotId} should not serialize a room token`);
     assert.equal(state.roomResolutionKind ?? null, null, `${fixture.slotId} should not serialize a room kind`);
   }
+});
+
+test('flow smoke storage payload writes loadable save checksums', () => {
+  const fixture = createRewardFixture();
+  const payload = buildStoragePayload([fixture]);
+  const entryKey = `deckrogue_save_${fixture.slotId}`;
+  const serialized = payload.saveEntries[entryKey];
+
+  assert.ok(serialized, 'save entry should be serialized');
+  assert.equal(payload.slots[0]?.checksum, calculateSaveChecksum(serialized));
+  assert.notEqual(payload.slots[0]?.checksum, '');
 });

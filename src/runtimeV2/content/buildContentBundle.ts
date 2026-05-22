@@ -8,13 +8,13 @@
  * - 从 numericSystem 读取地图运行时配置
  * - 输出完整的 ContentBundle 对象供规则引擎使用
  */
-import charactersDataRaw from '@/content/data/characters.json';
 import enemiesDataRaw from '@/content/data/enemies.json';
 import relicsDataRaw from '@/content/data/relics.json';
 import potionsDataRaw from '@/content/data/potions.json';
 import { baseCardsData } from '@/content/narrative/cardsDataEntry';
-import { getMapRuntimeConfig } from '@/content/narrative/numericSystem';
+import { charactersData, getMapRuntimeConfig } from '@/content/narrative/numericSystem';
 import { getCardRouteSignal } from '@/content/narrative/routeSignals';
+import { normalizeIntentPolicyIntent, parseIntentPolicyWeight, resolveIntentPolicyList } from '@/core/ai/intentPolicy';
 import type { ContentBundle } from '@/runtimeV2/contracts';
 
 type CharacterEntry = {
@@ -32,6 +32,7 @@ type EnemyEntry = {
   hp_range?: number[];
   keywords?: string[];
   intent_policy?: Array<{ intent?: string; weight?: number }>;
+  intentPolicy?: Array<{ intent?: string; weight?: number }>;
 };
 
 type RelicEntry = {
@@ -50,7 +51,7 @@ const MAP_BRANCHING = 3;
 
 export function buildRuntimeV2ContentBundle(): ContentBundle {
   const mapRuntimeConfig = getMapRuntimeConfig();
-  const characters = (charactersDataRaw as CharacterEntry[]).map((entry) => ({
+  const characters = (charactersData as CharacterEntry[]).map((entry) => ({
     id: entry.id,
     max_hp: Math.max(1, Math.floor(Number(entry.maxHp) || 1)),
     max_energy: Math.max(1, Math.floor(Number(entry.maxEnergy) || 1)),
@@ -80,9 +81,9 @@ export function buildRuntimeV2ContentBundle(): ContentBundle {
       id: entry.id,
       hp_range: [minHp, maxHp] as [number, number],
       keywords: [...(entry.keywords || [])],
-      intent_policy: (entry.intent_policy || []).map((policy) => ({
-        intent: String(policy.intent || 'Attack'),
-        weight: Math.max(0, Number(policy.weight) || 0),
+      intent_policy: resolveIntentPolicyList(entry).map((policy) => ({
+        intent: normalizeIntentPolicyIntent(policy.intent),
+        weight: parseIntentPolicyWeight(policy.weight, entry.id, normalizeIntentPolicyIntent(policy.intent)),
       })),
     };
   });
