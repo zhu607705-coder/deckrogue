@@ -13,7 +13,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { checkDesktopArtifacts } from '../../scripts/validation/check_release_readiness.ts';
+import { checkDesktopArtifacts, checkFlowReport } from '../../scripts/validation/check_release_readiness.ts';
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
 
 const DESKTOP_SMOKE_SOURCE = readFileSync(resolve('scripts/validation/playwright_electron_smoke.ts'), 'utf-8');
@@ -91,6 +91,43 @@ test('release readiness rejects desktop smoke reports with missing screenshot ev
 
     assert.equal(smokeCheck?.status, 'fail');
     assert.match(smokeCheck?.evidence || '', /screenshot/i);
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('release readiness rejects flow smoke reports with missing screenshot evidence', () => {
+  const previousCwd = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-flow-evidence-'));
+  const reportsDir = join(fixtureRoot, 'reports', 'flows');
+  const reportRelPath = 'reports/flows/reward-flow-smoke.json';
+
+  try {
+    mkdirSync(reportsDir, { recursive: true });
+    writeFileSync(
+      join(fixtureRoot, reportRelPath),
+      JSON.stringify({
+        reachedReward: true,
+        returnedToMap: true,
+        consoleErrors: [],
+        pageErrors: [],
+        screenshots: [join(fixtureRoot, 'output', 'playwright', 'missing-reward.png')],
+      }),
+    );
+
+    process.chdir(fixtureRoot);
+    const check = checkFlowReport(
+      'reward_flow_smoke',
+      reportRelPath,
+      0,
+      (report) => report.reachedReward === true && report.returnedToMap === true,
+      'reward flow smoke report is green and fresh',
+      'reward flow smoke report is not green',
+    );
+
+    assert.equal(check.status, 'fail');
+    assert.match(check.evidence, /screenshot/i);
   } finally {
     process.chdir(previousCwd);
     rmSync(fixtureRoot, { recursive: true, force: true });

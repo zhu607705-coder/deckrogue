@@ -172,6 +172,40 @@ function readJsonFile<T>(path: string): T | null {
   }
 }
 
+function collectScreenshotEvidence(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectScreenshotEvidence(entry));
+  }
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const screenshots: string[] = [];
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === 'screenshot' && typeof nested === 'string') {
+      screenshots.push(nested);
+      continue;
+    }
+    if (key === 'screenshots' && Array.isArray(nested)) {
+      screenshots.push(...nested.filter((entry): entry is string => typeof entry === 'string'));
+      continue;
+    }
+    screenshots.push(...collectScreenshotEvidence(nested));
+  }
+  return screenshots;
+}
+
+function hasFreshScreenshotEvidence(report: unknown, freshnessBaseline: number): boolean {
+  const screenshots = collectScreenshotEvidence(report);
+  return screenshots.length > 0 && screenshots.every((screenshot) => {
+    if (screenshot.trim().length === 0) {
+      return false;
+    }
+    const screenshotPath = resolve(screenshot);
+    return existsSync(screenshotPath) && isArtifactFresh(screenshotPath, freshnessBaseline);
+  });
+}
+
 function checkVersionConsistency(): ReleaseCheck {
   const packageJson = JSON.parse(readFileSync('package.json', 'utf-8')) as { version?: string };
   const versionFile = existsSync('VERSION') ? readFileSync('VERSION', 'utf-8').trim() : '';
@@ -361,7 +395,7 @@ function checkDoctorAndSecurityArtifacts(): ReleaseCheck[] {
   return checks;
 }
 
-function checkFlowReport(
+export function checkFlowReport(
   id: string,
   reportRelPath: string,
   freshnessBaseline: number,
@@ -375,14 +409,22 @@ function checkFlowReport(
   }
   const report = readJsonFile<GenericFlowReport>(reportPath);
   const fresh = isArtifactFresh(reportPath, freshnessBaseline);
+  const screenshotEvidenceFresh = hasFreshScreenshotEvidence(report, freshnessBaseline);
   const clean =
     (report?.consoleErrors?.length || 0) === 0 &&
     (report?.pageErrors?.length || 0) === 0 &&
     !!report &&
+    screenshotEvidenceFresh &&
     predicate(report);
   return clean && fresh
     ? { id, status: 'pass', evidence: successEvidence }
-    : { id, status: 'fail', evidence: fresh ? failureEvidence : `${reportRelPath} is stale for current workspace state` };
+    : {
+      id,
+      status: 'fail',
+      evidence: fresh
+        ? (screenshotEvidenceFresh ? failureEvidence : `${failureEvidence}; missing or stale screenshot evidence`)
+        : `${reportRelPath} is stale for current workspace state`
+    };
 }
 
 function checkCanonicalFlowArtifacts(freshnessBaseline: number): ReleaseCheck[] {

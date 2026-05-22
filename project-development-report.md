@@ -8276,3 +8276,30 @@
 - 状态：
   - release readiness 不再接受缺失桌面截图证据的 desktop smoke report。
   - release readiness 已刷新到全绿；下一轮可继续查 UI/rendering evidence gate、desktop offline Pyodide packaging 或 runtimeV2 browser edge。
+
+## DeckRogue Fix Batch 018 - Canonical Flow Screenshot Evidence Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 017 报告、`git status`、当前 HEAD 和 release readiness 的 flow gate 源码，确认工作树从 `3275156` 干净状态开始。
+  - 源码审计 `scripts\validation\check_release_readiness.ts` 发现 canonical flow smoke 只检查流程布尔值、`consoleErrors` 和 `pageErrors`，没有验证 flow report 中的 `screenshots[]` 或 terminal `cases[].screenshot` 指向的视觉证据是否存在或新鲜。
+  - 红灯复现：新增临时 workspace 回归，构造 `reward-flow-smoke.json`：`reachedReward=true`、`returnedToMap=true`、错误数组为空，但 `screenshots` 指向不存在的 PNG；仅导出 helper 后，`npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增用例失败为 `'pass' !== 'fail'`。
+- 修复内容：
+  - **FLOW-SMOKE-MISSING-SCREENSHOT-EVIDENCE-PASS-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 新增 `collectScreenshotEvidence()` 和 `hasFreshScreenshotEvidence()`，递归收集普通 flow 的 `screenshots[]` 与 terminal flow 的 `cases[].screenshot`。
+    - `checkFlowReport()` 现在要求至少一个 screenshot evidence，且每个截图路径必须非空、存在，并且相对当前 workspace freshness baseline 是 fresh。
+    - flow smoke 失败文案补充 `missing or stale screenshot evidence`，避免布尔流程绿但视觉证据丢失仍通过发布门。
+  - `tests\unit\releaseAndTranslationGate.test.ts` 新增 focused 回归，锁定缺失 flow screenshot evidence 必须使 release readiness flow check 失败。
+- Fresh 验证输出：
+  - 红灯复现 1：新增测试首次运行因 `checkFlowReport` 未导出失败。
+  - 红灯复现 2：仅导出 helper 后，`npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增用例失败为 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`4/4` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`195/195` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；包含全部 canonical flow smoke 并重新生成截图证据。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - 真实 flow screenshot 证据检查：从 `reports\flows\*.json` 解析到的 `243` 个 screenshot 路径均可由 `Get-Item` 读取。
+- 状态：
+  - release readiness 不再接受缺失或 stale flow screenshot evidence 的 canonical flow smoke report。
+  - release readiness 已刷新到全绿；下一轮可继续查 UI expansion screenshot schema、desktop offline Pyodide packaging 或 runtimeV2 browser edge。
