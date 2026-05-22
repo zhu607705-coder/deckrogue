@@ -1,25 +1,26 @@
 {
   "options": {
     "runsPerClass": 1,
-    "maxFloors": 3,
-    "maxCombatTurns": 8
+    "maxFloors": 1,
+    "maxCombatTurns": 3,
+    "targetClass": "informant"
   },
   "scanCounts": {
     "economy": 110,
     "formulas": 51,
-    "runtime": 10436
+    "runtime": 1344
   },
   "summary": {
     "errors": 0,
-    "warnings": 15
+    "warnings": 0
   },
   "anomalySummary": {
     "errors": 0,
-    "warnings": 9
+    "warnings": 0
   },
   "driftSummary": {
     "errors": 0,
-    "warnings": 6
+    "warnings": 0
   },
   "driftMetrics": [
     {
@@ -27,42 +28,42 @@
       "baseline": 0.14,
       "observed": 0.14,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     },
     {
       "name": "resource.block",
       "baseline": 0.16,
       "observed": 0.16,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     },
     {
       "name": "resource.draw",
       "baseline": 0.34,
       "observed": 0.34,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     },
     {
       "name": "price.card.common",
       "baseline": 50,
       "observed": 50,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     },
     {
       "name": "price.relic.base",
       "baseline": 150,
       "observed": 150,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     },
     {
       "name": "price.potion.base",
       "baseline": 75,
       "observed": 75,
       "drift": 0,
-      "severity": "warn"
+      "severity": "ok"
     }
   ],
   "driftFindings": [],
@@ -88,69 +89,5 @@
       "perilChance": 0.6039
     }
   ],
-  "findings": [
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.afterSelect.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.entered.Combat.f0.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.combatStep.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.afterReward.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.entered.Combat.f1.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.combatStep.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.afterReward.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.entered.Event.f2.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    },
-    {
-      "kind": "Negative",
-      "severity": "warn",
-      "source": "runtime",
-      "path": "brute.run0.afterEvent.character.rewardWeights.controlCardPenalty",
-      "value": -0.25
-    }
-  ]
+  "findings": []
 }

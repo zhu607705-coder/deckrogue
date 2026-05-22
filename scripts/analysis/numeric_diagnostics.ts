@@ -42,7 +42,7 @@ interface DriftMetric {
   baseline: number;
   observed: number;
   drift: number;
-  severity: Severity;
+  severity: Severity | 'ok';
 }
 
 interface DriftFinding {
@@ -75,7 +75,9 @@ function shouldAllowNegative(path: string): boolean {
   // Derived stats / coordinates could legitimately be negative in future; keep low-noise defaults.
   const allowPatterns = [
     '.x', // map coordinates may become centered around 0
-    '.y'
+    '.y',
+    '.rngState',
+    '.runtimeRngState'
   ];
   if (/\.actions\[\d+\]\.amount$/.test(path)) return true;
   if (/\.actions\[\d+\]\.bonus$/.test(path)) return true;
@@ -317,7 +319,7 @@ function summarizeDrift(metrics: DriftMetric[]): { errors: number; warnings: num
 
 function createDriftFindings(metrics: DriftMetric[]): DriftFinding[] {
   return metrics
-    .filter(metric => metric.drift > 0.1)
+    .filter((metric): metric is DriftMetric & { severity: Severity } => metric.severity !== 'ok')
     .map(metric => ({
       kind: 'BaselineDrift',
       severity: metric.severity,
@@ -337,7 +339,7 @@ function calculateBaselineDrift(): DriftMetric[] {
       baseline,
       observed,
       drift,
-      severity: drift > 0.2 ? 'error' : drift > 0.1 ? 'warn' : 'warn'
+      severity: drift > 0.2 ? 'error' : drift > 0.1 ? 'warn' : 'ok'
     });
   };
 

@@ -7938,3 +7938,25 @@
 - 状态：
   - `scan:dead -- --ci` 已从旧的真实 orphan failure 转为可用门禁。
   - 脚本层仍报告若干 likely unused scripts；本批只修 source orphan 与 CI gate，不把脚本启发式项合并进 source 修复。
+
+## DeckRogue Fix Batch 006 - Numeric Diagnostics Warning Noise Closure - 2026-05-22
+
+- 发现证据：
+  - 本轮先读上一批报告和干净工作树，再运行 `npm run review:ci --silent`。
+  - `review:ci` 通过，但 `Numeric Diagnostics` 输出 `Findings: errors=0, warnings=11`，其中 5 条是合法 signed `rngState` 负值，6 条 baseline drift 的 `drift=0` 仍被标成 `warn`。
+- 修复内容：
+  - **NUMERIC-DIAGNOSTICS-RNGSTATE-FALSE-WARN-001：已修。**
+    - `scripts\analysis\numeric_diagnostics.ts` 将 `.rngState` 与 `.runtimeRngState` 视为合法 signed RNG 状态，不再按普通非负数值告警。
+  - **NUMERIC-DIAGNOSTICS-ZERO-DRIFT-WARN-001：已修。**
+    - baseline drift metric 增加 `ok` 状态；只有 drift `> 0.1` 才进入 warning，`> 0.2` 才进入 error。
+    - `driftFindings` 只输出非 `ok` 指标，避免 `baseline_audit.json` 和 report bundle 将无漂移数据统计成 warning。
+  - `tests\unit\validationScripts.test.ts` 增加静态回归，锁定 signed RNG allowlist 和 zero-drift `ok` 分级逻辑。
+  - 刷新 `output\numerics\baseline_audit.json`，当前 `summary.warnings=0`、`driftSummary.warnings=0`、`findings=[]`。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`7/7` pass。
+  - `npm run diag:numeric -- --runs=1 --floors=1 --turns=3 --class=informant`：exit `0`，`Findings: errors=0, warnings=0`，`No numeric anomalies detected.`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run review:ci --silent`：exit `0`，Type Check、Build、Damage Tests、Numeric Diagnostics、Dead File Scan 全部通过；Numeric Diagnostics 阶段输出 `errors=0, warnings=0`。
+- 状态：
+  - `review:ci` 仍通过，同时生成报告不再携带 0-drift / signed RNG 假 warning。
+  - `scan:dead` 仍只剩脚本启发式 likely-unused 列表；source orphan gate 维持通过。

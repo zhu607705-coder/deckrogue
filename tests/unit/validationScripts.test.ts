@@ -32,6 +32,15 @@ test('dead file scan includes test and tool source entrypoints', () => {
   assert.match(source, /'scripts\/'/);
 });
 
+test('numeric diagnostics keeps signed RNG and zero drift out of warning totals', () => {
+  const source = readFileSync('scripts/analysis/numeric_diagnostics.ts', 'utf-8');
+
+  assert.match(source, /'\.rngState'/);
+  assert.match(source, /'\.runtimeRngState'/);
+  assert.match(source, /Severity \| 'ok'/);
+  assert.match(source, /drift > 0\.2 \? 'error' : drift > 0\.1 \? 'warn' : 'ok'/);
+});
+
 test('content contract layer guards character raw data imports', () => {
   const source = readFileSync('scripts/validation/check_content_contract_layer.ts', 'utf-8');
 
