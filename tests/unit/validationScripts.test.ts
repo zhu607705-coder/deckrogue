@@ -85,6 +85,16 @@ test('desktop smoke isolates production runs', () => {
   assert.match(source, /desktop_\$\{runId\}_launcher\.png/);
 });
 
+test('game doctor prunes old logs before release readiness growth checks', () => {
+  const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+
+  assert.match(source, /DEFAULT_LOG_RETENTION_LIMIT\s*=\s*1200/);
+  assert.match(source, /function pruneDoctorLogs/);
+  assert.match(source, /assertInsideDirectory/);
+  assert.match(source, /rmSync\(staleLog\.path,\s*\{\s*force:\s*true\s*\}\)/);
+  assert.match(source, /const prunedLogs = pruneDoctorLogs\(\)/);
+});
+
 test('real UI round stress treats missing or invalid scenario reports as failures', () => {
   const source = readFileSync('scripts/validation/playwright_real_ui_30_rounds.ts', 'utf-8');
 
@@ -139,6 +149,67 @@ test('enemy AI profile gate rejects numeric authoring values encoded as strings'
 
     assert.notEqual(result.status, 0, `expected stringly numeric profile to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
     assert.match(result.stderr, /must be a finite number/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects card costs encoded as strings', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-authoring-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'string_cost_card',
+          name: 'String Cost Card',
+          rarity: 'Common',
+          cost: '1',
+          type: 'Attack',
+          targeting: 'Enemy',
+          text: 'Deal 4 damage.',
+          actions: [{ type: 'DealDamage', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected string card cost to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Invalid cost/);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }

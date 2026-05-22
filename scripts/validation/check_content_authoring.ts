@@ -78,6 +78,10 @@ function log(msg: string) {
   console.log(`[content-authoring] ${msg}`);
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function loadJsonFile(filepath: string): any {
   try {
     const content = readFileSync(filepath, 'utf-8');
@@ -115,7 +119,7 @@ function checkCard(card: CardSpec): string[] {
     issues.push(`Invalid rarity: ${card.rarity}`);
   }
 
-  if (card.cost === undefined || card.cost < -2 || card.cost > 10) {
+  if (!isFiniteNumber(card.cost) || card.cost < -2 || card.cost > 10) {
     issues.push(`Invalid cost: ${card.cost}`);
   }
 

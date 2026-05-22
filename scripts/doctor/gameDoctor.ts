@@ -10,11 +10,14 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
+import { isAbsolute, relative, resolve } from 'path';
 
 const REPORT_DIR = 'reports/doctor';
+const REPORT_LOG_DIR = `${REPORT_DIR}/logs`;
 const REPORT_JSON = `${REPORT_DIR}/report.json`;
 const REPORT_MD = `${REPORT_DIR}/report.md`;
+const DEFAULT_LOG_RETENTION_LIMIT = 1200;
 
 interface StageResult {
   name: string;
@@ -46,8 +49,47 @@ function log(msg: string) {
   console.log(`[doctor] ${msg}`);
 }
 
+function getPositiveIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function assertInsideDirectory(parent: string, child: string): void {
+  const relativePath = relative(parent, child);
+  if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    throw new Error(`Refusing to prune doctor log outside ${parent}: ${child}`);
+  }
+}
+
+function pruneDoctorLogs(limit = getPositiveIntegerEnv('DOCTOR_LOG_RETENTION_LIMIT', DEFAULT_LOG_RETENTION_LIMIT)): number {
+  const logDir = resolve(REPORT_LOG_DIR);
+  if (!existsSync(logDir)) {
+    return 0;
+  }
+
+  const logFiles = readdirSync(logDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.log'))
+    .map((entry) => {
+      const path = resolve(logDir, entry.name);
+      assertInsideDirectory(logDir, path);
+      return {
+        path,
+        mtimeMs: statSync(path).mtimeMs,
+      };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  const staleLogs = logFiles.slice(limit);
+  for (const staleLog of staleLogs) {
+    rmSync(staleLog.path, { force: true });
+  }
+  return staleLogs.length;
+}
+
 function saveLog(name: string, output: string): string {
-  const logPath = `${REPORT_DIR}/logs/${name.replace(/\s+/g, '_')}-${Date.now()}.log`;
+  const logPath = `${REPORT_LOG_DIR}/${name.replace(/\s+/g, '_')}-${Date.now()}.log`;
   const logDir = logPath.substring(0, logPath.lastIndexOf('/'));
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
@@ -189,6 +231,10 @@ async function main(): Promise<void> {
   const failFast = !args.includes('--report-all');
   console.log('=== DeckRogue Game Doctor (Expansion Ready) ===');
   console.log('');
+  const prunedLogs = pruneDoctorLogs();
+  if (prunedLogs > 0) {
+    log(`Pruned ${prunedLogs} old doctor logs (retention=${getPositiveIntegerEnv('DOCTOR_LOG_RETENTION_LIMIT', DEFAULT_LOG_RETENTION_LIMIT)})`);
+  }
 
   const stages: Array<{ name: string; command: string; env?: Record<string, string> }> = [
     { name: 'Lint', command: 'npm run lint --silent' },

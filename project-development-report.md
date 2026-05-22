@@ -8128,3 +8128,34 @@
 - 状态：
   - AI intent/profile authoring gate 不再吞掉 stringly numeric schema drift。
   - release readiness 已刷新到全绿；下一轮可继续优先查 content schema 深层契约、runtimeV2 browser/Pyodide edge 或 UI/rendering gate。
+
+## DeckRogue Fix Batch 013 - Content Cost Schema And Doctor Log Retention Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 012 报告、`git status` 和记忆中的 DeckRogue repo root 约束，确认 HEAD=`cf20a648` 且工作树干净。
+  - 源码审计 `scripts\validation\check_content_authoring.ts` 发现 `card.cost` 只做 `card.cost < -2 || card.cost > 10` 范围比较；JS 会把 `"1"` 隐式转换为数字，导致 stringly numeric card cost 误绿。
+  - 红灯复现：新增真实脚本回归后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`；临时 content fixture 中 `cost: "1"` 被 `check_content_authoring.ts` 输出 `Cards: 1/1 valid`、`✅ Content authoring check passed`。
+  - 额外 generated-report gate 证据：修复后跑完整 `npm run doctor:game:full --silent` 时前 43 阶段全过，但 `Check Release Readiness` 失败；`reports\release\release-readiness.json` 显示 `reports_dir` fail：`reports/ exceeds growth limits: 2004 files, 7.73 MiB > 2000 files or 50 MiB`。本地计数显示 `reports\doctor\logs` 已累积 `1832` 个文件，doctor 每轮继续追加约 44 个日志，导致自家 release gate 被验证日志刷爆。
+- 修复内容：
+  - **CONTENT-AUTHORING-CARD-COST-STRING-PASS-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 新增严格 `isFiniteNumber()`，`card.cost` 必须是实际 `number` 且 finite，再进入原有 `-2..10` 范围规则。
+    - `tests\unit\validationScripts.test.ts` 新增临时 cards/enemies/relics fixture + 真实 `tsx` 脚本执行回归，锁定 `cost: "1"` 必须非零退出并输出 `Invalid cost`。
+  - **DOCTOR-LOG-GROWTH-RELEASE-GATE-001：已修。**
+    - `scripts\doctor\gameDoctor.ts` 新增 `pruneDoctorLogs()`，运行 doctor 前保留最新 `1200` 个 `reports\doctor\logs\*.log`，并用 `assertInsideDirectory()` 防止误删工作区外路径。
+    - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 doctor 日志 retention、路径内删除保护和 release readiness 前清理调用。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`14/14` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，`Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Pass rate: 100%`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+  - `npm run check:content-contract-layer --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/脚本改动触发 stale artifact gate。
+  - `npm run doctor:game:full --silent`：exit `0`，开头输出 `Pruned 632 old doctor logs (retention=1200)`，最终 `44/44` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - 报告目录计数：`files=1419 bytes=6526877 doctorLogs=1244`，低于 release gate 的 `2000` files / `50 MiB` 上限。
+- 状态：
+  - content authoring gate 不再吞掉 stringly numeric card cost。
+  - doctor/release 组合不再因自身历史日志累积撞文件数上限。
+  - 下一轮可继续查 runtimeV2 browser/Pyodide edge、UI 渲染证据契约或更深层 action schema 校验。
