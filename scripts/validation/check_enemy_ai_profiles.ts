@@ -31,6 +31,10 @@ type EnemyRecord = {
   };
 };
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function main(): void {
   const path = resolve('src/content/data/enemies.json');
   if (!existsSync(path)) {
@@ -61,15 +65,19 @@ function main(): void {
       continue;
     }
 
-    const accuracy = Number(profile.perceptionAccuracy);
-    if (!Number.isFinite(accuracy) || accuracy < 0.1 || accuracy > 0.95) {
+    const accuracy = profile.perceptionAccuracy;
+    if (!isFiniteNumber(accuracy)) {
+      violations.push(`${enemy.id}: perceptionAccuracy must be a finite number`);
+    } else if (accuracy < 0.1 || accuracy > 0.95) {
       violations.push(`${enemy.id}: perceptionAccuracy must be between 0.1 and 0.95`);
     }
 
     const personality = profile.personality || {};
     for (const key of ['aggression', 'defensiveness', 'unpredictability', 'revengefulness']) {
-      const value = Number(personality[key]);
-      if (!Number.isFinite(value) || value < 0 || value > 1) {
+      const value = personality[key];
+      if (!isFiniteNumber(value)) {
+        violations.push(`${enemy.id}: personality.${key} must be a finite number`);
+      } else if (value < 0 || value > 1) {
         violations.push(`${enemy.id}: personality.${key} must be between 0 and 1`);
       }
     }
@@ -81,16 +89,23 @@ function main(): void {
       } else if (!knownMoveIntents.has(rule.intent)) {
         violations.push(`${enemy.id}: intentBiases references intent without move ${rule.intent}`);
       }
-      const multiplier = Number(rule.multiplier);
-      if (!Number.isFinite(multiplier) || multiplier < 0) {
+      const multiplier = rule.multiplier;
+      if (!isFiniteNumber(multiplier)) {
+        violations.push(`${enemy.id}: intentBiases.${rule.intent}.multiplier must be a finite number`);
+      } else if (multiplier < 0) {
         violations.push(`${enemy.id}: intentBiases.${rule.intent}.multiplier must be non-negative`);
       }
     }
 
     const antiStall = profile.antiStall;
-    if (!antiStall || !Number.isFinite(Number(antiStall.maxNonAttackTurns))) {
+    if (!antiStall || !isFiniteNumber(antiStall.maxNonAttackTurns)) {
       violations.push(`${enemy.id}: antiStall.maxNonAttackTurns missing`);
     } else {
+      if (!isFiniteNumber(antiStall.forcedAttackMultiplier)) {
+        violations.push(`${enemy.id}: antiStall.forcedAttackMultiplier must be a finite number`);
+      } else if (antiStall.forcedAttackMultiplier < 0) {
+        violations.push(`${enemy.id}: antiStall.forcedAttackMultiplier must be non-negative`);
+      }
       for (const intent of antiStall.suppressedIntents || []) {
         if (!knownIntents.has(intent)) {
           violations.push(`${enemy.id}: antiStall references unknown intent ${intent}`);

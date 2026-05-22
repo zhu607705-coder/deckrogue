@@ -5,7 +5,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 test('dead file scan resolves the repository root above scripts/validation', () => {
   const source = readFileSync('scripts/validation/dead_file_scan.ts', 'utf-8');
@@ -89,6 +92,56 @@ test('real UI round stress treats missing or invalid scenario reports as failure
   assert.match(source, /reportSummary\?\.\s*parseError/);
   assert.match(source, /Scenario report was not generated/);
   assert.match(source, /Scenario report could not be parsed/);
+});
+
+test('enemy AI profile gate rejects numeric authoring values encoded as strings', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-ai-profile-'));
+  const enemyDataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(enemyDataDir, { recursive: true });
+    writeFileSync(
+      join(enemyDataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'stringly_ai_profile',
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+          ai_profile: {
+            perceptionAccuracy: '0.5',
+            personality: {
+              aggression: '0.4',
+              defensiveness: 0.3,
+              unpredictability: 0.2,
+              revengefulness: 0.1,
+            },
+            intentBiases: [{ intent: 'attack', multiplier: '1.1' }],
+            antiStall: {
+              maxNonAttackTurns: '2',
+              forcedAttackMultiplier: '1.5',
+              suppressedIntents: [],
+            },
+          },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_enemy_ai_profiles.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected stringly numeric profile to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stderr, /must be a finite number/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test('script debt repair keeps route and Python runtime checks gated', () => {

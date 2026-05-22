@@ -8102,3 +8102,29 @@
 - 状态：
   - real UI stress runner 不再接受缺失或坏 JSON 的 scenario evidence。
   - release readiness 已重新刷新到全绿；本批修复可提交。
+
+## DeckRogue Fix Batch 012 - Enemy AI Profile Numeric Schema Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 011 报告、`git status`，并运行非重复检查：`check:python-wasm-runtime-sync`、`test:python-runtime`、`check:content-authoring`、`check:content-bundle`、`check:content-contract-layer`、`check:enemy-ai-profiles`、`check:enemy-ai-boundaries`、`test:runtime-v2:ts` 均通过。
+  - 源码审计 `scripts\validation\check_enemy_ai_profiles.ts` 发现 AI profile 数值字段通过 `Number(...)` 强制转换，导致 `"0.5"`、`"1.1"`、`"2"` 等字符串 authoring 值可被误判为合法；这与 intent policy 已有“非 number authoring 值必须拒绝”的约束不一致。
+  - 红灯复现：新增真实脚本回归后，`npx tsx --test tests/unit/validationScripts.test.ts` 修复前 exit `1`；临时 `enemies.json` 中 stringly numeric `ai_profile` 被当前脚本输出 `[check_enemy_ai_profiles] OK`。
+- 修复内容：
+  - **ENEMY-AI-PROFILE-STRING-NUMERIC-PASS-001：已修。**
+    - `scripts\validation\check_enemy_ai_profiles.ts` 新增严格 `isFiniteNumber()`，只接受实际 `number` 且 finite 的 authoring 数值。
+    - `perceptionAccuracy`、`personality.*`、`intentBiases.*.multiplier`、`antiStall.maxNonAttackTurns`、`antiStall.forcedAttackMultiplier` 不再接受字符串、布尔、null 等可被 `Number(...)` 转换的值。
+    - `tests\unit\validationScripts.test.ts` 新增临时 fixture + 真实 `tsx` 脚本执行回归，锁定 stringly numeric profile 必须非零退出并输出 `must be a finite number`。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`12/12` pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:enemy-ai-boundaries --silent`：exit `0`。
+  - `npm run report:enemy-ai-tuning --silent`：exit `0`，`tuningNotes=0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、doctor、desktop、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；覆盖 Build、Desktop Build、Supplemental Unit Tests、AI profile gate、UI Smoke Expansion、全部 flow smoke、Desktop Smoke、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - AI intent/profile authoring gate 不再吞掉 stringly numeric schema drift。
+  - release readiness 已刷新到全绿；下一轮可继续优先查 content schema 深层契约、runtimeV2 browser/Pyodide edge 或 UI/rendering gate。
