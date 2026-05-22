@@ -11,6 +11,7 @@
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { copyPyodideAssets, type PyodideAssetFile } from './pyodide_assets.ts';
 
 const REPORT_DIR = path.join(process.cwd(), 'reports', 'desktop');
 const REPORT_PATH = path.join(REPORT_DIR, 'desktop-build.json');
@@ -21,6 +22,8 @@ interface DesktopBuildReport {
   rendererIndexPath: string;
   electronMainPath: string;
   preloadPath: string;
+  pyodideAssetDir: string;
+  pyodideAssets: PyodideAssetFile[];
   entryMode: 'legacy';
   evidence: string[];
 }
@@ -34,6 +37,8 @@ function main() {
   const rendererIndexPath = path.join(process.cwd(), 'dist', 'index.html');
   const electronMainPath = path.join(process.cwd(), 'electron', 'main.mjs');
   const preloadPath = path.join(process.cwd(), 'electron', 'preload.cjs');
+  const pyodideAssetDir = path.join(process.cwd(), 'dist', 'pyodide');
+  let pyodideAssets: PyodideAssetFile[] = [];
   const evidence: string[] = [];
 
   try {
@@ -51,10 +56,13 @@ function main() {
     if (!existsSync(preloadPath)) {
       throw new Error('electron/preload.cjs missing');
     }
+    const pyodideReport = copyPyodideAssets();
+    pyodideAssets = pyodideReport.files;
 
     evidence.push('renderer dist built');
     evidence.push('electron main entry present');
     evidence.push('electron preload entry present');
+    evidence.push(`local Pyodide assets staged: ${pyodideAssets.length}`);
 
     writeReport({
       timestamp: new Date().toISOString(),
@@ -62,6 +70,8 @@ function main() {
       rendererIndexPath,
       electronMainPath,
       preloadPath,
+      pyodideAssetDir,
+      pyodideAssets,
       entryMode: 'legacy',
       evidence,
     });
@@ -73,6 +83,8 @@ function main() {
       rendererIndexPath,
       electronMainPath,
       preloadPath,
+      pyodideAssetDir,
+      pyodideAssets,
       entryMode: 'legacy',
       evidence,
     });

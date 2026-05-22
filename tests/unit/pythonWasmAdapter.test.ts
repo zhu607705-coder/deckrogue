@@ -231,3 +231,60 @@ test('PythonWasmAdapter replaces stale Pyodide loader scripts instead of waiting
     (globalThis as any).document = previousDocument;
   }
 });
+
+test('PythonWasmAdapter uses bundled Pyodide assets for deckrogue desktop URLs', async () => {
+  const previousWindow = (globalThis as any).window;
+  const previousDocument = (globalThis as any).document;
+  let appendedScript: any = null;
+  let loaderIndexUrl: string | null = null;
+
+  (globalThis as any).window = {
+    location: {
+      href: 'deckrogue://app/index.html?runtimeV2=1',
+      protocol: 'deckrogue:',
+    },
+  };
+  (globalThis as any).document = {
+    querySelector: () => null,
+    createElement: () => {
+      const listeners = new Map<string, () => void>();
+      appendedScript = {
+        dataset: {},
+        addEventListener(type: string, listener: () => void): void {
+          listeners.set(type, listener);
+        },
+        dispatch(type: string): void {
+          listeners.get(type)?.();
+        },
+      };
+      return appendedScript;
+    },
+    head: {
+      appendChild(script: any): void {
+        (globalThis as any).window.loadPyodide = async (config: { indexURL: string }) => {
+          loaderIndexUrl = config.indexURL;
+          return {
+            globals: { set(): void {} },
+            runPythonAsync: async (code: string) => ({
+              toJs: () => ({ snapshot: makePythonSnapshot(code.includes('dispatch_command') ? 'Map' : 'CharacterSelect') }),
+            }),
+          };
+        };
+        queueMicrotask(() => script.dispatch('load'));
+      },
+    },
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    const snapshot = await adapter.start({ seed: 19 });
+
+    assert.equal(snapshot.lifecycle.screen, 'CharacterSelect');
+    assert.ok(appendedScript);
+    assert.equal(appendedScript.src, 'deckrogue://app/pyodide/pyodide.js');
+    assert.equal(loaderIndexUrl, 'deckrogue://app/pyodide/');
+  } finally {
+    (globalThis as any).window = previousWindow;
+    (globalThis as any).document = previousDocument;
+  }
+});

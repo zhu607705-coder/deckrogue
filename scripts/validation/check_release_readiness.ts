@@ -17,6 +17,7 @@ import {
   type UiSmokeExpansionReport,
   validateUiSmokeExpansionReport,
 } from './uiSmokeExpansionContract';
+import { REQUIRED_PYODIDE_ASSET_FILES } from '../desktop/pyodide_assets.ts';
 
 const REPORT_DIR = 'reports/release';
 const REPORT_PATH = `${REPORT_DIR}/release-readiness.json`;
@@ -88,6 +89,12 @@ type DesktopBuildReport = {
   rendererIndexPath?: string;
   electronMainPath?: string;
   preloadPath?: string;
+  pyodideAssetDir?: string;
+  pyodideAssets?: Array<{
+    fileName?: string;
+    path?: string;
+    sizeBytes?: number;
+  }>;
 };
 
 type DesktopSmokeReport = {
@@ -240,6 +247,23 @@ function checkBuildArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   return results;
 }
 
+function hasBundledPyodideAssets(buildReport: DesktopBuildReport | null): boolean {
+  if (!buildReport?.pyodideAssetDir || !existsSync(buildReport.pyodideAssetDir)) {
+    return false;
+  }
+  const reportedAssets = Array.isArray(buildReport.pyodideAssets) ? buildReport.pyodideAssets : [];
+  return REQUIRED_PYODIDE_ASSET_FILES.every((fileName) => {
+    const reported = reportedAssets.find((asset) => asset.fileName === fileName);
+    if (!reported?.path || (reported.sizeBytes ?? 0) <= 0) {
+      return false;
+    }
+    if (!existsSync(reported.path)) {
+      return false;
+    }
+    return statSync(reported.path).isFile() && statSync(reported.path).size > 0;
+  });
+}
+
 export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   const checks: ReleaseCheck[] = [];
   const buildReportPath = resolve('reports/desktop/desktop-build.json');
@@ -251,10 +275,11 @@ export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[]
     const rendererExists = buildReport?.rendererIndexPath ? existsSync(buildReport.rendererIndexPath) : false;
     const mainExists = buildReport?.electronMainPath ? existsSync(buildReport.electronMainPath) : false;
     const preloadExists = buildReport?.preloadPath ? existsSync(buildReport.preloadPath) : false;
-    const healthy = buildReport?.overallStatus === 'pass' && rendererExists && mainExists && preloadExists;
+    const pyodideAssetsBundled = hasBundledPyodideAssets(buildReport);
+    const healthy = buildReport?.overallStatus === 'pass' && rendererExists && mainExists && preloadExists && pyodideAssetsBundled;
     checks.push(healthy && fresh
-      ? { id: 'desktop_build_report', status: 'pass', evidence: 'desktop build report is green and fresh' }
-      : { id: 'desktop_build_report', status: 'fail', evidence: fresh ? 'desktop build report is not green or missing expected artifacts' : 'desktop build report is stale for current workspace state; run build:desktop again' });
+      ? { id: 'desktop_build_report', status: 'pass', evidence: 'desktop build report is green, fresh, and includes bundled Pyodide runtime assets' }
+      : { id: 'desktop_build_report', status: 'fail', evidence: fresh ? 'desktop build report is not green, missing expected artifacts, or missing bundled Pyodide runtime assets' : 'desktop build report is stale for current workspace state; run build:desktop again' });
   }
 
   const smokeReportPath = resolve('reports/desktop/desktop-smoke.json');

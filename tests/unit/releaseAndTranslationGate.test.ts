@@ -13,6 +13,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
+import { REQUIRED_PYODIDE_ASSET_FILES } from '../../scripts/desktop/pyodide_assets.ts';
 import { checkDesktopArtifacts, checkFlowReport } from '../../scripts/validation/check_release_readiness.ts';
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
 
@@ -91,6 +92,72 @@ test('release readiness rejects desktop smoke reports with missing screenshot ev
 
     assert.equal(smokeCheck?.status, 'fail');
     assert.match(smokeCheck?.evidence || '', /screenshot/i);
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('release readiness rejects desktop builds without bundled Pyodide runtime assets', () => {
+  const previousCwd = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-desktop-pyodide-'));
+  const desktopReportsDir = join(fixtureRoot, 'reports', 'desktop');
+  const distDir = join(fixtureRoot, 'dist');
+  const electronDir = join(fixtureRoot, 'electron');
+  const outputDir = join(fixtureRoot, 'output', 'playwright');
+  const rendererIndexPath = join(distDir, 'index.html');
+  const electronMainPath = join(electronDir, 'main.mjs');
+  const preloadPath = join(electronDir, 'preload.cjs');
+  const screenshotPaths = ['launcher', 'tutorial', 'character_select', 'map', 'combat']
+    .map((step) => join(outputDir, `${step}.png`));
+
+  try {
+    mkdirSync(desktopReportsDir, { recursive: true });
+    mkdirSync(distDir, { recursive: true });
+    mkdirSync(electronDir, { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(rendererIndexPath, '<!doctype html>');
+    writeFileSync(electronMainPath, 'export {};');
+    writeFileSync(preloadPath, 'module.exports = {};');
+    for (const screenshotPath of screenshotPaths) {
+      writeFileSync(screenshotPath, 'png-bytes');
+    }
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-build.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        overallStatus: 'pass',
+        rendererIndexPath,
+        electronMainPath,
+        preloadPath,
+        pyodideAssetDir: join(distDir, 'pyodide'),
+        pyodideAssets: REQUIRED_PYODIDE_ASSET_FILES.map((fileName) => ({
+          fileName,
+          path: join(distDir, 'pyodide', fileName),
+          sizeBytes: 0,
+        })),
+      }),
+    );
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-smoke.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        mode: 'production',
+        overallStatus: 'pass',
+        closeStatus: 'pass',
+        screenshots: screenshotPaths,
+        steps: ['launcher', 'tutorial', 'character_select', 'map', 'combat'],
+        consoleErrors: [],
+        pageErrors: [],
+        failedRequests: [],
+      }),
+    );
+
+    process.chdir(fixtureRoot);
+    const buildCheck = checkDesktopArtifacts(0).find((check) => check.id === 'desktop_build_report');
+
+    assert.equal(buildCheck?.status, 'fail');
+    assert.match(buildCheck?.evidence || '', /Pyodide/i);
   } finally {
     process.chdir(previousCwd);
     rmSync(fixtureRoot, { recursive: true, force: true });

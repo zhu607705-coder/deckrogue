@@ -8328,3 +8328,35 @@
 - 状态：
   - UI expansion report 不再接受 0 字节或非文件 screenshot evidence。
   - release readiness 已刷新到全绿；下一轮可继续查 desktop offline Pyodide packaging、runtimeV2 browser edge 或 content schema 深层契约。
+
+## DeckRogue Fix Batch 020 - Desktop Bundled Pyodide Runtime Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 019 报告、`git status`、当前 HEAD、最近提交和 DeckRogue 记忆约束，确认工作树从 `a4509ee` 干净状态开始。
+  - 非重复验证 `check:python-wasm-runtime-sync`、`test:python-runtime`、`test:runtime-v2:ts` 在交接前已通过；本轮继续审计 `src\runtimeV2\bridge\pythonWasmAdapter.ts`、`electron\main.mjs`、`vite.config.ts`、`scripts\desktop\build_desktop.ts` 和 `node_modules\pyodide`。
+  - 根因：`PythonWasmAdapter` 在桌面 `deckrogue://app` production path 下仍硬编码 `https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js`，而 desktop build 只验证 `dist/index.html`、Electron main 和 preload；虽然 `pyodide` npm 包已安装，`dist` 与 desktop build report 没有本地 Pyodide runtime 资产契约。
+  - 红灯复现：
+    - 新增 `PythonWasmAdapter uses bundled Pyodide assets for deckrogue desktop URLs` 后，修复前 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/desktopPyodideAssets.test.ts tests/unit/releaseAndTranslationGate.test.ts` exit `1`，adapter 实际 script 为 `https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js`，期望为 `deckrogue://app/pyodide/pyodide.js`。
+    - 同次红灯还显示 `ERR_MODULE_NOT_FOUND: scripts\desktop\pyodide_assets.ts`，证明 desktop build 没有 Pyodide asset staging helper。
+- 修复内容：
+  - **DESKTOP-PYODIDE-CDN-ONLY-RUNTIME-PASS-001：已修。**
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts` 在 `window.location.protocol === 'deckrogue:'` 时使用 `deckrogue://app/pyodide/` 作为 `indexURL`，并从同一路径注入 `pyodide.js`；普通 web/dev 路径仍保留 jsDelivr CDN fallback。
+  - **DESKTOP-PYODIDE-ASSET-STAGING-GAP-001：已修。**
+    - 新增 `scripts\desktop\pyodide_assets.ts`，从 `node_modules\pyodide` 复制 `pyodide.js`、`pyodide.asm.js`、`pyodide.asm.wasm`、`python_stdlib.zip`、`pyodide-lock.json` 到 `dist\pyodide`，并拒绝缺失或 0 字节资产。
+    - `scripts\desktop\build_desktop.ts` 在 renderer build 后执行 Pyodide staging，并把 `pyodideAssetDir`、`pyodideAssets` 写入 `reports\desktop\desktop-build.json`。
+    - `scripts\validation\check_release_readiness.ts` 的 `desktop_build_report` gate 现在要求 desktop build report 里的本地 Pyodide runtime 资产存在且非空。
+    - `tests\unit\desktopPyodideAssets.test.ts` 覆盖 asset copier；`tests\unit\releaseAndTranslationGate.test.ts` 覆盖缺少 bundled Pyodide runtime 资产时 release readiness 必须失败；`package.json` 将新测试纳入 `test:supplemental-units`。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/desktopPyodideAssets.test.ts tests/unit/releaseAndTranslationGate.test.ts` 修复前 exit `1`，`4` pass、`3` fail；关键失败为 CDN script URL 与缺失 `pyodide_assets.ts`。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/desktopPyodideAssets.test.ts tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`11/11` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`113` tests，`112` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`198/198` pass。
+  - `npm run build:desktop --silent`：exit `0`，Vite build 成功；`dist\pyodide` 生成 5 个非空文件，大小分别为 `18597`、`1074322`、`8647684`、`2423989`、`120010` bytes。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=28 warn=0 fail=13`，原因为源码/脚本改动触发 desktop smoke、doctor、security、UI/flow smoke freshness gate；`desktop_build_report` 已通过并显示 bundled Pyodide runtime assets。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed，包含 Desktop Build、Desktop Smoke、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - Desktop production 下 Python WASM 不再只依赖外部 CDN 加载 Pyodide；desktop build 与 release readiness 都有本地 Pyodide runtime 资产契约。
+  - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 explicit entry/doc drift、AI intent chain 或 content schema 深层契约。

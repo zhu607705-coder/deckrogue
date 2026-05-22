@@ -33,9 +33,9 @@ declare global {
   }
 }
 
-const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
-const PYODIDE_SCRIPT_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
+const PYODIDE_CDN_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
 const PYODIDE_SCRIPT_REFERRER_POLICY = 'no-referrer';
+const PYODIDE_LOCAL_INDEX_PATH = 'pyodide/';
 const PYODIDE_LOADER_STATE_KEY = 'pyodideLoaderState';
 const PYODIDE_LOADER_STATE_LOADING = 'loading';
 export { normalizePythonSnapshot, unwrapPythonSnapshotEnvelope } from '@/runtimeV2/pythonInterop';
@@ -139,14 +139,15 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
   }
 
   private async loadPyodide(generation: number): Promise<void> {
-    const loadPyodide = await this.resolveLoadPyodide();
+    const indexURL = this.resolvePyodideIndexUrl();
+    const loadPyodide = await this.resolveLoadPyodide(indexURL);
     this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
 
     if (!loadPyodide) {
       throw new Error('Could not load Pyodide');
     }
 
-    const pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+    const pyodide = await loadPyodide({ indexURL });
     this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
 
     await pyodide.runPythonAsync(PYTHON_RUNTIME_CODE);
@@ -154,7 +155,14 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
     this.pyodide = pyodide;
   }
 
-  private async resolveLoadPyodide(): Promise<((config: { indexURL: string }) => Promise<PyodideInterface>) | undefined> {
+  private resolvePyodideIndexUrl(): string {
+    if (typeof window !== 'undefined' && window.location?.protocol === 'deckrogue:') {
+      return new URL(PYODIDE_LOCAL_INDEX_PATH, window.location.href).toString();
+    }
+    return PYODIDE_CDN_INDEX_URL;
+  }
+
+  private async resolveLoadPyodide(indexURL: string): Promise<((config: { indexURL: string }) => Promise<PyodideInterface>) | undefined> {
     if (typeof window === 'undefined') {
       return undefined;
     }
@@ -163,11 +171,11 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       return window.loadPyodide;
     }
 
-    await this.injectPyodideScript();
+    await this.injectPyodideScript(indexURL);
     return window.loadPyodide;
   }
 
-  private async injectPyodideScript(): Promise<void> {
+  private async injectPyodideScript(indexURL: string): Promise<void> {
     const existingScript = document.querySelector<HTMLScriptElement>('script[data-pyodide-loader="true"]');
     if (existingScript) {
       if (window.loadPyodide) {
@@ -175,7 +183,7 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       }
       if (existingScript.dataset[PYODIDE_LOADER_STATE_KEY] !== PYODIDE_LOADER_STATE_LOADING) {
         existingScript.remove();
-        await this.appendPyodideScript();
+        await this.appendPyodideScript(indexURL);
         return;
       }
       await new Promise<void>((resolve, reject) => {
@@ -185,13 +193,13 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       return;
     }
 
-    await this.appendPyodideScript();
+    await this.appendPyodideScript(indexURL);
   }
 
-  private async appendPyodideScript(): Promise<void> {
+  private async appendPyodideScript(indexURL: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = PYODIDE_SCRIPT_URL;
+      script.src = new URL('pyodide.js', indexURL).toString();
       script.async = true;
       script.crossOrigin = 'anonymous';
       script.referrerPolicy = PYODIDE_SCRIPT_REFERRER_POLICY;
