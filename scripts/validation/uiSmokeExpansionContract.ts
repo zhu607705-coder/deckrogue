@@ -89,6 +89,12 @@ function isFresh(path: string, baseline: number): boolean {
   return existsSync(path) && statSync(path).mtimeMs >= baseline;
 }
 
+function isNonEmptyFile(path: string): boolean {
+  if (!existsSync(path)) return false;
+  const stats = statSync(path);
+  return stats.isFile() && stats.size > 0;
+}
+
 function parseGeneratedAt(report: UiSmokeExpansionReport): number | null {
   if (!report.generatedAt) return null;
   const value = Date.parse(report.generatedAt);
@@ -143,6 +149,8 @@ export function validateUiSmokeExpansionReport(
         failures.push(`${audit.label}: missing screenshot`);
       } else if (!existsSync(audit.screenshot)) {
         failures.push(`${audit.label}: screenshot missing on disk`);
+      } else if (!isNonEmptyFile(audit.screenshot)) {
+        failures.push(`${audit.label}: screenshot is empty or not a file`);
       } else if (requireScreenshotFreshness && !isFresh(audit.screenshot, freshnessBaseline)) {
         failures.push(`${audit.label}: screenshot is stale for current workspace state`);
       }

@@ -8303,3 +8303,28 @@
 - 状态：
   - release readiness 不再接受缺失或 stale flow screenshot evidence 的 canonical flow smoke report。
   - release readiness 已刷新到全绿；下一轮可继续查 UI expansion screenshot schema、desktop offline Pyodide packaging 或 runtimeV2 browser edge。
+
+## DeckRogue Fix Batch 019 - UI Expansion Non-Empty Screenshot Evidence Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 018 报告、`git status`、当前 HEAD，并运行非重复检查：`check:content-authoring`、`check:content-contract-layer`、`check:ui-runtime-boundaries` 均通过。
+  - 源码审计 `scripts\validation\uiSmokeExpansionContract.ts` 和 `tests\unit\uiSmokeExpansionContract.test.ts` 发现：UI expansion contract 只检查 screenshot 路径存在和 mtime，现有“完整证据”单测甚至用 0 字节 `touch()` 文件作为 screenshot 且期望通过。
+  - 红灯复现：新增 `UI smoke expansion contract rejects empty screenshot evidence` 后，`npx tsx --test tests/unit/uiSmokeExpansionContract.test.ts` exit `1`；失败为没有任何 failure 包含 `screenshot is empty or not a file`，证明空截图证据会误绿。
+- 修复内容：
+  - **UI-EXPANSION-EMPTY-SCREENSHOT-EVIDENCE-PASS-001：已修。**
+    - `scripts\validation\uiSmokeExpansionContract.ts` 新增 `isNonEmptyFile()`，required audit screenshot 必须是普通文件且 `size > 0`。
+    - 空文件、目录占位或非文件路径现在会失败并输出 `${label}: screenshot is empty or not a file`。
+    - `tests\unit\uiSmokeExpansionContract.test.ts` 的完整证据 fixture 改为写入非空 `png-bytes`，并新增空截图回归。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/uiSmokeExpansionContract.test.ts` 修复前 exit `1`，新增用例断言失败。
+  - `npx tsx --test tests/unit/uiSmokeExpansionContract.test.ts`：exit `0`，`3/3` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`196/196` pass。
+  - `npm run check:experience-polish --silent`：修复后首次 exit `1`，原因是源码/测试改动触发 UI expansion report 与截图 freshness gate stale。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；包含 UI Smoke Expansion、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - 真实 UI expansion screenshot 证据检查：`14` 个 audit screenshot 全部存在且非空，最小文件大小 `466417` bytes，最大 `2016304` bytes。
+- 状态：
+  - UI expansion report 不再接受 0 字节或非文件 screenshot evidence。
+  - release readiness 已刷新到全绿；下一轮可继续查 desktop offline Pyodide packaging、runtimeV2 browser edge 或 content schema 深层契约。

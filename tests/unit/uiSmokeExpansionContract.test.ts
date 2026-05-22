@@ -45,7 +45,7 @@ test('UI smoke expansion contract accepts complete fresh evidence', () => {
   try {
     const reportPath = path.join(dir, 'ui_smoke_expansion_report.json');
     const screenshotPath = path.join(dir, 'expansion.png');
-    touch(screenshotPath);
+    writeFileSync(screenshotPath, 'png-bytes');
     writeFileSync(reportPath, '{}');
 
     const failures = validateUiSmokeExpansionReport(makeCompleteReport(screenshotPath), {
@@ -54,6 +54,25 @@ test('UI smoke expansion contract accepts complete fresh evidence', () => {
     });
 
     assert.deepEqual(failures, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('UI smoke expansion contract rejects empty screenshot evidence', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'deckrogue-ui-contract-'));
+  try {
+    const reportPath = path.join(dir, 'ui_smoke_expansion_report.json');
+    const screenshotPath = path.join(dir, 'empty.png');
+    touch(screenshotPath);
+    writeFileSync(reportPath, '{}');
+
+    const failures = validateUiSmokeExpansionReport(makeCompleteReport(screenshotPath), {
+      reportPath,
+      freshnessBaseline: Date.now() - 1_000,
+    });
+
+    assert.ok(failures.some((failure) => failure.includes('screenshot is empty or not a file')));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
