@@ -737,3 +737,7158 @@
   - 临时 clean worktree 首次 `npm install` 后，`npm run lint --silent` / `npx tsc --noEmit --pretty false --project tsconfig.json` 暴露 `@types/react` 与 `@types/react-dom` 未声明问题；原工作区能通过是因为旧 `node_modules` 中存在 extraneous 类型包。
   - 已将 `@types/react`、`@types/react-dom` 加入 devDependencies，并刷新 `package-lock.json`，让新 clone / fresh install 可重建。
   - 合并后确认最终树不包含旧 `origin/main` 中的根目录依赖包路径，例如 `@google/`、`@rollup/`、`@pkgjs/`、`@protobufjs/`。
+
+## Gameplay Systems Audit Live-tree Findings - 2026-05-17
+
+- 工作树锚定：`E:\deckrogue\deckrogue-mainline-merge`。
+- schema 来源：旧树 `E:\deckrogue\deckrogue\.kiro\specs\gameplay-systems-audit\design.md` 的 Finding schema、Evidence schema 与 HookRef schema。
+- 证据策略：本节只登记当前 mainline-merge 活树证据；旧树 design 只作为格式规范，不作为 bug 证据。
+- 风险灯：🟡。本节为只读审查追加，代码未改；但发现集中在战斗结算、房间离场、遗物触发、存档迁移和 RNG 边界。
+
+### 风险 / 债务分级汇总
+
+| ID | 子系统 | risk-grade | status-claim |
+| --- | --- | --- | --- |
+| NUM-001 | NUM | P0-阻塞 | `DamageReceived` 与死亡事件同栈发布，遗物 urgent action 可在胜利判定前插入，存在重复 `CombatVictory` 或奖励状态漂移风险。 |
+| MAP-001 | MAP | P0-阻塞 | 存档迁移只比较主版本并重打版本号，minor schema 破坏会静默穿透。 |
+| NUM-002 | NUM | P1-必修 | `gainBlock` 接受负数后可清零 block，却仍发布 `BlockGained` 且 amount 为负数。 |
+| MAP-002 | MAP | P1-必修 | checksum 存在 slot 元数据而非 save payload，slot checksum 缺失时校验直接放行。 |
+| NUM-003 | NUM | P1-必修 | 伤害协同倍率读取 module-level `synergySystem` 单例，`state` 参数未参与隔离。 |
+| MAP-003 | MAP | P1-必修 | `transitionRunState` 对离场动作只校验 token，不校验当前 phase。 |
+| MAP-004 | MAP | P1-必修 | `deriveRunTransitionState` 会给 Upgrade/Enchant/RelicUpgrade/RemoveCard 子屏合成 `legacy:` token。 |
+| RELIC-001 | RELIC | P1-必修 | `handleEvent` 不隔离单条 relic effect 抛错，单个效果异常会阻断后续遗物。 |
+| RELIC-002 | RELIC | P1-必修 | 遗物触发顺序由 `state.player.relics` 列表顺序决定，未实现注册优先级。 |
+| RELIC-003 | RELIC | P1-必修 | JSON 通用遗物只在 imperative `trigger()` 路径跑，event-bus 路径不处理。 |
+| CARD-001 | CARD | P1-必修 | `AllAllies` 在玩家来源下返回空数组，玩家全体友军 buff 无目标。 |
+| ENEMY-001 | ENEMY | P1-必修 | 敌人来源的 `RandomEnemy` 退化为玩家目标，无法表达敌方随机友军目标。 |
+| NUM-004 | NUM | P1-必修 | `pushFront` 绕过 maxQueueSize 和 `sortQueue()`，urgent 顺序可被后续 priority 重排改变。 |
+| NUM-005 | NUM | P1-必修 | `applyStatus` 对叠加型和持续型 status 一律累加，刷新/持续语义混淆。 |
+| MAP-005 | MAP | P2-应修 | STORY_EVENTS 不命中时回落到旧两事件池，内容楼层缺口会静默收缩事件体验。 |
+| MAP-006 | MAP | P2-应修 | `martyr_offer_wealth` 进入 free_remove 子屏依赖 legacy roomSession 推断，存档恢复边界隐式。 |
+| NUM-006 | NUM | P2-应修 | `stateRandom` 绑定依赖 WeakMap，深拷贝 state 未重新 bind 时会回落到系统随机。 |
+| NUM-007 | NUM | P2-应修 | `processTurnEnd` 只处理玩家回合结束，敌方回合状态衰减不走同一结算入口。 |
+| RELIC-004 | RELIC | P2-应修 | 模块加载时导出 `relicSystem` 单例并订阅事件，测试清空 EventBus 后订阅生命周期容易漂移。 |
+| NUM-008 | NUM | P2-应修 | RNG 为单一 32-bit 流，未按地图/奖励/敌人/事件拆子 seed，新增随机调用会改变下游序列。 |
+| MAP-007 | MAP | P2-应修 | `grantRouteBiasedCard` 在 pool/fallback 均空时静默不发卡，无日志或承诺回滚。 |
+| MAP-008 | MAP | P2-应修 | `clearAllData` 删除全部 `deckrogue_*`，会连带清设置、解锁、统计等非存档数据。 |
+
+### Finding Registry
+
+#### NUM-001 · 死亡事件与遗物 urgent action 同栈触发 [R7.2, R7.4, R6.4, R-Numerics.3]
+- **subsystem**: NUM
+- **status-claim**: `DamageReceived` 在死亡事件前发布，`thorns_armor` 可同步 enqueue urgent 反伤；胜利判定与新 action 处在同一同步栈中，重复胜利信号仍有组合路径风险。
+- **evidence**:
+  - [live-source] `src\core\combat\combatSystem.ts:227-244`：先发布 `DamageDealt` / `DamageReceived`，随后发布 `EnemyDeath` / `PlayerDeath`。
+  - [live-source] `src\features\relics\relicSystem.ts:160-172`：`thorns_armor` 监听 `DamageReceived` 并 enqueue urgent `DealDamage`。
+  - [live-source] `src\features\relics\relicSystem.ts:323-337`：事件处理内遍历 relic 并在非 processing 时立即 `executeAll()`。
+  - [live-test] `tests\unit\actionManagerAndRoomFlow.test.ts:202-258`：已有重复 combat victory 信号测试，但只覆盖直接重复调用，不覆盖 thorns 同帧反伤链。
+- **risk-grade**: P0-阻塞
+- **remediation**: 将死亡/胜利推进做幂等保护，或把死亡事件纳入 action queue 尾部；补 thorns 同帧击杀导致重复 `CombatVictory` 的最小集成测试。
+- **affected-paths**: `src\core\combat\combatSystem.ts[live]`, `src\features\relics\relicSystem.ts[live]`, `src\core\events\gameEngine.ts[live]`
+- **regression-hooks**: `tests\unit\combatDamagePipelineIntegration.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-001`
+- **non-goal-boundary**: 不重写 `ActionManager` 边界；仅补幂等 gate 或事件入队时序。
+
+#### MAP-001 · minor schema 迁移静默穿透 [R5.5, R-Report, PROP-SAV-RT-01]
+- **subsystem**: MAP
+- **status-claim**: `migrateSaveData` 只在旧主版本小于当前主版本时拒绝，`1.0.0 -> 1.1.0` 会直接重写版本字段而不迁移内部 state。
+- **evidence**:
+  - [live-source] `src\core\persistence\saveManager.ts:600-617`：比较 major 后直接 `{ ...oldData, version: SAVE_VERSION }`。
+  - [live-source] `src\core\persistence\saveManager.ts:212-228`：load 仅调用 `validateSaveData`，未见逐版本迁移注册表。
+- **risk-grade**: P0-阻塞
+- **remediation**: 引入显式迁移 registry，例如 `migrate_1_0_0_to_1_1_0`；缺迁移时拒绝加载并给出可见错误。
+- **affected-paths**: `src\core\persistence\saveManager.ts[live]`, `tests\unit\saveManagerSecurity.test.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:reward-flow-smoke[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-001`
+- **non-goal-boundary**: 不改变当前存档格式；先建立迁移门禁和拒绝路径。
+
+#### NUM-002 · 负数 gainBlock 发布 BlockGained [R7.5]
+- **subsystem**: NUM
+- **status-claim**: `gainBlock` 拒绝 NaN/Infinity，但允许负数参与 `target.block + amount`，最终可把 block clamp 到 0 并继续发布 `BlockGained`。
+- **evidence**:
+  - [live-source] `src\core\combat\combatSystem.ts:279-312`：`amount < 0` 无早退，event payload 仍使用原始负数 amount。
+- **risk-grade**: P1-必修
+- **remediation**: 对 `amount <= 0` 拆成 no-op 或显式 `BlockReduced`；`BlockGained` 只允许正向实际增量。
+- **affected-paths**: `src\core\combat\combatSystem.ts[live]`
+- **regression-hooks**: `tests\unit\combatDamagePipelineIntegration.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-002`
+- **non-goal-boundary**: 不调整卡牌数值，仅收敛事件语义。
+
+#### MAP-002 · checksum 存在 slot 元数据且可缺失放行 [R5.5]
+- **subsystem**: MAP
+- **status-claim**: save payload 本体不含 checksum，load 只在 `slot?.checksum` 存在时比较；slot 元数据缺失或被同步修改时无法保护 payload 完整性。
+- **evidence**:
+  - [live-source] `src\core\persistence\saveManager.ts:145-174`：checksum 由 serialized payload 计算，但只写入 `updateSaveSlot`。
+  - [live-source] `src\core\persistence\saveManager.ts:236-247`：`if (slot?.checksum && ...)` 使 checksum 缺失时直接跳过校验。
+  - [live-test] `tests\unit\saveManagerSecurity.test.ts:51-69`：只覆盖修改 payload 但不改 slot meta 的 case。
+- **risk-grade**: P1-必修
+- **remediation**: 将 checksum 或签名字段写入 payload 外层并要求加载时必须存在；补 slot checksum 被删除或同步伪造的拒绝测试。
+- **affected-paths**: `src\core\persistence\saveManager.ts[live]`, `tests\unit\saveManagerSecurity.test.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-001`
+- **non-goal-boundary**: 不宣称防本地恶意用户；目标是防误改、损坏和普通 tamper 静默穿透。
+
+#### NUM-003 · synergySystem 单例破坏多引擎隔离 [R7.2, PROP-DMG-DET-01]
+- **subsystem**: NUM
+- **status-claim**: `applySynergyModifiers` 接收 `state` 但倍率来自 module-level `synergySystem`，多 GameEngine 或测试并行时存在跨实例污染面。
+- **evidence**:
+  - [live-source] `src\core\combat\combatSystem.ts:109-112`：`state` 未用于协同倍率读取。
+  - [live-source] `src\core\combat\combatSystem.ts:155-160`：无 context 时同样读取 singleton multiplier。
+  - [live-source] `src\features\synergies\synergySystem.ts:383-390` 与 `src\features\synergies\synergySystem.ts:487`：全局 `synergySystem = new SynergySystem()`。
+- **risk-grade**: P1-必修
+- **remediation**: 将 synergy state 绑定到 GameState 或 GameEngine 实例；测试中显式 reset 并补双 engine 隔离 case。
+- **affected-paths**: `src\core\combat\combatSystem.ts[live]`, `src\features\synergies\synergySystem.ts[live]`
+- **regression-hooks**: `tests\unit\combatDamagePipelineIntegration.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-003`
+- **non-goal-boundary**: 不重写协同系统；先移除结算层全局读取。
+
+#### MAP-003 · 离场动作缺 phase 校验 [R5.2]
+- **subsystem**: MAP
+- **status-claim**: `EVENT_RESOLVED` / `SHOP_LEFT` / `REST_COMPLETED` / `REWARD_TAKEN` / `REWARD_SKIPPED` 只要求 active token，不要求 action 与当前 phase 匹配。
+- **evidence**:
+  - [live-source] `src\core\events\runStateMachine.ts:194-205`：统一离场分支无 phase/action 对照。
+  - [live-test] `tests\unit\runStateMachine.test.ts:289-348`：覆盖 happy-path 离场与无 pending，但没有 combat phase 下发 `SHOP_LEFT` 等非法 action。
+- **risk-grade**: P1-必修
+- **remediation**: 为每个离场 action 增加允许 phase 集合；非法 phase 抛错并补回归用例。
+- **affected-paths**: `src\core\events\runStateMachine.ts[live]`, `tests\unit\runStateMachine.test.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:terminal-flow-smoke[live]`, `check:map-route-constraints[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-002`
+- **non-goal-boundary**: 不重写 roomSession；只加状态机守卫。
+
+#### MAP-004 · 子屏合成 legacy token 可无中生有离场 [R5.2]
+- **subsystem**: MAP
+- **status-claim**: Upgrade/Enchant/RelicUpgrade/RemoveCard 子屏被 `canImplicitlyResolveRoom` 视为可隐式解决房间，缺真实 roomSession 时也会得到 `legacy:` token。
+- **evidence**:
+  - [live-source] `src\core\events\runStateMachine.ts:115-145`：子屏 phase 在 `canImplicitlyResolveRoom` 内，fallback token 为 `legacy:${state.currentNodeId ?? phase}`。
+  - [live-test] `tests\unit\runStateMachine.test.ts:102-123`：测试明确期望子屏 pendingNodeResolution 为 true，但未验证非法离场封锁。
+- **risk-grade**: P1-必修
+- **remediation**: 子屏只继承已有 roomSession/token；没有真实 token 时不得合成可离场 token，并补子屏非法离场测试。
+- **affected-paths**: `src\core\events\runStateMachine.ts[live]`, `tests\unit\runStateMachine.test.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:reward-flow-smoke[live]`, `test:terminal-flow-smoke[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-002`
+- **non-goal-boundary**: 不改子屏 UX，只收紧 token 来源。
+
+#### RELIC-001 · 单个 relic effect 抛错会中断后续 relic [R6.2, R6.4]
+- **subsystem**: RELIC
+- **status-claim**: `handleEvent` 遍历 relic effects 时没有 per-effect try/catch，任何 effect.action 异常都会跳出整个事件处理。
+- **evidence**:
+  - [live-source] `src\features\relics\relicSystem.ts:323-337`：直接调用 `effect.action(...)`，外层无隔离。
+  - [live-source] `src\core\actions\actionManager.ts:264-292`：全局 ActionManager 未初始化会 throw，relicSystem 只在取 manager 阶段 swallow。
+- **risk-grade**: P1-必修
+- **remediation**: 为单个 effect 增加异常隔离和日志，保证后续 relic 仍执行；dispose 后拒绝 executeAll。
+- **affected-paths**: `src\features\relics\relicSystem.ts[live]`, `src\core\actions\actionManager.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `check:combat-orchestration-layer[live]`
+- **validation-gap-ref**: `GAP-RELIC-LIVE-001`
+- **non-goal-boundary**: 不改遗物内容，只加调度容错。
+
+#### RELIC-002 · 遗物触发顺序依赖玩家拾取顺序 [R6.5, PROP-TRG-ORD-01]
+- **subsystem**: RELIC
+- **status-claim**: `handleEvent` 与 `trigger` 均按 `state.player.relics` 数组遍历，未读取注册优先级或稳定排序键。
+- **evidence**:
+  - [live-source] `src\features\relics\relicSystem.ts:323-330`：event-bus 路径按 player relic list 顺序执行。
+  - [live-source] `src\features\relics\relicSystem.ts:410-418`：imperative trigger 路径同样按 list 顺序执行。
+- **risk-grade**: P1-必修
+- **remediation**: 为 relic effect 注册 priority，执行前按 priority + relicId 稳定排序；登记 `PROP-TRG-ORD-01`。
+- **affected-paths**: `src\features\relics\relicSystem.ts[live]`, `src\content\data\relics.json[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:runtime-v2:ts[live]`, `check:combat-orchestration-layer[live]`
+- **validation-gap-ref**: `GAP-RELIC-LIVE-002`
+- **non-goal-boundary**: 不改遗物数值；仅定义排序契约。
+
+#### RELIC-003 · JSON 通用遗物漏掉 event-bus 路径 [R6.4]
+- **subsystem**: RELIC
+- **status-claim**: JSON-defined relic fallback 只存在于 `trigger()` 的 imperative 路径；`CardPlayed` / `DamageReceived` 等 event-bus 路径只查 `this.relicEffects` map。
+- **evidence**:
+  - [live-source] `src\features\relics\relicSystem.ts:297-337`：`handleEvent` 只遍历 hard-coded relicEffects。
+  - [live-source] `src\features\relics\relicSystem.ts:423-437`：Generic JSON-defined relic effects 只在 `trigger()` 中处理。
+- **risk-grade**: P1-必修
+- **remediation**: 将 JSON relic fallback 提取成共享 dispatch，event-bus 和 imperative trigger 共用同一解析路径。
+- **affected-paths**: `src\features\relics\relicSystem.ts[live]`, `src\content\data\relics.json[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:runtime-v2:ts[live]`, `test:reward-flow-smoke[live]`
+- **validation-gap-ref**: `GAP-RELIC-LIVE-001`
+- **non-goal-boundary**: 不新增遗物内容；修调度覆盖。
+
+#### CARD-001 · 玩家来源 AllAllies 无目标 [R2.2]
+- **subsystem**: CARD
+- **status-claim**: `TargetingService.resolveTargets('AllAllies')` 在 `context.source === 'player'` 时返回空数组，玩家施放全体友军效果会丢失。
+- **evidence**:
+  - [live-source] `src\core\combat\targetingService.ts:89-96`：玩家来源直接 `return []`。
+- **risk-grade**: P1-必修
+- **remediation**: 明确 `AllAllies` 语义；若单玩家语义包含 self，应返回 player；若不支持，数据校验禁止玩家卡使用该 target。
+- **affected-paths**: `src\core\combat\targetingService.ts[live]`, `src\content\data\cards.json[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:runtime-v2:ts[live]`
+- **validation-gap-ref**: `GAP-CARD-LIVE-001`
+- **non-goal-boundary**: 不新增卡牌，只修目标层契约或内容校验。
+
+#### ENEMY-001 · 敌人来源 RandomEnemy 强制打玩家 [R4.4]
+- **subsystem**: ENEMY
+- **status-claim**: `RandomEnemy` 只在玩家来源时随机活敌人，敌人来源统一返回玩家，无法表达敌人随机友方目标。
+- **evidence**:
+  - [live-source] `src\core\combat\targetingService.ts:73-83`：`context.source !== 'player'` 分支返回 `combat.player`。
+- **risk-grade**: P1-必修
+- **remediation**: 将 enemy 视角的 `RandomEnemy` 改名或拆分语义；增加 `RandomOpponent` / `RandomAlly` 等显式 target。
+- **affected-paths**: `src\core\combat\targetingService.ts[live]`, `src\core\ai\enemySelection.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `test:runtime-v2:ts[live]`, `check:enemy-ai-boundaries[live]`
+- **validation-gap-ref**: `GAP-ENEMY-LIVE-001`
+- **non-goal-boundary**: 不重写 AI，只修 target 词义。
+
+#### NUM-004 · urgent action 顺序可被混合 enqueue 改变 [R7.4, PROP-TRG-ORD-01]
+- **subsystem**: NUM
+- **status-claim**: `pushFront` 与 `enqueue` / `pushBack` 在 maxQueueSize 和排序行为上不一致，urgent 顺序只在简单队列中成立。
+- **evidence**:
+  - [live-source] `src\core\actions\actionQueue.ts:96-128`：`enqueue` 检查容量并 sort，`pushBack` 不检查容量但 sort，`pushFront` 两者都不做。
+  - [live-source] `src\core\actions\actionQueue.ts:178-195`：同步 while 处理新入队 action。
+  - [live-test] `tests\unit\actionQueueDeterminism.test.ts:62-83`：只覆盖同优先级 front 插入顺序，未覆盖 urgent + 后续高优先级 enqueue。
+- **risk-grade**: P1-必修
+- **remediation**: 统一 queue 插入入口；把 front/urgent 语义编码为明确 priority band，并对所有入口执行容量与排序规则。
+- **affected-paths**: `src\core\actions\actionQueue.ts[live]`, `src\core\actions\actionManager.ts[live]`, `tests\unit\actionQueueDeterminism.test.ts[live]`
+- **regression-hooks**: `tests\unit\actionQueueDeterminism.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-004`
+- **non-goal-boundary**: 不重写 ActionManager；先合并插入规则。
+
+#### NUM-005 · status apply 语义混合 [R7.3, PROP-RES-INV-06]
+- **subsystem**: NUM
+- **status-claim**: `applyStatus` 用单一累加模型处理 Strength、Vulnerable、Stealth、SkipDraw 等状态，没有 schema 区分 stack 与 duration。
+- **evidence**:
+  - [live-source] `src\core\combat\combatSystem.ts:252-277`：所有 status 均 `(current || 0) + amount`。
+- **risk-grade**: P1-必修
+- **remediation**: 建立 status metadata：`stacking`、`duration-refresh`、`set-max` 等；先为 stealth/vulnerable 加最小回归。
+- **affected-paths**: `src\core\combat\combatSystem.ts[live]`, `src\core\types\combat.ts[live]`
+- **regression-hooks**: `tests\unit\combatDamagePipelineIntegration.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-005`
+- **non-goal-boundary**: 不调数值，先定义状态合并规则。
+
+#### MAP-005 · event fallback 池收缩且无楼层 gap 报警 [R5.5]
+- **subsystem**: MAP
+- **status-claim**: STORY_EVENTS 不命中时 fallback 到 `mysterious_shrine` / `heretic_altar` 两事件池；新增故事事件楼层范围有 gap 时体验会静默退化。
+- **evidence**:
+  - [live-source] `src\core\events\EventManager.ts:160-180`：未 pick 到 STORY_EVENT 后使用两事件 fallback。
+- **risk-grade**: P2-应修
+- **remediation**: 对 STORY_EVENTS eligibility gap 输出报告或 fallback reason；内容校验覆盖每层至少 N 个 event。
+- **affected-paths**: `src\core\events\EventManager.ts[live]`, `src\content\narrative\storyEvents.ts[live]`
+- **regression-hooks**: `check:event-tradeoff-route-state[live]`, `test:reward-flow-smoke[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-003`
+- **non-goal-boundary**: 不新增事件内容，只补 gap 检测。
+
+#### MAP-006 · free_remove 子屏依赖 legacy 推断 [R5.2, PROP-SAV-RT-01]
+- **subsystem**: MAP
+- **status-claim**: `martyr_offer_wealth` 把 event stage 写入 activeEvent 并切到 RemoveCard，roomSession 由 legacy state 推断；存档恢复与子屏返回路径没有专门回归。
+- **evidence**:
+  - [live-source] `src\core\events\EventManager.ts:331-363`：`event.stage = 'free_remove'` 后 `state.screen = 'RemoveCard'` 并 `syncRoomSessionFromLegacyState`。
+  - [live-source] `src\core\events\EventManager.ts:1052-1064`：free remove 模式由 screen + activeEvent stage + remaining 推断。
+  - [live-source] `src\core\persistence\saveManager.ts:571-576`：serializeState 为 JSON deep clone，依赖 state 字段均 plain。
+- **risk-grade**: P2-应修
+- **remediation**: 补 free_remove 自动存档和 reload 后继续移除/返回事件的回归；将 event subflow ownerKind 显式存入 roomSession。
+- **affected-paths**: `src\core\events\EventManager.ts[live]`, `src\core\events\RunFlowManager.ts[live]`, `src\core\persistence\saveManager.ts[live]`
+- **regression-hooks**: `check:event-tradeoff-route-state[live]`, `test:terminal-flow-smoke[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-004`
+- **non-goal-boundary**: 不改变事件奖励，只补子屏恢复契约。
+
+#### NUM-006 · WeakMap RNG 绑定遇到 deep clone 回落系统随机 [R-Numerics.6, PROP-RNG-SED-01]
+- **subsystem**: NUM
+- **status-claim**: state RNG 绑定以 object identity 为 key；JSON deep clone 或导入后的新对象未 bind 时，`stateRandom` 使用 `systemRandom()`。
+- **evidence**:
+  - [live-source] `src\infrastructure\rng\stateRandom.ts:6-18`：WeakMap 存 state 到 RNG。
+  - [live-source] `src\infrastructure\rng\stateRandom.ts:21-31`：未绑定则 fallback 到系统随机。
+  - [live-source] `src\core\persistence\saveManager.ts:571-576`：serializeState 使用 JSON deep clone。
+  - [live-source] `src\core\events\gameEngine.ts:97-98` 与 `src\core\events\gameEngine.ts:1195-1196`：只有 engine init/loadRun 路径显式 bind。
+- **risk-grade**: P2-应修
+- **remediation**: 对任何 cloned/restored state 进入随机路径前强制 bind，或让 stateRandom 从 `state.rngState` 派生受控 RNG。
+- **affected-paths**: `src\infrastructure\rng\stateRandom.ts[live]`, `src\core\events\gameEngine.ts[live]`, `src\core\persistence\saveManager.ts[live]`
+- **regression-hooks**: `test:runtime-v2:ts[live]`, `tests\unit\runLifecycle.test.ts[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-006`
+- **non-goal-boundary**: 不替换 RNG 算法；先保证 state identity 变化后仍 deterministic。
+
+#### NUM-007 · enemy turn end 不走同一状态清理入口 [R7.3]
+- **subsystem**: NUM
+- **status-claim**: `processTurnEnd` 只在 `playerTurn` 为 true 时清理卡牌临时状态与药水毒性，enemy turn path 不在 combatSystem 内统一表达。
+- **evidence**:
+  - [live-source] `src\core\combat\combatSystem.ts:314-326`：无 `else` 分支。
+- **risk-grade**: P2-应修
+- **remediation**: 明确 enemy turn end 的状态衰减归属；若由 GameEngine 负责，应在报告和测试中锁定单一入口。
+- **affected-paths**: `src\core\combat\combatSystem.ts[live]`, `src\core\events\gameEngine.ts[live]`
+- **regression-hooks**: `tests\unit\combatDamagePipelineIntegration.test.ts[live]`, `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-007`
+- **non-goal-boundary**: 不改回合设计，只补入口一致性。
+
+#### RELIC-004 · module-level relicSystem 订阅生命周期漂移 [R6.2]
+- **subsystem**: RELIC
+- **status-claim**: 模块底部导出 `new RelicSystem(() => ({} as GameState))`，import 时即订阅 EventBus；测试清空 EventBus 后该单例不会自动重订阅。
+- **evidence**:
+  - [live-source] `src\features\relics\relicSystem.ts:286-294`：构造时 setup event listeners。
+  - [live-source] `src\features\relics\relicSystem.ts:441-452`：同时存在 globalRelicSystem factory 与 eager `relicSystem` singleton。
+- **risk-grade**: P2-应修
+- **remediation**: 移除 eager singleton 或让 `createRelicSystem` 成为唯一入口；测试 afterEach clear 后显式恢复订阅。
+- **affected-paths**: `src\features\relics\relicSystem.ts[live]`, `tests\unit\*.test.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`, `check:combat-orchestration-layer[live]`
+- **validation-gap-ref**: `GAP-RELIC-LIVE-003`
+- **non-goal-boundary**: 不重写遗物系统，仅修生命周期入口。
+
+#### NUM-008 · 单 RNG 流缺少子 seed 边界 [R-Numerics.6, PROP-RNG-SED-01]
+- **subsystem**: NUM
+- **status-claim**: `createRNG` 是单 32-bit state 流，stateRandom 所有子系统共享同一计数器；新增一次随机调用会改变后续地图/奖励/敌人/事件序列。
+- **evidence**:
+  - [live-source] `src\infrastructure\rng\rng.ts:3-12`：单 state 递推。
+  - [live-source] `src\infrastructure\rng\stateRandom.ts:21-60`：choice/shuffle/id 都从同一绑定 RNG 取数。
+- **risk-grade**: P2-应修
+- **remediation**: 登记子 seed 派发规则，例如 `hash(seed, subsystemTag)`；先补 report-only deterministic boundary test。
+- **affected-paths**: `src\infrastructure\rng\rng.ts[live]`, `src\infrastructure\rng\stateRandom.ts[live]`, `src\core\events\runSession.ts[live]`
+- **regression-hooks**: `test:runtime-v2:ts[live]`, `tests\unit\runLifecycle.test.ts[live]`
+- **validation-gap-ref**: `GAP-NUM-LIVE-006`
+- **non-goal-boundary**: 不替换现有 RNG，先定义边界和监控。
+
+#### MAP-007 · route-biased card fallback 空池静默无奖励 [R5.5]
+- **subsystem**: MAP
+- **status-claim**: `grantRouteBiasedCard` 在 route pool 与 fallback 都为空时只跳过 add，无日志、无替代奖励、无文案修正。
+- **evidence**:
+  - [live-source] `src\core\events\EventManager.ts:627-643`：`safeArrayAccess` 返回 undefined 时直接结束。
+- **risk-grade**: P2-应修
+- **remediation**: 对空池触发显式 fallback、日志或 event option 禁用；内容校验构造空池用例。
+- **affected-paths**: `src\core\events\EventManager.ts[live]`, `src\content\data\cards.json[live]`
+- **regression-hooks**: `check:event-tradeoff-route-state[live]`, `test:reward-flow-smoke[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-003`
+- **non-goal-boundary**: 不新增卡池，只处理空池承诺。
+
+#### MAP-008 · clearAllData 过度清理 deckrogue namespace [R5.5]
+- **subsystem**: MAP
+- **status-claim**: `clearAllData` 删除所有 `deckrogue_*` key，语义会覆盖 saves、recent runs、settings、unlocks、difficulty profile 等不同用户数据层。
+- **evidence**:
+  - [live-source] `src\core\persistence\saveManager.ts:663-678`：遍历 localStorage 并删除所有 `deckrogue_` 前缀 key。
+- **risk-grade**: P2-应修
+- **remediation**: 拆成 `clearActiveSaves`、`clearAllSaves`、`factoryReset`；UI 文案按破坏范围明确区分。
+- **affected-paths**: `src\core\persistence\saveManager.ts[live]`
+- **regression-hooks**: `test:supplemental-units[live]`
+- **validation-gap-ref**: `GAP-MAP-LIVE-005`
+- **non-goal-boundary**: 不改变设置/解锁模型，只拆清理 API 语义。
+
+### 回归挂钩映射
+
+| Finding ID | P 级 | 子系统 | 挂钩 1 | 挂钩 2 | 可用性合计 |
+| --- | --- | --- | --- | --- | --- |
+| NUM-001 | P0 | NUM | `tests\unit\combatDamagePipelineIntegration.test.ts` | `test:supplemental-units` | 2 live |
+| MAP-001 | P0 | MAP | `test:supplemental-units` | `test:reward-flow-smoke` | 2 live |
+| NUM-002 | P1 | NUM | `tests\unit\combatDamagePipelineIntegration.test.ts` | `test:supplemental-units` | 2 live |
+| MAP-002 | P1 | MAP | `test:supplemental-units` | - | 1 live |
+| NUM-003 | P1 | NUM | `tests\unit\combatDamagePipelineIntegration.test.ts` | `test:supplemental-units` | 2 live |
+| MAP-003 | P1 | MAP | `test:supplemental-units` | `check:map-route-constraints` | 2 live |
+| MAP-004 | P1 | MAP | `test:supplemental-units` | `test:reward-flow-smoke` | 2 live |
+| RELIC-001 | P1 | RELIC | `test:supplemental-units` | `check:combat-orchestration-layer` | 2 live |
+| RELIC-002 | P1 | RELIC | `test:supplemental-units` | `test:runtime-v2:ts` | 2 live |
+| RELIC-003 | P1 | RELIC | `test:supplemental-units` | `test:reward-flow-smoke` | 2 live |
+| CARD-001 | P1 | CARD | `test:supplemental-units` | `test:runtime-v2:ts` | 2 live |
+| ENEMY-001 | P1 | ENEMY | `test:supplemental-units` | `check:enemy-ai-boundaries` | 2 live |
+| NUM-004 | P1 | NUM | `tests\unit\actionQueueDeterminism.test.ts` | `test:supplemental-units` | 2 live |
+| NUM-005 | P1 | NUM | `tests\unit\combatDamagePipelineIntegration.test.ts` | `test:supplemental-units` | 2 live |
+
+### 验证缺口
+
+| Gap ID | origin-ref | 缺口描述 | 补救建议 |
+| --- | --- | --- | --- |
+| GAP-NUM-LIVE-001 | NUM-001 | 缺 thorns_armor 在 `DamageReceived` 同帧反伤击杀后只推进一次胜利的集成测试。 | 补桩点：在 `combatDamagePipelineIntegration` 或新单测构造玩家受击、thorns 反杀、只发布一次 `CombatVictory`。 |
+| GAP-MAP-LIVE-001 | MAP-001, MAP-002 | 缺 minor version migration 拒绝/迁移测试，也缺删除或伪造 slot checksum 的 tamper 测试。 | 补工具：扩展 `saveManagerSecurity.test.ts`。 |
+| GAP-NUM-LIVE-002 | NUM-002 | 缺负数 block mutation 的事件语义测试。 | 补桩点：验证 `gainBlock(-n)` 不发布 `BlockGained` 或发布独立事件。 |
+| GAP-NUM-LIVE-003 | NUM-003 | 缺两个 GameEngine 并存时 synergy multiplier 隔离测试。 | 补桩点：构造双 engine，分别设置 synergy，比较伤害不串扰。 |
+| GAP-MAP-LIVE-002 | MAP-003, MAP-004 | 缺 phase/action mismatch 与子屏无真实 token 时的非法离场测试。 | 补工具：扩展 `runStateMachine.test.ts` 和 `actionManagerAndRoomFlow.test.ts`。 |
+| GAP-RELIC-LIVE-001 | RELIC-001, RELIC-003 | 缺单个 relic effect 抛错不阻断后续 relic，以及 JSON relic 走 event-bus 路径的测试。 | 补桩点：mock 两个 relic effects；新增 JSON relic event-bus 用例。 |
+| GAP-RELIC-LIVE-002 | RELIC-002 | 缺 relic priority 排序属性测试。 | 补工具：扩展 `actionQueueDeterminism.test.ts` 或新建 relic ordering 单测。 |
+| GAP-CARD-LIVE-001 | CARD-001 | 缺玩家来源 `AllAllies` 目标选择测试。 | 补桩点：扩展 target service 单测。 |
+| GAP-ENEMY-LIVE-001 | ENEMY-001 | 缺敌人来源 `RandomEnemy` 语义测试。 | 补桩点：扩展 target service 或 enemySelection 单测。 |
+| GAP-NUM-LIVE-004 | NUM-004 | 缺 urgent + 后续高 priority enqueue 混合排序测试。 | 补工具：扩展 `actionQueueDeterminism.test.ts`。 |
+| GAP-NUM-LIVE-005 | NUM-005 | 缺 stack/duration status schema 测试。 | 补桩点：为 Stealth/Vulnerable/Strength 分别锁定合并语义。 |
+| GAP-MAP-LIVE-003 | MAP-005, MAP-007 | 缺 event/card fallback 空池或楼层 gap 的内容完整性报告。 | 补工具：扩展 `check:event-tradeoff-route-state` 或新增 content gap check。 |
+| GAP-MAP-LIVE-004 | MAP-006 | 缺 free_remove 子屏存档恢复测试。 | 补工具：新增 save/load 后继续移除并返回事件的流程用例。 |
+| GAP-NUM-LIVE-006 | NUM-006, NUM-008 | 缺 cloned state RNG fallback 与子 seed 边界测试。 | 补工具：新建 runSession/stateRandom deterministic boundary 单测。 |
+| GAP-NUM-LIVE-007 | NUM-007 | 缺 enemy turn end 状态清理归属测试。 | 降级示例用例：记录当前由 GameEngine 处理还是 combatSystem 处理，并锁定入口。 |
+| GAP-RELIC-LIVE-003 | RELIC-004 | 缺 EventBus clear 后 relicSystem 订阅恢复测试。 | 补桩点：测试 afterEach clear 后重新创建 engine/relicSystem 仍能响应事件。 |
+| GAP-MAP-LIVE-005 | MAP-008 | 缺 settings/unlocks 与 saves 分级清理测试。 | 补工具：扩展 SaveManager 清理 API 单测。 |
+
+### 证据索引
+
+| 证据键 | 类别 | 路径 | 引用点 |
+| --- | --- | --- | --- |
+| LIVE-combatSystem | live-source | `src\core\combat\combatSystem.ts` | NUM-001, NUM-002, NUM-003, NUM-005, NUM-007 |
+| LIVE-saveManager | live-source | `src\core\persistence\saveManager.ts` | MAP-001, MAP-002, MAP-006, MAP-008 |
+| LIVE-runStateMachine | live-source | `src\core\events\runStateMachine.ts` | MAP-003, MAP-004 |
+| LIVE-relicSystem | live-source | `src\features\relics\relicSystem.ts` | NUM-001, RELIC-001, RELIC-002, RELIC-003, RELIC-004 |
+| LIVE-targetingService | live-source | `src\core\combat\targetingService.ts` | CARD-001, ENEMY-001 |
+| LIVE-actionQueue | live-source | `src\core\actions\actionQueue.ts` | NUM-004 |
+| LIVE-eventManager | live-source | `src\core\events\EventManager.ts` | MAP-005, MAP-006, MAP-007 |
+| LIVE-stateRandom | live-source | `src\infrastructure\rng\stateRandom.ts` | NUM-006, NUM-008 |
+| LIVE-rng | live-source | `src\infrastructure\rng\rng.ts` | NUM-008 |
+| LIVE-runStateMachineTest | live-test | `tests\unit\runStateMachine.test.ts` | MAP-003, MAP-004 |
+| LIVE-actionQueueDeterminismTest | live-test | `tests\unit\actionQueueDeterminism.test.ts` | NUM-004 |
+| LIVE-saveManagerSecurityTest | live-test | `tests\unit\saveManagerSecurity.test.ts` | MAP-001, MAP-002 |
+| LIVE-combatDamagePipelineIntegrationTest | live-test | `tests\unit\combatDamagePipelineIntegration.test.ts` | NUM-001, NUM-002, NUM-003, NUM-005 |
+| REG-supplementalUnits | regression-script | `test:supplemental-units` | P0/P1 hook matrix |
+| REG-runtimeV2Ts | regression-script | `test:runtime-v2:ts` | RELIC-002, CARD-001, ENEMY-001 |
+| REG-mapRouteConstraints | regression-script | `check:map-route-constraints` | MAP-003 |
+| REG-combatOrchestrationLayer | regression-script | `check:combat-orchestration-layer` | RELIC-001, RELIC-004 |
+
+## DeckRogue P0 Fix Closure - 2026-05-17
+
+- 修复范围：
+  - `NUM-001`：`CombatManager.tryResolveCombatVictoryFromState` 增加 combat-local `victoryResolved` 门闩，重复 `EnemyDeath` 信号不会重复发布 `CombatVictory`。
+  - `MAP-001 / MAP-002`：`SaveManager.loadGame` 要求 slot checksum 必须存在；非当前 save version 必须命中显式 migration registry，否则拒绝导入/加载。
+  - 验证中顺手修复 mirror relic ID 漂移：测试、route support relic 配置、content reachability fixture 改为 `mirror_shard` / `silver_locket` / `fractured_hourglass`。
+- 新增/更新回归：
+  - `tests\unit\combatDamagePipelineIntegration.test.ts` 增加重复 `EnemyDeath` 只发布一次 `CombatVictory` 的回归。
+  - `tests\unit\saveManagerSecurity.test.ts` 增加 checksum metadata 缺失拒绝、same-major unknown version 拒绝的回归。
+  - `tests\unit\specialActionBehavior.test.ts` 对齐真实 `fractured_hourglass` relic id。
+- 本轮验证：
+  - `npx tsx --test tests/unit/combatDamagePipelineIntegration.test.ts tests/unit/saveManagerSecurity.test.ts`: `13/13` passed。
+  - `npx tsx --test tests/unit/specialActionBehavior.test.ts`: `31/31` passed。
+  - `npm run test:supplemental-units`: `166/166` passed。
+  - `npm run check:content-reachability`: `11/11` reachable，broken edges `0`。
+  - `npm run lint --silent`: exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - `SAVE_MIGRATIONS` 当前为空注册表；后续真实 schema 升级时必须先写迁移函数再放行旧版本。
+  - 本轮只处理 DeckRogue P0 与验证暴露的 relic ID 漂移，P1/P2 Findings 仍按上节队列保留。
+
+## DeckRogue Review Follow-up Fixes - 2026-05-17
+
+- 修复范围：
+  - `CS-001-A`：deprecated `src\core\combat\CombatManager.ts` 补同类 combat-local `victoryResolved` 门闩，覆盖 legacy manager 在 cleanup 完成前重复发布 `CombatVictory` 的长尾入口。
+  - `REL-002`：`RelicSystem` 触发顺序改为按 `relicsData.priority` 降序、数据注册顺序、id 三段排序；不再由 `state.player.relics` 拾取顺序决定。
+  - `REL-003`：`RelicSystem.handleEvent` 增加 JSON-defined relic event-bus fallback，支持 `CardPlayed`、资源 gain/spend、受击等通用 trigger 映射，并复用 imperative `trigger()` 的通用执行路径。
+  - `RSM-001`：`transitionRunState` 对 `EVENT_RESOLVED` / `SHOP_LEFT` / `REST_COMPLETED` / `REWARD_TAKEN` / `REWARD_SKIPPED` 加 phase-action 守卫；`enchant/upgrade/relic_upgrade/remove_card` 子屏只在 `roomResolutionKind` 匹配时允许回到所属房间出口。
+  - `SAVE-001`：`saveManagerSecurity.test.ts` 文件头补充边界说明，当前 checksum 测试只声明本地完整性校验，不声明浏览器本地反作弊。
+- 新增/更新回归：
+  - `tests\unit\combatDamagePipelineIntegration.test.ts` 增加 legacy manager victory idempotency 回归；用 dynamic import 避免破坏 combat orchestration import boundary。
+  - `tests\unit\runStateMachine.test.ts` 增加跨 phase 离场拒绝和 rest-owned nested enchant 合法离场回归。
+  - `tests\unit\specialActionBehavior.test.ts` 增加 JSON relic event-bus 执行、`echo_buckle` card-count wrapper、relic priority 排序回归。
+  - `src\core\types\actions.ts` 与 `src\types\combat.ts` 为 relic 定义补 `priority?: number` 类型面。
+- 本轮验证：
+  - 红灯确认：新增回归在修复前分别失败于 legacy victory 双发、跨 phase 离场放行、JSON relic event-bus 不触发、relic 顺序按拾取顺序。
+  - `npx tsx --test tests/unit/combatDamagePipelineIntegration.test.ts tests/unit/runStateMachine.test.ts tests/unit/enchantmentFlow.test.ts`: `64/64` passed。
+  - `npx tsx --test tests/unit/runStateMachine.test.ts tests/unit/saveManagerSecurity.test.ts`: `52/52` passed。
+  - `npm run test:supplemental-units`: `170/170` passed。
+  - `npm run test:runtime-v2:ts`: `93` passed, `1` skipped, `0` failed。
+  - `npm run check:combat-orchestration-layer`: OK。
+  - `npm run check:content-reachability`: `11/11` reachable，broken edges `0`。
+  - `npm run lint --silent`: exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - `SAVE-001` 仍是浏览器本地完整性校验，不是对抗式 anti-cheat；slot checksum 与 save body 双写仍可被懂代码的本地用户绕过。
+  - `RSM-002` 尚未收敛：`deriveRunTransitionState` 仍会对部分子屏合成 `legacy:` token，本轮只加出口 phase guard 与 nested roomKind 约束。
+  - `REL-001 / REL-004` 尚未处理：单个 relic effect 抛错阻断后续、module-level eager singleton 生命周期漂移仍按 P2 队列保留。
+
+## DeckRogue Review Follow-up Fixes Batch 2 - 2026-05-17
+
+- 修复范围：
+  - `REL-003-N3`：JSON-defined relic 的 `RelicAcquired` fallback 增加 `event.relicId === relic.id` 约束，避免玩家拾取任意遗物时触发所有持有的通用 JSON 遗物效果。
+  - `RSM-002-N1`：嵌套房间 resolver 推断收紧；`Upgrade/RemoveCard/Enchant/RelicUpgrade` 没有 return/source/lock/event-free 依据时不再默认为 `shop/rest`。`RunFlowManager.leaveCurrentRoomToMap` 移除 `EVENT_RESOLVED` 兜底，无法解析出口动作时记录错误并保留原 room markers。
+  - `AQ-001`：`ActionQueue` 将 front-inserted action 作为 urgent lane 排在普通 priority lane 前；`pushFront/pushBack/enqueue` 共用容量检查，避免部分入口绕过 `maxQueueSize`。
+- 新增/更新回归：
+  - `tests\unit\specialActionBehavior.test.ts` 增加 `RelicAcquired(other)` 不触发持有 JSON relic、`RelicAcquired(self)` 才触发的回归。
+  - `tests\unit\actionQueueDeterminism.test.ts` 增加 urgent + 后续高 priority back entry 的排序回归，以及 front/back API 的容量一致性回归。
+  - `tests\unit\roomResolutionInference.test.ts` 增加嵌套子屏缺少 return context 时返回 `null` 的推断回归。
+  - `tests\unit\actionManagerAndRoomFlow.test.ts` 增加无法推断嵌套房间所有权时 `leaveCurrentRoomToMap` 拒绝离场并保留 token 的回归。
+- 本轮验证：
+  - 红灯确认：新增回归在修复前分别失败于 `RelicAcquired` 误触发、urgent 被高 priority back entry 抢先、front/back 绕过容量、嵌套子屏默认推断 `shop/rest`、非法 nested leave 直接回 Map。
+  - `npx tsx --test tests/unit/specialActionBehavior.test.ts`: `35/35` passed。
+  - `npx tsx --test tests/unit/actionQueueDeterminism.test.ts`: `4/4` passed。
+  - `npx tsx --test tests/unit/roomResolutionInference.test.ts tests/unit/actionManagerAndRoomFlow.test.ts`: `11/11` passed。
+  - `npm run test:supplemental-units`: `171/171` passed。
+  - `npm run test:runtime-v2:ts`: `93` passed, `1` skipped, `0` failed。
+  - `npm run check:combat-orchestration-layer`: OK。
+  - `npm run check:content-reachability`: `11/11` reachable，broken edges `0`。
+  - `npm run lint --silent`: exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - `deriveRunTransitionState` 的 `legacy:` token 合成仍存在于状态推导层；本轮已让出口解析拒绝无 owner 的 nested leave，但尚未彻底重构 token 来源。
+  - `REL-001 / REL-004`、`CS-002/CS-003`、`TGT-001/TGT-002`、`SAVE-003` 仍按后续 P1/P2 队列保留。
+
+## DeckRogue Review Follow-up Fixes Batch 3a - 2026-05-17
+
+- 修复范围：
+  - `CS-002`：`CombatSystem.gainBlock` 继续允许负数 block mutation clamp 到 0，但 `BlockGained.amount` 与 `blockGainedThisTurn` 改为记录实际非负新增量，避免事件流出现 `amount=-10`。
+  - `TGT-001`：`TargetingService.resolveTargets('AllAllies')` 在玩家来源下返回玩家自身，给玩家侧团体 buff/治疗保留合法目标。
+  - `TGT-002`：`TargetingService.resolveTargets('RandomEnemy')` 在敌人来源下从存活敌方友军中随机选取，并排除施放者；无存活友军时返回空数组。修复过程中恢复 `AllEnemies` 的 enemy-source opponent 语义，避免把随机友军逻辑误放到 `AllEnemies`。
+  - `SAVE-003`：`SaveManager` 拆分清理 API：`clearActiveSaves()` 只清存档槽和 payload，`clearAllUserData()` 清存档与进度类用户数据但保留本地表现偏好，`factoryReset()` 清全部 `deckrogue_*` key；`clearAllData()` 作为兼容别名转到 `factoryReset()`。
+  - 调用点核对：当前 `src\ui` 与 `src\core\persistence\setup.ts` 没有外部调用 `clearAllData()`；启动器仍只走单槽删除/读取/保存路径，本轮无需改 UI 按钮回调。
+- 新增/更新回归：
+  - `tests\unit\destructiveRegression.test.ts` 增加负数 block 只发布实际非负获得量的回归。
+  - `tests\unit\enemyVariantEnemyTurn.test.ts` 增加玩家 `AllAllies` 与敌人 `RandomEnemy` 的目标解析回归。
+  - `tests\unit\saveManagerSecurity.test.ts` 增加三档清理 API 回归，并保留本地完整性测试边界说明。
+- 本轮验证：
+  - 红灯确认：新增回归在修复前分别失败于 `BlockGained.amount=-10`、玩家 `AllAllies` 返回空、敌人 `RandomEnemy` 返回玩家、三档清理 API 缺失。
+  - 过程修正：第一次 targeted 绿测发现 `RandomEnemy` 修复未命中，实际逻辑误落到 `AllEnemies` 分支；已移动到 `RandomEnemy` 并重跑通过。
+  - `npx tsx --test tests/unit/destructiveRegression.test.ts`: `7/7` passed。
+  - `npx tsx --test tests/unit/enemyVariantEnemyTurn.test.ts`: `11/11` passed。
+  - `npx tsx --test tests/unit/saveManagerSecurity.test.ts`: `8/8` passed。
+  - `npm run test:supplemental-units`: `173/173` passed。
+  - `npm run test:runtime-v2:ts`: `93` passed, `1` skipped, `0` failed。
+  - `npm run check:combat-orchestration-layer`: OK。
+  - `npm run check:content-reachability`: `11/11` reachable，broken edges `0`。
+  - `npm run lint --silent`: exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - `CS-003` status schema 仍需单独批次处理，因为会触发所有 `applyStatus` 调用点的 stack/duration/refresh 语义审查。
+  - `REL-001 / REL-004`、`N1-residual applyRunTransition Result`、`EVT-002` free-remove save round-trip、`RNG-002` cloned-state RNG 仍按后续队列保留。
+  - `SAVE-003` 已拆 API，当前没有外部 `clearAllData()` 调用点；后续如果新增"清空存档/重置资料"按钮，需按文案接到 `clearActiveSaves()`、`clearAllUserData()` 或 `factoryReset()` 的具体一级。
+
+## DeckRogue Review Follow-up Final Closure - 2026-05-17
+
+- 追加收口范围：
+  - `CS-003`：`CombatSystem.applyStatus` 增加最小 status merge schema。`Vulnerable/Weak/Frail/Fear/Regen/Energized/Berserk/BlockBlocked` 显式走 `stacking_duration`，`Strength/Dexterity/Poison/Burn/Corruption` 走 additive，`Stealth/SkipDraw/Intangible` 走 refresh，未登记状态保留 stacking-duration 兼容语义；同时拒绝非有限 status amount。
+  - `REL-001`：`RelicSystem.handleEvent` 与 imperative `trigger()` 的 hardcoded/generic relic effect 均加单 effect 隔离；单个遗物效果抛错只记录错误，不再阻断后续遗物。
+  - `REL-004`：`RelicSystem` 构造期不再立即订阅 `globalEventBus`；改为 `bindStateTracker()` 后懒订阅，并提供 `dispose()` 清理订阅。`createRelicSystem()` 会先 dispose 旧 global instance；默认导出的 `relicSystem` 也改为 lazy proxy，模块 import 本身不再构造默认 `RelicSystem` 实例。
+  - `N1-residual`：`RunFlowManager.applyRunTransition()` 改为返回 boolean；非法 transition 不再只 swallow 后继续发布后续事件。`leaveCurrentRoomToMap()`、combat victory/defeat/run victory 相关调用点会在 transition 失败时保留/回滚状态并停止后续 publish/notify。
+  - `EVT-002`：为 `nameless_martyr_shrine` 的 `free_remove` 自动存档/读档路径补 round-trip 回归；现状验证为健康，`activeEvent.stage`、`event.data.freeRemovalsRemaining` 与 `RemoveCard` screen 可保存恢复。
+  - `RNG-002`：`stateRandom` 在 WeakMap 未命中但 state 带 `seed/rngState` 时，从 state 派生并绑定 deterministic RNG，roll 后回写 `state.rngState`，避免 deep-cloned state 落回 system entropy。
+- 新增/更新回归：
+  - `tests\unit\destructiveRegression.test.ts` 增加 stacking-duration/additive/refresh status schema 与 cloned-state deterministic RNG 回归。
+  - `tests\unit\specialActionBehavior.test.ts` 增加 throwing relic effect 隔离、lazy RelicSystem constructor 与默认导出 lazy proxy 回归。
+  - `tests\unit\actionManagerAndRoomFlow.test.ts` 增加 transition failure 时不发布 room completion 的回归。
+  - `tests\unit\saveManagerSecurity.test.ts` 增加 martyr free-remove save/load round-trip 回归。
+  - `tests\unit\enemyVariantEnemyTurn.test.ts` 保留 Vulnerable duration stack 语义回归，防止 status schema 误把常规 debuff 改成 refresh。
+- 本轮 fresh 验证：
+  - `npm run lint --silent`: exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npx tsx --test tests/unit/destructiveRegression.test.ts tests/unit/actionManagerAndRoomFlow.test.ts tests/unit/saveManagerSecurity.test.ts tests/unit/actionQueueDeterminism.test.ts tests/unit/runStateMachine.test.ts tests/unit/roomResolutionInference.test.ts tests/unit/specialActionBehavior.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/combatDamagePipelineIntegration.test.ts`: `140/140` passed。
+  - Post-review targeted rerun `npx tsx --test tests/unit/specialActionBehavior.test.ts tests/unit/destructiveRegression.test.ts`: `47/47` passed。
+  - `npm run test:supplemental-units`: `176/176` passed。
+  - `npm run test:runtime-v2:ts`: `93` passed, `1` skipped, `0` failed。
+  - `npm run check:combat-orchestration-layer`: OK。
+  - `npm run check:content-reachability`: `11/11` reachable，broken edges `0`。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 当前收口判断：
+  - 用户审查队列中要求本轮继续处理的 `CS-003`、`CS-002`、`TGT-001/TGT-002`、`SAVE-003`、`REL-001`、`REL-004`、`N1-residual`、`EVT-002`、`RNG-002` 已全部有代码或验证闭环；复核指出的 `REL-004` module-level default instance 与 `CS-003` duration 命名尾巴已追加收紧。
+  - `CS-001-B DamageActions.checkEnemyDeath` 已在复核中确认不独立 publish victory/death，不再作为待修项保留。
+- 剩余长期风险：
+  - `SAVE-001` 仍是浏览器本地完整性校验，不是对抗式 anti-cheat；专业本地用户仍可双写 save payload 与 checksum。
+  - status schema 当前是最小登记表；后续新增 status 必须同步登记 merge semantics，避免误落默认 stacking-duration 兼容语义。
+  - RNG 已堵住 cloned-state system entropy fallback，但 run 内仍是单 RNG 流；子 seed/子流分派仍属于长期架构优化。
+
+## DeckRogue RuntimeV2 / AI Bridge Risk Fixes - 2026-05-18
+
+- 修复范围：
+  - `EH-001 / EH-003 / EH-004`：`EngineHost` 增加 dispatch in-flight 隔离与 disposed guard。adapter subscribe 在 dispatch 期间的中间快照不再立即覆盖 host snapshot；dispatch 失败会保留 before snapshot；dispose 竞态会让未完成 dispatch 拒绝并保持 host disposed/null 状态；dispatch 期间新增 subscriber 不再立即收到 stale before snapshot。
+  - `EH-002`：`EngineHost` diff 对等长数组改为按 index 递归比较，避免 `JSON.stringify` 整数组比较；局部 deck/hand/map 元素变化现在报告到 `player.deck.1` 这类窄路径。
+  - `REPORT-001`：`EventBus` 增加 `subscribeAll()` 观察入口；`EngineHost.dispatch()` 会在 `RuleResult.events` 中保留 `runtime.<command>` 元事件，并追加本次 dispatch 内发布的全局游戏事件。
+  - `LOA-001 / LOA-002`：`LegacyOracleAdapter` 移除 `as unknown as` 方法探测，直接调用 `GameEngine` public API；dispatch 期间 GameEngine subscribe 回调只标记 pending，命令结束后合并一次 emit，避免 host 看到中间快照和末尾结果双触发。
+  - `IS-001 / IS-002 / CONTENT-001`：新增 `src\core\ai\intentPolicy.ts`，集中处理 intent 名称与权重解析。`intentSelector` 去掉冗余 optional-chain，权重必须是有限 number；所有 final weight 为 0 时优先 fallback 到 `Attack`，避免数组首项变成固定罕见招。RuntimeV2 content bundle 与 content authoring check 均复用严格权重门控。
+  - `IS-004`：`GameEngine.selectCharacter()` 与 `GameEngine.dispose()` 显式 `combatMemory.clear()`，避免上一 run / 测试的 AI 行为记录污染下一局。
+- 新增/更新回归：
+  - `tests\unit\runtimeV2Host.test.ts` 增加数组窄 diff、dispatch 失败丢弃 partial adapter snapshot、dispatch 中订阅不送 stale snapshot、subscribe replay 只启动一次、成功 dispatch 合并 adapter subscription 更新、dispose/in-flight 竞态拒绝、dispatch result 暴露全局事件、legacy adapter 禁止 `as unknown as` 的回归。
+  - `tests\unit\enemyIntentFacade.test.ts` 增加全零 intent weight fallback 到 `Attack`、非 number intent weight 拒绝、`GameEngine` 新 run 清空 `combatMemory` 的回归。
+  - `scripts\validation\check_content_authoring.ts` 增加 enemy intent weight 类型校验。
+- 本轮验证：
+  - 红灯确认：新增目标回归在修复前分别失败于整数组 diff、partial snapshot 覆盖、dispatch 中 stale replay、dispose 后 snapshot 被重填、缺失底层事件、legacy adapter 仍有 `as unknown as`、缺少严格权重 helper。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/enemyIntentFacade.test.ts`: `36` passed, `1` skipped, `0` failed。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts`: `25` passed, `1` skipped, `0` failed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run test:runtime-v2:ts`: `101` passed, `1` skipped, `0` failed。
+  - `npm run test:supplemental-units`: `179/179` passed。
+  - `npm run check:content-authoring`: `354/354` cards, `58/58` enemies, pass rate `100%`。
+  - `npm run check:content-bundle`: `7/7` passed。
+  - `npm run check:enemy-ai-profiles`: OK。
+  - `npm run build`: exit `0`。
+- 剩余长期风险：
+  - `IS-003` 的深层性能优化只做了输入门控与 lifecycle 清理；更进一步的 per-turn AI context cache 仍需独立性能基准后再做。
+  - `REPORT-001` 现在能把 dispatch 内全局事件带出到 `RuleResult.events`；如果未来需要完整因果链、事件顺序分组或失败 dispatch 的事件信封，还需要扩展 `RuleResult`/error contract。
+  - `CONTENT-001` 已拒绝非 number 权重，但 UI Codex 展示层仍有若干只读 `Number(policy.weight)` 显示逻辑；当前不影响规则选择和内容 authoring gate。
+
+## DeckRogue NumericSystem Schema Guardrails - 2026-05-18
+
+- 修复范围：
+  - `NS-001 / NS-003 / NS-010`：新增 `src\content\narrative\contentSchema.ts`，在内容加载边界对 `numericConfig.json`、cards/enemies/potions/relics/cardEnchantments/storyEvents 做运行时 schema 校验；`version`、数值 leaf、卡牌 cost、敌人 hp_range / intent weight 等字段 typo 现在直接 throw，不再经 `as unknown as` 或 `Number(... ) || 0` 静默吞掉。
+  - `NS-002 / NS-004`：`numericConfig.*.byId` patch 现在先校验 top-level 字段和 `$set` 路径首段；未知字段如 `stealthBonusActions.amount` 会被拒绝。override 应用后再次跑实体 schema，`cost: "free"` / `hp_range: [5, "ten"]` 这类错配不会进入运行时。
+  - `NS-005`：`events.defs` 明确只允许 `floorMin / floorMax / weight` 三个有限 number 字段；`options` 等事件结构字段不再可借 numericConfig merge 越权替换。
+  - `NS-006 / NS-007`：cards/enemies/potions/relics/storyEvents/cardEnchantments 的 map 构造统一走 `createEntityMap()`，重复 ID 会显式报错，避免数组遍历与按 ID lookup 看到不同数据。
+  - `NS-011`：`getMapRuntimeConfig()` 增加模块级缓存，避免纯配置对象每次调用都重建。
+  - 内容边界补强：`scripts\validation\check_asset_polish.ts` 改为走 `numericSystem` 导出的 cards/enemies/potions/relics，而非直接导入 raw gameplay JSON，让资产检查也受 schema guard 覆盖。
+- 新增/更新回归：
+  - `tests\unit\numericsDomain.test.ts` 增加 numericConfig version、卡牌 cost、敌人 hp_range、override patch、story event defs、duplicate ID、map runtime config cache 的红绿回归。
+- 本轮验证：
+  - 红灯确认：新增 numerics 回归在修复前失败于缺少 schema helpers、override 未拒绝错字段、duplicate map 静默覆盖、`getMapRuntimeConfig()` 非缓存对象。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts`: `12/12` passed。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/fullExpansionScale.test.ts`: `18/18` passed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run check:content-contract-layer`: OK。
+  - `npm run check:asset-polish`: errors `0`, warnings `0`。
+  - `npm run check:content-authoring`: `354/354` cards, `58/58` enemies, pass rate `100%`。
+  - `npm run check:content-bundle`: `7/7` passed。
+  - `npm run check:enemy-ai-profiles`: OK。
+  - `npm run test:supplemental-units`: `179/179` passed。
+  - `npm run test:runtime-v2:ts`: `101` passed, `1` skipped, `0` failed。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - `weight = 0` 是否代表禁用故事事件仍是策划语义决策，本轮保持现有 `minSelectableWeight` 行为不变。
+  - schema guard 当前覆盖运行时会消费的关键字段与 numericConfig 数值面；更细的引用完整性（action type/status/relic/card 交叉引用）应继续交给 content authoring / reachability 专项检查扩展。
+
+## DeckRogue RuntimeV2 Bridge Residual Closure - 2026-05-18
+
+- 修复范围：
+  - `EH-001-A / EH-003-A`：`EngineHost.dispatch()` 失败时不再只回滚内部 `snapshot`；会向 snapshot/render listeners 广播 before snapshot，包含 dispatch 期间新订阅的 listener，避免订阅方永久停在初始化状态。
+  - `EH-001-B`：新增 `DispatchFailedError`，失败 dispatch 会携带本次 dispatch 内捕获到的 `RuleResult.events`、command type、adapter source 与原始 cause，调用方 catch 后可诊断失败前已经发布的全局事件。
+  - `EH-003-B`：`EngineHost.start()` 的 adapter subscribe replay 去重改为明确的 startup snapshot delivery gate；同步 replay 与异步 replay 都只发一次启动快照。
+  - `EH-002-tail`：array diff 保留 primitive array 的细粒度路径，但对带稳定 `id` 的对象数组重排回退到 array base path，避免 `map.nodes.0.id` 这类重排噪声改变下游契约。
+  - `IPL-001 / IS-001-tail`：`parseIntentPolicyWeight(undefined)` 改为默认 `1`，`null` 与非 finite number 继续拒绝；同时增加 authored enemy intent policies 至少保留一条正权重 fallback 的回归，避免全 0 policy 退化成单一招式。
+- 新增/更新回归：
+  - `tests\unit\runtimeV2Host.test.ts` 增加 object array reorder coarse diff、失败 dispatch rollback emit、dispatch 中新增订阅者失败补送、失败事件信封、异步 subscribe replay 去重回归。
+  - `tests\unit\enemyIntentFacade.test.ts` 增加 undefined weight 默认 1、null weight 拒绝、现有敌人至少一条 positive fallback 的回归。
+- 本轮验证：
+  - 红灯确认：新增回归在修复前失败于 `parseIntentPolicyWeight(undefined) === 0`、缺少 `DispatchFailedError` export，以及失败路径不广播 rollback / 不暴露 events / 异步 replay 双发 / 对象数组重排细粒度 diff。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/enemyIntentFacade.test.ts`: `43` passed, `1` skipped, `0` failed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run check:content-authoring`: `354/354` cards, `58/58` enemies, pass rate `100%`。
+  - `npm run test:runtime-v2:ts`: `105` passed, `1` skipped, `0` failed。
+  - `npm run test:supplemental-units`: `180/180` passed。
+  - `npm run check:content-contract-layer`: OK。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 剩余风险：
+  - 失败 dispatch 现在有诊断事件信封，但仍不会返回完整 `RuleResult`；如果上游需要统一 success/failure envelope，需要扩展 runtimeV2 command contract。
+  - object-array reorder 采用粗粒度 base path；如果未来有 keyed diff 消费者需要逐 ID 精确 diff，应另起 render diff contract。
+
+## DeckRogue RuntimeV2 RuleResult Envelope Closure - 2026-05-18
+
+- 修复范围：
+  - `EngineHost.dispatch()` 成功与 adapter command 失败现在统一返回 `RuleResult` envelope：成功为 `ok: true`，失败为 `ok: false`，并带 rollback snapshot、空 rollback diff、本次 dispatch 捕获的 `events`、`timings`、`source` 与 `error { name, message, commandType }`。
+  - 保留兼容入口 `host.dispatch(command, { throwOnFailure: true })`；该路径仍抛 `DispatchFailedError`，但 error 现在携带同一个 failure `RuleResult`，catch 方可继续读取事件信封与 rollback snapshot。
+  - `RuleResult` / `RuleResultError` / `EngineHostDispatchOptions` 纳入 runtimeV2 public contract export。
+  - 带稳定 `id` 的对象数组 diff 从粗粒度 base path 升级为 keyed contract：纯重排报告 `map.nodes.$order`，同 ID 元素字段变化报告 `map.nodes[id=node-1].x`，新增/删除 ID 报告 `$ids`；primitive array 仍保留 index 级窄 diff。
+- 新增/更新回归：
+  - `tests\unit\runtimeV2Host.test.ts` 将 dispatch 失败测试从 `assert.rejects` 改为 resolved failure envelope，补 `throwOnFailure` 兼容回归。
+  - 对象数组重排测试改为验证 `$order` + keyed field path，并锁住不再回退 `map.nodes` 或 `map.nodes.0.*` 噪声路径。
+- 本轮验证：
+  - 红灯确认：目标回归在修复前失败于 `result.ok === undefined`、失败 dispatch 仍抛 `DispatchFailedError`、`DispatchFailedError.result` 缺失，以及对象数组重排仍只报告 `map.nodes`。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts`: `30` passed, `1` skipped, `0` failed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run test:runtime-v2:ts`: `106` passed, `1` skipped, `0` failed。
+  - `npm run test:supplemental-units`: `180/180` passed。
+  - `npm run check:content-contract-layer`: OK。
+  - `npm run build`: exit `0`。
+  - `git diff --check`: exit `0`，仅 Windows LF/CRLF 归一化提示。
+- 当前收口判断：
+  - 上一节剩余的两个 runtimeV2 contract tail 已清：失败 dispatch 不再需要异常通道才能携带诊断，object-array reorder 不再牺牲 keyed field diff 精度。
+  - Host lifecycle 级错误（例如 disposed 竞态、未启动状态等）仍保持异常路径，不伪装成 command-level `RuleResult`；这是刻意边界，避免在没有可靠 snapshot 时生成半真 envelope。
+
+## DeckRogue UI Shell Contract Closure - 2026-05-20
+
+- 修复范围：
+  - `AppShell.resolveActiveScreen()` 补齐 `RelicUpgrade`，并导出 resolver 供单元测试锁定；遗物升级屏不再因 resolver 白名单缺项回退到 `Launcher`。
+  - 根菜单 `data-keyboard-option` 改为 `1..9` 唯一顺序，避免两个菜单项共享快捷序号。
+  - 重开战斗确认弹窗从 `showMenu` 条件块中移出，并接入 `restartCombatConfirm` keyboard modal context；关闭菜单后弹窗仍能独立显示与响应。
+  - `ErrorBoundary` 默认 fallback 文案本地化为中文，避免渲染异常时露出英文恢复界面。
+- 新增/更新回归：
+  - `tests\unit\appShellUiContracts.test.ts` 覆盖 active screen resolver、根菜单快捷序号唯一性、重开战斗确认弹窗不受系统菜单可见性 gate 影响。
+  - `tests\unit\errorBoundaryContract.test.ts` 覆盖默认错误 fallback 的中文标题、描述与重试按钮文案。
+  - `package.json` 的 `test:supplemental-units` 纳入上述两个 UI contract 测试，防止后续补充单元套件漏跑。
+- 本轮验证：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` passed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - `npm run test:supplemental-units`: `184/184` passed。
+  - `npm run lint --silent`: exit `0`。
+  - `npm run check:ui-runtime-boundaries`: OK。
+  - `npm run build`: exit `0`。
+- 剩余风险：
+  - 本轮是 AppShell / shared fallback contract 修复，不替代全量视觉像素 QA；复杂移动端布局、动画层级和 Pixi/DOM 双 renderer 仍建议按 viewport 专项继续跑截图与交互烟测。
+  - `RelicUpgrade` resolver 合约已锁住，但真实进入遗物升级的完整玩法路径仍依赖 runtime flow 测试覆盖。
+
+## DeckRogue Bug Loop Cycle 1 - Python WASM Lifecycle Finding - 2026-05-20
+
+- 循环模式：第 1 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 当前工作树状态：`E:\deckrogue\deckrogue-mainline-merge` 仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+  - 重点扫 `src\ui`、`src\runtimeV2`、`src\core\ai`、`src\desktop`、`python_runtime` 的浏览器全局访问、keyboard focus、Python adapter lifecycle、`as any`/`Number(...)` 弱类型入口。
+- 新发现：
+  - **PWASM-001 · `PythonWasmAdapter.dispose()` 无法取消 in-flight `start()` / Pyodide load，dispose 后 adapter 可被异步复活。**
+  - 证据位置：`src\runtimeV2\bridge\pythonWasmAdapter.ts:47-61` 的 `start()` 在 `ensurePyodide()` 后继续初始化 snapshot；`src\runtimeV2\bridge\pythonWasmAdapter.ts:90-94` 的 `dispose()` 只清 `snapshot / pyodide / initPromise`，没有 generation token 或 disposed guard。
+  - 复现证据：临时 inline `npx tsx -` 脚本模拟慢 `window.loadPyodide`，调用顺序为 `const startPromise = adapter.start(); await Promise.resolve(); adapter.dispose(); resolveLoader(pyodide); await startPromise; adapter.getSnapshot() !== null`，输出 `{"snapshotAfterDispose":true}`。
+  - 风险：用户切换 runtime、退出页面、Host dispose 或测试 teardown 期间，晚到的 Pyodide 初始化可重新写入 `snapshot`；如果上层复用同一 adapter 实例，后续 `getSnapshot()` 会看到 dispose 后产生的过期状态。
+  - 优先级：P2。不是当前默认 legacy runtime 的 P0/P1，但属于 runtimeV2 / Python WASM 适配层真实 lifecycle 漏洞。
+  - 修复方向：给 `PythonWasmAdapter` 加 `disposed` 标记或 `generation` token；`start()` / `loadPyodide()` / `dispatch()` 在 await 后检查 token，dispose 后完成的旧 promise 不得写 `pyodide` 或 `snapshot`，必要时抛 `PythonWasmAdapter disposed during start`。
+- 验证：
+  - 现有覆盖缺口确认：`npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`: `32` passed, `1` skipped, `0` failed；其中 WASM 真流程测试仍 skip，未覆盖 dispose-during-start。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 2 轮先展示 PWASM-001 的最小复现与修复验收标准；随后补 `tests/unit/pythonWasmAdapter.test.ts` 回归，再改 adapter lifecycle guard。
+
+## DeckRogue Bug Loop Cycle 3 - Python WASM Loader Finding - 2026-05-20
+
+- 循环模式：第 3 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 接续第 1/2 轮 Python WASM adapter lifecycle 线索，继续查 `src\runtimeV2\bridge\pythonWasmAdapter.ts` 的 loader 注入与 stale DOM script 边界。
+  - 同步扫 UI 定时器 cleanup、runtimeV2 adapter dispose、WASM skip tests、`as any` / 弱类型展示逻辑；本轮可复现新洞集中在 Pyodide loader。
+- 新发现：
+  - **PWASM-002 · 已存在的 stale Pyodide loader script 会让 `PythonWasmAdapter.start()` 永久等待。**
+  - 证据位置：`src\runtimeV2\bridge\pythonWasmAdapter.ts:134-145`。当 `document.querySelector('script[data-pyodide-loader="true"]')` 命中但 `window.loadPyodide` 仍不存在时，代码只给 existing script 追加一次性 `load/error` listener；如果该 script 是前一次失败/已完成但未清理的节点，事件已经错过，新的 Promise 不会 resolve 或 reject。
+  - 复现证据：临时 inline `npx tsx -` 脚本设置 fake DOM：`window = {}`，`document.querySelector()` 返回已有 script，`addEventListener()` 不再触发事件；随后 `Promise.race([adapter.start(), timeout 80ms])` 输出 `{"staleExistingScriptStart":"timed-out"}`。
+  - 风险：一次 CDN 加载失败、热重载残留、或宿主页面预插入坏 script 后，后续切换到 Python WASM runtime 会卡在初始化中，不进入 `Could not load Pyodide` 错误路径，也无法给 UI 明确失败状态。
+  - 优先级：P2。影响 Python WASM runtime 可用性与错误可诊断性，不影响当前 legacy oracle 默认路径。
+  - 修复方向：对 existing script 增加状态判定与超时；如果 `window.loadPyodide` 在下一 tick/短超时内仍未出现，应移除 stale script 并重新注入，或 reject `Failed to load Pyodide loader script`。同时与 `PWASM-001` 共享 disposed/generation guard，避免 late load 复活。
+- 验证：
+  - 现有覆盖缺口确认：`npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`: `32` passed, `1` skipped, `0` failed；现有 `pythonWasmAdapter.test.ts` 只覆盖 snapshot envelope unwrapping，未覆盖 loader 注入死锁。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 4 轮展示 `PWASM-002` 的行号、复现与修复验收标准。
+  - 后续修复可把 `PWASM-001` 与 `PWASM-002` 合并为一个 `python-wasm-adapter-lifecycle` 小补丁：新增测试覆盖 dispose-during-start、stale existing script timeout/reinject，并给 adapter 加 generation guard。
+
+## DeckRogue Bug Loop Cycle 5 - Python Process Adapter Protocol Finding - 2026-05-20
+
+- 循环模式：第 5 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 转向 `python-process`、桌面打包与 release gate。`runtimeV2` Python process parity、desktop build、Electron production smoke 都实际执行；桌面链路本轮未暴露运行失败。
+  - 重点检查 `src\runtimeV2\node\pythonProcessAdapter.ts` 的 stdout JSON 协议处理，以及现有 `runtimeV2Parity.test.ts` 覆盖面。
+- 新发现：
+  - **PPROC-001 · `PythonProcessAdapter` 收到非 JSON stdout 行时会错误拒绝队列第一个 pending 请求。**
+  - 证据位置：`src\runtimeV2\node\pythonProcessAdapter.ts:162-171`。`lineReader.on('line')` 中 `JSON.parse(line)` 失败后执行 `const pending = this.pending.shift()` 并 reject；这条噪声行没有 request id，却会消费第一个真实请求。
+  - 复现证据：临时 inline `npx tsx -` 使用 `PythonProcessAdapter.createForTesting()` fake process：先发起 `dispatch(select_character)`，随后 stdout 写入 `debug log from python\n`，再写入合法 `{ request_id: "req_1", ok: true, snapshot }`。输出 `{"noisyStdoutRequest":"rejected:Unexpected token 'd', \"debug log \"... is not valid JSON"}`。
+  - 风险：当前 `python_runtime\src\deckrogue_rules_core\cli.py` 只通过 `_write()` 输出 JSON，没有主动 print；但任何后续调试 `print()`、第三方库 stdout 输出或规则层误写 stdout 都会让 adapter 拒绝错误的 pending 请求。多请求并发时还会破坏 request id 对齐，导致后续合法响应被忽略或只部分请求完成。
+  - 优先级：P2。它不影响当前纯净 CLI happy path，但会降低 Python process runtime 的调试/容错能力，并让协议错误难定位。
+  - 修复方向：非 JSON stdout 行应按明确协议处理：要么忽略并记录到诊断 buffer（把 stdout 噪声当日志），要么拒绝所有 pending 并关闭 adapter，不能 `shift()` 任意第一个 pending。更稳的做法是要求 JSON 响应必须带 request id；无法解析时记录 `protocolNoise` 并继续等待带 id 的合法响应。
+- 验证：
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2Persistence.test.ts`: `34/34` passed；现有覆盖只验证 out-of-order response 与 unknown request id，不覆盖 non-JSON stdout。
+  - `npm run build:desktop`: exit `0`，生成 `reports\desktop\desktop-build.json`，`overallStatus=pass`。
+  - `npm run test:desktop-smoke`: exit `0`，`reports\desktop\desktop-smoke.json` 为 production/pass，覆盖 `launcher / tutorial / character_select / map / combat`，console/page/failedRequests 均为空。
+  - `npm run check:release-readiness`: exit `1`，`28` pass / `13` fail；失败项为缺少 doctor/security/flow smoke 等发布前报告，不作为本轮代码 bug 判定。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 6 轮展示 `PPROC-001` 的行号、复现与修复验收标准。
+  - 后续修复可在 `tests\unit\runtimeV2Parity.test.ts` 添加“non-JSON stdout 不消费 pending queue”回归，然后改 `PythonProcessAdapter` parse-error 分支。
+
+## DeckRogue Bug Loop Cycle 7 - Codex Intent Display Finding - 2026-05-20
+
+- 循环模式：第 7 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 接续 runtimeV2 / AI / content schema 修复后的边界，重点检查运行时 intent policy parser 与 UI Codex 图鉴展示逻辑是否共用同一语义。
+  - 当前工作树仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+- 新发现：
+  - **CODEX-INTENT-001 · Codex 敌人意图权重展示仍用旧 `Number(weight) || 0` 公式，和运行时 `parseIntentPolicyWeight(undefined) === 1` 语义分歧。**
+  - 证据位置：`src\core\ai\intentPolicy.ts:6-13` 明确 `undefined` 权重默认 `1`；`src\ui\overlays\codexCatalog.ts:365-368` 与 `src\ui\overlays\codexCatalog.ts:431-436` 仍用 `Math.max(0, Number(policy.weight) || 0)` / `Number(policy.weight || 0)` 计算总权重与百分比。
+  - 复现证据：临时 inline `npx tsx -` 脚本对同一条 `{ intent: 'Attack' }` 比较运行时 parser 与 Codex 展示公式，输出 `{"runtimeWeight":1,"codexWeight":0,"codexTotal":0,"codexPct":"N/A"}`。
+  - 当前内容触发面：`src\content\data\enemies.json` 当前 `58` 个敌人、`81` 条 intent policy 均显式写了 `weight`，本轮统计 `missingWeight=0`，因此现有图鉴数据不会立刻显示错百分比。
+  - 风险：后续合法内容若省略 `weight`，运行时会按默认权重 `1` 参与 AI 选择，但 Codex 图鉴会显示 `N/A` 或 `0` 权重，误导玩家和内容作者判断敌人意图概率。
+  - 优先级：P3。属于 UI 信息准确性与共享语义漂移，不影响当前 combat / content-authoring happy path。
+  - 修复方向：`codexCatalog.ts` 引入并复用 `parseIntentPolicyWeight` 与 `normalizeIntentPolicyIntent`；对非法权重保持 authoring 校验阶段失败，Codex 展示层只消费已验证内容。补一个 Codex catalog unit test，覆盖缺省 weight 在 demo 与 mechanics 文案中按 `1` 参与百分比。
+- 验证：
+  - `npm run check:content-authoring`: pass，Cards `354/354`、Enemies `58/58`、Relics `0/0`，report saved to `reports\content\content-authoring.json`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+  - PowerShell JSON 统计：当前 `enemies.json` 为 `enemies=58`、`intentPolicies=81`、`missingWeight=0`。
+- 下一轮建议：
+  - 第 8 轮展示 `CODEX-INTENT-001` 的行号、最小复现和验收标准。
+  - 后续修复可先给 `codexCatalog.ts` 抽一个小的 `getIntentPolicyWeightForDisplay` helper，直接复用 `intentPolicy.ts`，避免 UI 再出现第二套权重语义。
+
+## DeckRogue Bug Loop Cycle 9 - Relic Upgrade Visual/Lore Finding - 2026-05-20
+
+- 循环模式：第 9 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 转向 UI / 渲染层，先跑 `check:ui-runtime-boundaries` 与 `test:ui-smoke`，再对 AppShell screen 白名单、背景层、懒加载视图和 motion/ambient 映射做静态对账。
+  - 当前工作树仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+- 新发现：
+  - **UI-RELUP-001 · `RelicUpgradeView` 复用 Rest 背景与 Rest 氛围文案，遗物升级界面视觉/叙事错配。**
+  - 证据位置：`src\ui\views\RelicUpgradeView.tsx:233-248`。`backgroundSrc` 取 `VIEW_BACKGROUNDS.rest[0]?.desktop`，文案取 `WORLD_LORE?.viewAtmosphere?.Rest`。
+  - 对照证据：`src\ui\views\UpgradeView.tsx:145-150` 与 `src\ui\views\EnchantView.tsx:45-50` 均取 `VIEW_BACKGROUNDS.upgrade.desktop`；`src\content\data\worldLore.json` 已提供 `viewAtmosphere.Upgrade`，内容为“锻台像审讯椅一样冰冷。每一次强化，都意味着某种温柔被永久拆除。”
+  - 复现证据：临时 inline `npx tsx -` 读取当前导出，输出 `backgroundSrc="/assets/rest/rest_camp.svg"`、`upgradeBackgroundSrc="/assets/upgrade/upgrade_forge.svg"`，并同时显示 `restAtmosphere` 与 `upgradeAtmosphere` 文案不同。
+  - 额外对账：AppShell 有效 screen 白名单包含 `RelicUpgrade`；`ViewBackgroundLayer` 本身不托管该 screen，说明实际背景完全由 `RelicUpgradeView` 自身决定。
+  - 风险：玩家进入遗物升级时看到的是休息点 camp 背景和“短暂喘息”文案，而不是锻台/强化语境；这会削弱新补齐的 `RelicUpgrade` 路径视觉一致性，也容易让后续 UI QA 误以为遗物升级仍是 Rest 子状态。
+  - 优先级：P3。属于 UI/叙事准确性问题，不影响状态机、战斗或存档。
+  - 修复方向：`RelicUpgradeView` 改用 `VIEW_BACKGROUNDS.upgrade.desktop` 与 `WORLD_LORE?.viewAtmosphere?.Upgrade`，或在 `worldLore`/背景 registry 中新增专门的 `RelicUpgrade` 项；补 `appShellUiContracts.test.ts` 或新的 view contract test 锁住 `RelicUpgrade` 不再引用 Rest 文案。
+- 验证：
+  - `npm run check:ui-runtime-boundaries`: OK。
+  - `npm run test:ui-smoke`: exit `0`；`output\playwright\ui_smoke_report.json` 显示 `consoleErrors=0`、`pageErrors=0`、`failedRequests=0`、`audits=9`，覆盖 `launcher / character_select / map / combat / reward / map_after_reward / launcher_after_save / after_continue / after_load_slot`，但未覆盖 `RelicUpgrade`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 10 轮展示 `UI-RELUP-001` 的行号、复现输出和验收标准。
+  - 后续继续找 bug 时，可扩展 UI smoke 到 Rest / Upgrade / RelicUpgrade / Enchant / RemoveCard 子屏，当前通用 smoke 没走这些分支。
+
+## DeckRogue Bug Loop Cycle 11 - Subscreen Keyboard Option Collision Finding - 2026-05-20
+
+- 循环模式：第 11 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 接续第 9/10 轮 UI 子屏缺口，重点对 `RestView`、`UpgradeView`、`RelicUpgradeView`、`EnchantView`、`RemoveCardView` 的 `data-keyboard-option` 分配做源码审计和静态渲染对账。
+  - 当前工作树仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+- 新发现：
+  - **UI-KBD-001 · 多个子屏存在 `data-keyboard-option` 重复，数字快捷键会误触或让后一个动作不可达。**
+  - 证据位置：
+    - `src\ui\views\RemoveCardView.tsx:47-54` 给前 10 张卡牌分配 `1..10`，但 `src\ui\views\RemoveCardView.tsx:71-79` 的取消/返回按钮也固定 `data-keyboard-option="10"`。
+    - `src\ui\views\EnchantView.tsx:66-80` 给前 10 张可附魔卡牌分配 `1..10`，但 `src\ui\views\EnchantView.tsx:102-109` 的取消按钮也固定 `data-keyboard-option="10"`。
+    - `src\ui\views\RestView.tsx:148-163` 的“驱散”是 `data-keyboard-option="4"`，`src\ui\views\RestView.tsx:233-247` 的“蒸馏配方”也固定 `data-keyboard-option="4"`。
+  - 触发机制：`src\ui\views\AppShell.tsx:324-326` 对 `selectOptionN` 直接 `clickFirst([data-keyboard-option="${index}"])`；`clickFirst` 在 `src\ui\views\AppShell.tsx:228-233` 只点第一个可见匹配元素，不处理重复项。
+  - 复现证据：
+    - 临时 inline `npx tsx -` 静态渲染 10 张卡的 `RemoveCardView` / `EnchantView`，输出两者 `data-keyboard-option="10"` 计数均为 `2`。
+    - 同脚本用真实 corrupted relic `mark_of_entropy` + 两瓶药剂渲染 `RestView`，输出 `option4Count=2`，两个匹配按钮分别是“驱散”和“蒸馏配方”。
+  - 风险：
+    - 在移除/附魔子屏中，按 `Digit0` / `selectOption10` 会优先点第 10 张卡，而不是取消按钮；玩家可能误删/误附魔第 10 张牌。
+    - 在 Rest 子屏中，当“驱散”和“蒸馏配方”同时可用时，按 `4` 总是触发 DOM 中更靠前的“驱散”，调和按钮无法通过数字快捷键触达。
+  - 优先级：P2。不是核心状态机崩溃，但会造成可逆性差的 UI 快捷键误操作，尤其是 RemoveCard / Enchant 这种会永久改牌组的操作面。
+  - 修复方向：子屏按钮按可见动作统一分配唯一 option；取消/返回按钮不要复用列表末尾数字，优先依赖 `data-keyboard-close` / Esc，或分配列表之外且不冲突的固定序号。补一个 view contract test，静态渲染这些子屏并断言每个 screen 内可见 `data-keyboard-option` 唯一。
+- 验证：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` passed；现有覆盖只检查 AppShell 根菜单唯一性，未覆盖 Rest / RemoveCard / Enchant 子屏。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 12 轮展示 `UI-KBD-001` 的行号、静态渲染复现和验收标准。
+  - 后续继续找 bug 时，扩展 UI smoke 到子屏真实路径，或专门建立 `keyboard-option-uniqueness` contract test 扫所有 screen。
+
+## DeckRogue Bug Loop Cycle 13 - Upgrade Subscreen Keyboard Coverage Finding - 2026-05-20
+
+- 循环模式：第 13 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 使用 `auto-test-web-app-v5` 的快路径思路：先跑现有 UI contract / runtime boundary 检查，再对 smoke 未覆盖的 Upgrade / RelicUpgrade 子屏做静态渲染对账。
+  - 本轮避开第 11/12 轮已记录的重复 option 问题，专门检查“主选择项是否可被数字快捷键和自定义焦点系统触达”。
+- 新发现：
+  - **UI-KBD-002 · `UpgradeView` / `RelicUpgradeView` 的主选择项缺少数字快捷键；`RelicUpgradeView` 遗物卡还缺少自定义键盘焦点入口。**
+  - 证据位置：
+    - `src\ui\views\UpgradeView.tsx:125-130` 的 `CardView` 只设置 `data-keyboard-focus="true"`，没有按 index 设置 `data-keyboard-option`；`src\ui\views\UpgradeView.tsx:172-178` 取消按钮是唯一 `data-keyboard-option="10"`。
+    - `src\ui\views\RelicUpgradeView.tsx:52-66` 的遗物卡外层 `motion.div` 只有 `onClick`，没有 `data-keyboard-focus`、`data-keyboard-option`、`role` 或键盘事件；内层“升级”按钮 `src\ui\views\RelicUpgradeView.tsx:131-154` 也没有自定义键盘属性；取消按钮 `src\ui\views\RelicUpgradeView.tsx:277-282` 是唯一 `data-keyboard-focus` / `data-keyboard-option="10"`。
+    - `src\ui\views\AppShell.tsx:236-245` 的自定义焦点循环只查询 `[data-keyboard-focus="true"]`；`src\ui\views\AppShell.tsx:324-326` 的 `selectOptionN` 只点 `[data-keyboard-option="${index}"]`。
+  - 复现证据：临时 inline `npx tsx -` 静态渲染 3 张可升级卡 + 1 件可升级遗物：
+    - `UpgradeView` 输出 `keyboardOptions=["10"]`、`keyboardFocusCount=4`、`clickableCardCount=3`，说明卡牌可被焦点循环触达但没有数字快捷键。
+    - `RelicUpgradeView` 输出 `keyboardOptions=["10"]`、`keyboardFocusCount=1`、`buttonCount=2`、`clickableCardCount=0`，说明自定义焦点系统只能触达取消按钮，不能触达遗物卡。
+  - 风险：
+    - `UpgradeView` 中数字 `1..9` 无法直接选择对应升级卡，和 `RemoveCardView` / `EnchantView` 的卡牌选择习惯不一致。
+    - `RelicUpgradeView` 中方向键焦点循环只会落到取消按钮；手柄/键盘用户无法用项目自定义焦点系统选择遗物升级，必须依赖鼠标或浏览器原生 Tab 焦点。
+  - 优先级：P2。属于键盘/可访问性交互缺口，影响升级类子屏的非鼠标操作；状态机本身不崩溃。
+  - 修复方向：给 `UpgradeCardPreview` / `RelicUpgradeCard` 传入 index，主选择项设置唯一 `data-keyboard-option=1..N` 与 `data-keyboard-focus="true"`；`RelicUpgradeCard` 外层改为语义 button 或至少加 `role="button"`、`tabIndex`、`onKeyDown`，避免只有鼠标 click 路径。取消继续依赖 `data-keyboard-close` / Esc，避免占用数字序号。
+- 验证：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` passed；现有 UI contract 仍未覆盖 Upgrade / RelicUpgrade 子屏选择项。
+  - `npm run check:ui-runtime-boundaries`: OK。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`。
+- 下一轮建议：
+  - 第 14 轮展示 `UI-KBD-002` 的行号、静态渲染复现和验收标准。
+  - 后续继续找 bug 时，可继续扩展子屏 keyboard contract，或转回 Python WASM / Python process adapter 未修生命周期问题。
+
+## DeckRogue Bug Loop Cycle 15 - Shop Service Keyboard Coverage Finding - 2026-05-20
+
+- 循环模式：第 15 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 使用 `auto-test-web-app-v5` 的快路径思路，先跑现有 UI contract 与 runtime boundary 检查，再继续审计 UI 子屏键盘契约。
+  - 本轮避开第 11/13 轮已记录的重复 option 与 Upgrade/RelicUpgrade 缺 option 问题，专门检查 Shop 子屏中商品、服务、调和、离开按钮是否都能被数字快捷键触达。
+  - 当前工作树仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+- 新发现：
+  - **UI-KBD-003 · `ShopView` 服务区与离开按钮进入自定义焦点循环，但没有数字快捷键。**
+  - 证据位置：
+    - `src\ui\views\ShopView.tsx:254-260`、`:308-314`、`:354-360` 的卡牌、遗物、药剂购买按钮按顺序设置 `data-keyboard-option`。
+    - `src\ui\views\ShopView.tsx:379-384` 的“锻造强化”、`:399-404` 的“焚毁记忆印痕”、`:414-421` 的“附魔服务”、`:508-516` 的“蒸馏”、`:527-529` 的“离开据点”都只有 `data-keyboard-focus="true"`，没有 `data-keyboard-option`。
+    - `src\ui\views\AppShell.tsx:324-326` 的 `selectOptionN` 只点击 `[data-keyboard-option="${index}"]`，不会触发仅有 focus 属性的按钮。
+  - 复现证据：临时 inline `npx tsx -` 静态渲染 1 张卡、1 件遗物、1 瓶商店药剂且服务可用的 ShopView，输出商品按钮有 `option=1/2/3`，但 5 个 focus 按钮缺少 option：
+    - `锻造强化 50 信用筹码`
+    - `焚毁记忆印痕 75 信用筹码`
+    - `附魔服务 65 信用筹码`
+    - `蒸馏`
+    - `离开据点`
+  - 风险：
+    - 数字快捷键只覆盖商店商品，无法直接触发商店服务或离开商店；这和 AppShell 暴露的 `selectOption1..10` 通用选项模型不一致。
+    - 键盘/手柄用户仍可通过焦点循环再确认触发这些按钮，但数字直达链路断裂；商店是高频界面，交互不一致会明显。
+  - 优先级：P3。属于快捷键覆盖缺口，不直接造成状态机崩溃或误删卡；但应和 UI-KBD-001/002 一起进入 keyboard contract 修复批次。
+  - 修复方向：ShopView 按可见动作统一分配唯一 option。商品、服务、调和、离开应共享同一个顺序分配器；超过 10 个可选动作时明确只给前 10 个分配数字，并在测试里锁住无重复、无中间断号、关键服务可达。
+- 验证：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` passed。
+  - `npm run check:ui-runtime-boundaries`: OK。
+  - 临时 inline `npx tsx -` 静态渲染 ShopView，确认 `focusButtons` 共 8 个，其中 5 个 `option=null`。
+- 下一轮建议：
+  - 第 16 轮展示 `UI-KBD-003` 的行号、静态渲染复现和验收标准。
+  - 后续真实找 bug 可继续扫 MapView 的 `revealNode` 键盘可达性，或转向 Python WASM / Python process adapter 未修生命周期问题。
+
+## DeckRogue Bug Loop Cycle 17 - Map Keyboard Option Overflow Finding - 2026-05-20
+
+- 循环模式：第 17 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 使用 `auto-test-web-app-v5` 的快路径思路，先跑现有 UI contract 与 runtime boundary 检查，再继续审计 MapView 键盘契约。
+  - 本轮避开第 11/13/15 轮已记录的子屏重复 option、Upgrade/RelicUpgrade 缺 option、Shop 服务缺 option 问题，专门检查地图可选节点超过 10 个时的编号边界。
+  - 当前工作树仍含前序多批本地改动与新增测试文件，本轮未回退无关改动。
+- 新发现：
+  - **UI-KBD-004 · `MapView` 可选节点超过 10 个时，第 11 个及之后会生成无效 `data-keyboard-option="0"`。**
+  - 证据位置：
+    - `src\ui\views\MapView.tsx:83` 将 `selectableNodeIds` 截断为前 10 个。
+    - `src\ui\views\MapView.tsx:640` 对所有 `isSelectable` 节点都计算 `String(selectableNodeIds.indexOf(node.id) + 1)`。
+    - 当某个可选节点不在截断后的 `selectableNodeIds` 中时，`indexOf(node.id)` 为 `-1`，最终写出 `"0"`。
+    - `src\ui\views\AppShell.tsx:59-68` 只定义 `selectOption1..10`；`src\ui\views\AppShell.tsx:324-326` 只按对应数字查 `[data-keyboard-option="${index}"]`，没有 `selectOption0` 路径。
+  - 复现证据：临时 inline `npx tsx -` 静态渲染一个当前节点连接 11 个下一层节点的 MapView，输出：
+    - `selectableNodeButtonCount=11`
+    - `n1..n10` 分别是 `option=1..10`
+    - `n11` 是 `option=0`
+    - `invalidOptionZero=["n11"]`
+  - 风险：
+    - 一旦地图生成、调试态、runtimeV2 renderModel 或未来内容允许单层 11 条以上可选路线，第 11 个可选节点会带无效快捷键值。
+    - `data-keyboard-option="0"` 既不被 `selectOption10` 命中，也不属于 AppShell 暴露的 option contract；多个溢出节点还会重复 `"0"`，破坏静态唯一性检查。
+  - 优先级：P3。当前常规地图可能较少超过 10 条分支，但代码已经显式 slice 10，说明溢出边界被考虑过却没有正确处理。
+  - 修复方向：只在 `selectableNodeIds.includes(node.id)` 时设置 `data-keyboard-option`，否则留空；或者把 `isSelectable` 也限制到前 10 个键盘可选节点，并在 UI 上标明溢出节点只能鼠标/焦点选择。补一个 MapView 静态渲染 contract test，覆盖 11 个可选节点时不产生 `"0"`。
+- 验证：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` passed。
+  - `npm run check:ui-runtime-boundaries`: OK。
+  - 临时 inline `npx tsx -` 静态渲染 MapView，确认第 11 个可选节点写出 `data-keyboard-option="0"`。
+- 下一轮建议：
+  - 第 18 轮展示 `UI-KBD-004` 的行号、静态渲染复现和验收标准。
+  - 后续真实找 bug 可转向 Python WASM / Python process adapter 生命周期未修项，避免 UI keyboard 系列过度局部化。
+
+## DeckRogue Bug Loop Cycle 19 - Python WASM Seed Binding Finding - 2026-05-20
+
+- 循环模式：第 19 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 从 UI keyboard 系列转向 runtimeV2 / Python WASM / Python process adapter。
+  - 先跑现有 Python WASM / pythonInterop / runtimeV2 parity 测试，再读 `pythonWasmAdapter.ts` 与 `pythonProcessAdapter.ts` 的启动和协议边界。
+  - 本轮避开此前已记录的 PWASM-001、PWASM-002、PPROC-001，专门检查 WASM adapter 的 Python 调用构造是否和 dispatch 路径一样安全绑定输入。
+- 新发现：
+  - **PWASM-003 · `PythonWasmAdapter.start()` 将 `options.seed` 直接插入 Python 源码字符串，未做运行时数值校验或 JSON/global 绑定。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:57-61` 先把 content bundle 放入 `__deckrogue_content_bundle_json`，但 seed 直接拼入 ``init_runtime(..., ${options.seed ?? 0})``。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:75-80` 的 dispatch command 则走 `JSON.stringify(snakeCommand)` + `json.loads(__deckrogue_command_json)`，没有同类源码拼接风险。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:119` 通过 JSON request 发送 seed；Python CLI 在 `python_runtime\src\deckrogue_rules_core\cli.py:43` 使用 `int(request.get("seed", 0))`，不会拼源码。
+  - 复现证据：临时 inline `npx tsx -` 用 fake `window.loadPyodide` 捕获 `runPythonAsync` 入参，并以非 TS 调用面传入 seed：
+    - 输入：`seed = '0);__import__("builtins").print("seed-injected")#'`
+    - 捕获到的 init 调用：
+      - `init_runtime(json.loads(__deckrogue_content_bundle_json), 0);__import__("builtins").print("seed-injected")#)`
+    - 输出确认：`containsInjectedStatement=true`、`seedWasJsonBound=false`。
+  - 风险：
+    - TypeScript 层声明 `seed?: number`，但运行时 JS、存档/URL/调试桥接、测试 harness 都可以绕过类型边界传入非数字。
+    - 恶意或畸形 seed 会进入 Pyodide Python 源码上下文；即使不考虑攻击，`NaN` / `Infinity` / 字符串 seed 也会生成 Python 无效标识符或语句，导致 WASM adapter start 崩溃。
+    - 该问题只在 WASM adapter 启动路径存在；dispatch 与 python-process 路径已经使用 JSON 绑定。
+  - 优先级：P2。属于 runtime bridge 输入边界漏洞，通常 seed 来自内部数值，但一旦接到不可信或畸形启动参数，影响是 Python 代码执行上下文而非普通参数解析失败。
+  - 修复方向：为 seed 添加 runtime guard，例如 `const seed = Number.isSafeInteger(options.seed) ? options.seed : 0` 或严格 throw；更稳妥是和 content bundle/command 一样写入 Pyodide global，如 `__deckrogue_seed_json = JSON.stringify(seed)` 后在 Python 侧 `int(json.loads(__deckrogue_seed_json))`。补一个 PythonWasmAdapter fake Pyodide unit test，断言 seed 不直接出现在 Python source 或非法 seed 会明确 reject。
+- 验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`: `4/4` passed。
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts`: `30/30` passed。
+  - 临时 inline `npx tsx -` fake Pyodide 复现 seed 注入字符串，输出 `containsInjectedStatement=true`。
+- 下一轮建议：
+  - 第 20 轮展示 `PWASM-003` 的行号、fake Pyodide 复现输出和验收标准。
+  - 后续真实找 bug 可继续 Python process adapter 的退出/超时后重试状态，或桌面打包 / Python WASM 资源加载边界。
+
+## DeckRogue Bug Loop Cycle 21 - Python Process Missing Request Id Finding - 2026-05-20
+
+- 循环模式：第 21 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 延续 runtimeV2 / Python adapter 方向，重点看 `PythonProcessAdapter` 的 stdout JSON 协议边界。
+  - 先跑现有 Python WASM / pythonInterop / runtimeV2 parity 测试，再用 fake Python process 复现缺失 `request_id` 的 JSON 行。
+  - 本轮避开此前已记录的 PPROC-001（非 JSON stdout 行污染 pending），专门检查“合法 JSON 但没有 request id”的边界。
+- 新发现：
+  - **PPROC-002 · `PythonProcessAdapter` 收到缺失 `request_id` 的 JSON 响应时，会默认消费 pending 队首并错误 resolve 第一个请求。**
+  - 证据位置：
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:174-178` 读取 `response.requestId ?? response.request_id`；如果不是 string，`pendingIndex` 直接设为 `0`。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:182-195` 随后 `splice(pendingIndex, 1)` 并用该 JSON 的 snapshot resolve pending 请求。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:249` 发送请求时总是带 `request_id`，因此正常新协议响应也应强制带 id。
+    - `python_runtime\src\deckrogue_rules_core\cli.py:18-23` 的 `_response` 兼容老式无 request id 请求；这说明协议里确实存在“无 request_id JSON 响应”的旧形态，adapter 侧不能把它盲配给队首。
+  - 复现证据：临时 inline `npx tsx -` 创建 fake Python process，连续发两个 dispatch，然后先写入一条无 `request_id` 的合法 JSON 行：
+    - stray line: `{ ok: true, snapshot: { seed: 99 } }`
+    - 后续再写真实 `req_1` 和 `req_2` 响应。
+    - 输出显示 `firstResultSeed=99`、`secondResultSeed=2`、`firstWasCorruptedByNoIdResponse=true`。
+  - 风险：
+    - 任意 JSON 格式的调试输出、旧 CLI/脚本响应、或第三方 wrapper 输出 `{ ok: true, snapshot: ... }` 都会被当成第一个 pending 请求的结果。
+    - 并发请求场景下尤其危险：第一个请求会被错误快照 resolve，真实 `req_1` 响应随后因找不到 pending 被忽略；这会制造 silent state drift，而不是显式失败。
+    - 现有测试只覆盖了 unknown request id，不覆盖 missing request id，因此这条留洞没有被 `runtimeV2Parity.test.ts` 捕获。
+  - 优先级：P2。属于 runtime bridge 协议完整性问题，会让候选 Python adapter 在 stdout 出现合法 JSON 噪声时返回错误快照。
+  - 修复方向：当 adapter 自己发送了 `request_id` 后，收到没有 `request_id`/`requestId` 的 JSON 行应忽略或记录 stderr-style diagnostic，不能 fallback 到队首。若要兼容旧协议，必须只在 pending 长度为 1 且 adapter 显式以 legacy/no-id 模式发送请求时才允许队首匹配。补一个 fake process unit test 覆盖 missing request id 不污染 pending。
+- 验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2Parity.test.ts`: `34/34` passed。
+  - 临时 inline `npx tsx -` fake process 复现 missing request id 污染 pending，输出 `firstWasCorruptedByNoIdResponse=true`。
+- 下一轮建议：
+  - 第 22 轮展示 `PPROC-002` 的行号、fake process 复现输出和验收标准。
+  - 后续真实找 bug 可继续 Python process 超时后进程保活/重试状态，或切到桌面打包与 WASM 资源加载边界。
+
+## DeckRogue Bug Loop Cycle 23 - Python Process Exit Recovery Finding - 2026-05-20
+
+- 循环模式：第 23 轮，真实构建/测试/静态审计找 bug。
+- 审计范围：
+  - 延续 runtimeV2 / Python process adapter 方向，重点看子进程 exit 后的生命周期恢复。
+  - 先跑现有 Python WASM / pythonInterop / runtimeV2 parity 测试，再用 fake Python process 复现 exit 后再次 dispatch 的行为。
+  - 本轮避开此前已记录的 PPROC-001（非 JSON stdout 行污染 pending）与 PPROC-002（缺 request_id JSON 行污染 pending），专门检查 dead process 引用是否会阻断自动重启。
+- 新发现：
+  - **PPROC-003 · `PythonProcessAdapter` 在子进程 exit 后没有清空 `this.process`，下一次 dispatch 不会自动重启，只会打到 dead stdin。**
+  - 证据位置：
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:131-135` 的 `dispatch()` 只有在 `!this.process` 时才调用 `start()`。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:150-157` 的 `processHandle.on('exit')` 只 splice/reject pending，并没有 `this.process = null`、`this.lineReader = null` 或清空 snapshot。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:202-216` 的 `dispose()` 会清空 `this.process`，但正常进程 exit 路径没有复用这段清理。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:220-228` 的 `sendRequest()` 在保留 dead process 引用时只会报 `Python process stdin is not writable`。
+  - 复现证据：临时 inline `npx tsx -` 创建 fake Python process，触发 `exit`，再 destroy stdin 后 dispatch：
+    - `retainedAfterExit=true`
+    - `stdinDestroyed=true`
+    - `nextDispatchError="Python process stdin is not writable"`
+    - `didNotAutoRestart=true`
+  - 风险：
+    - Python 子进程崩溃、被系统杀掉、或 CLI 因未捕获错误退出后，adapter 会保留旧 process 引用。
+    - 后续 `dispatch()` 不会走 `start()` 重建 Python runtime，而是持续向 dead stdin 发送并失败；宿主层若只重试 command，不重建 adapter，就无法恢复。
+    - 如果 exit 时没有 pending，请求方不会立即收到错误；问题会延迟到下一次用户动作才表现为 stdin 不可写。
+  - 优先级：P2。属于 runtime process 生命周期恢复问题，影响 Python candidate adapter 的长期运行稳定性。
+  - 修复方向：exit/close handler 应统一调用一段 `markProcessExited` 清理当前 process 引用、lineReader 与 snapshot，并 reject pending；下一次 dispatch 才能触发 `start()`。为 fake process 添加单测：emit exit 后 `adapter.dispatch(...)` 应尝试重启或至少返回明确的 `process exited` 状态，而不是 retained dead stdin。
+- 验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2Parity.test.ts`: `34/34` passed。
+  - 临时 inline `npx tsx -` fake process 复现 exit 后保留 dead process，输出 `didNotAutoRestart=true`。
+- 下一轮建议：
+  - 第 24 轮展示 `PPROC-003` 的行号、fake process 复现输出和验收标准。
+  - 后续真实找 bug 可切到桌面打包与 WASM 资源加载边界，或继续 Python process timeout 后资源清理/重试行为。
+
+## DeckRogue Bug Loop Cycle 25 - Desktop Python WASM Packaging Finding - 2026-05-20
+
+- 循环模式：第 25 轮，真实构建 / 打包 / 静态审计找 bug。
+- 审计范围：
+  - 切到桌面打包与 Python WASM 资源加载边界，检查 Electron production build、Windows staging/release 产物和 Pyodide 加载路径。
+  - 本轮不重复 UI 快捷键、runtimeV2 host envelope、numeric schema、Python process stdout 协议等旧战场。
+- 新发现：
+  - **DESKTOP-WASM-001 · Windows 桌面打包链路没有携带 Pyodide / WASM / Python stdlib 资源，但 `PythonWasmAdapter` 仍是 CDN-only 加载。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:36-37` 写死 `https://cdn.jsdelivr.net/pyodide/v0.29.3/full/` 与 `pyodide.js`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:116` 调用 `loadPyodide({ indexURL: PYODIDE_INDEX_URL })`，运行资源同样从 CDN indexURL 取。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:147-151` 动态创建 `<script>`，`script.src = PYODIDE_SCRIPT_URL`，没有本地 fallback。
+    - `scripts\desktop\build_desktop.ts:45-57` 只检查 `dist/index.html`、`electron/main.mjs`、`electron/preload.cjs` 存在，未检查 Pyodide 离线资源。
+    - `scripts\desktop\dist_win.ts:56-75` staging 只复制 `dist`、`electron`、最小 `package.json`，且 `dependencies: {}`，不会把 `node_modules\pyodide` 打进桌面包。
+    - `scripts\desktop\dist_win.ts:129-133` electron-builder files 只包含 `dist/**/*`、`electron/**/*`、`package.json`。
+    - `electron\main.mjs:112-122` 的 `deckrogue://app` 协议只从本地 `distRoot` 服务文件，没有 `pyodide/` 资源映射。
+  - 产物证据：
+    - `npm run build:desktop` 通过，`reports\desktop\desktop-build.json` 显示 `overallStatus: "pass"`，但 evidence 只有 renderer / Electron entry presence。
+    - `npm run dist:win` 通过，`reports\desktop\win-dist.json` 显示 `overallStatus: "pass"`、`minimal desktop staging app prepared without production node_modules`、产出 1 个 exe。
+    - 产物扫描：`dist`、`.desktop-build`、`release` 三个根下 `pyodide|python_stdlib|\.wasm$|\.whl$` 匹配数为 `0`。
+    - `npx asar list release\win\win-unpacked\resources\app.asar` 共 `781` 个条目，对 `pyodide|python_stdlib|\.wasm$|\.whl$` 匹配数为 `0`。
+    - `.desktop-build\win-app\package.json` 的 `dependencies` 是空对象。
+  - 限定说明：
+    - 当前 Electron 默认入口在 `electron\main.mjs:36-39` 强制 `legacy=1`，`reports\desktop\desktop-build.json` 也记录 `entryMode: "legacy"`；因此这不是“当前默认桌面启动必坏”。
+    - 风险点是：一旦桌面包内启用或测试 runtimeV2 Python WASM adapter，离线、内网、CDN 被阻断、或 CSP 收紧时无法自洽启动；当前桌面 smoke 也不会覆盖这条候选运行时。
+  - 优先级：P2。属于发布/运行时候选路径的资源闭环缺口；默认 legacy 桌面入口降低了即时用户影响，但 runtimeV2 Python WASM 的桌面可用性声明不能由现有打包验证支撑。
+  - 修复方向：
+    - 将 `node_modules\pyodide` 中的 `pyodide.js`、`.wasm`、`python_stdlib.zip` 等必要资源复制到 `public\pyodide` 或 build staging 的 `dist\pyodide`，并让 `PythonWasmAdapter` 的 `indexURL` 使用本地 `deckrogue://app/pyodide/` 或 `import.meta.env.BASE_URL`。
+    - 或者显式把 Python WASM 标记为联网实验功能，并在桌面 smoke 中增加 “CDN 不可用时优雅失败 / fallback” 覆盖。
+    - 桌面打包报告应新增 Pyodide 资源检查：如果 Python WASM adapter 仍可被桌面入口启用，则缺少本地 Pyodide 资源时 fail。
+- 验证：
+  - `npm run build:desktop`: pass，Vite production build 生成 `dist`，desktop build report 为 pass。
+  - `npm run dist:win`: pass，electron-builder 生成 `release\win\DeckRogue-0.0.0-x64.exe`。
+  - `npm run check:ui-runtime-boundaries`: pass。
+  - 产物扫描确认 `dist`、`.desktop-build`、`release` 与 `app.asar` 内均没有 Pyodide / WASM / Python stdlib 文件。
+- 下一轮建议：
+  - 第 26 轮展示 `DESKTOP-WASM-001` 的行号、构建报告、产物扫描输出和优先级。
+  - 后续真实找 bug 可继续桌面 smoke 覆盖盲区，或转向 Python WASM adapter 的本地资源 fallback 设计。
+
+## DeckRogue Bug Loop Cycle 27 - Desktop Smoke Runtime Mode Coverage Finding - 2026-05-20
+
+- 循环模式：第 27 轮，真实构建 / 桌面 smoke / 静态审计找 bug。
+- 审计范围：
+  - 延续第 25/26 轮桌面打包方向，重点核 `test:desktop-smoke` 是否能发现 Python WASM / runtimeV2 桌面资源缺口。
+  - 本轮先跑现有生产桌面 smoke，再用 Electron inline 启动验证 entry mode 环境变量是否生效。
+- 新发现：
+  - **DESKTOP-SMOKE-001 · 桌面 smoke 和桌面 dev 入口暴露了 `DECKROGUE_DESKTOP_ENTRY_MODE`，但 Electron 主进程完全不读取它；桌面 smoke 永远只能覆盖当前 legacy UI 路径，无法作为 runtimeV2 / Python WASM 桌面验收。**
+  - 证据位置：
+    - `scripts\validation\playwright_electron_smoke.ts:167` 固定传 `DECKROGUE_DESKTOP_ENTRY_MODE: 'legacy'`。
+    - `scripts\desktop\dev-electron.ts:72` 同样传 `DECKROGUE_DESKTOP_ENTRY_MODE: 'legacy'`。
+    - `electron\main.mjs:36-39` 的 `buildEntryQuery()` 无条件 `params.set('legacy', '1')`。
+    - `electron\main.mjs:93-102` dev server 与 local dist 两条加载路径都只调用 `buildEntryQuery()`，没有读取 `DECKROGUE_DESKTOP_ENTRY_MODE`。
+    - `rg DECKROGUE_DESKTOP_ENTRY_MODE` 只命中 smoke/dev 脚本，没有任何 Electron/app 消费端。
+    - `rg deckrogue_engine_mode` 只命中 Playwright helper 写入，不命中运行时代码；类似的 localStorage mode 也没有消费者。
+    - `src\core\persistence\setup.ts:169` `startNewRun()` 固定 `new GameEngine(..., { enableRuntimeDelegation: false })`。
+    - `src\core\persistence\setup.ts:202` `loadRun()` 固定 `new GameEngine(..., { enableRuntimeDelegation: false })`。
+  - 运行证据：
+    - `npm run test:desktop-smoke`: exit `0`。
+    - `reports\desktop\desktop-smoke.json`：`overallStatus: "pass"`，覆盖步骤只有 `launcher / tutorial / character_select / map / combat`，`consoleErrors/pageErrors/failedRequests` 都为空。
+    - 同一工作树中，`dist`、`.desktop-build`、`release` 的 `pyodide|python_stdlib|\.wasm$|\.whl$` 匹配数仍为 `0`，说明 smoke 通过并不要求 Python WASM 资源存在。
+    - 临时 inline Electron 启动把 `DECKROGUE_DESKTOP_ENTRY_MODE` 设成 `runtime-v2`，首窗口仍是 `deckrogue://app/index.html?legacy=1`，输出：
+      - `entryModeEnv=runtime-v2`
+      - `windowUrl=deckrogue://app/index.html?legacy=1`
+      - `hasLegacyParam=1`
+  - 风险：
+    - 发布报告会显示 desktop smoke pass，但这只能证明 legacy UI 启动、教程、选角、地图、进入战斗这条路径正常。
+    - `DESKTOP-WASM-001` 这类 Python WASM 桌面资源缺口不会被现有 smoke 抓到；即使测试作者尝试用 env 切换 entry mode，主进程也会忽略。
+    - `entryMode` 字段目前出现在 `reports\desktop\desktop-build.json` 里，但没有真实切换能力，容易让后续维护者误以为已有多运行时桌面验收。
+  - 优先级：P2。它是发布门禁覆盖漏洞，不是默认玩家路径崩溃；但会制造“桌面 smoke 已验过 runtimeV2/Python WASM”的假阴性。
+  - 修复方向：
+    - 要么删除死的 `DECKROGUE_DESKTOP_ENTRY_MODE` / `deckrogue_engine_mode` 伪开关，明确 desktop smoke 只覆盖 legacy UI。
+    - 要么实现真实 entry mode：Electron 主进程读取 env/CLI，renderer 读取查询参数或 preload 配置，并让 `GameSetup` 能按模式启用 runtime delegation / Python WASM adapter。
+    - 增加一个 `test:desktop-smoke:runtime-v2` 或 `test:desktop-smoke:python-wasm-offline`，断言本地 Pyodide 资源存在或在资源缺失时显式失败。
+- 验证：
+  - `npm run test:desktop-smoke`: pass，生产桌面 smoke 报告为 pass。
+  - 临时 inline Electron 启动验证：`DECKROGUE_DESKTOP_ENTRY_MODE=runtime-v2` 时 URL 仍为 `?legacy=1`。
+  - `rg DECKROGUE_DESKTOP_ENTRY_MODE` / `rg deckrogue_engine_mode`：只有脚本写入，没有运行时消费端。
+- 下一轮建议：
+  - 第 28 轮展示 `DESKTOP-SMOKE-001` 的 smoke report、死 env 证据、inline Electron 复现输出和修复验收标准。
+  - 后续真实找 bug 可继续 Python WASM 本地资源 fallback，或切到桌面 preload / hostPlatform / CSP 安全边界。
+
+## DeckRogue Bug Loop Cycle 29 - Electron Protocol Host Boundary Finding - 2026-05-20
+
+- 循环模式：第 29 轮，真实测试 / Electron inline 复现 / 静态审计找 bug。
+- 审计范围：
+  - 延续桌面安全边界，重点看 Electron custom protocol、preload bridge、hostPlatform 识别和 navigation allowlist。
+  - 先跑现有 `desktopHost` 单测，再启动真实 Electron 窗口验证 custom protocol host 行为。
+- 新发现：
+  - **ELECTRON-PROTOCOL-001 · `deckrogue://app` 的生产导航门禁用字符串前缀判断，协议 handler 又不校验 host，导致 `deckrogue://app.evil/index.html` 能加载本地 app 并拿到 preload bridge。**
+  - 证据位置：
+    - `electron\main.mjs:10-13` 把 `deckrogue` 注册为 `standard / secure / corsEnabled` privileged scheme。
+    - `electron\main.mjs:82-86` 生产导航只用 `url.startsWith('deckrogue://app')` 放行。
+    - `electron\main.mjs:113-121` `protocol.handle('deckrogue', ...)` 解析 URL 后只取 `pathname` 映射到 `distRoot`，完全不校验 `url.host` 是否等于 `app`。
+    - `electron\preload.cjs:3-8` 对加载到窗口的页面暴露 `window.deckrogueDesktop` bridge。
+    - `tests\unit\desktopHost.test.ts:19-44` 只测试 renderer 端 bridge 解析，不覆盖 Electron protocol host allowlist / navigation 边界。
+  - 复现证据：
+    - 临时 inline Electron 以 production local dist 启动，初始 URL 为 `deckrogue://app/index.html?legacy=1`。
+    - 在页面内点击插入的 anchor：`deckrogue://app.evil/index.html`。
+    - 输出：
+      - `appEvil={"href":"deckrogue://app.evil/index.html","before":"deckrogue://app/index.html?legacy=1","after":"deckrogue://app.evil/index.html","host":"app.evil"}`
+    - 同一脚本点击 `deckrogue://evil/index.html` 会被 `will-navigate` 拦回原 URL：
+      - `plainEvil={"href":"deckrogue://evil/index.html","before":"deckrogue://app/index.html?legacy=1","after":"deckrogue://app/index.html?legacy=1","host":"app"}`
+    - 另一个 inline 检查从 canonical app 页面 `fetch('deckrogue://app.evil/index.html')` 得到 `{"ok":true,"status":200,"hasRoot":true}`，说明协议 handler 对伪 host 也服务本地 `dist/index.html`。
+    - 直接导航到 `deckrogue://app.evil/index.html` 后页面环境为：
+      - `{"url":"deckrogue://app.evil/index.html","host":"app.evil","hasDesktopBridge":true,"title":"DeckRogue - Warp & Entropy","hasRoot":true}`
+  - 风险：
+    - 当前 preload bridge 只暴露 host metadata，短期风险有限；但 custom scheme 被声明为 secure/standard/corsEnabled，非 canonical host 能加载同一 app 并获得桌面 bridge，会形成 origin confusion。
+    - 如果后续 preload 增加文件、存档、IPC、更新器、原生能力，`deckrogue://app.evil` 这类伪 origin 会继承同样能力。
+    - 生产导航门禁看起来限制在 `deckrogue://app`，实际前缀匹配允许 `deckrogue://app.evil`，容易让安全审计误判。
+  - 优先级：P2。不是当前玩家默认路径崩溃，但属于 Electron custom protocol / preload trust boundary 漏洞，应该在新增原生能力前收紧。
+  - 修复方向：
+    - 将生产 allowlist 改为 URL 解析后的精确校验：`parsed.protocol === 'deckrogue:' && parsed.host === 'app'`。
+    - 在 `protocol.handle` 中也做同样 host 校验；非 `app` host 直接 `404` 或 `403`。
+    - 增加 Electron smoke/security test：anchor 点击 `deckrogue://app.evil/index.html` 后 URL 必须仍为 canonical `deckrogue://app/index.html?...`，`fetch('deckrogue://app.evil/index.html')` 必须失败或返回非 2xx。
+- 验证：
+  - `npx tsx --test tests/unit/desktopHost.test.ts`: `2/2` passed，证明现有单测不覆盖协议 host 边界。
+  - 临时 inline Electron anchor-click 复现：`app.evil` 被放行，`evil` 被拦截。
+  - 临时 inline Electron fetch/nav 复现：`deckrogue://app.evil/index.html` 返回本地 app HTML，并暴露 `window.deckrogueDesktop`。
+- 下一轮建议：
+  - 第 30 轮展示 `ELECTRON-PROTOCOL-001` 的行号、anchor click/fetch 复现输出、P2 优先级和修复验收标准。
+  - 后续真实找 bug 可继续查 Electron CSP / remote resource policy，或转向 Python WASM 本地资源 fallback。
+
+## DeckRogue Bug Loop Cycle 31 - Electron Dev Server Navigation Prefix Finding - 2026-05-20
+
+- 循环模式：第 31 轮，真实 dev desktop smoke / Electron inline 复现 / 静态审计找 bug。
+- 审计范围：
+  - 延续 Electron CSP / remote resource policy 方向，重点看 development 桌面模式的 `VITE_DEV_SERVER_URL` 导航 allowlist。
+  - 先跑现有 dev desktop smoke，再用两个本地 HTTP server 复现 credential-style URL 前缀绕过。
+- 新发现：
+  - **ELECTRON-DEVNAV-001 · dev desktop 模式用 `url.startsWith(devServerUrl)` 放行导航，`http://trusted:port@other-host:port/...` 可绕过 allowlist 跳到另一个 host/port。**
+  - 证据位置：
+    - `electron\main.mjs:32-34` 从 `VITE_DEV_SERVER_URL` 计算 `devServerUrl / useDevServer`。
+    - `electron\main.mjs:83` dev 模式导航只用 `url.startsWith(devServerUrl)` 放行。
+    - `electron\main.mjs:93-97` dev 启动时把窗口加载到 `new URL(devServerUrl)`。
+    - `scripts\desktop\dev-electron.ts:20` 默认 dev server URL 是 `http://127.0.0.1:3000`。
+    - `scripts\desktop\dev-electron.ts:71` 将 `VITE_DEV_SERVER_URL` 传给 Electron 主进程。
+    - `scripts\validation\playwright_electron_smoke.ts:157-159` dev smoke 启动固定 `http://127.0.0.1:3000` 并等待正常 server。
+    - `scripts\validation\playwright_electron_smoke.ts:169` dev smoke 也把 `VITE_DEV_SERVER_URL` 传给 Electron。
+  - 复现证据：
+    - 临时 inline 脚本启动两个本地 HTTP server：trusted server 作为 `VITE_DEV_SERVER_URL`，evil server 作为实际跳转目标。
+    - 在 trusted 页面放置链接：`http://127.0.0.1:<trustedPort>@127.0.0.1:<evilPort>/evil.html`。
+    - 该 URL 字符串满足 `spoofUrl.startsWith(devServerUrl) === true`，但 URL host 实际为 `127.0.0.1:<evilPort>`。
+    - 复现输出：
+      - `devServerUrl=http://127.0.0.1:50118`
+      - `spoofUrl=http://127.0.0.1:50118@127.0.0.1:50119/evil.html`
+      - `spoofStartsWithDev=true`
+      - `before=http://127.0.0.1:50118/?legacy=1`
+      - `after=http://127.0.0.1:50118@127.0.0.1:50119/evil.html`
+      - `afterHost=127.0.0.1:50119`
+      - `evilHits=1`
+      - `navigatedToEvil=true`
+  - 现有门禁证据：
+    - `npm run test:desktop-smoke:dev`: exit `0`。
+    - `reports\desktop\desktop-smoke-dev.json`：`overallStatus: "pass"`，覆盖 `launcher / tutorial / character_select / map / combat`，`consoleErrors/pageErrors/failedRequests` 均为空。
+    - 该 smoke 只覆盖正常 dev server URL，不覆盖 credential-style URL 或解析后 host 校验。
+  - 风险：
+    - 这是 development 模式漏洞，不直接影响 packaged production；优先级低于 `ELECTRON-PROTOCOL-001`。
+    - 但 dev desktop 模式仍有 preload bridge、desktop channel 标记和外链处理逻辑；恶意 dev 页面、被污染的 dev server 内容或误点链接可把窗口导航到另一个 origin。
+    - 这与第 29 轮 production `deckrogue://app.evil` 属同一类“字符串前缀当 origin allowlist”问题，说明需要统一 URL parser allowlist。
+  - 优先级：P3。仅 dev 模式可触发，但属于 Electron navigation allowlist 设计缺陷，容易在后续加 IPC/preload 能力时扩大。
+  - 修复方向：
+    - 解析 `devServerUrl` 为 URL 对象，导航时也解析目标 URL，比较 `protocol / hostname / port` 的精确三元组。
+    - 拒绝带 username/password 的目标 URL，或至少要求 `target.username === '' && target.password === ''`。
+    - 增加 dev Electron security smoke：点击 `http://trusted:port@other-host:port` 后必须停留在 trusted origin，evil server hit count 必须为 `0`。
+- 验证：
+  - `npm run test:desktop-smoke:dev`: pass，证明现有 dev smoke 不能抓到该绕过。
+  - 临时 inline Electron + 两个本地 HTTP server：`spoofStartsWithDev=true` 且 `navigatedToEvil=true`。
+  - 静态搜索确认 dev allowlist 只有 `startsWith(devServerUrl)`，没有 URL 解析后的 host/port 校验。
+- 下一轮建议：
+  - 第 32 轮展示 `ELECTRON-DEVNAV-001` 的行号、dev smoke 报告、credential-style URL 复现输出和修复验收标准。
+  - 后续真实找 bug 可继续 Python WASM 本地资源 fallback，或查 Electron CSP 是否需要针对 `deckrogue://app` 加 production header。
+
+## DeckRogue Bug Loop Cycle 33 - Electron Production CSP / Remote Script Finding - 2026-05-20
+
+- 循环模式：第 33 轮，真实 production build / desktop smoke / Electron inline 安全探针 / 静态审计找 bug。
+- 审计范围：
+  - 延续 Electron remote resource policy 方向，重点看 production `deckrogue://app` 是否有 CSP、是否收口远程脚本加载。
+  - 先跑 fresh renderer build 和 production desktop smoke，再用本地 HTTP server 证明远程脚本在 custom scheme 页面内可加载执行。
+- 新发现：
+  - **ELECTRON-CSP-001 · production `deckrogue://app` 没有 Content-Security-Policy，任意远程脚本可在页面上下文加载执行，且页面同时暴露 desktop preload bridge。**
+  - 证据位置：
+    - `index.html:9-14` 源 HTML 保留 `https://fonts.googleapis.com` / `https://fonts.gstatic.com` 的 `preconnect` 与 `dns-prefetch`，说明 production shell 没有离线/本地资源白名单意识。
+    - `dist\index.html:9-14` fresh build 后仍保留上述外部 HTTPS link hint。
+    - `electron\main.mjs:5-14` 把 `deckrogue` 注册为 `standard / secure / supportFetchAPI / corsEnabled` privileged scheme。
+    - `electron\main.mjs:66-72` renderer 安全基础项启用 `contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`，但没有 CSP。
+    - `electron\main.mjs` 全文没有 `webRequest.onHeadersReceived`、`Content-Security-Policy` 或 `session.defaultSession` 注入。
+    - `electron\preload.cjs:3-8` 在页面上暴露 `window.deckrogueDesktop`。
+  - 运行证据：
+    - `npm run build`: exit `0`，Vite fresh build 通过。
+    - fresh `dist\index.html` 检查：
+      - `hasCspMeta=False`
+      - `hasGooglePreconnect=True`
+      - `hasExternalHttps=True`
+    - `npm run test:desktop-smoke`: exit `0`，production desktop smoke 报告为 pass。
+    - `reports\desktop\desktop-smoke.json`：`overallStatus: "pass"`，覆盖 `launcher / tutorial / character_select / map / combat`，`consoleErrors/pageErrors/failedRequests` 均为空。
+    - 临时 inline Electron CSP 探针打开 production local dist，输出：
+      - `url=deckrogue://app/index.html?legacy=1`
+      - `cspMeta=null`
+      - `externalLinkHrefs=["https://fonts.googleapis.com","https://fonts.gstatic.com","https://fonts.googleapis.com","https://fonts.gstatic.com"]`
+      - `hasDesktopBridge=true`
+    - 临时 inline Electron + 本地 HTTP server 远程脚本探针输出：
+      - `url=deckrogue://app/index.html?legacy=1`
+      - `cspMeta=null`
+      - `outcome=load`
+      - `executed=1`
+      - `hasDesktopBridge=true`
+      - `scriptUrl=http://127.0.0.1:64943/probe.js`
+      - `serverHits=1`
+      - `capturedProbeRequests=["http://127.0.0.1:64943/probe.js"]`
+  - 风险：
+    - 这不是默认玩家路径崩溃；需要 XSS、被污染内容、开发者工具注入或未来功能误用才能变成直接执行路径。
+    - 但 production custom scheme 已被声明为 secure/corsEnabled，且页面有 preload bridge。没有 CSP 时，任何脚本注入点都能加载远程 JS，后续如果 preload 增加存档、文件、IPC、更新器能力，影响会扩大。
+    - 当前 production desktop smoke 仍然 pass，因为它只覆盖正常 UI 流程，不验证 CSP、远程资源阻断或 script-src 策略。
+  - 优先级：P2。当前 bridge 能力有限，所以不是 P0；但这是 Electron production 安全边界基础缺口，应该与 `ELECTRON-PROTOCOL-001` 一起收紧。
+  - 修复方向：
+    - 在 `electron\main.mjs` 对 `deckrogue://app` 响应注入 CSP header，至少限制 `default-src 'self' deckrogue:`，`script-src 'self' deckrogue:`，`connect-src 'self' deckrogue:`，并按实际需要显式列出 `img-src` / `style-src`。
+    - 移除 production `index.html` 中无实际字体加载用途的 Google Fonts `preconnect` / `dns-prefetch`，或将字体资源本地化并纳入 asset polish 检查。
+    - 增加 Electron security smoke：在 production 页面动态插入 `http://127.0.0.1:<port>/probe.js` 必须 `onerror` 或被 CSP 阻断，server hit 可为 0 或请求被拒但 `executed` 必须为 0。
+- 验证：
+  - `npm run build`: pass。
+  - `npm run test:desktop-smoke`: pass。
+  - 静态搜索：`electron\main.mjs` / `scripts` / `tests` 中无 CSP 注入；只看到 `contextIsolation / nodeIntegration / sandbox` 基础项。
+  - Electron inline 远程脚本探针：本地 HTTP `probe.js` 在 `deckrogue://app` 页面内加载并执行，`executed=1`。
+- 下一轮建议：
+  - 第 34 轮展示 `ELECTRON-CSP-001` 的文件行号、fresh build/smoke、远程脚本执行探针输出和验收标准。
+  - 后续真实找 bug 可继续 Python WASM 本地资源 fallback，或修 Electron allowlist/CSP 时顺带建立统一 URL parser + CSP security smoke。
+
+## DeckRogue Bug Loop Cycle 35 - Python WASM Loader Retry Poisoning Finding - 2026-05-20
+
+- 循环模式：第 35 轮，真实 runtime-v2 单测 / Python WASM adapter 生命周期探针 / 静态审计找 bug。
+- 审计范围：
+  - 延续 Python WASM 本地资源 fallback 方向，重点看 `PythonWasmAdapter` 在 Pyodide loader 初次失败后的重试行为。
+  - 先跑现有 Python WASM 相关单测，再跑完整 `test:runtime-v2:ts`，最后用内联探针复现同一 adapter 实例的失败缓存。
+- 新发现：
+  - **PY-WASM-RETRY-001 · `PythonWasmAdapter.ensurePyodide()` 会缓存失败的 `initPromise`，一次 loader 失败后同一 adapter 永久复用 rejected promise，网络/loader 恢复后仍无法重试，直到 `dispose()`。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:45` 定义 `private initPromise: Promise<void> | null = null`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-107` 中 `if (this.initPromise) return this.initPromise;`，随后 `this.initPromise = this.loadPyodide(); await this.initPromise;`，失败路径没有 `catch/finally` 清空。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:109-118` `loadPyodide()` 在没有 loader 或 loader 失败时抛错。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:135-157` script loader 的 `error` 会 reject，但同样不会清空 `initPromise`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:90-94` 只有 `dispose()` 会把 `initPromise = null`。
+    - `tests\unit\pythonWasmAdapter.test.ts` 只覆盖 snapshot envelope unwrap，不覆盖 loader retry。
+    - `tests\unit\runtimeV2Host.test.ts:952` 真实 `python wasm rest command...` 测试仍是 `test.skip`。
+  - 运行证据：
+    - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`: `4/4` pass。
+    - `npm run test:runtime-v2:ts`: `107` tests，`106` pass，`1` skipped。
+    - 临时内联探针步骤：
+      - 创建 `new PythonWasmAdapter()`。
+      - 第一次在无 `window.loadPyodide` 环境调用 `start({ seed: 1 })`，得到 `Could not load Pyodide`。
+      - 随后给 `globalThis.window.loadPyodide` 补上可成功返回快照的 fake loader。
+      - 第二次调用同一个 adapter 的 `start({ seed: 1 })` 仍立即失败，且 fake loader 没被调用。
+      - `dispose()` 后第三次调用才成功。
+    - 探针输出：
+      - `first.ok=false`
+      - `first.message="Could not load Pyodide"`
+      - `second.ok=false`
+      - `second.message="Could not load Pyodide"`
+      - `third.ok=true`
+      - `third.screen="Map"`
+      - `loadCalls=1`
+  - 风险：
+    - 浏览器 / 桌面 runtime-v2 如果第一次加载 Pyodide 时遇到离线、CDN 抖动、CSP 阻断或 script `error`，同一个 adapter 实例会进入不可恢复失败状态。
+    - UI 若保留同一 host/adapter 并提示“重试”，后续重试会直接吃旧 rejected promise，不会重新请求 `pyodide.js` 或调用恢复后的 `window.loadPyodide`。
+    - 这会和 `DESKTOP-WASM-001` 叠加：桌面离线缺 Pyodide 资源时，一次失败后即使用户恢复网络或切换资源路径，同实例仍无法恢复。
+  - 优先级：P2。不是默认 legacy 路径崩溃，但它会让 Python WASM runtime 的可恢复失败变成会话级失败。
+  - 修复方向：
+    - `ensurePyodide()` 应在 `loadPyodide()` reject 时清空 `this.initPromise`，例如 `try { ... } catch (error) { this.initPromise = null; throw error; }`。
+    - 如果 `this.pyodide` 已被部分赋值但 `runPythonAsync(PYTHON_RUNTIME_CODE)` 失败，也应清空 `pyodide` 和 `initPromise`，避免半初始化实例残留。
+    - 增加单测：首次 `start()` 失败后补上 fake `window.loadPyodide`，第二次同 adapter `start()` 必须成功且 loader 调用数递增。
+- 验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`: pass。
+  - `npm run test:runtime-v2:ts`: pass with `1` skipped。
+  - 临时内联探针复现失败缓存：同 adapter 第二次仍失败，`dispose()` 后第三次成功。
+- 下一轮建议：
+  - 第 36 轮展示 `PY-WASM-RETRY-001` 的文件行号、探针输出、现有测试 blind spot 和修复验收标准。
+  - 后续真实找 bug 可继续 Python WASM 半初始化失败、Electron security smoke 自动化，或回 UI/渲染层查 ErrorBoundary/AppShell 运行时恢复路径。
+
+## DeckRogue Bug Loop Cycle 37 - Python WASM Half-Boot Recovery Finding - 2026-05-20
+
+- 循环模式：第 37 轮，真实 Python WASM 单测 / runtime-v2 全量 TS 测试 / 半初始化生命周期探针 / 静态审计找 bug。
+- 审计范围：
+  - 延续第 35 轮的 Pyodide loader retry 问题，进一步看 loader 成功但 `PYTHON_RUNTIME_CODE` 注入失败时，adapter 是否能恢复。
+  - 本轮不落临时文件，直接用 `tsx` stdin 探针模拟 Pyodide 对象已创建、runtime code 注入失败、后续 `start()` 重试。
+- 新发现：
+  - **PY-WASM-HALFBOOT-001 · `PythonWasmAdapter.loadPyodide()` 在运行 `PYTHON_RUNTIME_CODE` 之前就把 `this.pyodide` 设为非空；如果 runtime code 注入失败，后续 `start()` 会跳过 `ensurePyodide()`，直接调用不存在的 `init_runtime`，同实例进入半初始化死区。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:47-64` `start()` 只在 `!this.pyodide` 时调用 `ensurePyodide()`；只要 `this.pyodide` 非空，就直接 `runPythonAsync("init_runtime(...)")`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-107` `ensurePyodide()` 不会在 `pyodide` 已存在但 runtime code 未注入时重跑初始化。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:116-118` `this.pyodide = await loadPyodide(...)` 发生在 `await this.pyodide.runPythonAsync(PYTHON_RUNTIME_CODE)` 之前；后者失败时没有清空 `this.pyodide`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:90-94` 只有 `dispose()` 会清空 `pyodide` 和 `initPromise`。
+    - `tests\unit\pythonWasmAdapter.test.ts` 仍只覆盖 envelope unwrap。
+    - `tests\unit\runtimeV2Host.test.ts:952` 真实 python wasm rest 流程仍是 `test.skip`。
+  - 运行证据：
+    - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`: `4/4` pass。
+    - `npm run test:runtime-v2:ts`: `107` tests，`106` pass，`1` skipped。
+    - 半初始化探针模拟：
+      - `window.loadPyodide` 成功返回 fake Pyodide。
+      - 第一次 `runPythonAsync(PYTHON_RUNTIME_CODE)` 抛 `runtime code injection failed`。
+      - 因为 `this.pyodide` 已经被赋值，第二次同 adapter `start()` 不再重跑 runtime code 注入，直接调用 `init_runtime`。
+      - fake Pyodide 按未完成 runtime 注入状态返回 `init_runtime is not defined`。
+      - `dispose()` 后第三次重新 boot 才成功。
+    - 探针输出：
+      - `first.ok=false`
+      - `first.message="runtime code injection failed"`
+      - `second.ok=false`
+      - `second.message="init_runtime is not defined"`
+      - `third.ok=true`
+      - `third.screen="Map"`
+      - `loadCalls=2`
+      - `runPythonCalls=4`
+  - 风险：
+    - 第 35 轮是 loader 本身失败后的 rejected promise 毒化；本轮是 loader 成功但 runtime code 注入失败后的半初始化毒化，触发点不同。
+    - CSP、CDN 中途断流、Pyodide 初始化成功但 Python runtime source 执行失败、或者 `PYTHON_RUNTIME_CODE` 内容错误时，adapter 会保留一个不能运行 DeckRogue runtime 的 Pyodide 实例。
+    - UI 层如果提供“重试 runtime-v2”按钮，第二次失败原因会从原始 runtime 注入错误变成 `init_runtime is not defined`，掩盖真实根因。
+  - 优先级：P2。它不影响默认 legacy 路径，但会让 Python WASM runtime 的可恢复初始化错误变成实例级死区。
+  - 修复方向：
+    - `loadPyodide()` 应先把 `const pyodide = await loadPyodide(...)` 放在局部变量里，`await pyodide.runPythonAsync(PYTHON_RUNTIME_CODE)` 成功后再赋给 `this.pyodide`。
+    - 任意 boot 失败时同时清空 `this.pyodide` 和 `this.initPromise`。
+    - 增加单测：fake `loadPyodide` 成功、首次 `runPythonAsync(PYTHON_RUNTIME_CODE)` 失败、第二次同 adapter `start()` 必须重新执行 runtime code 注入并成功，且错误消息不应退化成 `init_runtime is not defined`。
+- 验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`: pass。
+  - `npm run test:runtime-v2:ts`: pass with `1` skipped。
+  - `tsx` stdin 半初始化探针复现：第二次同 adapter `start()` 直接报 `init_runtime is not defined`，`dispose()` 后恢复。
+- 下一轮建议：
+  - 第 38 轮展示 `PY-WASM-HALFBOOT-001` 的行号、探针输出、现有测试 blind spot 和修复验收标准。
+  - 后续真实找 bug 可切回 UI/渲染层，重点查 ErrorBoundary/AppShell 对 runtime 初始化失败、重试按钮、错误恢复状态的处理。
+
+## DeckRogue Bug Loop Cycle 39 - AppShell Lazy Chunk Error Recovery Finding - 2026-05-20
+
+- 循环模式：第 39 轮，真实 AppShell/ErrorBoundary 单测 / production build / Playwright chunk-failure 复现 / 静态审计找 bug。
+- 审计范围：
+  - 延续 UI / 渲染层方向，重点看 `AppShell` 的 lazy route chunk 加载失败是否能被现有 `ErrorBoundary` 或 route shell 捕获。
+  - 覆盖根入口、主视图 lazy import、现有 ErrorBoundary 组件、UI contract 单测和 production chunk 失败路径。
+- 新发现：
+  - **UI-CHUNK-001 · AppShell lazy route chunk failure is not caught by ErrorBoundary; root unmounts to blank page.**
+  - 证据位置：
+    - `src\main.tsx:35-59` 只处理 `gameSetup.initialize()` 初始化错误；后续 render / lazy chunk 错误不在这条 fallback 内。
+    - `src\main.tsx:72` 直接 `return <App />;`，根部没有 `<ErrorBoundary>` 包裹 `App` / `AppShell`。
+    - `src\ui\views\AppShell.tsx:77-88` 所有主视图均通过 `React.lazy(...)` 分块加载。
+    - `src\ui\views\AppShell.tsx:1002-1058` 主路由区域只有 `ResourcePreloader` 和每个 screen 内的 `Suspense fallback`，没有 route-level `ErrorBoundary` 包在 Suspense 外层。
+    - `src\ui\views\AppShell.tsx:1241-1247` default export 只有 `ThemeProvider` 包裹 `AppContent`。
+    - `src\ui\components\ErrorBoundary.tsx:24-80` 已有“界面渲染异常”和“重试”fallback UI，但没有被 AppShell route shell 使用。
+    - `tests\unit\appShellUiContracts.test.ts` 只覆盖 screen resolver、菜单键位、restart modal 静态契约。
+    - `tests\unit\errorBoundaryContract.test.ts` 只覆盖 fallback 文案，不覆盖 lazy chunk reject。
+  - 运行证据：
+    - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` pass。
+    - `npm run build`: pass，并生成独立 lazy chunk，例如 `dist/assets/CharacterSelectView-CZq2piSO.js`。
+    - production preview + Playwright 拦截 `/assets/CharacterSelectView-*.js` 后点击“开始新战区”：
+      - `abortedCharacterChunk=1`
+      - `rootChildCount=0`
+      - `bodyText=""`
+      - `hasErrorFallback=false`
+      - `hasCharacterSelectCopy=false`
+      - `pageErrors=["Failed to fetch dynamically imported module: http://127.0.0.1:52391/assets/CharacterSelectView-CZq2piSO.js"]`
+      - `failedRequests=["http://127.0.0.1:52391/assets/CharacterSelectView-CZq2piSO.js :: net::ERR_FAILED"]`
+  - 风险：
+    - 生产构建中任一 lazy route chunk 因缓存错配、部署半更新、离线、桌面协议资源缺失或磁盘损坏加载失败时，React error 不会落到可见 fallback，根节点直接清空。
+    - `Suspense fallback` 只覆盖 pending 状态，不覆盖 rejected dynamic import；现有 ErrorBoundary 组件存在但没有保护 route shell。
+    - 现有 UI 单测和 smoke 只覆盖正常流，不能抓到 chunk 失败后的 blank page。
+  - 优先级：P2。不是默认路径必现，但这是 production UI 恢复能力缺口，出现时玩家得到纯空白页且无重试入口。
+  - 修复方向：
+    - 在 `AppShell` route switch 外层或 `main.tsx` 根部增加 `ErrorBoundary`，确保 lazy chunk reject 能显示 fallback。
+    - 给 lazy chunk fallback 的“重试”建立真实 remount/retry 策略，例如 boundary key 递增或 route shell remount；仅 `setState({ hasError:false })` 可能无法重新拉取已 rejected 的 lazy promise。
+    - 增加 Playwright 回归：production preview 拦截 `CharacterSelectView-*.js`，点击“开始新战区”后应显示“界面渲染异常”或等价 fallback，不能出现 `rootChildCount=0`。
+- 验证：
+  - UI contract 单测仍 pass，但覆盖不到 lazy chunk reject。
+  - production build pass，确认 lazy route 真实分块。
+  - Playwright chunk-failure 探针复现空白根节点，无 ErrorBoundary fallback。
+- 下一轮建议：
+  - 第 40 轮展示 `UI-CHUNK-001` 的文件行号、Playwright 复现输出、现有测试 blind spot 和修复验收标准。
+  - 后续真实找 bug 可继续 UI recovery：ErrorBoundary retry 是否能重拉 lazy chunk、runtime 初始化失败是否落到同一 fallback、以及 Pixi/DOM renderer 切换失败是否会清空根节点。
+
+## DeckRogue Bug Loop Cycle 41 - ResourcePreloader Contract Finding - 2026-05-20
+
+- 循环模式：第 41 轮，真实 UI 单测 / UI smoke / production build / ResourcePreloader 渲染探针 / 静态审计找 bug。
+- 审计范围：
+  - 延续 UI recovery 方向，重点看 `AppShell` route shell 中的 `ResourcePreloader` 是否真的能在 route 资源未加载时显示 fallback、阻塞 children 或提供进度。
+  - 覆盖 `ResourcePreloader` 本体、`AppShell` 调用点、现有 UI smoke 以及 production build。
+- 新发现：
+  - **UI-PRELOAD-001 · `ResourcePreloader` 的 preload fallback / completion gate 是死路径：组件启动异步预加载 effect，但 render 永远直接返回 children，`isComplete` 不参与渲染，`Suspense` 也没有接收到会 suspend 的 resource promise。**
+  - 证据位置：
+    - `src\ui\components\ResourcePreloader.tsx:52-53` 定义 `loadedCount` 和 `isComplete`。
+    - `src\ui\components\ResourcePreloader.tsx:55-86` 在 `useEffect` 中异步执行 `loadAll()`，成功或失败都只 `setIsComplete(true)`。
+    - `src\ui\components\ResourcePreloader.tsx:88-92` render 永远是 `<Suspense fallback=...>{children}</Suspense>`；没有 `if (!isComplete) return fallback`，也没有 throw promise 给 Suspense。
+    - `src\ui\components\ResourcePreloader.tsx:89` `DefaultPreloadFallback(progress)` 只能在 children 自己 suspend 时出现，和 resource preload 完成状态无关。
+    - `src\ui\views\AppShell.tsx:1002-1058` 主路由把所有 route view 包在 `ResourcePreloader` 里，因此调用方看起来有预加载保护，实际 children 会立即渲染。
+    - `src\ui\views\AppShell.tsx:1002` 每次 render 都调用 `preloadRouteAssets(activeScreen)` 生成新数组，而 `ResourcePreloader.tsx:86` effect 依赖 `[resources, onProgress]`；普通 AppShell rerender 会重新跑同一批图片 preload。
+    - `rg "isComplete|setIsComplete|DefaultPreloadFallback|ResourcePreloader"` 只看到 `isComplete` 被设置，从未被读取。
+  - 运行证据：
+    - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` pass，说明现有 UI contract 没覆盖 ResourcePreloader gating。
+    - `npm run test:ui-smoke`: pass。生成的 `output\playwright\ui_smoke_report.json` 中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`，launcher / character_select / map / combat / reward / map_after_reward / launcher_after_save / after_continue / after_load_slot 九个视图均 `brokenImages=[]`、`layoutIssues=[]`。正常流不会暴露 preload fallback 是否生效。
+    - `npm run build`: pass，production chunks 正常生成。
+    - `tsx` 渲染探针：
+      - 输入：`<ResourcePreloader resources={[{ type: 'image', url: '/assets/does-not-exist.png' }]} fallback={<span>fallback-visible</span>}><span>child-visible</span></ResourcePreloader>`。
+      - 输出：`html="<span id=\"child\">child-visible</span>"`、`hasFallback=false`、`hasChild=true`。
+      - 结论：即使传入 fallback 和不存在图片，初始 render 仍直接输出 children；fallback 没有被 preload 状态触发。
+  - 风险：
+    - `ResourcePreloader` 的命名和调用方式暗示 route 资源预加载保护，但实际只是在 children 已经渲染后后台创建 `Image()` 请求；玩家仍可能先看到缺背景/缺图标的 route。
+    - 如果后续修 `UI-CHUNK-001` 时把 route-level ErrorBoundary / retry 依赖到 `ResourcePreloader` fallback，这个 fallback 仍不会覆盖图片 preload pending / failure。
+    - `preloadRouteAssets(activeScreen)` 新数组 + effect deps 的组合会让 AppShell 每次 tick / menu / theme / renderModel 更新都重新启动同屏 preload，长期战斗或频繁状态更新下会制造重复 Image 对象和重复缓存命中请求。
+  - 优先级：P3。它不是直接崩溃，但属于 UI recovery contract 漏洞和潜在性能噪声，且命名容易误导后续修复。
+  - 修复方向：
+    - 明确 contract 二选一：
+      - 若要“阻塞式预加载”：在资源未完成时返回 fallback，完成后渲染 children；失败时记录错误并进入可见降级状态。
+      - 若只要“后台预热”：删除 `Suspense` / `DefaultPreloadFallback` / `isComplete` 假门面，改名为 `RouteAssetWarmup`，避免调用方误以为 children 被保护。
+    - 在 `AppShell` 中用 `useMemo(() => preloadRouteAssets(activeScreen), [activeScreen])` 稳定 resources 数组，避免普通 rerender 重跑 preload。
+    - 增加单测：传入 pending/failing image resource 时，阻塞式模式应先显示 fallback；后台模式则应断言“不承诺阻塞”，并检查 rerender 不重复启动同 URL preload。
+- 验证：
+  - UI contract 单测 pass，但未覆盖该 contract。
+  - UI smoke pass，证明正常流健康，但不验证 preload fallback。
+  - production build pass。
+  - 渲染探针证明 `ResourcePreloader` fallback 在 preload 场景下不出现，children 立即渲染。
+- 下一轮建议：
+  - 第 42 轮展示 `UI-PRELOAD-001` 的文件行号、渲染探针输出、现有 UI smoke blind spot 和修复验收标准。
+  - 后续真实找 bug 可继续 UI recovery，重点查 ErrorBoundary retry 与 ResourcePreloader contract 修复之间是否会互相误导；也可转向 Pixi/DOM renderer 切换失败和桌面生产资源缺失路径。
+
+## DeckRogue Bug Loop Cycle 43 - UI Cleanup Hook Contract Finding - 2026-05-20
+
+- 循环模式：第 43 轮，真实 UI runtime boundary check / runtime-v2 render bridge 单测 / UI hook 静态 AST 探针 / 调用面审计找 bug。
+- 审计范围：
+  - 延续 UI recovery 和 runtime/UI 边界方向，先确认 `check_ui_runtime_boundaries` 与 runtime-v2 render bridge 仍然健康，再看 UI hook utility 是否存在“检查通过但未来调用会泄漏”的 contract 漏洞。
+  - 覆盖 `useEffectCleanup.ts`、`ui/hooks/index.ts`、`MemoryManager.registerEventListener()` 和现有测试/调用面。
+- 新发现：
+  - **UI-CLEANUP-001 · `useEventListenerCleanup.addCustomListener()` 的 subscribe/unsubscribe 方向写反：注册时没有调用传入的 `subscribe()`，清理时反而调用 `subscribe()`，会在卸载/清理阶段新增监听器并丢掉真正的 unsubscribe。**
+  - 证据位置：
+    - `src\ui\hooks\useEffectCleanup.ts:41-43` 的类型声明是 `addCustomListener(subscribe: () => CleanupFn): void`，也就是传入函数应返回 cleanup/unsubscribe。
+    - `src\ui\hooks\useEffectCleanup.ts:71-78` 实现只调用 `memoryManager.registerEventListener()`，没有在注册阶段调用 `subscribe()`；`cleanup()` 中执行 `unregister(); subscribe();`，把订阅动作放到了清理阶段。
+    - `src\ui\hooks\useEffectCleanup.ts:80-89` `removeAllListeners()` 会遍历执行这些 cleanup，因此手动清理同样会触发新的 `subscribe()`。
+    - `src\core\performance\MemoryManager.ts:119-123` `registerEventListener()` 只维护计数，返回的是内存计数 unregister；它不是传入 custom listener 的 unsubscribe。
+    - `src\ui\hooks\index.ts:13-20` 对外导出 `useEventListenerCleanup`，因此这是公开 UI hook surface。
+    - `rg "addCustomListener"` 只找到类型、实现和返回对象，没有现有调用方或单测覆盖。
+  - 运行证据：
+    - `npm run check:ui-runtime-boundaries`: pass，输出 `[check_ui_runtime_boundaries] OK`；该检查只看 import 边界，不覆盖 hook cleanup 语义。
+    - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/runtimeV2Host.test.ts`: `36` tests，`35` pass，`1` skipped；runtime-v2 render bridge 正常，不覆盖 UI cleanup hook。
+    - AST 探针读取 `src/ui/hooks/useEffectCleanup.ts` 中 `addCustomListener`，输出：
+      - `line=71`
+      - `beforeCleanupCallsSubscribe=false`
+      - `cleanupCallsSubscribe=true`
+      - `cleanupCallsReturnedUnsubscribe=false`
+      - 函数文本包含 `const cleanup = () => { unregister(); subscribe(); };`
+  - 风险：
+    - 当前没有调用方，所以不是即时玩家路径崩溃。
+    - 但 hook 已通过 `src\ui\hooks\index.ts` 暴露；未来如果用它包 `globalEventBus.subscribe(...)`、DOM 外订阅或 renderer adapter subscribe，组件卸载/`removeAllListeners()` 时会新增订阅，原订阅从未建立或真正 cleanup 被丢弃。
+    - 这类泄漏会表现为重复事件回调、卸载后 setState、内存计数与真实监听器数量不一致，且 `check_ui_runtime_boundaries` 会继续通过。
+  - 优先级：P3。当前未使用，是 latent bug；一旦 UI recovery 或 runtime adapter 订阅迁移使用该 hook，影响会上升到 P2。
+  - 修复方向：
+    - 改为注册阶段执行：`const unsubscribe = subscribe(); const unregister = memoryManager.registerEventListener(); listenersRef.current.push(() => { unregister(); unsubscribe(); });`
+    - 用 try/finally 或双 try 保证内存计数和 listener cleanup 都能执行，并避免 cleanup 抛错中断后续清理。
+    - 增加 hook contract 单测或纯函数提取测试：调用 `addCustomListener(() => unsubscribe)` 后应立即订阅一次；执行 `removeAllListeners()` 或 unmount 后应调用 unsubscribe 一次，且不能再次调用 subscribe。
+- 验证：
+  - UI runtime boundary check pass。
+  - runtime-v2 render bridge/host 相关单测 pass with `1` skipped。
+  - AST 探针确认 `subscribe()` 没有在注册阶段调用，却在 cleanup 阶段调用。
+  - 调用面搜索确认当前没有生产调用方，因此按 latent P3 处理。
+- 下一轮建议：
+  - 第 44 轮展示 `UI-CLEANUP-001` 的文件行号、AST 探针输出、当前无调用方事实、优先级和修复验收标准。
+  - 后续真实找 bug 可继续 UI hooks / global event bus 订阅生命周期，也可转向桌面生产资源缺失和 Python WASM skipped smoke。
+
+## DeckRogue Bug Loop Cycle 45 - Python WASM Loader Stale Script Finding - 2026-05-20
+
+- 循环模式：第 45 轮，真实 Python WASM 单测 / runtime-v2 host 单测 / adapter loader 静态审计 / 假 DOM pending 探针找 bug。
+- 审计范围：
+  - 转向 Python WASM skipped smoke，专门避开前面已经记录的 rejected `initPromise` 和 halfboot 两条，核查 Pyodide loader script 注入路径是否存在新的卡死状态。
+  - 覆盖 `pythonWasmAdapter.ts`、`runtimeV2Host.test.ts` skipped case、Python interop/persistence 单测和 runtime-v2 host 单测。
+- 新发现：
+  - **PY-WASM-SCRIPT-001 · `PythonWasmAdapter.injectPyodideScript()` 遇到已有 `script[data-pyodide-loader="true"]` 但 `window.loadPyodide` 不存在时，只给旧 script 补 `load/error` listener；如果事件已经错过或旧 script 卡死，`start()` 会永久 pending，同 adapter 后续 `start()` 复用同一个 pending `initPromise` 继续挂住。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-107` `ensurePyodide()` 会缓存 `this.initPromise = this.loadPyodide()`，pending 时后续调用直接返回同一个 promise。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:121-131` `resolveLoadPyodide()` 在 `window.loadPyodide` 不存在时调用 `injectPyodideScript()`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:134-145` 发现已有 `script[data-pyodide-loader="true"]` 后，如果 `window.loadPyodide` 仍不存在，就注册 `load/error` 监听并 await；没有检查旧 script 是否已经完成、失败、卡住，也没有 timeout、移除重建或状态标记。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:147-157` 新建 script 路径也没有 timeout；但本轮实证的是“已有旧 script”路径。
+    - `tests\unit\runtimeV2Host.test.ts:952-983` 真实 `python wasm rest command...` 仍是 `test.skip`，不会覆盖 Pyodide loader 生命周期。
+    - `tests\unit\pythonWasmAdapter.test.ts` 只覆盖 snapshot envelope unwrap，不覆盖 script injection。
+  - 运行证据：
+    - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2Persistence.test.ts`: `6/6` pass。
+    - `npx tsx --test tests/unit/runtimeV2Host.test.ts`: `31` tests，`30` pass，`1` skipped；skipped 的就是真实 python wasm rest command。
+    - 假 DOM pending 探针：
+      - 设置 `window = {}`，没有 `window.loadPyodide`。
+      - `document.querySelector('script[data-pyodide-loader="true"]')` 返回一个旧 script；它的 `addEventListener('load'/'error')` 只记录监听器，不触发事件。
+      - `document.head.appendChild` / `document.createElement` 若被调用会抛错，以确认 adapter 不会重建 script。
+      - 调用同一 `PythonWasmAdapter.start({ seed: 1 })` 两次，每次都和 150ms timeout race。
+    - 探针输出：
+      - `first.status="timeout"`
+      - `second.status="timeout"`
+      - `addedListeners=["load","error"]`
+      - `listenerCount=2`
+    - 结论：旧 script 节点存在但未提供 `window.loadPyodide` 时，adapter 不会失败返回、不会重建 script、不会给 UI 一个可展示错误，而是永久挂起。
+  - 风险：
+    - 浏览器 / Electron 页面中如果前一次 Pyodide script 注入留下了 data 标记节点，但 load/error 事件已在新 adapter 监听前发生，或 CDN/CSP/协议资源导致 script 长时间 pending，Python WASM runtime 初始化会卡在“正在启动”类状态。
+    - 这和已记录的 rejected promise 不同：这里没有 reject，UI 的错误 fallback / retry 无法触发；同 adapter 的第二次启动还会复用 pending `initPromise`。
+    - `dispose()` 可以清掉 adapter 内部 promise，但不会移除 stale script 节点；新 adapter 仍可能遇到同一个旧 script 并再次挂住。
+  - 优先级：P2。Python WASM 不是默认 legacy 路径，但一旦启用，它会把可恢复的 loader 失败变成无错误、无超时的会话级卡死。
+  - 修复方向：
+    - 给 Pyodide loader 建立显式状态机或 module-level shared load promise，区分 `loading / loaded / failed`，不要只靠 DOM script 节点存在判断。
+    - 对旧 script 路径设置 timeout；timeout 后 reject 并清空 `initPromise`，必要时移除 stale script 后重建。
+    - 如果发现已有 script 但 `window.loadPyodide` 缺失且 script 已有失败标记，应立即 reject，而不是等待已经错过的事件。
+    - 增加单测：fake existing script 不触发 load/error，`start()` 必须在限定时间内 reject 或走重建路径；第二次同 adapter 不得继续复用永久 pending promise。
+- 验证：
+  - Python interop / wasm adapter envelope / persistence 单测 pass。
+  - runtimeV2Host 单测 pass with `1` skipped，确认真实 Python WASM flow 仍未覆盖。
+  - 假 DOM 探针复现 stale existing script 让两次 `start()` 都 timeout，且 adapter 只给旧节点补 `load/error` listener。
+- 下一轮建议：
+  - 第 46 轮展示 `PY-WASM-SCRIPT-001` 的文件行号、假 DOM 探针输出、skipped test 盲区、优先级和修复验收标准。
+  - 后续真实找 bug 可继续 Python WASM loader timeout / dispose 是否移除 stale script，或转向桌面 production 资源缺失路径。
+
+## DeckRogue Bug Loop Cycle 47 - RuntimeV2 Start Dispose Race Finding - 2026-05-20
+
+- 循环模式：第 47 轮，真实 Python WASM 单测 / runtime-v2 host 单测 / fake Pyodide dispose 探针 / EngineHost slow-start 探针找 bug。
+- 审计范围：
+  - 延续 Python WASM loader timeout / dispose 方向，同时检查 runtimeV2 host 是否只修了 dispatch dispose race，而漏掉 start dispose race。
+  - 覆盖 `PythonWasmAdapter.start/loadPyodide/dispose`、`EngineHost.start/dispose`、runtimeV2Host 现有 dispose race 测试和 Python WASM skipped flow。
+- 新发现 1：
+  - **EH-START-001 · `EngineHost.start()` 在 `dispose()` 竞态下会重新填回 snapshot：start await adapter 完成后没有检查 `this.disposed`，因此 dispose 后解析成功的慢启动 adapter 会把 host 从 null 状态复活。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\engineHost.ts:163-190` `start()` 先 `this.disposed = false`，随后 `this.snapshot = await this.adapter.start(options)`，await 后没有 disposed guard 就继续 subscribe / emit / return。
+    - `src\runtimeV2\bridge\engineHost.ts:193-218` `dispatch()` 已经有 `if (this.disposed) throw` 和 await 后 disposed 检查；说明 start 路径缺了同类保护。
+    - `src\runtimeV2\bridge\engineHost.ts:282-291` `dispose()` 会 `this.adapter.dispose()`、清 listener、`this.snapshot = null`，但不能阻止已在等待中的 `start()` 后续回写。
+    - `tests\unit\runtimeV2Host.test.ts:454-467` 只覆盖 in-flight dispatch dispose race：`engine host refuses to repopulate snapshot after dispose races an in-flight dispatch`；没有 start race 等价测试。
+  - 运行证据：
+    - SlowStartAdapter 探针：
+      - `const startPromise = host.start({ seed: 1 })` 后不立即 resolve。
+      - `host.dispose()` 使 `adapterDisposed=true`，`afterDisposeSnapshot=null`。
+      - 之后手动 `adapter.resolveStart(snapshot('Map'))`。
+    - 探针输出：
+      - `adapterDisposed=true`
+      - `afterDisposeSnapshot=null`
+      - `result.status="resolved"`
+      - `result.screen="Map"`
+      - `result.hostSnapshot="Map"`
+      - `finalHostSnapshot="Map"`
+    - 结论：host 已 dispose，但 start promise 成功返回并把 host snapshot 重新填成 `Map`。
+- 新发现 2：
+  - **PY-WASM-DISPOSE-001 · `PythonWasmAdapter.dispose()` 不能阻止 in-flight `start()` 在稍后 Pyodide script load 后回写 `pyodide` 和 `snapshot`；adapter 被 dispose 后仍可被旧 start promise 复活。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:47-64` `start()` await `ensurePyodide()` 后直接运行 `init_runtime` 并设置 `this.snapshot`。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:90-93` `dispose()` 只同步清空 `snapshot / pyodide / initPromise`，没有 disposed generation token 或 abort。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-118` `ensurePyodide()` / `loadPyodide()` 在异步完成后会设置 `this.pyodide`，没有检查 dispose 是否已发生。
+  - 运行证据：
+    - Fake Pyodide dispose 探针：
+      - 启动 `adapter.start({ seed: 7 })`，让 script loader pending。
+      - `adapter.dispose()` 后确认 `afterDisposeSnapshot=null`。
+      - 再设置 `window.loadPyodide` 并触发旧 script `load` listener。
+    - 探针输出：
+      - `appendCalls=1`
+      - `hadLoadListener=true`
+      - `hadErrorListener=true`
+      - `beforeDisposeSnapshot=null`
+      - `afterDisposeSnapshot=null`
+      - `startResult.status="resolved"`
+      - `startResult.runId="after-dispose"`
+      - `finalSnapshotRunId="after-dispose"`
+      - `finalSnapshotScreen="Map"`
+      - `loadPyodideCalls=1`
+      - `runtimeCalls=2`
+    - 结论：dispose 后旧 start promise 仍完成，并把 adapter snapshot 回写为 `after-dispose`。
+- 运行验证：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2Persistence.test.ts`: `6/6` pass。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts`: `31` tests，`30` pass，`1` skipped；skipped 的仍是真实 Python WASM rest command。
+  - 两个 stdin `tsx` 探针均不落临时文件。
+- 风险：
+  - UI 或桌面层如果用户退出、切换 runtime、返回启动器或销毁 host 时正好有慢启动中的 runtime，旧 start 完成后会把已 dispose 的 host/adapter 重新变成有 snapshot 的状态。
+  - 这会和 `PY-WASM-SCRIPT-001` 叠加：script loader 卡住期间用户 retry/dispose，稍后旧 script 恢复时可能污染新会话或已关闭 host。
+  - 现有 dispatch dispose race 已有测试，容易让人误以为 lifecycle race 全部覆盖；但 start 路径仍缺等价 guard。
+- 优先级：P1/P2。`EH-START-001` 是 runtimeV2 host lifecycle contract 漏洞，建议 P1；`PY-WASM-DISPOSE-001` 当前限于 Python WASM adapter，建议 P2。
+- 修复方向：
+  - `EngineHost.start()` await adapter start 后增加 disposed guard；dispose 竞态下应 reject，保持 `snapshot=null`，不 emit。
+  - 给 `EngineHost` start 增加 generation token：每次 start/dispose 递增，旧 start 结果若 token 不匹配必须丢弃。
+  - `PythonWasmAdapter` 同样需要 disposed/generation token 或 AbortController；`dispose()` 后旧 `loadPyodide()` / `start()` 不得设置 `this.pyodide` 或 `this.snapshot`。
+  - 增加测试：
+    - `EngineHost.start()` pending 时 dispose，adapter 后续 resolve 后 start promise 应 reject，host snapshot 仍 null。
+    - `PythonWasmAdapter.start()` pending loader 时 dispose，再触发 load，adapter snapshot 仍 null，旧 promise reject 或被标记 stale。
+- 下一轮建议：
+  - 第 48 轮展示 `EH-START-001` / `PY-WASM-DISPOSE-001` 的文件行号、两个探针输出、现有测试 blind spot 和修复验收标准。
+  - 后续真实找 bug 可继续 runtimeV2 start/restart lifecycle，或转向桌面 production 资源缺失路径。
+
+## DeckRogue Bug Loop Cycle 49 - Release Gate Desktop Installer Coverage Finding - 2026-05-20
+
+- 循环模式：第 49 轮，真实 production desktop smoke / release-readiness / Electron protocol 回归探针 / 静态审计找 bug。
+- 审计范围：
+  - 延续桌面 production 资源与打包路径方向，先确认第 29 轮 `ELECTRON-PROTOCOL-001` 不是新洞，再转向发布门禁对真实 Windows installer 的覆盖。
+  - 覆盖 `test:desktop-smoke`、`check:release-readiness`、`scripts\validation\check_release_readiness.ts`、`scripts\desktop\dist_win.ts`、`reports\desktop\win-dist.json` 与 `release\win` 产物时间。
+- 新发现：
+  - **RELEASE-DESKTOP-001 · `check:release-readiness` 只验 loose desktop build/smoke 报告，不验 `dist:win` / `win-dist.json` / installer artifact；Windows 桌面安装包可滞后于当前 `dist` 而发布门禁仍把 desktop 两项判 pass。**
+  - 证据位置：
+    - `scripts\validation\check_release_readiness.ts:212-249` 的 `checkDesktopArtifacts()` 只读取 `reports/desktop/desktop-build.json` 与 `reports/desktop/desktop-smoke.json`。
+    - `scripts\validation\check_release_readiness.ts:553-570` 汇总 checks 时调用 `checkBuildArtifacts()`、`checkDesktopArtifacts()`、doctor/security/flow checks，但没有任何 `win-dist.json`、`release\win`、`.exe` 或 `dist:win` artifact 检查。
+    - `scripts\desktop\dist_win.ts:13` 才定义 `reports\desktop\win-dist.json`，`scripts\desktop\dist_win.ts:121-159` 才真正跑 electron-builder 并要求 exe artifact。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 当前只有 translation audit 单测，没有 release readiness desktop installer 覆盖。
+  - 运行证据：
+    - `npm run test:desktop-smoke`: exit `0`；`reports\desktop\desktop-smoke.json` 为 production/pass，覆盖 `launcher / tutorial / character_select / map / combat`。
+    - `npm run check:release-readiness`: exit `1`，输出 `pass=29 warn=0 fail=12`；失败项全是 doctor/security/flow 报告缺失。
+    - 同一份 `reports\release\release-readiness.json` 中 desktop 只有两项，且都 pass：
+      - `desktop_build_report`: `desktop build report is green and fresh`
+      - `desktop_smoke_report`: `desktop smoke report is green, production-mode, and fresh`
+    - 临时 Node 解析 release report 输出：
+      - `desktop=[desktop_build_report, desktop_smoke_report]`
+      - `hasWinDist=false`
+    - 时间证据：
+      - `dist/index.html`: `2026-05-20T04:20:29.061Z`
+      - `reports/desktop/desktop-build.json`: `2026-05-20T04:20:29.143Z`
+      - `reports/desktop/desktop-smoke.json`: `2026-05-20T04:20:36.328Z`
+      - `reports/desktop/win-dist.json`: `2026-05-20T02:08:08.434Z`
+      - `release/win/DeckRogue-0.0.0-x64.exe`: `2026-05-20T02:08:02.934Z`
+  - 风险：
+    - 发布门禁能证明 loose Electron 从当前源码目录加载 fresh `dist` 可以跑通，但不能证明 `release\win\DeckRogue-0.0.0-x64.exe` 是当前 renderer/electron 源码对应的安装包。
+    - 维护者按 `check:release-readiness` 判断桌面可发布时，可能漏掉 stale installer、缺失 installer、或 `dist:win` 未执行后仍沿用旧 exe 的情况。
+    - 这与 `DESKTOP-WASM-001` 不同：本洞不关心 Pyodide 资源本身，而是 release gate 没把真实 Windows artifact 纳入 desktop readiness contract。
+  - 优先级：P2。不是玩家运行时崩溃，但属于发布门禁假阴性；在 Windows 桌面分发时会直接影响“实际交付物是否由当前构建产生”的可信度。
+  - 修复方向：
+    - `checkDesktopArtifacts()` 增加 `reports/desktop/win-dist.json` 检查，要求 `overallStatus === "pass"`、至少一个 `.exe` artifact 存在、artifact mtime/size 与 report 一致。
+    - 将 freshness baseline 同样应用到 `win-dist.json` 和 `.exe`，并要求 installer mtime 不早于当前 `dist/index.html` 或不早于 `desktop-build.json`。
+    - 给 release gate 增加单测/fixture：缺失或 stale `win-dist.json` 时 `desktop_win_dist_report` 必须 fail；当前 translation-only test 不能覆盖该 contract。
+- 验证：
+  - `npm run test:desktop-smoke`: pass。
+  - `npm run check:release-readiness`: fail with `29` pass / `12` fail；desktop build/smoke 两项 pass，但无 win-dist/installer check。
+  - 临时 Electron protocol host 探针再次复现 `deckrogue://app.evil`，确认它是第 29 轮已记录旧洞，本轮不重复计入新发现。
+- 下一轮建议：
+  - 第 50 轮展示 `RELEASE-DESKTOP-001` 的文件行号、release report 片段、mtime 对比、优先级和修复验收标准。
+  - 后续真实找 bug 可继续发布门禁缺口，重点看 `doctor:game` 是否同样把 stale desktop installer 当作通过，或转回 runtimeV2 start/dispose 修复验证。
+
+## DeckRogue Bug Loop Cycle 51 - Content Authoring Relic BOM Skip Finding - 2026-05-20
+
+- 循环模式：第 51 轮，真实 content authoring check / numerics schema 单测 / BOM 探针 / schema 边界静态审计找 bug。
+- 审计范围：
+  - 先按第 50 轮建议检查 `doctor:game` 与桌面 installer 关系，但它与 `RELEASE-DESKTOP-001` 过近，未单独计新洞。
+  - 转向 content schema / authoring gate，确认 NS schema guard 已覆盖 runtime 加载后，检查 authoring 脚本是否真实覆盖 cards / enemies / relics。
+- 新发现：
+  - **CONTENT-AUTHORING-RELIC-001 · `check:content-authoring` 读取 `relics.json` 时不处理 UTF-8 BOM，解析异常被吞掉后回退为空数组，导致 106 个 relic 完全不参与 authoring 校验但报告仍 pass。**
+  - 证据位置：
+    - `scripts\validation\check_content_authoring.ts:81-87` `loadJsonFile()` 用 `readFileSync(..., 'utf-8')` + `JSON.parse(content)`，`catch` 直接 `return null`，不暴露解析错误。
+    - `scripts\validation\check_content_authoring.ts:217-219` 对 cards/enemies/relics 都使用 `loadJsonFile(...) || []`；任一文件解析失败会变成空数组。
+    - `scripts\validation\check_content_authoring.ts:247-254` relic 循环只遍历 `relics`，空数组时无 issue。
+    - `scripts\validation\check_content_authoring.ts:283-292` report 使用 `relics.length` 和 `invalidItems === 0`；空 relics 会记录 `0/0` 且仍然 `overallStatus: "pass"`。
+  - 运行证据：
+    - `npm run check:content-authoring`: exit `0`，输出：
+      - `Cards: 354/354 valid`
+      - `Enemies: 58/58 valid`
+      - `Relics: 0/0 valid`
+      - `Pass rate: 100%`
+    - `reports\content\content-authoring.json` 中：
+      - `relics.total=0`
+      - `relics.valid=0`
+      - `relics.invalid=0`
+      - `summary.overallStatus="pass"`
+    - BOM 探针读取 `src\content\data\relics.json` 原始字节：
+      - `firstBytes=[239,187,191,91]`
+      - `hasUtf8Bom=true`
+    - 同一探针去掉 BOM 后 `JSON.parse` 成功：
+      - `relicCount=106`
+      - `firstId="burning_blood"`
+      - `lastId="null_chalice"`
+    - runtime 入口对照：`npx tsx -e "import { relicsData } ..."` 输出 `runtimeRelics=106`，说明游戏/runtime schema 看得到 relics，只有 authoring gate 把它们跳过。
+    - `npx tsx --test tests/unit/numericsDomain.test.ts`: `12/12` pass，确认 NS schema guard 自身仍健康，本洞是 authoring 脚本独立漏检。
+  - 风险：
+    - 任何 relic authoring 问题都会被 `check:content-authoring` 漏掉，包括缺 `description`、后续扩展的 `effect` 检查、非法字段或翻译/文案约束。
+    - 更广义地，cards/enemies/relics 任一 JSON 解析失败都会被 `loadJsonFile() || []` 静默降级为空集合；只要其它集合没有 issue，gate 可能仍然 pass。
+    - 这会污染 release / doctor 报告中的“content-authoring pass”结论，让人误以为 106 个 relic 已经过该脚本验收。
+  - 优先级：P1。它不是 runtime 立即崩溃，但属于内容发布门禁假阴性，并且当前已经实证跳过完整 relic 数据集。
+  - 修复方向：
+    - `loadJsonFile()` 不应吞解析错误；至少抛出带 filepath 的错误，让脚本 fail。
+    - 读取 JSON 前移除单个 UTF-8 BOM：`content.replace(/^\uFEFF/, '')`，或统一使用项目内 JSON loader/helper。
+    - 对关键集合增加非空/期望下限断言：relics total 不应为 0；报告 `0/0` 不得 pass。
+    - 增加单测/fixture：BOM JSON 能被解析；malformed JSON 必须让 `check:content-authoring` exit non-zero；relics 为空时必须 fail 或至少 warn。
+- 验证：
+  - `npm run check:content-authoring`: pass，但报告 `Relics: 0/0 valid`。
+  - BOM / stripped JSON 探针确认真实 relic 数据有 106 条。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts`: 12/12 pass，说明 runtime schema guard 不是根因。
+- 下一轮建议：
+  - 第 52 轮展示 `CONTENT-AUTHORING-RELIC-001` 的行号、BOM 字节、`Relics: 0/0` 报告、runtime `106` 对照和修复验收标准。
+  - 后续真实找 bug 可继续 content authoring：检查 `check_content_authoring.ts` 对 events/potions/cardEnchantments 是否也没覆盖，或检查 reachability 是否验证 action/status/relic effect 引用完整性。
+
+## DeckRogue Bug Loop Cycle 53 - Content Authoring Coverage Gap Finding - 2026-05-20
+
+- 循环模式：第 53 轮，真实 content authoring check / runtime content inventory / authoring script 静态审计找 bug。
+- 审计范围：
+  - 延续第 51/52 轮 content authoring 方向，确认 `check:content-authoring` 是否覆盖脚本注释声称的 events，以及 runtime 已加载的 potions / card enchantments。
+  - 本轮不重复 `CONTENT-AUTHORING-RELIC-001` 的 BOM 解析问题，只看 authoring gate 的数据域覆盖范围。
+- 新发现：
+  - **CONTENT-AUTHORING-COVERAGE-001 · `check:content-authoring` 的文件说明声称检查 cards / enemies / relics / events，但实现与报告完全没有 events、potions、cardEnchantments 三类 authoring 面；这些数据集可在 runtime 中存在并被消费，却不会在 content-authoring pass/fail 中出现。**
+  - 证据位置：
+    - `scripts\validation\check_content_authoring.ts:3-8` 描述写明 `cards, enemies, relics, and events` / “检查卡牌、敌人、遗物、事件”。
+    - `scripts\validation\check_content_authoring.ts:42-75` `ContentAuthoringReport` 只定义 `cards / enemies / relics / summary`。
+    - `scripts\validation\check_content_authoring.ts:212-219` `checkContent()` 只加载 `cards.json`、`enemies.json`、`relics.json`。
+    - `scripts\validation\check_content_authoring.ts:229-254` 只遍历 cards、enemies、relics。
+    - `scripts\validation\check_content_authoring.ts:261-293` 返回报告也只有 cards、enemies、relics、summary。
+    - `scripts\validation\check_content_authoring.ts` 全文不包含 `potions.json`、`cardEnchantments.json`、`storyEvents`、`STORY_EVENTS`、`mirror_events`。
+  - 运行证据：
+    - `npm run check:content-authoring`: exit `0`，仍只输出：
+      - `Cards: 354/354 valid`
+      - `Enemies: 58/58 valid`
+      - `Relics: 0/0 valid`
+      - `Pass rate: 100%`
+    - `reports\content\content-authoring.json` 顶层 key：
+      - `["timestamp","cards","enemies","relics","summary"]`
+      - `hasEvents=false`
+      - `hasPotions=false`
+      - `hasCardModifiers=false`
+    - runtime inventory 对照：
+      - `cards=354`
+      - `enemies=58`
+      - `relics=106`
+      - `potions=12`
+      - `storyEvents=37`
+      - `cardModifiers=7`
+    - 静态 token 探针：
+      - `potions.json present=false`
+      - `cardEnchantments.json present=false`
+      - `storyEvents present=false`
+      - `STORY_EVENTS present=false`
+      - `events: present=false`
+      - `potions: present=false`
+      - `cardModifiers: present=false`
+  - 风险：
+    - `check:content-authoring` 的 pass 结论容易被理解为“内容 authoring 全域通过”，但事件选项、药水效果、卡牌附魔/咒蚀完全不进入该脚本的 report schema。
+    - 这会让事件文案/选项结构、potion effect、card modifier scope/effect 等 authoring 约束只能依赖 runtime schema 或其它分散测试；release / doctor 报告里的 content-authoring pass 不代表这些 authoring 面已被检查。
+    - 与 `CONTENT-AUTHORING-RELIC-001` 叠加时，当前 pass 实际只可靠覆盖 cards/enemies，连 relics 都被 BOM 问题跳过。
+  - 优先级：P2。不是 runtime 直接崩溃，但属于发布/内容验收门禁的覆盖假阴性，且脚本文档与实现不一致会误导后续验收。
+  - 修复方向：
+    - 二选一收口 contract：
+      - 扩展 `ContentAuthoringReport`，显式加入 `events / potions / cardModifiers`，并加载 `STORY_EVENTS`、`potionsData`、`cardEnchantmentsData` 或 raw 数据后跑 authoring 规则。
+      - 或重命名脚本/文档为 “cards/enemies/relics authoring check”，并在 release report 中单独列出其它数据域由哪些 gate 覆盖。
+    - 对 events 至少校验：event id/title/lore/options 非空、option id 唯一、option 文案与 presentation outcome 能解析。
+    - 对 potions 至少校验：effect 存在、price/toxicity 合法、effect action/status 引用可解析。
+    - 对 card modifiers 至少校验：scope/effect/applicableTo 合法，effect type 与运行时 modifier 处理器一致。
+    - 增加 unit/fixture：报告必须包含 runtime inventory 中所有 authoring 数据域，缺任一域时 fail。
+- 验证：
+  - `npm run check:content-authoring`: pass，但仅输出 cards/enemies/relics。
+  - runtime inventory probe 确认 potions/storyEvents/cardModifiers 均存在并被 `numericSystem` 加载。
+  - report key/token 探针确认 content-authoring 报告与脚本都没有 events/potions/cardModifiers authoring 面。
+- 下一轮建议：
+  - 第 54 轮展示 `CONTENT-AUTHORING-COVERAGE-001` 的行号、report key、runtime inventory 和修复验收标准。
+  - 后续真实找 bug 可继续引用完整性：action type、status name、potion/relic effect handler、story event option outcome 是否都有注册表校验。
+
+## DeckRogue Bug Loop Cycle 55 - Potion Effect Handler Gap Finding - 2026-05-20
+
+- 循环模式：第 55 轮，真实 content schema / potion runtime handler / authoring gate 交叉审计找 bug。
+- 审计范围：
+  - 延续第 53/54 轮 content authoring 覆盖缺口，检查 runtime 已加载的 `potionsData` 是否和 `GameEngine.usePotion()` 的实际效果处理器一致。
+  - 同步跑 action registry 探针，确认更广义的 content effect/action type 还没有统一注册表校验；本轮收口到更确定的 potion handler 漏洞。
+- 新发现：
+  - **CONTENT-POTION-HANDLER-001 · `potions.json` 里 3 个可购买/可持有药水效果不会按文案生效，但 `validatePotionsData()` 和 `check:content-authoring` 都不会拦截；`usePotion()` 仍会在 default/no-op 后删除药水。**
+  - 证据位置：
+    - `src\content\narrative\contentSchema.ts:348-362` `validatePotionsData()` 只检查 `effect` 存在，不检查 `effect.type` 是否有 runtime handler，也不检查 `target` 合法性。
+    - `src\core\events\gameEngine.ts:1434-1484` `usePotion()` 对 `effect.type` 做手写 `switch`。
+    - `src\core\events\gameEngine.ts:1450-1454` `ApplyStatus` 只处理 `effect.target === 'Self'`；其它 target 直接 break。
+    - `src\core\events\gameEngine.ts:1482-1486` unknown effect 走 `default: break` 后仍执行 `this.state.player.potions.splice(index, 1)`。
+    - `src\content\data\potions.json:66-79` `weak_potion` 文案是“对全体异端施加 3 层虚弱”，数据为 `ApplyStatus` + `target: "AllEnemies"`，当前 `usePotion()` 不会给敌人加 Weak。
+    - `src\content\data\potions.json:142-153` `purifying_tears` effect type 是 `PurifyingTears`，`usePotion()` 无 case。
+    - `src\content\data\potions.json:172-183` `hexagrammatic_wards` effect type 是 `HexagrammaticWards`，`usePotion()` 无 case。
+  - 运行证据：
+    - PowerShell handler diff 探针读取 `potions.json` 与 `gameEngine.ts usePotion()` switch，输出：
+      - `weak_potion`: `effect="ApplyStatus"`, `hasSwitchCase=true`, `target="AllEnemies"`；但 `ApplyStatus` 分支只处理 `Self`。
+      - `purifying_tears`: `effect="PurifyingTears"`, `hasSwitchCase=false`。
+      - `hexagrammatic_wards`: `effect="HexagrammaticWards"`, `hasSwitchCase=false`。
+    - `npm run check:content-authoring`: exit `0`，仍输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`；potions 不在该 gate 内。
+    - action registry 探针从 `cardsData/enemiesData/potionsData/relicsData` 递归收集 action/effect type，与 `ActionFactoryV2.getRegisteredTypes()` 比对：
+      - `registered=110`
+      - `contentTypes=173`
+      - `unknownCount=65`
+      - 其中直接出现在 enemy moves 或 potion effects 的 runtime-critical unknown 为 16 种，包括 `PurifyingTears`、`HexagrammaticWards`、`BuffAllEnemies`、`PlayerDrawLess`、`RandomCardCostIncrease`、`SwapCards` 等。
+  - 风险：
+    - 玩家点击 `purifying_tears` 或 `hexagrammatic_wards` 时，药水会被移除，但核心效果完全不执行，且没有 UI 错误或 content gate 失败。
+    - `weak_potion` 看起来有 `ApplyStatus` handler，但 target 分支不覆盖 `AllEnemies`，实际只加 toxicity/消耗药水，不施加 Weak。
+    - 这类 bug 很难被 schema 发现，因为当前 schema 只验证“有 effect”，没有把 `effect.type + target` 映射到运行时处理器。
+    - 更广义的 action registry 探针显示 content 与 runtime action/effect 注册表仍未统一；需要把 trigger/passive/effect/action 分域校验，避免把设计型伪 type 和可执行 action 混在一起。
+  - 优先级：P1。它直接影响可见玩法资源消耗，且 content authoring / runtime schema 都给 pass。
+  - 修复方向：
+    - 给 `usePotion()` 增加可测试的 potion effect handler registry，至少覆盖 `PurifyingTears`、`HexagrammaticWards`、`ApplyStatus target=AllEnemies`。
+    - 或把药水 effect 改成可执行 `ActionSpec`，统一走 `ActionFactoryV2`，并为不支持的 effect fail-fast。
+    - `validatePotionsData()` 增加 `effect.type` 白名单与 target/type 组合校验；`check:content-authoring` 必须加载 potions 并报告 handler coverage。
+    - 增加单测：使用 `weak_potion` 后所有敌人获得 Weak；使用 `purifying_tears` / `hexagrammatic_wards` 后状态变化符合文案；未注册 effect 不得静默消耗药水。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - `npm run check:content-authoring`: pass，但 potions 未覆盖，且 relics 仍 `0/0`。
+  - handler diff 探针确认 2 个 potion effect 无 switch case，1 个 `AllEnemies` target 被当前分支忽略。
+  - action registry 探针确认 content action/effect type 与 `ActionFactoryV2` 注册表存在大量未对齐项；本轮只把确定能导致药水无效的部分定为 P1。
+- 下一轮建议：
+  - 第 56 轮展示 `CONTENT-POTION-HANDLER-001` 的行号、handler diff、`usePotion()` 消耗路径和修复验收标准。
+  - 后续找 bug 可继续把 action/effect type 分域：card/enemy executable action、relic passive trigger、potion handler、story event text-driven outcome 分别建立 registry coverage。
+
+## DeckRogue Bug Loop Cycle 57 - Meta StartRun Relic Integration Finding - 2026-05-20
+
+- 循环模式：第 57 轮，真实运行时探针 + meta 注入 / relic generic trigger 静态审计找 bug。
+- 审计范围：
+  - 延续第 55/56 轮 content action/effect 分域方向，检查 achievement 解锁的起始遗物是否能通过 meta profile 进入新 run，并确认 `StartRun` relic effect 是否有运行时触发路径。
+  - 本轮先证伪 enemy moves / `OnDeath` 候选：`enemiesData` 的 enemy move action 类型与 `CombatManager` switch 对齐，`cyst_bearer.spill` 的死亡施毒路径也能落到 `ActionManager`。
+- 新发现：
+  - **META-START-RUN-001 · `GameEngine` 构造函数接收 `metaProfile`，`GameSetup.startNewRun()` 也传入了当前 meta profile，但新 run 没有调用 `applyMetaProfileToNewRunState()`；因此 active upgrades、active pacts、selected starting relic 都不会应用。即使手动调用 meta 注入，`field_compass` 的 `StartRun/GainGold` generic relic 仍不会触发。**
+  - 证据位置：
+    - `src\core\persistence\setup.ts:168-170` `startNewRun()` 读取 `this.getMetaProfile()`，并执行 `new GameEngine(this.state.currentSeed, metaProfile, { enableRuntimeDelegation: false })`。
+    - `src\core\events\gameEngine.ts:96` 构造函数参数包含 `metaProfile?: MetaProfile | null`，但 `rg "metaProfile" src/core/events/gameEngine.ts` 只命中构造函数签名，没有任何应用调用。
+    - `src\core\persistence\metaInjection.ts:55-71` 已实现 active upgrade 注入，如 `quartermaster_stash` 的 `startingGold`。
+    - `src\core\persistence\metaInjection.ts:133-135` 已实现 selected starting relic 注入，但当前 `GameEngine` 新 run 链路没有调用它。
+    - `src\content\data\relics.json:1166-1175` `field_compass` 是 `isStartingRelic: true`，`trigger: "StartRun"`，文案为“开局 +25 金币”，effect 为 `{ "type": "GainGold", "amount": 25 }`。
+    - `src\features\relics\relicSystem.ts:38-64` generic trigger map 没有 `StartRun`。
+    - `src\features\relics\relicSystem.ts:363-390` `normalizeGenericActionSpec()` 遇到未注册 action type 会 `return null`，不会 fail-fast；`GainGold` 当前不在 `ActionFactoryV2.getRegisteredTypes()`。
+    - `src\features\relics\relicSystem.ts:499-551` event-bus 只监听 `CardPlayed`、`DamageReceived`、`RelicAcquired`、`RouteResourceGained`、`RouteResourceSpent`，没有 `StartRun`。
+    - `src\features\relics\relicSystem.ts:600-647` imperative `trigger()` 只支持 `StartTurn`、`EndTurn`、`CombatStart`、`CombatEnd`，没有 `StartRun`。
+  - 运行证据：
+    - 最小探针构造 meta：`activeUpgrades: ['quartermaster_stash']`，`unlocks.startingRelics: ['field_compass']`，`preferences.selectedStartingRelicId: 'field_compass'`。
+    - 实际链路：`new GameEngine(570058, meta, { enableRuntimeDelegation: false }); engine.selectCharacter('informant')` 输出：
+      - `gold=99`
+      - `relics=[]`
+      - `appliedUpgradeIds=[]`
+    - 手动控制链路：`new GameEngine(..., null); selectCharacter('informant'); applyMetaProfileToNewRunState(...)` 输出：
+      - `gold=119`
+      - `relics=["field_compass"]`
+      - `appliedUpgradeIds=["quartermaster_stash"]`
+      - 说明 meta 注入器本身能加 `quartermaster_stash` 和 `field_compass`，但实际构造链路没调用。
+    - 同一控制链路里 `field_compass` 只让 relic 进入列表，金币停在 `119`，没有变成预期的 `144`，说明 `StartRun/GainGold` effect 没执行。
+    - StartRun relic inventory 探针输出：
+      - `startRunRelicCount=3`
+      - `field_compass`: `isStartingRelic=true`, `effectType="GainGold"`, `registeredEffect=false`
+      - `martyr_coin`: `isStartingRelic=true`, `effectType="GainMaxHP,FirstEventHPLoss"`
+      - `borrowed_crown`: `isStartingRelic=false`, `effectType="ExtraEventOption"`, `registeredEffect=false`
+    - `npm run check:content-authoring`: exit `0`，仍输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`，不会覆盖 meta/new-run/start relic contract。
+  - 风险：
+    - 玩家在 meta UI 里选择已解锁起始遗物后，新 run 实际不会获得该遗物；active upgrades/pacts 也会被整体跳过。
+    - 即使把 meta 注入调用补上，`field_compass` 这类 `StartRun` generic relic 仍只是进入 relic 列表，不会执行“开局 +25 金币”。
+    - `normalizeGenericActionSpec()` 对未注册 effect 静默返回 `null`，content authoring 又不覆盖 relic trigger/action registry，导致文案效果失效时没有 fail-fast。
+  - 优先级：P1。它直接切断 meta progression 对新 run 的核心奖励应用，且影响 achievement 解锁的起始遗物可见玩法收益。
+  - 修复方向：
+    - 在角色选择完成、基础角色状态/牌组/map 初始化后调用 `applyMetaProfileToNewRunState(state, metaProfile, ctx)`；需要保存 `metaProfile` 到 `GameEngine` 实例字段，避免构造参数被丢弃。
+    - 给 `StartRun` relic 增加明确触发点，或把 `field_compass` 这类一次性开局效果归入 meta 注入阶段执行。
+    - 建立 relic effect/trigger registry authoring gate：`StartRun`、`GainGold`、`GainMaxHP`、`ExtraEventOption` 这类 effect 不得静默吞；若是设计型非 action，也要有专门 handler 白名单。
+    - 增加单测：`quartermaster_stash` 后新 run 金币为 `119`；选择 `field_compass` 后 relic 存在且金币为 `144`；未知/未注册 `StartRun` effect 不得在 content gate 中 pass。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - 运行 `GameEngine` meta 构造探针，确认实际链路 `gold=99/relics=[]/appliedUpgradeIds=[]`。
+  - 运行手动 meta 注入控制探针，确认注入器可使 `gold=119/relics=["field_compass"]`，但 `field_compass` 的 +25 没执行。
+  - 运行 StartRun relic inventory 探针，确认 3 个 `StartRun` relic，且 `field_compass` 的 `GainGold` 不在 action registry。
+  - `npm run check:content-authoring`: pass，说明现有 content gate 不覆盖该 contract。
+- 下一轮建议：
+  - 第 58 轮展示 `META-START-RUN-001` 的行号、两段探针输出和修复验收标准。
+  - 后续真实找 bug 可继续 relic generic effect 分域：找出 `normalizeGenericActionSpec()` 静默吞掉的 `effect.type`，按“起始遗物 / 战斗遗物 / 路线遗物 / 事件遗物”拆成可执行 registry。
+
+## DeckRogue Bug Loop Cycle 59 - Relic Kill Trigger Coverage Finding - 2026-05-20
+
+- 循环模式：第 59 轮，真实 relic generic effect 覆盖枚举 + 运行时击杀探针找 bug。
+- 审计范围：
+  - 延续第 57/58 轮 `StartRun` relic 方向，继续把遗物 effect 按触发域拆开，优先选择“玩家可见、能最小复现、不是 Passive/Seal 占位”的失效案例。
+  - 本轮不重复 meta 注入问题，聚焦战斗中已有事件 `EnemyDeath` 与遗物 trigger/effect registry 的断链。
+- 新发现：
+  - **CONTENT-RELIC-KILL-TRIGGER-001 · `black_ledger` 文案承诺击杀带弱化/易伤的异端后抽 1 张牌并获得 12 金币，但 `RelicSystem` 没有订阅或映射 `OnKillWithDebuff` / `EnemyDeath`，且 `DrawAndGainGold` 也不是已注册 action；真实击杀带 Weak 敌人后遗物完全 no-op。**
+  - 证据位置：
+    - `src\content\data\relics.json:496-509` `black_ledger`：`trigger: "OnKillWithDebuff"`，`effect.type: "DrawAndGainGold"`，`drawAmount: 1`，`goldAmount: 12`。
+    - `src\core\combat\combatSystem.ts:271` 敌人死亡会发布 `globalEventBus.publish({ type: 'EnemyDeath', enemyId })`。
+    - `src\core\events\eventBus.ts:45` `GameEvent` 已包含 `EnemyDeath` 事件。
+    - `src\features\relics\relicSystem.ts:38-64` `GENERIC_RELIC_TRIGGER_MAP` 只映射 CardPlayed / DamageReceived / RouteResourceGained / RouteResourceSpent / RelicAcquired 等，不含 `OnKillWithDebuff` 或 `EnemyDeath`。
+    - `src\features\relics\relicSystem.ts:491-495` event-bus 监听列表也没有 `EnemyDeath`。
+    - `src\features\relics\relicSystem.ts:363-390` `normalizeGenericActionSpec()` 对不在 `ActionFactoryV2.getRegisteredTypes()` 的 effect 直接 `return null`。
+    - action registry 探针确认：`hasDrawAndGainGold=false`、`hasGainGold=false`、`hasDraw=true`、`registeredCount=110`。
+  - 运行证据：
+    - 覆盖枚举探针读取 `relicsData`、`relicSystem.ts` imperative handler 和 `ActionFactoryV2.getRegisteredTypes()`：
+      - `imperativeCount=13`
+      - `suspectCount=66`
+      - 其中 `black_ledger`：`normalized="OnKillWithDebuff"`、`triggerReachable=false`、`effectTypes=["DrawAndGainGold"]`、`registeredEffects=[false]`。
+    - 最小击杀探针：
+      - 创建 `GameEngine(590002, null, { enableRuntimeDelegation: false })`。
+      - `selectCharacter('informant')` 后手动持有 `black_ledger`。
+      - `startCombat('Combat')`，强制保留 2 名敌人，令目标 `hp=1` 且 `statuses.Weak=1`，再用 `combatSystem.applyDamage()` 击杀目标，避免战斗结束奖励干扰。
+      - 输出：
+        - `enemyCount=2`
+        - `aliveEnemies=1`
+        - `targetHpAfter=0`
+        - `screen="Combat"`
+        - `goldBefore=99`
+        - `goldAfter=99`
+        - `goldDelta=0`
+        - `handBefore=5`
+        - `handAfter=5`
+        - `handDelta=0`
+        - `drawBefore=5`
+        - `drawAfter=5`
+        - `drawDelta=0`
+      - 按文案预期应至少 `goldDelta=12` 且抽 1 张牌；实际没有任何变化。
+    - `npm run check:content-authoring`: exit `0`，仍输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`，没有拦截该遗物触发/处理器断链。
+  - 风险：
+    - 玩家购买或获得 `black_ledger` 后，核心经济/抽牌收益完全不会触发，且没有 UI 错误、日志错误或 content gate 失败。
+    - 这是战斗内可见收益 no-op，比纯 authoring coverage 缺口更直接；并且 routeSignals 把 `black_ledger` 作为多个路线的 support relic，会误导构筑推荐。
+    - 同类风险不止一个：本轮枚举显示至少 66 个非 imperative relic 存在 trigger/effect reachable 或 registry 可疑项，需要按域拆分，而不能把 Passive/Seal 占位和可执行战斗 trigger 混在同一个 JSON effect 里静默吞。
+  - 优先级：P1。直接影响战斗奖励/构筑收益，且触发条件可在正常战斗中出现。
+  - 修复方向：
+    - 给 `RelicSystem` 增加 `EnemyDeath` 监听，并在事件 payload 中带上死亡前/死亡时 enemy statuses，或在 `CombatManager.handleEnemyDefeated()` 中触发专门的 `OnKillWithDebuff` relic path。
+    - 将 `DrawAndGainGold` 拆成已注册可执行 specs：`Draw` + 一个明确的 `GainGold`/金币变更 action；若金币 action 不进 `ActionFactoryV2`，则必须有 relic 专用 handler。
+    - `normalizeGenericActionSpec()` 不应对可执行 trigger 的未知 effect 静默 `return null`；content authoring 应 fail-fast 或报告 unsupported relic effect。
+    - 增加单测：持有 `black_ledger` 击杀带 Weak/Vulnerable 的非最后一名敌人时，金币 +12 且抽 1 张；击杀无 debuff 敌人时不触发。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - relic coverage 探针确认 `black_ledger` trigger 不可达、effect 未注册。
+  - 真实击杀探针确认带 Weak 敌人死亡后 `goldDelta=0/handDelta=0/drawDelta=0`，且仍在 `Combat`，排除战斗胜利奖励干扰。
+  - `npm run check:content-authoring`: pass，说明现有 authoring gate 不覆盖该 contract。
+- 下一轮建议：
+  - 第 60 轮展示 `CONTENT-RELIC-KILL-TRIGGER-001` 的行号、击杀探针输出、优先级和验收标准。
+  - 后续真实找 bug 可继续同域枚举：优先检查 `cathedral_key` 的 `EndOfEliteCombat/GainGoldAndChoosePotion`、`prophetic_eye` 的 `EnterFloor/RevealAllNodes`、`reactive_incense` / `cooling_choir` 的 `StartOfTurn` unsupported action。
+
+## DeckRogue Bug Loop Cycle 61 - Elite Reward Relic Trigger Finding - 2026-05-20
+
+- 循环模式：第 61 轮，真实精英战后奖励探针 + relic trigger/effect registry 静态审计找 bug。
+- 审计范围：
+  - 延续第 59/60 轮遗物 trigger/effect 分域，检查 `cathedral_key` 这类“战斗结束后额外奖励”遗物是否能被精英战胜利链路触发。
+  - 本轮不重复 `black_ledger` 的 `EnemyDeath` 断链，聚焦 `EndOfEliteCombat` 与 `CombatEnd` 的触发名不对齐。
+- 新发现：
+  - **CONTENT-RELIC-ELITE-REWARD-001 · `cathedral_key` 文案承诺“每场精英战后额外获得 25 金并从 3 瓶药水中选 1”，但运行时只触发通用 `CombatEnd`，`RelicSystem` 不映射 `EndOfEliteCombat`，`GainGoldAndChoosePotion` 也不是已注册 action；真实精英胜利后持有该遗物与未持有完全同奖。**
+  - 证据位置：
+    - `src\content\data\relics.json:831-846` `cathedral_key`：`trigger: "EndOfEliteCombat"`，`effect.type: "GainGoldAndChoosePotion"`，`goldAmount: 25`，`potionChoices: 3`。
+    - `src\core\events\gameEngine.ts:1333-1342` 战斗胜利只执行 `relicSystem.trigger('CombatEnd', ...)`，然后按 `calculateRewardRuntime(... isElite ...)` 发基础奖励金币。
+    - `src\features\relics\relicSystem.ts:38-64` `GENERIC_RELIC_TRIGGER_MAP` 没有 `EndOfEliteCombat`，只把 `CombatEnd`/`EndCombat` 映射到 `CombatEnd`。
+    - `src\features\relics\relicSystem.ts:600-610` imperative trigger API 只接受 `StartTurn`、`EndTurn`、`CombatStart`、`CombatEnd`。
+    - `src\features\relics\relicSystem.ts:363-390` `normalizeGenericActionSpec()` 对不在 `ActionFactoryV2.getRegisteredTypes()` 的 effect 静默 `return null`。
+    - action registry 探针确认：`hasGainGoldAndChoosePotion=false`、`hasGainGold=false`、`registeredCount=110`。
+  - 运行证据：
+    - relic registry 探针读取 `cathedral_key` 与 `relicSystem.ts`：
+      - `trigger="EndOfEliteCombat"`
+      - `normalized="EndOfEliteCombat"`
+      - `hasImperativeHandler=false`
+      - `effectType="GainGoldAndChoosePotion"`
+      - `effectRegistered=false`
+      - `mappedToCombatEnd=false`
+      - `listenerSourceMentionsEndOfEliteCombat=false`
+    - 最小精英胜利探针：
+      - 构造同 seed 两个 `GameEngine(610001, null, { enableRuntimeDelegation: false })`。
+      - 都设置当前节点为 `type: "Elite"`，都 `startCombat('Elite')` 后直接 `handleCombatVictory()`。
+      - baseline 无遗物输出：
+        - `goldBefore=99`
+        - `goldAfter=174`
+        - `goldDelta=75`
+        - `screen="Reward"`
+        - `rewardCards=3`
+        - `shopPotions=[]`
+        - `playerPotions=[]`
+      - 持有 `cathedral_key` 输出：
+        - `goldBefore=99`
+        - `goldAfter=174`
+        - `goldDelta=75`
+        - `screen="Reward"`
+        - `rewardCards=3`
+        - `shopPotions=[]`
+        - `playerPotions=[]`
+        - `relics=["cathedral_key"]`
+      - 对比：`extraGoldFromCathedralKey=0`；按文案应额外 +25 且出现 3 选 1 药水选择。
+    - `npm run check:content-authoring`: exit `0`，仍输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`，没有拦截该 trigger/effect 断链。
+  - 风险：
+    - 玩家获得 `cathedral_key` 后，精英战后核心奖励完全不生效；这个遗物价格 300，属于高价值路线/奖励遗物，失效会直接影响经济和药水系统。
+    - 该问题与 `black_ledger` 同源但不同触发域：一个是 `EnemyDeath` 没接，一个是 elite-specific combat end 名称不对齐；说明当前 relic JSON 里设计触发名和 runtime trigger 名没有统一注册表。
+    - `shopPotions` 只在商店入口生成，精英奖励链路没有“药水选择”surface，修复不能只改 trigger map，还需要定义战斗奖励后的 potion-choice UI/状态承载。
+  - 优先级：P1。直接影响精英战后可见奖励，且正常流程可稳定复现。
+  - 修复方向：
+    - 在 `handleCombatVictory()` 或 `RelicSystem.trigger('CombatEnd')` 传入 nodeType/isElite，并显式支持 `EndOfEliteCombat` 条件触发。
+    - 为 `GainGoldAndChoosePotion` 建立专用 handler：金币 +25；生成 3 个药水候选并进入可领取/可选择的奖励状态，而不是复用商店 `shopPotions`。
+    - content authoring 增加 relic trigger/effect registry：`EndOfEliteCombat` 必须映射到 runtime event；`GainGoldAndChoosePotion` 必须有 handler。
+    - 增加单测：持有 `cathedral_key` 完成 Elite 后，基础奖励外额外 +25 金；产生 3 个药水候选；普通 Combat 不触发。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - registry 探针确认 `cathedral_key` 不映射 `CombatEnd`、没有 imperative handler、effect 未注册。
+  - 精英胜利 A/B 探针确认持有与未持有 `cathedral_key` 都是 `goldDelta=75`，`extraGoldFromCathedralKey=0`，且没有 potion candidates。
+  - `npm run check:content-authoring`: pass，说明现有 authoring gate 不覆盖该 contract。
+- 下一轮建议：
+  - 第 62 轮展示 `CONTENT-RELIC-ELITE-REWARD-001` 的行号、A/B 探针输出、优先级和修复验收标准。
+  - 后续真实找 bug 可继续查 `prophetic_eye` 的 `EnterFloor/RevealAllNodes`，它是路线/地图层触发，能覆盖 relic 系统的第三个大域。
+
+## DeckRogue Bug Loop Cycle 63 - Map Reveal Relic Trigger Finding - 2026-05-20
+
+- 循环模式：第 63 轮，真实地图进入探针 + relic trigger/effect registry 静态审计找 bug。
+- 审计范围：
+  - 延续第 61/62 轮遗物 trigger/effect 分域，检查 `prophetic_eye` 这类地图/路线层遗物是否能在进入新楼层时揭示节点。
+  - 本轮不重复战斗奖励域，聚焦 `EnterFloor` / `RevealAllNodes` 与地图移动链路的断链。
+- 新发现：
+  - **CONTENT-RELIC-MAP-REVEAL-001 · `prophetic_eye` 文案承诺“进入新楼层时，自动揭示所有节点类型”，但运行时没有 `EnterFloor` 事件或 relic trigger，`RevealAllNodes` 也不是已注册 action；进入下一层后持有该遗物与未持有一样，只 reveal 当前选择节点，旁支节点仍隐藏。**
+  - 证据位置：
+    - `src\content\data\relics.json:1688-1700` `prophetic_eye`：`trigger: "EnterFloor"`，`effect.type: "RevealAllNodes"`，description 为“进入新楼层时，自动揭示所有节点类型”。
+    - `src\features\relics\relicSystem.ts:38-64` `GENERIC_RELIC_TRIGGER_MAP` 没有 `EnterFloor`。
+    - `src\features\relics\relicSystem.ts:491-495` event-bus 监听列表没有任何 map/floor event。
+    - `src\features\relics\relicSystem.ts:600-610` imperative trigger API 只支持 turn/combat trigger，不支持 `EnterFloor`。
+    - `src\features\relics\relicSystem.ts:363-390` `normalizeGenericActionSpec()` 对未注册 effect 静默 `return null`。
+    - `src\core\events\RunFlowManager.ts:193-204` 移动到节点时只执行 `node.revealed = true`，没有 floor-wide reveal，也没有发布 `EnterFloor`。
+    - `src\core\events\gameEngine.ts:1217-1222` 手动 reveal 单节点需要消耗 intel。
+    - `src\core\events\EventManager.ts:442-445` 事件选项 `legacy_read_codex` 证明运行时已有 `state.map.forEach(node => { node.revealed = true; })` 能力，但它没有接入 `prophetic_eye`。
+  - 运行证据：
+    - registry 探针读取 `prophetic_eye` 与 `relicSystem.ts`：
+      - `trigger="EnterFloor"`
+      - `normalized="EnterFloor"`
+      - `hasImperativeHandler=false`
+      - `effectType="RevealAllNodes"`
+      - `effectRegistered=false`
+      - `sourceMentionsEnterFloor=false`
+      - `sourceMentionsRevealAllNodes=false`
+    - 最小地图进入 A/B 探针：
+      - 构造两个 `GameEngine(630003, null, { enableRuntimeDelegation: false })`。
+      - 自定义地图：`floor0 -> floor1a/floor1b/floor1c`，其中 floor1 三个节点初始 `revealed=false`。
+      - 两组都从 `currentNodeId='floor0'` 移动到 `floor1a`；一组无遗物，一组持有 `prophetic_eye`。
+      - baseline 输出：
+        - `baselineCurrent="floor1a"`
+        - `floor1a.revealed=true`
+        - `floor1b.revealed=false`
+        - `floor1c.revealed=false`
+        - `revealedCountBaseline=2`
+      - 持有 `prophetic_eye` 输出：
+        - `withEyeCurrent="floor1a"`
+        - `floor1a.revealed=true`
+        - `floor1b.revealed=false`
+        - `floor1c.revealed=false`
+        - `hiddenOnEnteredFloor=["floor1b","floor1c"]`
+        - `revealedCountWithEye=2`
+      - 对比：持有遗物没有增加任何 reveal；按文案应在进入 floor1 时至少 reveal 同层全部节点类型。
+    - `npm run check:content-authoring`: exit `0`，仍输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`，没有拦截该 trigger/effect 断链。
+  - 风险：
+    - 玩家获得 `prophetic_eye` 后，地图信息优势完全不生效；该遗物属于路线/地图信息收益，失效会影响路线选择和商店/精英规避判断。
+    - 这是第三个独立触发域断链：`EnemyDeath`、`EndOfEliteCombat`、`EnterFloor` 都无法被当前 relic generic 系统覆盖，说明 JSON trigger 名称与 runtime event surface 缺少统一 contract。
+    - 当前仍可用 intel 手动 reveal 单节点，或事件选项全图 reveal，但这些路径不能替代遗物自动效果。
+  - 优先级：P2。它不直接消耗战斗资源，但玩家获得的遗物效果完全 no-op，且影响路线决策。
+  - 修复方向：
+    - 在地图移动链路发布 `EnterFloor`/`MapFloorEntered` 事件，payload 带 `floor/y/currentNodeId`。
+    - `RelicSystem` 映射并监听该事件，为 `RevealAllNodes` 建立专用 handler：至少揭示当前楼层所有节点；若设计意图是全图 reveal，需要在文案和实现中明确。
+    - content authoring 增加 map-domain relic trigger/effect registry，`EnterFloor/RevealAllNodes` 不得静默 pass。
+    - 增加单测：持有 `prophetic_eye` 进入新楼层后，同层隐藏节点全部 `revealed=true`；未持有时只 reveal 进入节点。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - registry 探针确认 `prophetic_eye` 没有 handler、`EnterFloor`/`RevealAllNodes` 不在 relic system source。
+  - 地图进入 A/B 探针确认持有 `prophetic_eye` 后 `hiddenOnEnteredFloor=["floor1b","floor1c"]`，`revealedCountWithEye=2` 与 baseline 一致。
+  - `npm run check:content-authoring`: pass，说明现有 authoring gate 不覆盖该 contract。
+- 下一轮建议：
+  - 第 64 轮展示 `CONTENT-RELIC-MAP-REVEAL-001` 的行号、A/B 地图探针输出、优先级和修复验收标准。
+  - 后续真实找 bug 可暂时离开 relic 域，转去 UI/渲染层：优先跑 `npm run test:ui-smoke` 和 AppShell/ErrorBoundary 新增测试，确认最近 UI 修复是否真过。
+
+## DeckRogue Bug Loop Cycle 65 - Flow Smoke Fixture Checksum Finding - 2026-05-20
+
+- 循环模式：第 65 轮，UI/渲染层真实 smoke 复核 + 失败链路根因探针找 bug。
+- 审计范围：
+  - 接续第 64 轮建议，先跑现有 UI/flow smoke，而不是直接读组件猜测。
+  - 聚焦 `Reward` / `Shop` 冒烟失败为何无法进入目标 screen：fixture 写入、Launcher 读取、SaveManager 校验、恢复后 active screen。
+- 已通过证据：
+  - `npm run test:ui-smoke`: exit `0`，Vite 启动到 `http://127.0.0.1:60562/`。
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`: `4/4` pass。
+  - `npm run test:map-responsive-smoke`: exit `0`，Vite 启动到 `http://127.0.0.1:51153/`。
+- 新发现：
+  - **UI-FLOW-SMOKE-FIXTURE-001 · 一组 canonical flow smoke fixture 仍写空 checksum，但 `SaveManager.loadGame()` 已强制要求 slot checksum；Launcher 点击“读取”后读档失败并停在启动页，Reward/Shop/Event/Rest/Terminal/Boss 等流程冒烟无法真正覆盖对应 UI。**
+  - 证据位置：
+    - `scripts\validation\flow_smoke_helpers.ts:112-132` `buildSaveData()` 生成 slot metadata 时写入 `checksum: ''`。
+    - `scripts\validation\flow_smoke_helpers.ts:407-427` `buildStoragePayload()` 直接把这些空 checksum slots 写入 `deckrogue_save_slots`。
+    - `src\core\persistence\saveManager.ts:248-260` `loadGame()` 在反序列化前先检查 `slot?.checksum`，缺失则发布 `LoadFailed: Save checksum missing` 并返回 `null`。
+    - `src\core\persistence\setup.ts:191-194` `loadRun()` 收到 `null` 后直接返回 `null`。
+    - `src\ui\views\AppShell.tsx:381-390` `handleLoadSlot()` 对 `null` 只设置 Launcher error，不进入存档中的 screen。
+    - `scripts\validation\playwright_reward_flow_smoke.ts:73-74` 点击 `Reward Flow Smoke` 后等待 `选取一张记忆印痕`。
+    - `scripts\validation\playwright_shop_flow_smoke.ts:76-77` 点击 `Shop Flow Smoke` 后等待 `黑市拾荒者`。
+    - `tests\unit\flowSmokeHelpers.test.ts:50-71` 只验证 room/session 状态，没有验证 fixture 能被 `SaveManager.loadGame()` 接受。
+    - `scripts\validation\check_release_readiness.ts:390-464` release readiness 依赖这组 flow report fresh + green。
+    - `scripts\validation\playwright_real_ui_30_rounds.ts:92-144` real UI rounds 也把 `reward-flow-smoke` / `shop-flow-smoke` 等作为重复场景。
+  - 运行证据：
+    - 复跑 `npm run test:reward-flow-smoke --silent`：
+      - `rewardExit=1`
+      - Vite `http://127.0.0.1:63347/`
+      - 失败点：`scripts\validation\playwright_reward_flow_smoke.ts:74`
+      - 错误：等待 `getByText('选取一张记忆印痕')` 10 秒超时。
+    - 复跑 `npm run test:shop-flow-smoke --silent`：
+      - `shopExit=1`
+      - Vite `http://127.0.0.1:52111/`
+      - 失败点：`scripts\validation\playwright_shop_flow_smoke.ts:77`
+      - 错误：等待 `getByText('黑市拾荒者')` 10 秒超时。
+    - 失败报告刷新后：
+      - `reports\flows\reward-flow-smoke.json`: `reachedReward=false`、`returnedToMap=false`、`consoleErrors=[]`、`pageErrors=[]`、`screenshots=[]`。
+      - `reports\flows\shop-flow-smoke.json`: `reachedShop=false`、`reachedEnchant=false`、`returnedToShop=false`、`returnedToMap=false`、`consoleErrors=[]`、`pageErrors=[]`、`screenshots=[]`。
+    - 最小 SaveManager 探针：
+      - 用 `createRewardFixture()` + `buildStoragePayload()` 写入内存版 `localStorage`。
+      - `new SaveManager().loadGame('reward_flow_smoke')` 返回 `null`。
+      - 捕获 event：`{"type":"LoadFailed","error":"Save checksum missing"}`。
+      - 同一份存档数据按 `SaveManager` 算法的期望 checksum 为非空，例如 `438b2b4`，而 fixture slot checksum 为 `""`。
+    - 全 fixture checksum 枚举：
+      - `reward_flow_smoke`、`shop_flow_smoke`、`event_flow_smoke`、`rest_flow_smoke`、`remove_card_flow_smoke`、`terminal_flow_victory`、`terminal_flow_gameover`、`boss_phase_flow`、`boss_terminal_flow` 的 `checksum` 全是 `""`。
+      - 每个对应 `expectedChecksum` 都是非空值，说明不是单个 fixture 数据缺失，而是 helper contract 没跟上 SaveManager 安全校验。
+  - 风险：
+    - 这是一组 UI flow gate 的系统性假失败：当前失败点发生在读档校验，不能证明 Reward/Shop UI 本身坏，但也导致这些 UI 流程完全没有被覆盖到。
+    - release readiness 依赖 fresh green flow reports；checksum contract 断开后，发布门会持续红，或在旧报告 stale 逻辑下失去真实覆盖。
+    - 如果后续只改 Playwright 等待文案，会掩盖根因；正确验收应从 fixture loadability 入手。
+  - 优先级：P2。它主要破坏验证基础设施和发布门禁，不是直接玩家运行时 bug；但影响面覆盖 canonical flow smoke，所以需要优先修。
+  - 修复方向：
+    - 在 `buildSaveData()` 或 `buildStoragePayload()` 中按 `SaveManager.calculateChecksum` 同算法生成 slot checksum，确保测试 fixture 通过真实读档路径。
+    - 增加单测：所有 `flow_smoke_helpers` fixture 写入 `localStorage` 后，`SaveManager.loadGame(fixture.slotId)` 必须返回非空，且 `state.screen` 等于预期 screen。
+    - 复跑全部 canonical flow smoke：reward、shop、event、rest、upgrade、remove-card、terminal、boss-phase、boss-terminal。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - 读取 `reports\flows\reward-flow-smoke.json` 与 `reports\flows\shop-flow-smoke.json`，确认失败不是 console/page error，而是未到目标 screen。
+  - 复跑 Reward/Shop smoke 均 exit `1`，失败行号与报告一致。
+  - SaveManager 最小探针确认 `LoadFailed: Save checksum missing` 是读档失败根因。
+- 下一轮建议：
+  - 第 66 轮展示 `UI-FLOW-SMOKE-FIXTURE-001` 的文件/行号、复现命令、根因探针输出、优先级和修复验收标准。
+  - 后续找 bug 可继续 UI 验证基础设施：修复 checksum 后再跑全 flow smoke，区分“测试夹具坏”与“具体 UI 流程坏”。
+
+## DeckRogue Bug Loop Cycle 67 - UI Expansion Smoke Gate False Positive Finding - 2026-05-20
+
+- 循环模式：第 67 轮，真实 UI expansion smoke 复跑 + release readiness 报告交叉验证找 bug。
+- 审计范围：
+  - 不重复第 65 轮 canonical `flow_smoke_helpers.ts` 断链，转查 `test:ui-smoke:expansion` 的独立 fixture builder 和发布门对该 report 的判定。
+  - 聚焦两个问题：扩展 UI smoke 是否同样被 save checksum 拒载；release readiness 是否能识别“脚本失败但 finally 写出的半截 report”。
+- 新发现：
+  - **UI-SMOKE-EXPANSION-GATE-001 · `test:ui-smoke:expansion` exit 1 且只跑完 4 个 audit / 1 个 slot，但 `check:release-readiness` 仍把 `ui_smoke_expansion_report` 判成 pass；发布门只检查 error 数组为空，不检查 required audit labels、slot 覆盖或 completed/error 字段。**
+  - 证据位置：
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:155-172` 自带一套 `buildSaveData()`，slot metadata 同样写 `checksum: ''`。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:389-399` 将这些空 checksum slots 注入 `deckrogue_save_slots`。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:492-494` 读取 `UI Smoke Map` 后等待 `button[data-node-id]`，本轮在这里超时。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:549-559` 在 `finally` 中无条件写出 `ui_smoke_expansion_report.json`，但 report 没有 `completed`、`failedStep` 或 `error` 字段。
+    - `scripts\validation\check_release_readiness.ts:342-360` 只检查 `consoleErrors/pageErrors/failedRequests` 和每个已存在 audit 的 image/layout 问题，不检查 audit 数量、required labels、`slotsLoaded` 数量或脚本 exit 状态。
+    - `scripts\validation\gate.ts:76` 正常 gate 会直接运行 `npm run test:ui-smoke:expansion`，但 release-readiness 只读 artifact，二者语义不一致。
+  - 运行证据：
+    - `npm run test:ui-smoke:expansion --silent`：
+      - `uiSmokeExpansionExit=1`
+      - Vite `http://127.0.0.1:54354/`
+      - 失败点：`scripts\validation\playwright_ui_smoke_expansion.ts:494`
+      - 错误：等待 `locator('button[data-node-id]').first()` 10 秒超时。
+    - `output\playwright\ui_smoke_expansion_report.json` 在失败后仍被刷新：
+      - `consoleErrors=[]`
+      - `pageErrors=[]`
+      - `failedRequests=[]`
+      - `audits=["launcher","tutorial","launcher_tablet","character_select"]`
+      - `AuditCount=4`
+      - `slotsLoaded=["UI Smoke Map"]`
+      - `SlotCount=1`
+      - 缺少 `map/combat/reward/shop/event/upgrade/victory` 等后续 audit。
+    - 最小 SaveManager 探针复现 `UI Smoke Map` 读档失败：
+      - `slotChecksum=""`
+      - `expectedChecksum="501b190a"`
+      - `loaded=false`
+      - `loadedScreen=null`
+      - `failures=[{"type":"LoadFailed","error":"Save checksum missing"}]`
+    - `npm run check:release-readiness --silent`：
+      - `releaseReadinessExit=1`
+      - 总计 `pass=30 warn=0 fail=11`
+      - 但 `reports\release\release-readiness.json:155-157` 中 `ui_smoke_expansion_report` 为 `status: "pass"`，evidence 为 `ui smoke expansion report is clean and fresh: ...\ui_smoke_expansion_report.json`。
+  - 风险：
+    - 若其他 flow artifacts 修绿或被补齐，release readiness 可能仍放过一个只覆盖 Launcher/Tutorial/CharacterSelect 的 UI expansion 报告，错误声称 expansion UI smoke 已经 fresh + clean。
+    - 这会隐藏 map/combat/reward/shop/event/upgrade/victory 等扩展视图完全没被审计的事实；截图和 broken-image/layout 检查都停在前 4 个 view。
+    - 该问题与第 65 轮 checksum 断链相关，但新增风险在 release gate：失败 artifact 本身被判 pass，属于发布验收假阳性。
+  - 优先级：P2。它不会直接影响玩家流程，但会削弱发布门的真实性，尤其是 UI expansion coverage。
+  - 修复方向：
+    - `playwright_ui_smoke_expansion.ts` report 增加 `completed: boolean`、`failedStep`、`error`、`expectedAuditLabels`，失败路径写入明确失败字段。
+    - `check_release_readiness.ts` 对 `ui_smoke_expansion_report` 增加 coverage contract：必须包含 required audit labels，`slotsLoaded` 至少覆盖 `UI Smoke Map/Reward/Shop/Event/Upgrade/Victory`，且 `completed === true`。
+    - 删除或复用重复 fixture builder，统一走 `flow_smoke_helpers.ts` 的 checksum-safe fixture 生成。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段。
+  - 真实复跑 `test:ui-smoke:expansion` 得到 exit `1`，并读完失败输出。
+  - 读取 `output\playwright\ui_smoke_expansion_report.json`，确认 report 是半截但 error arrays 全空。
+  - 真实复跑 `check:release-readiness` 并读取 `reports\release\release-readiness.json`，确认 `ui_smoke_expansion_report` 被判 `pass`。
+- 下一轮建议：
+  - 第 68 轮展示 `UI-SMOKE-EXPANSION-GATE-001` 的文件/行号、命令输出、report 字段和修复验收标准。
+  - 后续奇数轮可继续沿 release gate 查类似 artifact-only 假阳性：doctor/security/desktop smoke 是否检查 completion schema，而不只是 freshness + clean arrays。
+
+## DeckRogue Bug Loop Cycle 69 - Security Report Baseline Key Mismatch Finding - 2026-05-20
+
+- 循环模式：第 69 轮，release gate security artifact 真实生成 + 报告 schema 审计找 bug。
+- 审计范围：
+  - 接续第 68 轮建议，检查 release readiness 对 doctor/security/desktop artifacts 是否只看浅层状态。
+  - 当前 `doctor_report` 缺失，release readiness 正确 fail；desktop smoke/build 当前有较完整字段校验，未作为本轮 bug 判定。
+  - 本轮聚焦 `check:vulnerability-scan` -> `report:security` -> `check:release-readiness` 的安全报告链路。
+- 新发现：
+  - **SECURITY-REPORT-BASELINE-KEY-001 · `security_report.ts` 读取 vulnerability baseline 时使用 hyphen-case key，但 `vulnerabilityScanner.ts` 输出 camelCase baseline；导致 `arrayBoundsRisk/nullableAccessRisk/unexpectedDebugCode/unprotectedJsonParse` 对应的关键发现和治理建议永远不会触发，release readiness 仍把这份缺失建议的 security report 判成 pass。**
+  - 证据位置：
+    - `scripts\validation\vulnerabilityScanner.ts:37-46` `VulnerabilityReport.baseline` 类型定义为 `unprotectedJsonParse`、`arrayBoundsRisk`、`nullableAccessRisk`、`unexpectedDebugCode` 等 camelCase。
+    - `scripts\validation\vulnerabilityScanner.ts:1558-1565` 生成 baseline 时也写 camelCase key，并从 hyphen-case `bySubCategory` 汇总。
+    - `scripts\validation\security_report.ts:113-125` `generateKeyFindings()` 却读取 `report.baseline['unprotected-json-parse']`、`['array-bounds-risk']`、`['nullable-access-risk']`、`['unexpected-debug-code']`。
+    - `scripts\validation\security_report.ts:144-147` `generateRecommendations()` 同样读取 hyphen-case key；其中 `array-bounds-risk > 50` 时本应加入“优先处理核心模块的数组越界问题”。
+    - `scripts\validation\check_release_readiness.ts:324-333` release readiness 只看 `securityReport.summary.overallStatus || securityReport.analysis.overallStatus` 是否为 `healthy`，不会检查 baseline recommendations 是否按扫描结果生成。
+  - 运行证据：
+    - `npm run check:vulnerability-scan --silent`：
+      - `vulnerabilityScanExit=0`
+      - 总计 `169` 个潜在问题。
+      - `critical=0`、`high=0`、`medium=97`、`low=72`。
+      - baseline：`arrayBoundsRisk=76`、`nullableAccessRisk=21`、`unexpectedDebugCode=3`、`unprotectedJsonParse=0`。
+    - `npm run report:security --silent`：
+      - `securityReportExit=0`
+      - 输出 `总体状态: HEALTHY`、`风险等级: LOW`。
+      - `reports\security\security-report.json` 中：
+        - `analysis.overallStatus="healthy"`
+        - `analysis.riskLevel="low"`
+        - `metrics.securityDebt=133`
+        - `analysis.keyFindings=["[治理优先级] 安全态势良好，建议保持监控"]`
+        - `analysis.recommendations=["定期运行安全扫描，持续监控安全态势","在 PR 审查中严格执行安全检查流程"]`
+      - 按 `security_report.ts:145` 自身阈值，`arrayBoundsRisk=76 > 50` 应出现“优先处理核心模块的数组越界问题”，但实际缺失。
+    - `npm run check:release-readiness --silent`：
+      - `releaseReadinessExit=1`，整体仍因其他 flow/doctor 缺口失败。
+      - `reports\release\release-readiness.json:150-152` 中 `security_report` 为 `status: "pass"`，evidence 为 `latest security report is healthy and fresh: ...\reports\security\security-report.json`。
+  - 风险：
+    - 安全态势报告会把真实扫描出的 baseline 风险降级为泛化“保持监控”，削弱治理优先级。
+    - release readiness 继承该错误，看到 `healthy` 就判 pass，无法发现 security report 内部 baseline 消费异常。
+    - 这类 key mismatch 很隐蔽：扫描器输出和报告控制台都会打印 baseline 数值，但建议生成逻辑没有任何单测/断言覆盖。
+  - 优先级：P2。它不直接引入运行时漏洞，但会让安全治理和发布报告低估可行动风险。
+  - 修复方向：
+    - 统一 baseline key：`security_report.ts` 改为读取 camelCase key，或显式把 `bySubCategory` hyphen-case 映射成报告内部字段。
+    - 增加单测：给 `arrayBoundsRisk=51` 的 vulnerability report，应生成“优先处理核心模块的数组越界问题”；给 `unprotectedJsonParse=1` 应生成高危 finding/recommendation。
+    - `check_release_readiness.ts` 对 security report 增加 minimum schema：`current.summary.total`、`current.baseline`、`metrics.securityDebt`、`analysis.recommendations` 与 baseline 阈值一致。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改；本轮生成/刷新了 `reports\vulnerability\vulnerability-scan.json`、`reports\security\security-report.json`、`reports\release\release-readiness.json`，并追加此报告段。
+  - 真实运行 `check:vulnerability-scan`、`report:security`、`check:release-readiness` 并读完输出。
+  - 读取生成的 security/release JSON，确认 `arrayBoundsRisk=76`、建议缺失、`security_report` 被 release readiness 判 pass。
+- 下一轮建议：
+  - 第 70 轮展示 `SECURITY-REPORT-BASELINE-KEY-001` 的行号、命令输出、JSON 字段和验收标准。
+  - 后续奇数轮可继续查 doctor report：`gameDoctor.ts` 是否在 fail-fast 或 in-flight 场景下生成可被 release gate 误解的 summary。
+
+## DeckRogue Bug Loop Cycle 71 - Enemy AI Boundary Doctor Finding - 2026-05-20
+
+- 循环模式：第 71 轮，`gameDoctor.ts` 默认 fail-fast 真实运行 + enemy AI boundary checker 定位找 bug。
+- 审计范围：
+  - 接续第 70 轮建议，先检查 `gameDoctor.ts` 是否能真实暴露当前 release/checker 状态。
+  - 本轮不重复 security baseline key mismatch，聚焦 doctor 首个失败 stage 和其背后的 AI import boundary 违规。
+- 新发现：
+  - **AI-BOUNDARY-DEEP-IMPORT-001 · 新增 AI helper 被外部模块用 deep path 直接导入，违反 `check_enemy_ai_boundaries` 要求的 `@/core/ai` 统一入口；`gameDoctor` 默认模式因此在第 9 个 stage 停止。**
+  - 证据位置：
+    - `scripts\validation\check_enemy_ai_boundaries.ts:58-83`：非 `src/core/ai/` 文件只要 import `@/core/ai/...` deep path 就报错，要求外部消费者经 `@/core/ai` barrel 入口导入。
+    - `src\core\events\gameEngine.ts:61`：`import { combatMemory } from '@/core/ai/combatMemory';`，外部 events 层直接 deep import AI 子模块。
+    - `src\runtimeV2\content\buildContentBundle.ts:18`：`import { normalizeIntentPolicyIntent, parseIntentPolicyWeight } from '@/core/ai/intentPolicy';`，runtimeV2 content 层直接 deep import 新增 `intentPolicy`。
+    - `src\core\ai\index.ts:8-15`：barrel 已导出 `combatMemory`，但没有导出 `intentPolicy`，导致 `buildContentBundle.ts` 当前无法按规则从 `@/core/ai` 导入 intent policy helper。
+  - 运行证据：
+    - `npm run lint --silent`: `lintExit=0`，排除首个 stage 即失败。
+    - `npm run doctor:game --silent`：
+      - `doctorExit=1`
+      - 前 8 个 stage pass：`Lint`、`Build`、`Desktop Build`、`Supplemental Unit Tests`、`Check Content Bundle`、`Check Content Reachability`、`Check Deep Reachability`、`Check Content Contract Layer`。
+      - 第 9 个 stage `Check Enemy AI Boundaries` fail，failureType=`content`。
+      - 失败 log：`reports/doctor/logs/Check_Enemy_AI_Boundaries-1779258730953.log`。
+    - 失败 log 内容：
+      - `src/core/events/gameEngine.ts: '@/core/ai/combatMemory' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+      - `src/runtimeV2/content/buildContentBundle.ts: '@/core/ai/intentPolicy' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+    - 直接复跑 `npm run check:enemy-ai-boundaries --silent`：
+      - `enemyAiBoundariesExit=1`
+      - 同样报告上述 2 个 violation。
+  - 附带报告问题：
+    - **DOCTOR-FAILFAST-COVERAGE-001 · `gameDoctor` 默认 fail-fast 停止后，报告只写已运行 stage，`summary.total=9`、`summary.skipped=0`，但源码 stages 列表共有 `44` 个 stage，实际有 `35` 个未运行 stage 未被标记为 skipped。**
+    - 证据位置：
+      - `scripts\doctor\gameDoctor.ts:115-151` `generateReport()` 的 `summary.total` 来自 `results.length`，`skipped` 只统计 `results` 里已有的 `skip` 状态。
+      - `scripts\doctor\gameDoctor.ts:242-247` fail-fast 遇到失败后 `break`，没有为剩余 stages 写入 skip 结果。
+    - 运行证据：
+      - `reports\doctor\report.json`：`failFast=true`、`summary.total=9`、`passed=8`、`failed=1`、`skipped=0`。
+      - 源码 stage 数枚举：`sourceStageCount=44`、`reportTotal=9`、`missingCount=35`。
+      - first missing stages：`Check Enemy AI Profiles`、`Check Enemy Visual Identity`、`Check Enemy Variant Behavior`、`Check Enemy First3 Exposure`、`Check Map Route Constraints`、`Check Combat Orchestration Layer`、`Check UI Runtime Boundaries`、`Check Keyword Registry`。
+  - 风险：
+    - AI layer 边界退化：runtime/content/events 直接耦合 AI 内部文件，后续重构 barrel 或 AI 内部结构时更容易产生跨层破坏。
+    - `intentPolicy.ts` 是本轮新增 helper，但没有加入 `src/core/ai/index.ts`，说明新 AI API 没按既有入口 contract 发布。
+    - doctor fail-fast 报告隐藏未运行 stage，会让读报告的人误以为 doctor 覆盖范围只有 9 个 stage，而不是“44 个中只跑到第 9 个”。
+  - 优先级：
+    - `AI-BOUNDARY-DEEP-IMPORT-001`: P2。当前真实 checker 和 doctor 都红，且跨 runtimeV2/content/events。
+    - `DOCTOR-FAILFAST-COVERAGE-001`: P3。报告语义误导，但不影响 doctor exit code。
+  - 修复方向：
+    - 在 `src/core/ai/index.ts` 导出 `intentPolicy`，并将外部导入改为 `import { combatMemory, normalizeIntentPolicyIntent, parseIntentPolicyWeight } from '@/core/ai';`。
+    - 保留 AI 内部文件之间的 deep import 允许范围；外部层继续走 barrel。
+    - `gameDoctor.ts` 在 fail-fast break 前为未运行 stages 生成 `skip` 结果，或报告中增加 `plannedTotal` / `notRun` 字段。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改；本轮生成/刷新了 `reports\doctor\report.json`、`reports\doctor\report.md` 和 doctor stage logs，并追加此报告段。
+  - 真实运行 `npm run doctor:game --silent`，读完输出和生成的 `reports\doctor\report.json`。
+  - 真实运行 `npm run check:enemy-ai-boundaries --silent`，确认 2 个 boundary violations 稳定复现。
+  - 读取 `src\core\ai\index.ts`，确认 `combatMemory` 已有 barrel export，`intentPolicy` 缺失。
+- 下一轮建议：
+  - 第 72 轮展示 `AI-BOUNDARY-DEEP-IMPORT-001` 和 `DOCTOR-FAILFAST-COVERAGE-001` 的行号、命令输出、报告字段和修复验收标准。
+  - 后续奇数轮可转入修复后全量 doctor/report-all 验证，或继续 runtimeV2/content schema 未覆盖面。
+
+## DeckRogue Bug Loop Cycle 73 - Content Authoring And Potion Dispatcher Findings - 2026-05-20
+
+- 循环模式：第 73 轮，runtimeV2/content schema 未覆盖面真实检查 + 最小运行时探针找 bug。
+- 审计范围：
+  - 接续第 72 轮建议，检查 `contentSchema.ts`、`buildContentBundle.ts`、`potions.json`、`GameEngine.usePotion()`、runtimeV2 content bundle 单测与现有 content checker。
+  - 本轮不修复业务代码，保留第 74 轮展示/判定节奏。
+- 新发现：
+  - **CONTENT-AUTHORING-RELIC-BOM-SILENT-PASS-001 · `check_content_authoring.ts` 对 JSON parse 失败静默返回 `null`，再用 `|| []` 把 relic 数据当成 0 条；当前 `src/content/data/relics.json` 带 UTF-8 BOM，Node `JSON.parse` 失败，但 `npm run check:content-authoring --silent` 仍以 `Relics: 0/0 valid` 和 `overallStatus=pass` 通过。**
+  - 证据位置：
+    - `scripts\validation\check_content_authoring.ts:81-86` `loadJsonFile()` 捕获所有异常后 `return null`，没有把 parse/path 错误计入失败。
+    - `scripts\validation\check_content_authoring.ts:215-219` relics 路径读取后使用 `loadJsonFile(relicsPath) || []`。
+    - `scripts\validation\check_content_authoring.ts:291` 只要 `invalidItems === 0` 就判 `overallStatus='pass'`。
+    - `scripts\validation\check_content_authoring.ts:310` 输出 `Relics: ${valid}/${total} valid`，当前实测为 `Relics: 0/0 valid`。
+    - `package.json:52` `check:content-authoring` 是公开校验脚本；`scripts\doctor\gameDoctor.ts:211` 也把它纳入 doctor stage。
+  - 运行证据：
+    - `npm run check:content-authoring --silent`：exit `0`，输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`。
+    - `reports\content\content-authoring.json`：`relics.total=0`、`relics.valid=0`、`summary.overallStatus="pass"`、`summary.passRate=100`。
+    - `Get-ChildItem src\content\data\relics.json`：文件存在且大小 `62568` bytes。
+    - `node -e JSON.parse(fs.readFileSync('src/content/data/relics.json','utf8'))`：失败，错误为 `Unexpected token '﻿'`。
+    - 读取文件首字节：`EF BB BF 5B 0D 0A 20 20`，确认 relics.json 以 UTF-8 BOM 开头；对照 `cards.json` / `potions.json` 首字节均为 `5B 0D 0A...`。
+  - 风险：
+    - content authoring gate 会把“数据文件无法解析”伪装成“该类内容 0/0 全通过”，doctor 后续一旦跑到该 stage 也可能继承假绿。
+    - 当前 authoring check 同时没有覆盖 potions；runtimeV2/content schema 已有 `validatePotionsData`，但这个发布前 authoring gate 仍不会发现 potion 效果 schema 与运行时 dispatcher 断链。
+  - 优先级：P2。它不会直接破坏玩家流程，但会削弱内容发布门，且已经在真实命令中产生假阳性。
+  - 修复方向：
+    - `loadJsonFile()` 对 parse 失败返回结构化错误或直接 fail，不要静默 `null`。
+    - 对 cards/enemies/relics/potions 增加 expected minimum count；任何非空生产数据文件被读成空数组都应 fail。
+    - 统一 JSON 读取为 BOM-safe 解析或在内容文件规范中禁止 BOM，并补单测覆盖 BOM relic 文件。
+- 新发现：
+  - **POTION-EFFECT-DISPATCH-GAP-001 · `potions.json` 定义的玩家可购买/使用药水效果没有被 `GameEngine.usePotion()` 全量处理：`weak_potion` 的 `ApplyStatus + AllEnemies` 被消费但不给敌人上 Weak，`PurifyingTears` 和 `HexagrammaticWards` effect type 落入 default 空分支。**
+  - 证据位置：
+    - `src\content\data\potions.json:66-80` `weak_potion` 描述为“对全体异端施加 3 层虚弱”，effect 为 `ApplyStatus` / `Weak` / `amount=3` / `target="AllEnemies"`。
+    - `src\content\data\potions.json:153` `purifying_tears` effect type 为 `PurifyingTears`。
+    - `src\content\data\potions.json:183` `hexagrammatic_wards` effect type 为 `HexagrammaticWards`。
+    - `src\core\events\gameEngine.ts:1450-1454` `ApplyStatus` 分支只在 `effect.target === 'Self'` 时改玩家状态，没有 `AllEnemies` 分支。
+    - `src\core\events\gameEngine.ts:1482-1486` 未识别 effect 进入 `default` 后仍会 `splice` 消耗药水。
+    - `src\runtimeV2\content\buildContentBundle.ts:103-105` runtimeV2 content bundle 只投影 potion `id/price`；`src\runtimeV2\contracts.ts:40-42` `ContentBundlePotion` 也只声明 `id/price`，现有 `tests\unit\runtimeV2ContentBundle.test.ts` 没锁 potion effect/toxicity/tags。
+  - 运行证据：
+    - 枚举 `potions.json` effect type 与 `GameEngine.usePotion()` switch case：`unhandled=["PurifyingTears","HexagrammaticWards"]`；`ApplyStatus` potion 中 `weak_potion.target="AllEnemies"`。
+    - 最小 `npx tsx` 探针构造一场含 2 个敌人的战斗，玩家携带 `weak_potion` 后调用 `engine.usePotion(0)`：
+      - `remainingPotions=[]`
+      - `toxicity=2`
+      - `usedThisTurn=1`
+      - `enemyWeak=[0,0]`
+      - `playerStatuses={}`
+    - 同轮真实检查：
+      - `npm run check:content-bundle --silent` exit `0`，`Summary: 7/7 passed`。
+      - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `0`，`1` 个 content bundle 单测通过。
+  - 风险：
+    - 玩家点击这些药水会增加毒性/使用次数并移除药水，但核心效果无效，属于可感知战斗行为 bug。
+    - runtimeV2/Python content bundle 当前无法携带 potion effect 元数据，后续若把 potion use 下沉到 runtimeV2，会继续缺少合同字段。
+    - 现有 content authoring/bundle 单测都绿，说明断链没有验证覆盖。
+  - 优先级：P2。影响具体玩家行为，且药水资源被消耗后无补偿。
+  - 修复方向：
+    - 为 `GameEngine.usePotion()` 增加 `ApplyStatus` 的 `AllEnemies` 分支，并实现/注册 `PurifyingTears`、`HexagrammaticWards` 对应行为。
+    - `validatePotionsData()` 增加 effect type/target schema 与 known dispatcher registry 校验。
+    - `ContentBundlePotion` 与 `buildRuntimeV2ContentBundle()` 按 runtimeV2 需要投影 `name/description/toxicity/tags/effect`，并扩展 `runtimeV2ContentBundle.test.ts`。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实运行 `npm run check:content-authoring --silent`、`npm run check:content-bundle --silent`、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` 并读完输出。
+  - 读取 `reports\content\content-authoring.json` 与 `reports\content\bundle-check.json`，确认 authoring relic 假绿与 bundle check 7/7 pass。
+  - 使用最小 `npx tsx` 探针复现 `weak_potion` 被消耗但敌人 Weak 仍为 0。
+- 下一轮建议：
+  - 第 74 轮展示 `CONTENT-AUTHORING-RELIC-BOM-SILENT-PASS-001` 与 `POTION-EFFECT-DISPATCH-GAP-001` 的文件/行号、命令输出、复现探针和修复验收标准。
+  - 后续奇数轮可继续查 runtimeV2/Python WASM：shop potion 购买后若由 Python core 处理，content bundle 是否需要携带 potion effect/toxicity，以及 `ContentService` bundle 构造是否丢失 potion 名称/描述导致 runtimeV2 shop render 降级。
+
+## DeckRogue Bug Loop Cycle 75 - RuntimeV2 Python Shop Parity Finding - 2026-05-20
+
+- 循环模式：第 75 轮，runtimeV2/Python WASM shop 内容链路真实测试 + 最小 parity 探针找 bug。
+- 审计范围：
+  - 接续第 74 轮建议，检查 `ContentBundlePotion`、`buildRuntimeV2ContentBundle()`、Python rules-core shop 生成、runtimeV2 render/contentService，以及现有 runtimeV2 parity 测试覆盖。
+  - 本轮不修复业务代码，只记录真实行为分叉和覆盖缺口。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-SHOP-PARITY-GAP-001 · real Python rules-core 进入真实 Shop 节点时生成的 shop offers 与 legacy oracle stable fields 不一致；现有 parity tests 只覆盖 Combat 真实路径和 synthetic shop snapshot，放过真实 shop 生成分叉。**
+  - 证据位置：
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:494` `_start_shop()` 是 Python rules-core 的真实 shop 入口。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:511` Python shop card offer 固定 `while len(cards) < 3`，只给 3 张卡。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:523` Python shop relic offer 固定 `while len(relics) < 2`，只给 2 件遗物。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:537-547` Python shop potion offer 从 content bundle 独立随机取 3 个。
+    - `src\core\events\RunFlowManager.ts:346` legacy shop 使用 `generateCardRewards(6, { source: 'shop' })`，给 6 张 shop 卡。
+    - `src\core\events\RunFlowManager.ts:359` legacy shop 生成 3 件遗物。
+    - `src\core\events\RunFlowManager.ts:362` legacy shop 生成 3 个药水，但使用 legacy `weightedShufflePick(potionsData, 3)` 的 RNG/池。
+    - `src\runtimeV2\parity.ts:124-128` stable parity projection 已经包含 `shop.cards` / `shop.relics` / `shop.potions`，所以真实 shop 分叉属于应被 parity 捕获的字段。
+    - `tests\unit\runtimeV2Parity.test.ts:821-837` 真实 Python `enter_node` parity 只找 `Combat` 节点；后续真实 Python baseline 也重复 `findFirstFloorNodeInSnapshot(snapshot, 'Combat')`。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:283-299` shop potion purchase 场景是 `kind: 'synthetic'` 的 `rich_shop_entry` snapshot，legacy/candidate 从同一预设 shop payload 买药水，没有覆盖 Python `_start_shop()` 真实生成。
+  - 运行证据：
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` 个 runtimeV2 TS tests 中 `106 pass / 1 skip`，说明现有 suite 放过该分叉。
+    - Python runtime 单测：`py -m unittest discover -s python_runtime/tests -p "test_*.py"` exit `0`，`Ran 8 tests` / `OK`。
+    - 小集合 TS：`npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2ContentBundle.test.ts` exit `0`，`5` 个测试通过。
+    - 最小 `runResolvedParityScenario` 探针，seed `2`，步骤为 `select_character(informant)` -> 进入双方各自 revealed `Shop` 节点，得到 `diffCount=3`：
+      - `shop.cards`：
+        - legacy：`calculated_strike:50`, `cross_examiner:75`, `information_broker:150`, `intel_network:50`, `sudden_confession:75`, `witness_box_trap:150`
+        - candidate Python：`blackout_round:50`, `entropy_taint:50`, `intel_dump:75`
+      - `shop.relics`：
+        - legacy：`cooling_retort:190`, `marsh_vows:150`, `verdict_cog:220`
+        - candidate Python：`fracture_lens:150`, `funeral_dynamo:260`
+      - `shop.potions`：
+        - legacy：`energy_potion:110`, `purifying_tears:155`, `strength_potion:80`
+        - candidate Python：`block_potion:65`, `healing_potion:65`, `weak_potion:75`
+    - 同轮合法 PythonProcessAdapter shop 探针，seed `2`，revealed shop node `floor_1_node_3`：
+      - `screen="Shop"`、`phase="shop"`
+      - `potionOffers=[{"id":"block_potion","price":65},{"id":"weak_potion","price":75},{"id":"healing_potion","price":65}]`
+      - 每个 potion offer 只有 `["id","price"]` 字段。
+    - 对照 legacy GameEngine 同 seed `2` 进入同名 revealed shop node `floor_1_node_3`：
+      - `shopPotions=["energy_potion","purifying_tears","strength_potion"]`
+      - render potions 分别为 `能量药剂` / `净化之泪` / `力量药剂`。
+  - 附带覆盖缺口：
+    - `buildRuntimeV2ContentBundle()` 当前把 raw potion 从 `{ id, name, description, price, toxicity, tags, effect }` 降成 `{ id, price }`：
+      - 探针中 `rawKeys=["description","effect","id","name","price","tags","toxicity"]`
+      - `bundledKeys=["id","price"]`
+    - `new ContentService(buildRuntimeV2ContentBundle() as any).getPotion('healing_potion')` 也只剩 `{ id, price }`；默认 `new ContentService()` 才能从 raw JSON 读到名称/描述/effect。
+    - 目前 `createRenderModel(snapshot)` 使用全局 raw `ContentService` 时仍能富化 Python shop render 文案，所以该字段丢失暂不单独判 P2；但它解释了 Python shop snapshot/contract 只携带 `id/price`，并使后续 potion use 下沉到 Python 时缺少 effect 合同。
+  - 风险：
+    - runtimeV2 Python core 若作为规则源接管 Shop，玩家看到的 shop 内容与 legacy 路线/经济设计不一致，卡牌数从 6 降到 3、遗物数从 3 降到 2，且商品池完全分叉。
+    - parity suite 现在会给出整体绿灯，但没有真实 Shop 节点 parity 用例；synthetic shop 用例只能验证购买命令，不验证 shop 生成。
+    - 第 73 轮的 potion dispatcher 断链会被该分叉放大：Python seed 2 首店会给 `weak_potion`，legacy seed 2 首店给 `purifying_tears`，两边都可能触发不同的无效药水路径。
+  - 优先级：P2。它影响 runtimeV2/Python 替换 legacy 时的玩家可见 shop 规则，而且现有 parity gate 误报安全。
+  - 修复方向：
+    - 给 `runtimeV2Parity.test.ts` 增加真实 Python `Shop` 节点 parity 场景，直接断言 `shop.cards/relics/potions/cardRemovalCost` stable fields。
+    - Python `_start_shop()` 要么复刻 legacy `RunFlowManager.enterShop()` 的 6 cards / 3 relics / 3 potions / route-aware selection 规则，要么在 parity 设计中显式声明 Shop 尚未对齐并从 release gate 中排除。
+    - 扩展 `ContentBundlePotion`/`buildRuntimeV2ContentBundle()` 的 potion metadata 投影前，先明确 Python core 是否要负责 potion use；若要负责，必须携带 `effect/toxicity/tags`。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实运行 Python 单测、runtimeV2 小集合 TS tests、完整 `npm run test:runtime-v2:ts --silent` 并读完输出。
+  - 使用最小 `runResolvedParityScenario` 探针复现 seed `2` 真实 Shop parity `diffCount=3`。
+  - 使用 PythonProcessAdapter 与 legacy GameEngine 分别进入 seed `2` revealed `floor_1_node_3` shop，确认 offer 数量和 potion IDs 分叉。
+- 下一轮建议：
+  - 第 76 轮展示 `RUNTIMEV2-PYTHON-SHOP-PARITY-GAP-001` 的行号、真实 parity diff、现有测试为什么没抓住，以及修复验收标准。
+  - 后续奇数轮可继续沿 runtimeV2/Python 查 Rest/Event/Reward 非 combat 真实节点是否也存在 synthetic-only coverage gap。
+
+## DeckRogue Bug Loop Cycle 77 - RuntimeV2 Python Event Reward Parity Finding - 2026-05-20
+
+- 循环模式：第 77 轮，runtimeV2/Python 非 combat 真实节点 parity 探针 + targeted parity test 找 bug。
+- 审计范围：
+  - 接续第 76 轮建议，沿 Rest/Event/Reward 真实节点继续查 “synthetic-only coverage gap”。
+  - 本轮以 Rest 作为对照样本：seed `5` 进入真实 Rest 节点，stable projection `diffCount=0`，说明探针不是无差别报错。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-EVENT-REWARD-PARITY-GAP-001 · real Python rules-core 的真实 Event 与 Reward 生成仍与 legacy oracle 分叉；现有 runtimeV2Parity 单测全部绿，但真实 Python Event 没有用例，Reward 用例只比数量不比 `cardIds`。**
+  - 证据位置：
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:192-196` Python `_start_event()` 只从 `content_bundle.events` 取事件；bundle 没有 events 时退回 `mysterious_shrine` / `heretic_altar` 两个硬编码 fallback。
+    - `src\runtimeV2\contracts.ts:89` `ContentBundle.events` 是 optional；`src\runtimeV2\content\buildContentBundle.ts:108-115` 当前返回 `version/characters/cards/relics/potions/enemies/map`，没有投影 story events。
+    - `src\core\events\EventManager.ts:101-162` legacy `startEvent()` 使用 `STORY_EVENTS`、楼层范围、路线 tag、权重和 route multiplier 选择事件。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1098-1146` Python `_generate_reward_cards()` 使用 content bundle card pool、planned rewards 和 runtime random 选择奖励。
+    - `src\core\events\EventManager.ts:762-781` legacy `generateCardRewards()` 使用 route profile、`seedKey`、`chooseUniqueSeeded()` 等稳定哈希/路线逻辑。
+    - `src\core\events\gameEngine.ts:1337` legacy combat victory 显式走 `eventManager.generateCardRewards(3, { source: 'combat' })`。
+    - `src\runtimeV2\parity.ts:163-166` reward stable projection 只有 `strictStableFields=true` 时才比较 `reward.cardIds`，默认只比较 `cardCount`。
+    - `tests\unit\runtimeV2Parity.test.ts:932-961` “matches legacy reward offers” 真实 Python 测试只断言 `reward.cardIds.length` 一致，未断言具体 card IDs；真实 Python enter-node 系列仍反复使用 `findFirstFloorNodeInSnapshot(snapshot, 'Combat')`，没有 Event 节点 parity。
+  - 运行证据：
+    - `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`30` 个 tests 全部 pass。
+    - 最小 `runResolvedParityScenario` 探针，Rest 对照：
+      - seed `5`，进入双方 revealed `Rest` 节点。
+      - `diffCount=0`，双方 lifecycle 都是 `screen="Rest" / phase="rest" / pendingNodeResolution=true`。
+    - 最小 `runResolvedParityScenario` 探针，Event：
+      - seed `1`，进入双方 revealed `Event` 节点。
+      - `diffCount=1`，字段 `activeEvent.id` 分叉。
+      - legacy：`rusting_medicae`
+      - candidate Python：`mysterious_shrine`
+      - 双方 lifecycle 都是 `screen="Event" / phase="event" / pendingNodeResolution=true`，说明差异集中在事件选择，不是节点进入失败。
+    - 最小 `runResolvedParityScenario` 探针，Reward：
+      - seed `12345`，`select_character(informant)` -> revealed `Combat` -> `complete_combat`，开启 `strictStableFields=true`。
+      - `diffCount=1`，字段 `reward.cardIds` 分叉。
+      - legacy：`["martyr_vector","shadow_step","vanishing_strike"]`
+      - candidate Python：`["shadow_step","turn_the_tables","vanishing_strike"]`
+      - 双方 lifecycle 都是 `screen="Reward" / phase="reward" / pendingNodeResolution=true`。
+  - 风险：
+    - Python runtime 接管 Event 后，玩家会看到与 legacy 路线/楼层权重完全不同的事件；当前 content bundle 甚至没有 story events，Python 直接落到两个 fallback 事件。
+    - Python runtime 接管 Reward 后，奖励候选具体卡可能分叉；现有测试名声称 “matches legacy reward offers”，但实际只检查数量，发布门会误以为 Reward offers 已对齐。
+    - 第 75 轮 Shop gap 与本轮 Event/Reward gap 组合后，runtimeV2/Python 只有 Combat/Rest 局部较稳，非 combat 真实生成链路仍不足以替换 legacy。
+  - 优先级：P2。它影响玩家可见的事件和奖励内容，并且现有 parity 测试给出误导性绿灯。
+  - 修复方向：
+    - 给真实 Python Event 节点增加 parity 测试，至少断言 `activeEvent.id` 与 legacy 一致或显式标记 Event 未对齐。
+    - 将 story events 投影进 `ContentBundle.events`，或让 Python `_start_event()` 调用与 legacy 等价的楼层/路线/权重选择逻辑。
+    - Reward 真实 Python parity 用例开启 `strictStableFields=true` 或直接断言 `reward.cardIds` 集合一致，避免只比数量。
+    - 对 Python `_generate_reward_cards()` 与 legacy `EventManager.generateCardRewards()` 的 planned reward/route-aware selection 做合同化同步。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实运行 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` 并读完输出，确认 30/30 pass。
+  - 使用最小 `runResolvedParityScenario` 探针复现 Rest 0 diff、Event `activeEvent.id` diff、Reward `reward.cardIds` diff。
+- 下一轮建议：
+  - 第 78 轮展示 `RUNTIMEV2-PYTHON-EVENT-REWARD-PARITY-GAP-001` 的行号、seed、diff 字段、现有测试误报原因和修复验收标准。
+  - 后续奇数轮可继续查 desktop 打包或 UI/runtime boundary：特别是 release gate 是否把这些 parity 覆盖缺口当作已通过。
+
+## DeckRogue Bug Loop Cycle 79 - Release RuntimeV2 Parity Gate Coverage Finding - 2026-05-20
+
+- 循环模式：第 79 轮，release readiness / doctor / runtimeV2 parity artifacts 真实检查 + 源码审计找 bug。
+- 审计范围：
+  - 接续第 78 轮建议，检查发布准出链是否会阻断第 75 轮 Shop parity gap 与第 77 轮 Event/Reward parity gap。
+  - 本轮不修复业务代码，只确认 release/doctor gate 与现有 runtimeV2 parity artifacts 的覆盖关系。
+- 新发现：
+  - **RELEASE-RUNTIMEV2-PARITY-COVERAGE-GAP-001 · release readiness 与 game doctor 没有把 runtimeV2 parity suite、`runtime_v2_parity_report` 或 adapter differential parity report 纳入准出；一个现成 adapter parity 红灯不会阻断 release readiness，而另一个 `--require-perfect` parity report 会绿灯但只覆盖 map/combat count 级样本。**
+  - 证据位置：
+    - `package.json:84` 存在 `test:runtime-v2:ts`，包含 `runtimeV2Parity.test.ts`、`runtimeV2ParityReport.test.ts`、`pythonInterop.test.ts`、`pythonWasmAdapter.test.ts` 等 runtimeV2 相关测试集合。
+    - `scripts\doctor\gameDoctor.ts:193-238` doctor stage 列表包含 lint/build/desktop/content/AI/flow/desktop smoke/release readiness，但没有 `test:runtime-v2:ts`，也没有 `scripts/analysis/runtime_v2_parity_report.ts` 或 `scripts/validation/check_runtime_v2_adapter_differential_parity.ts`。
+    - `scripts\validation\check_release_readiness.ts:302-363` 只读取 doctor/security/UI smoke expansion artifacts。
+    - `scripts\validation\check_release_readiness.ts:390-430` canonical flow artifacts 只检查 reward/terminal/shop/event/rest 等 Playwright flow smoke JSON。
+    - `scripts\validation\check_release_readiness.ts:553-570` release readiness 总检查列表由 version/docs/build/desktop/save/enemy/doctor+security/UI+flow/artifact weight 组成，没有 runtimeV2 parity artifact。
+    - `scripts\analysis\runtime_v2_parity_report.ts:199-223` `combat_reward_stable` 对 reward 只确认 stable diff count、reward card 数量和 source；没有强制比较第 77 轮暴露的 `reward.cardIds`。
+    - `scripts\validation\check_runtime_v2_adapter_differential_parity.ts:165-207` adapter differential parity 会写 `reports/runtime_v2/adapter-differential-parity.json` 并在 `pass=false` 时 exit 1，但 release readiness 没有读取该报告。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:168-190`、`:207-299` adapter catalog 的 Event/Shop 场景是 `kind: 'synthetic'` snapshot，验证事件退出/商店购买动作，不覆盖 Python `_start_event()` / `_start_shop()` 的真实生成。
+  - 运行证据：
+    - 读取最新 `reports/release/release-readiness.json`，timestamp `2026-05-20T07:31:02.599Z`，summary 为 `total=41 / passed=31 / warned=0 / failed=10 / overallStatus=fail`；程序化过滤 check id/evidence 中的 `runtime|parity|adapter|python|v2`，结果为空。
+    - 同一 release report 的失败来自 `doctor_report` 与多个 flow smoke artifact 缺失或不绿；没有任何 runtimeV2 parity check id，即使 runtimeV2 adapter parity 已红也不会出现在 release summary。
+    - 读取 `reports\doctor\report.json`，timestamp `2026-05-20T06:32:11.069Z`，当前实际 stage names 只有 `Lint`、`Build`、`Desktop Build`、`Supplemental Unit Tests`、content checks、`Check Enemy AI Boundaries` 等已执行阶段；程序化过滤 stage name/command 中的 `runtime|parity|v2|python`，结果为空。
+    - 运行 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=3 --max-seed=20 --require-perfect`：exit `0`，写出 `output\runtime_v2\parity_report.json`。
+    - 读取 `output\runtime_v2\parity_report.json`：`map_full_bridge`、`map_native_metadata`、`map_native_topology`、`combat_reward_stable` 各 `3/3 pass`，共 12 entries，seeds 仅 `1,2,3`；没有 Shop/Event/Rest 真实节点 parity entry，也没有 Reward `cardIds` strict comparison entry。
+    - 运行 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts`：exit `1`，输出 `passCount: 14/18`，写出 `reports\runtime_v2\adapter-differential-parity.json`。
+    - 读取 `reports\runtime_v2\adapter-differential-parity.json`：`pass=false`，失败样本包括：
+      - `adapter_shared_shop_card_purchase` seed `74`：`buy_shop_card:routeState.recentCommits` legacy `[]`，candidate `["shop:informant:intel:1:12"]`。
+      - `adapter_shared_shop_card_then_remove_cancel` seed `76`：同一路由提交差异继续污染 remove/cancel 后续 stable fields。
+      - `adapter_synthetic_rest_relic_upgrade_confirm` seed `71`：`player.gold` legacy `799`，candidate `999`。
+      - `adapter_synthetic_event_free_remove_confirm` seed `72`：candidate 清空 `activeEvent/roomSession`，legacy 仍保持 event room session，且 `pendingNodeResolution` 分叉。
+  - 风险：
+    - 发布准出会继续被 flow smoke/doctor 等红灯阻断，但它无法表达 runtimeV2 parity 是否安全；一旦 flow smoke 被补齐，runtimeV2/Python 非 combat 分叉仍可能绕过 release readiness。
+    - 第 75/77 轮玩家可见 Shop/Event/Reward 分叉不会被 `runtime_v2_parity_report --require-perfect` 抓住，因为该报告目前只覆盖 map 与 combat reward count/source 层面。
+    - adapter differential parity 已经有 4 个红样本，但不在 doctor/release 链里；维护者容易误读为 release readiness 已覆盖 runtimeV2 parity。
+  - 优先级：P2。它不会直接造成运行时崩溃，但会让发布门给 runtimeV2/Python parity 覆盖造成错误安全感，影响后续 runtimeV2 接管决策。
+  - 修复方向：
+    - 在 doctor stage 中加入 `npm run test:runtime-v2:ts`，并单独加入 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --require-perfect` 与 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` 或等价 npm script。
+    - 在 `check_release_readiness.ts` 中读取 `output/runtime_v2/parity_report.json` 与 `reports/runtime_v2/adapter-differential-parity.json`，要求 fresh 且 pass/summary 无 failure；缺失时明确 fail。
+    - 扩展 parity report：加入真实 Shop/Event/Rest node samples，并对 Reward 开启 `strictStableFields=true` 或显式比较 `reward.cardIds`，否则不要把 `combat_reward_stable` 命名成 reward offers 已完全对齐。
+    - 对 adapter differential parity 的 4 个现有红样本单独建修复票；即使 release gate 暂未纳入，也不应丢失该红灯。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 读取最新 `reports/release/release-readiness.json` 并程序化列出 check IDs，确认没有 runtime/parity/runtime_v2 相关 check。
+  - 读取 `reports\doctor\report.json` 并程序化过滤 stage names/commands，确认当前 report 与源码 stage 列表均未运行 runtimeV2 parity。
+  - 真实运行并读完 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=3 --max-seed=20 --require-perfect` 输出与 `output\runtime_v2\parity_report.json`。
+  - 真实运行并读完 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` 输出与 `reports\runtime_v2\adapter-differential-parity.json`。
+- 下一轮建议：
+  - 第 80 轮展示 `RELEASE-RUNTIMEV2-PARITY-COVERAGE-GAP-001` 的 release check IDs、doctor stages、两个 parity artifact 的正反输出、P2 判定和修复验收标准。
+  - 后续奇数轮可沿 adapter differential parity 的 4 个红样本继续打：优先查 synthetic shop card purchase 为什么 candidate 写入 `routeState.recentCommits` 而 legacy 没写。
+
+## DeckRogue Bug Loop Cycle 81 - Python Shop Neutral Route Commit Finding - 2026-05-20
+
+- 循环模式：第 81 轮，adapter differential parity 红样本复跑 + 最小复现 + 源码数据流审计找 bug。
+- 审计范围：
+  - 接续第 80 轮建议，优先追 `adapter_shared_shop_card_purchase` 为什么 Python candidate 写入 `routeState.recentCommits` 而 legacy oracle 没写。
+  - 本轮不修复业务代码，只定位根因与影响面。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-SHOP-NEUTRAL-ROUTE-COMMIT-001 · Python rules-core 的 `buy_shop_card` 对任何 shop card 购买都按当前 `route_state.primary_tag` 记录 `shop` commit；legacy 只在所购卡本身有路线标签时记录。购买中性/通用卡会被 Python 错记为路线确认，污染 routeState 并导致 parity 红灯。**
+  - 证据位置：
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:89-97` Node adapter 实际从 `python_runtime/src` 启动 `deckrogue_rules_core.cli`，所以本轮红样本命中真实 Python rules-core。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:256-266` 已有 `_card_route_signal(card_id)`，能从 content bundle 读取卡的 `route_tags` 与 `route_signal_strength`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:433-454` `_record_route_commit(source, weight, tag=None)` 在 `tag` 未传入时 fallback 到 `route_state.primary_tag`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:566-586` `_apply_buy_shop_card()` 扣钱、加卡、移除 offer 后直接调用 `_record_route_commit("shop", 12)`，没有根据 `card_id` 查 `_card_route_signal()`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1067-1070` reward 选择路径反而会先取 `selected_card_id` 的 `_card_route_signal()`，只有存在 `commit_tag` 时才记录 reward commit，说明 Python 侧已有正确模式可复用。
+    - `src\content\narrative\pythonRuntime.ts:256-270` 与 `:382-402` 内嵌 WASM Python runtime 也有同类逻辑：`_record_route_commit()` fallback primary tag，`_apply_buy_shop_card()` 无条件调用 `_record_route_commit("shop", 12)`。
+    - `src\core\events\RunFlowManager.ts:382-384` legacy `buyCard()` 使用所购 `card` 自身计算 `committedTag`，然后 `maybeRecordRouteCommit(...)`；`src\content\narrative\routeState.ts:221-229` 在 tag 为空时不写 commit。
+    - `src\runtimeV2\content\buildContentBundle.ts:65-73` content bundle 已把每张卡的 `route_tags` 投影给 Python，因此 Python 有足够数据按所购卡判断。
+    - `src\runtimeV2\parity.ts:138-142` 在 `strictStableFields=true` 时会比较 `routeState.recentCommits`，所以该分叉属于 stable parity 应抓的问题。
+  - 运行证据：
+    - 复跑 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts`：exit `1`，输出 `passCount: 14/18`；失败仍包含 `adapter_shared_shop_card_purchase` 与 `adapter_shared_shop_card_then_remove_cancel`。
+    - 读取 `reports\runtime_v2\adapter-differential-parity.json`：
+      - `adapter_shared_shop_card_purchase` seed `74`：`buy_shop_card:routeState.recentCommits`，legacy `[]`，candidate `["shop:informant:intel:1:12"]`。
+      - `adapter_shared_shop_card_then_remove_cancel` seed `76`：同一 `recentCommits` 分叉延续到 `enter_remove_card` 和 `cancel_remove_card`。
+    - 最小 `npx tsx` 复现直接调用 parity catalog 的 `adapter_shared_shop_card_purchase`：
+      - initial routeState：`{"primaryTag":"informant:intel","confidence":100,"stage":"committed","recentCommits":[]}`。
+      - initial cards 按价格排序：`mirror_tail:50`、`cipher_dead_drop:50`、`precision_strike:75`、`evidence_laundering:75`、`desperate_guard:150`、`pain_dividend:150`。
+      - followup command 买最便宜的 `mirror_tail`。
+      - `buy_shop_card` 后双方 deck tail 都包含 `mirror_tail`，说明买的是同一张卡；唯一 diff 为 `routeState.recentCommits`：legacy `[]`，candidate `[{"tag":"informant:intel","source":"shop","floor":1,"weight":12}]`。
+    - route signal 探针确认：
+      - `mirror_tail`：`signal=null`、`affinity=null`、`tags=[]`。
+      - `cipher_dead_drop`：`routeTags=["informant:intel"]`。
+      - `precision_strike`：`routeTags=["informant:intel"]`。
+    - content bundle 探针确认：
+      - `mirror_tail` 投影为 `route_tags=[] / route_signal_strength=0 / early_game_role=null`。
+      - `cipher_dead_drop` 与 `precision_strike` 均带 `informant:intel` route tags。
+    - 相关 legacy 覆盖复跑：`npx tsx --test tests/unit/growthRoutePhase2.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` exit `0`，`26/26 pass`；其中现有测试只覆盖 aligned card/relic purchase 会写 commit，未覆盖 neutral shop card 不应写 commit。
+  - 风险：
+    - Python runtime 接管 shop 时，玩家只要在已 committed 路线状态下购买任意中性/通用卡，routeState 就会被追加一次假的路线确认。
+    - 该假 commit 会提高当前路线权重，影响后续 reward/event/shop/rest 的路线推荐、排序或路线状态阶段判定；连续误写还可能让 pivot 更难发生。
+    - WASM 内嵌 runtime 也有同样 shop 购买逻辑，后续 Python WASM 接管时会复现。
+  - 优先级：P2。它不会立即崩溃，但会污染跨房间的路线决策状态，并且已在 adapter differential parity 中稳定红灯。
+  - 修复方向：
+    - Python `_apply_buy_shop_card()` 应模仿 reward 路径：`signal = self._card_route_signal(card_id)`，只有 `signal` 存在时用 `signal["route_tags"][0]` 调 `_record_route_commit("shop", 12, commit_tag)`。
+    - 同步修 `src\content\narrative\pythonRuntime.ts` 的 WASM 内嵌 runtime，避免 Node/Python process 与 WASM runtime 分叉。
+    - 增加 adapter parity 用例：购买 neutral shop card 后 `routeState.recentCommits` 必须保持不变；购买 route-tagged shop card 后双方都写相同 `shop:<tag>:<floor>:12`。
+    - 保留现有 aligned-card legacy tests，同时补 neutral-card negative test，防止修复时误删合法 shop commit。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实复跑 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` 并读完输出，确认 `14/18` 仍红。
+  - 使用最小 `npx tsx` 复现 seed `74`，确认 `mirror_tail` 购买后双方 deck 相同但 route commit 分叉。
+  - 使用 route signal/content bundle 探针确认 `mirror_tail` 无 route tag，而 Python candidate 仍记录 `informant:intel`。
+  - 复跑 `npx tsx --test tests/unit/growthRoutePhase2.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 并读完 `26/26 pass`，确认现有覆盖只证明 aligned shop commit 正常。
+- 下一轮建议：
+  - 第 82 轮展示 `RUNTIMEV2-PYTHON-SHOP-NEUTRAL-ROUTE-COMMIT-001` 的文件/行号、seed 74 复现、`mirror_tail` route tag 证据、P2 风险和修复验收标准。
+  - 后续奇数轮可继续 adapter differential parity 另外两个红样本：`adapter_synthetic_rest_relic_upgrade_confirm` 的 candidate 未扣 `player.gold`，或 `adapter_synthetic_event_free_remove_confirm` 的 roomSession/activeEvent 清理分叉。
+
+## DeckRogue Bug Loop Cycle 83 - Python Relic Upgrade Cost ID Mismatch Finding - 2026-05-20
+
+- 循环模式：第 83 轮，adapter differential parity 红样本复跑 + 最小复现 + Python rules-core 费用表审计找 bug。
+- 审计范围：
+  - 接续第 82 轮建议，优先追 `adapter_synthetic_rest_relic_upgrade_confirm` 为什么 Python candidate 升级遗物后没有扣 `player.gold`。
+  - 本轮不修复业务代码，只定位根因与影响面。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-RELIC-UPGRADE-COST-ID-MISMATCH-001 · `python_runtime` 的真实 Python rules-core 费用表仍使用不存在的旧 ID `chaos_sanctum_relic`，而当前内容、legacy 升级配置、parity case 都使用 `entropy_sanctum_relic`；因此 Python process 对该腐化遗物升级返回 0 费用，遗物升到 2 级但金币不扣。**
+  - 证据位置：
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:89-97` Node adapter 实际从 `python_runtime/src` 启动 `deckrogue_rules_core.cli`，本轮红样本命中真实 Python 子进程。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:343-357` synthetic case `adapter_synthetic_rest_relic_upgrade_confirm` 加载 rest relic upgrade snapshot，然后对 legacy/candidate 同时执行 `upgrade_relic`，目标都是 `entropy_sanctum_relic`。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:124-141` 该 snapshot 给玩家 `999` gold，并放入 corrupted `entropy_sanctum_relic`。
+    - `src\core\relic\RelicUpgrade.ts:105-110` legacy 升级配置里当前合法 ID 是 `entropy_sanctum_relic`，从 level 1 升到 level 2 的 cost 是 `200`。
+    - `src\core\events\gameEngine.ts:952-956` legacy `upgradeRelic()` 使用 `getRelicUpgradeInfo()` 的 `nextLevelCost` 扣金币。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:480-492` Python `_get_relic_upgrade_cost()` 的硬编码表却写成 `chaos_sanctum_relic: {1: 200, 2: 280}`，没有 `entropy_sanctum_relic`，miss 后返回 `0`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:735-751` `_apply_upgrade_relic()` 会使用该 cost 扣金币并升级，因此 cost=0 时表现为免费升级。
+    - `src\content\narrative\pythonRuntime.ts:296-308` WASM 内嵌 Python runtime 已是 `entropy_sanctum_relic`，说明这是 `python_runtime/src` 与嵌入 runtime 的漂移，不是内容配置缺失。
+    - `src\content\data\relics.json:444` 以及 `src\features\relics\relicSystem.ts:217-230` 均只使用 `entropy_sanctum_relic`；`rg` 只在 `python_runtime` 费用表中发现 `chaos_sanctum_relic`。
+  - 运行证据：
+    - 复跑 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts`：exit `1`，输出 `passCount: 14/18`，写出 `reports\runtime_v2\adapter-differential-parity.json`，timestamp `2026-05-20T08:04:14.330Z`。
+    - 读取 fresh JSON：`adapter_synthetic_rest_relic_upgrade_confirm` seed `71` 仍失败，`upgrade_relic:player.gold` legacy `799`、candidate `999`；`cancel_relic_upgrade:player.gold` legacy `799`、candidate `999`。
+    - 最小 `npx tsx` parity probe 直接跑该 scenario：
+      - `rest_relic_upgrade_load` 后双方 gold 都是 `999`，`entropy_sanctum_relic` 均为 `level=1 / corrupted=true`。
+      - `enter_relic_upgrade` 后双方 lifecycle 都是 `RelicUpgrade / relic_upgrade`。
+      - `upgrade_relic` 后双方 relic 都变为 `level=2 / corrupted=false`，但 legacy gold `799`、candidate gold `999`。
+      - `cancel_relic_upgrade` 后该金币差异继续保留。
+    - 直接 Python 费用探针：
+      - `$env:PYTHONPATH='python_runtime/src'; py -3 -` 调用 `RuleRuntime._get_relic_upgrade_cost(...)`。
+      - 输出 `{'entropy_level1_cost': 0, 'chaos_level1_cost': 200}`，确认真实 Python process 会对当前合法遗物 ID 返回 0。
+    - content/config 探针：
+      - `buildRuntimeV2ContentBundle()` 中 `entropy_sanctum_relic` 存在，`chaos_sanctum_relic` 不存在。
+      - `RELIC_UPGRADE_CONFIGS` 中 `entropy_sanctum_relic` 的 level 2 cost 为 `200`，`chaos_sanctum_relic` 没有 config。
+  - 风险：
+    - runtimeV2 切到 Python process 后，玩家在 rest relic upgrade 里升级 `entropy_sanctum_relic` 可免费清除 corrupted 并升到 level 2，经济状态与 legacy 永久分叉。
+    - 因为遗物状态已经升级但 gold 没扣，后续商店/休息/事件可购买力会被高估；保存/恢复后也会保留错误金币。
+    - WASM 内嵌 runtime 与 `python_runtime` 文件已经漂移，后续只验证 WASM 或 TS legacy 会漏掉 Node/Python process 专属 bug。
+  - 优先级：P2。它不会立即崩溃，但会造成稳定经济作弊和 adapter parity 红灯，影响 runtimeV2 Python process 接管。
+  - 修复方向：
+    - 将 `python_runtime\src\deckrogue_rules_core\runtime.py` 的 `chaos_sanctum_relic` 改为 `entropy_sanctum_relic`，并考虑从 content/TS `RELIC_UPGRADE_CONFIGS` 生成或投影费用表，减少双份硬编码漂移。
+    - 增加 Python process adapter test：升级 `entropy_sanctum_relic` 后 gold 必须从 `999` 变为 `799`，且 relic `level=2 / corrupted=false`。
+    - 增加 guard：费用表 miss 时不要静默返回 0；对 corrupted 且可升级遗物应抛出缺失配置错误，避免免费升级。
+    - 保持 `src\content\narrative\pythonRuntime.ts` 与 `python_runtime/src` 的 runtime 源同步，或建立 drift check。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实复跑 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` 并读完输出，确认 `14/18` 仍红。
+  - 读取 fresh `reports\runtime_v2\adapter-differential-parity.json`，确认 timestamp `2026-05-20T08:04:14.330Z` 与 seed `71` gold diff。
+  - 使用最小 `npx tsx` scenario probe，确认 candidate 遗物已升级但 gold 未扣。
+  - 使用直接 Python 费用探针，确认 `entropy_sanctum_relic` cost 为 `0`、旧 `chaos_sanctum_relic` cost 为 `200`。
+- 下一轮建议：
+  - 第 84 轮展示 `RUNTIMEV2-PYTHON-RELIC-UPGRADE-COST-ID-MISMATCH-001` 的文件/行号、seed 71 复现、费用表 ID mismatch 证据、P2 风险和修复验收标准。
+  - 后续奇数轮可继续 adapter differential parity 最后一个红样本：`adapter_synthetic_event_free_remove_confirm` 的 `roomSession/activeEvent/pendingNodeResolution` 清理分叉。
+
+## DeckRogue Bug Loop Cycle 85 - Event Free Remove Confirm Stuck Pending Finding - 2026-05-20
+
+- 循环模式：第 85 轮，adapter differential parity 最后红样本复跑 + 最小复现 + core event/remove flow 源码审计找 bug。
+- 审计范围：
+  - 接续第 84 轮建议，追 `adapter_synthetic_event_free_remove_confirm` 的 `roomSession / activeEvent / pendingNodeResolution` 分叉。
+  - 本轮不修复业务代码，只定位根因与影响面。
+- 新发现：
+  - **EVENT-FREE-REMOVE-CONFIRM-STUCK-PENDING-001 · legacy `GameEngine.removeCard()` 在事件免费移除确认后先把 `screen` 改成 `Map`，再调用 `leaveCurrentRoomToMap()`；`RunFlowManager` 因当前 phase 已是 `map` 而拒绝 `EVENT_RESOLVED`，随后回滚 `activeEvent/roomSession/pendingNodeResolution`，导致事件房间残留为 pending。Python process candidate 清理为 `Map + pending=false`，反而符合当前保存/恢复验证脚本的确认移除期望。**
+  - 证据位置：
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:147-162` 构造 `eventFreeRemoveSnapshot`：`screen='RemoveCard'`，`activeEvent.id='nameless_martyr_shrine'`，`stage='free_remove'`，`freeRemovalsRemaining=2`，并用 event free remove mode 同步 room/session。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts:381-390` `adapter_synthetic_event_free_remove_confirm` 直接对 legacy/candidate 同时执行 `remove_card`，目标为同一个 deck stable token。
+    - `src\core\events\gameEngine.ts:877-903` legacy `removeCard()` 删除牌后执行 `this.state.screen = this.state.upgradeReturnScreen || 'Map'`；当 screen 变成 `Map` 后才调用 `leaveCurrentRoomToMap()`。
+    - `src\core\events\RunFlowManager.ts:250-299` `leaveCurrentRoomToMap()` 会按当前 legacy state 同步 room markers、生成 `EVENT_RESOLVED`，但 transition 失败时回滚 `roomSession/pendingNodeResolution/activeEvent`。
+    - `src\core\events\runStateMachine.ts:211-220` `EVENT_RESOLVED` 只能从 `event` 或 nested room phase with event resolver 解析；当前 phase 已是 `map` 时抛 `Illegal run transition: EVENT_RESOLVED cannot resolve from map`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:856-880` Python process 的 `_apply_remove_card()` 在 event free remove mode 下设置 `return_screen='Map'`、`active_event=None`、`pending_node_resolution=False`、清 room session。
+    - `src\content\narrative\pythonRuntime.ts:672-696` WASM 内嵌 runtime 同样在 event free remove confirm 后清空 active event 与 room session。
+    - `scripts\validation\check_route_state_save_load_parity.ts:682-697` 当前保存/恢复验证脚本明确期望 confirm 后 `screen==='Map'`、`activeEvent===null`、`roomSession` cleared、deck count 减 1。
+  - 运行证据：
+    - 最小 `npx tsx` parity probe 跑 `adapter_synthetic_event_free_remove_confirm`：
+      - load 后双方都为 `RemoveCard / remove_card / pending=true`，deckCount `10`，`activeEvent.freeRemovalsRemaining=2`，`roomSession.surfaceStack=['event','remove_card']`。
+      - `remove_free_card` 后双方 deckCount 都是 `9`，首张牌都从 `dead_drop` 变为 `strike`，说明目标牌已一致删除。
+      - legacy 变为 `Map / map / pending=true`，仍保留 `activeEvent nameless_martyr_shrine/free_remove` 与 `roomSession { ownerKind:'event', resolverKind:'event', surfaceStack:['event'] }`。
+      - candidate 变为 `Map / map / pending=false`，`activeEvent=null`，`roomSession=null`。
+      - 同次输出 stderr：`[RunFlowManager] Illegal run transition ... EVENT_RESOLVED cannot resolve from map`。
+    - 真实运行 `npx tsx scripts/validation/check_route_state_save_load_parity.ts`：exit `1`，输出 `passCount: 14/15`，失败项为 `event-free-remove-confirm`；报告 `reports\growth\route-state-save-load-parity.json` 显示 `pendingNodeResolution=true`、`roomSessionPass=false`、`activeEventPass=false`。
+    - 复跑 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts`：exit `1`，输出 `passCount: 14/18`，stderr 同样打印 `EVENT_RESOLVED cannot resolve from map`。
+    - 读取 fresh `reports\runtime_v2\adapter-differential-parity.json`：timestamp `2026-05-20T08:15:35.740Z`，`adapter_synthetic_event_free_remove_confirm` seed `72` 仍失败，diff 为 `remove_free_card:lifecycle.pendingNodeResolution` legacy `true` vs candidate `false`、`activeEvent` legacy object vs candidate `null`、`roomSession` legacy event session vs candidate `null`。
+  - 风险：
+    - legacy/core flow 在事件免费移除确认后会把玩家带回 Map，但仍携带 pending event room markers；后续保存、恢复、room resolution、runtimeV2 legacy oracle 都会看到一个“Map 上仍有 event pending”的不一致状态。
+    - adapter differential parity 因 legacy oracle 卡住而红，容易被误判为 Python candidate 清理过度；实际上当前本地保存/恢复验证脚本也把 legacy 状态判为失败。
+    - 残留 `activeEvent` 与 `roomSession` 会污染 UI/存档/运行时投影，后续事件进入或节点完成可能再次触发非法 transition。
+  - 优先级：P2。它不会马上崩溃，但会产生跨系统状态不一致，并稳定破坏 save/load 与 runtimeV2 adapter parity。
+  - 修复方向：
+    - 在 `GameEngine.removeCard()` 的 event free remove confirm 分支中，先让 `leaveCurrentRoomToMap()` 在 `remove_card` nested phase 下解析 event room，或显式清 `activeEvent/roomSession/pendingNodeResolution` 后再回 Map。
+    - 避免在调用 `leaveCurrentRoomToMap()` 前把 `screen` 改成 `Map`；可保留当前 room phase，让 `runStateMachine` 看到 `remove_card + roomResolutionKind=event`。
+    - 增加/修复 regression：事件免费移除确认后 `activeEvent === null`、`roomSession === null`、`pendingNodeResolution === false`，并确认 `EVENT_RESOLVED cannot resolve from map` 不再出现。
+    - 修复后复跑 `npx tsx scripts/validation/check_route_state_save_load_parity.ts` 和 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts`。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实运行并读完 `npx tsx scripts/validation/check_route_state_save_load_parity.ts` 输出，确认 `14/15` 且失败项是 event free remove confirm。
+  - 真实复跑并读完 `npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` 输出，确认 fresh `14/18` 与同一 illegal transition stderr。
+  - 使用最小 `npx tsx` scenario probe，确认双方都删牌，但 legacy 卡在 `Map + pending=true + activeEvent/roomSession`，candidate 清理为 `Map + pending=false`。
+- 下一轮建议：
+  - 第 86 轮展示 `EVENT-FREE-REMOVE-CONFIRM-STUCK-PENDING-001` 的文件/行号、两个命令输出、最小 probe 状态对比、P2 风险和修复验收标准。
+  - 后续奇数轮可回到 UI/渲染层或 runtimeV2 parity gate，优先检查这些 adapter/save-load 红灯是否已被 release/doctor gate 明确纳入。
+
+## DeckRogue Bug Loop Cycle 87 - Route Save/Load Parity Release Gate Gap Finding - 2026-05-20
+
+- 循环模式：第 87 轮，fresh save/load parity 红灯复跑 + release/doctor gate 源码审计 + release readiness 复跑找 bug。
+- 审计范围：
+  - 接续第 86 轮建议，检查第 85 轮暴露的 `route-state-save-load-parity` 红灯是否被 release/doctor gate 明确纳入。
+  - 本轮不修复业务代码，只确认准出覆盖缺口。
+- 新发现：
+  - **RELEASE-ROUTE-SAVELOAD-PARITY-COVERAGE-GAP-001 · `check_route_state_save_load_parity.ts` 当前稳定红灯，但 release readiness 与 game doctor 都没有运行或读取该报告；release readiness 只把 `reports/` 目录大小作为 `reports_dir` pass，未检查 `reports/growth/route-state-save-load-parity.json.pass=false`，导致 event free remove save/load 状态回归不会被发布准出直接表达。**
+  - 证据位置：
+    - `scripts\validation\check_route_state_save_load_parity.ts:889-893` checker 写出 `reports\growth\route-state-save-load-parity.json` 并打印 `passCount`；该脚本会在 `pass=false` 时 exit 1。
+    - `package.json:47-50` 只暴露 growth route formation / shop-event / taxonomy guardrails 等 scripts，没有 `check:route-state-save-load-parity` 或等价 npm script。
+    - `scripts\doctor\gameDoctor.ts:193-238` doctor stage 列表包含 lint/build/desktop/content/AI/security/UI/flow/release readiness，但没有 `check_route_state_save_load_parity.ts`、`reports\growth\route-state-save-load-parity.json` 或 route save/load parity stage。
+    - `scripts\validation\check_release_readiness.ts:302-363` release readiness 的 doctor/security artifact 检查只读 doctor/security/UI smoke。
+    - `scripts\validation\check_release_readiness.ts:390-464` canonical flow artifacts 只读 reward/terminal/shop/event/rest/upgrade/remove-card/boss flow smoke JSON。
+    - `scripts\validation\check_release_readiness.ts:282-299` 唯一包含 `reports/ growth` 字样的是 `checkArtifactWeight()`，只统计 reports 目录文件数和大小。
+    - `scripts\validation\check_release_readiness.ts:553-570` release readiness 总 checks 由 version/docs/build/desktop/save/enemy/doctor+security/UI+flow/artifact weight 组成，没有 route-state save/load parity artifact。
+  - 运行证据：
+    - 真实运行 `npx tsx scripts/validation/check_route_state_save_load_parity.ts`：exit `1`，输出 `passCount: 14/15`，stderr 仍有 `[RunFlowManager] Illegal run transition ... EVENT_RESOLVED cannot resolve from map`。
+    - 读取 fresh `reports\growth\route-state-save-load-parity.json`：mtime `2026-05-20T08:31:32.7030624Z`，`totalCases=15`、`passCount=14`、`pass=false`；失败项 `event-free-remove-confirm` 为 `pendingNodeResolution=true`、`roomSessionPass=false`、`activeEventPass=false`。
+    - 真实运行 `npx tsx scripts/validation/check_release_readiness.ts`：exit `1`，输出 `pass=31 warn=0 fail=10`，fresh `reports\release\release-readiness.json` mtime `2026-05-20T08:32:26.1707284Z`。
+    - 程序化过滤 fresh release checks 的 `id/evidence` 中 `route-state|save-load|save_load|adapter-differential|adapter|runtime_v2|parity`：结果 `<none>`。
+    - 同一 release report 里只匹配到 `route` 的项是 `script_check_map-route-constraints`、`scripts_validation_check_map_route_constraints_ts`，以及 `reports_dir` 的目录大小 pass；没有读取 failing `route-state-save-load-parity.json`。
+    - 当前 `reports\doctor\report.json` 仍是 fail-fast 早停报告，只运行到 `Check Enemy AI Boundaries`；源码 stage 列表本身也没有 route save/load parity stage。
+  - 风险：
+    - 第 85 轮 P2 状态 bug 已经有独立 checker 红灯，但 release readiness 不会显示这个红灯；维护者只会看到 doctor/flow smoke 等其它 fail，无法从 release summary 知道 save/load parity 也在失败。
+    - 一旦当前 doctor/flow smoke 缺失项被修绿，`route-state-save-load-parity.json.pass=false` 仍可能被 release gate 放过。
+    - `reports_dir` 目前会把包含红灯报告的 `reports/growth` 目录描述成 size pass，容易被误读为 growth reports 已被验收。
+  - 优先级：P2。它不是直接 gameplay crash，但会让已知 save/load 状态回归缺少发布准出表达，影响修复优先级与 runtimeV2/legacy 状态一致性判断。
+  - 修复方向：
+    - 给 `check_route_state_save_load_parity.ts` 增加 npm script，并纳入 `gameDoctor` stage。
+    - `check_release_readiness.ts` 应读取 `reports/growth/route-state-save-load-parity.json`，要求 fresh 且 `pass === true`；缺失或 false 均 fail。
+    - 将 `reports_dir` evidence 文案改为仅表示 artifact weight，不暗示 growth reports 内容已通过。
+    - 修复第 85 轮 event free remove pending bug 后，复跑 save/load parity 与 release readiness，确保 release summary 能直接反映该 checker 状态。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 真实运行并读完 `npx tsx scripts/validation/check_route_state_save_load_parity.ts` 输出，确认 fresh `14/15` 红灯。
+  - 真实运行并读完 `npx tsx scripts/validation/check_release_readiness.ts` 输出，确认 fresh `31/41 pass`、`10 fail`，但无 route-state/save-load/parity check ID。
+  - 读取 package、doctor、release readiness 源码，确认没有 route save/load parity gate。
+- 下一轮建议：
+  - 第 88 轮展示 `RELEASE-ROUTE-SAVELOAD-PARITY-COVERAGE-GAP-001` 的文件/行号、fresh checker 红灯、fresh release readiness 过滤结果、P2 风险和修复验收标准。
+  - 后续奇数轮可转回 UI/渲染层：优先跑当前 `test:ui-smoke` / AppShell/ErrorBoundary 合约，避免 runtime gate 系列过度局部化。
+
+## DeckRogue Bug Loop Cycle 89 - UI Smoke Expansion Fixture Checksum Finding - 2026-05-20
+
+- 循环模式：第 89 轮，真实 UI/渲染层测试 + AppShell/ErrorBoundary 合约读取 + expansion smoke 失败定位。
+- 审计范围：
+  - 接续第 88 轮建议，优先检查 `test:ui-smoke`、`test:ui-smoke:expansion`、AppShell/ErrorBoundary 合约和 UI runtime boundary。
+  - 本轮不修业务代码，只确认 UI 准出链路新红灯。
+- 新发现：
+  - **UI-SMOKE-EXPANSION-SAVE-FIXTURE-CHECKSUM-001 · `playwright_ui_smoke_expansion.ts` 生成的 localStorage 存档槽 `checksum` 恒为空字符串，但 `SaveManager.loadGame()` 在读取任何 slot 前要求 checksum 存在且等于保存数据校验值；因此 expansion smoke 点击 `UI Smoke Map` 的“读取”后实际加载失败并留在 launcher，随后等待 `button[data-node-id]` 超时。**
+  - 证据位置：
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:155-187` `buildSaveData()` 生成 `slot` 和 `saveData`。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:172` fixture slot 写入 `checksum: ''`。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:321-327` `buildStoragePayload()` 把这些 slot/save entries 直接塞进 localStorage。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:370-377` `loadSlotFromLauncher()` 点击 slot 内“读取”按钮。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:492-495` 加载 `UI Smoke Map` 后立即等待 `button[data-node-id]`。
+    - `src\core\persistence\saveManager.ts:253-260` `loadGame()` 先取 slot；若 `!slot?.checksum` 直接发布 `LoadFailed: Save checksum missing` 并返回 `null`，checksum 不匹配也返回 `null`。
+    - `src\core\persistence\setup.ts:191-194` `gameSetup.loadRun()` 收到 `saveManager.loadGame()` 的 `null` 后返回 `null`。
+    - `src\ui\views\AppShell.tsx:381-395` `handleLoadSlot()` 对 `null` loadedEngine 只设置 launcher error 并返回，不会进入 Map。
+  - 运行证据：
+    - 真实运行 `npm run test:ui-smoke`：exit `0`，fresh `output\playwright\ui_smoke_report.json` mtime `2026-05-20T08:37:01.5462208Z`，`consoleErrors=0`、`pageErrors=0`、`failedRequests=0`，覆盖 launcher/character_select/map/combat/reward/save-load 相关正常路径。
+    - 真实运行 `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`：`4/4` pass。
+    - 真实运行 `npm run check:ui-runtime-boundaries`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+    - 真实运行 `npm run test:supplemental-units`：`184/184` pass，说明常规 supplemental 单测没有覆盖 expansion fixture checksum 与 load slot 真实交互。
+    - 真实运行 `npm run test:ui-smoke:expansion`：exit `1`；Playwright 在 `scripts\validation\playwright_ui_smoke_expansion.ts:494` 抛 `locator.waitFor: Timeout 10000ms exceeded`，等待 `locator('button[data-node-id]').first()` 可见失败。
+    - fresh `output\playwright\ui_smoke_expansion_report.json` mtime `2026-05-20T08:40:04.5302666Z`，`slotsLoaded={UI Smoke Map}`，但 audits 只有 `launcher,tutorial,launcher_tablet,character_select`，没有 `map/combat/save_load/...`，且 `consoleErrors=0`、`pageErrors=0`、`failedRequests=0`。
+    - 最小 `npx tsx` 探针用同样空 checksum slot 调 `new SaveManager().loadGame('ui_smoke_map')`，输出 `loaded=no`，确认空 checksum 会被读取层拒绝。
+  - 风险：
+    - `test:ui-smoke:expansion` 当前稳定红灯，阻断扩展 UI 准出。
+    - 失败表象是“等不到地图节点”，但根因在 fixture 的 checksum 生成；如果只调大 timeout 或改 locator，会掩盖真实存档校验失败。
+    - report 的 `pageErrors/consoleErrors/failedRequests` 全为 0，容易把问题误判为 UI 渲染慢或 locator 漂移。
+  - 优先级：P2。它不直接破坏玩家正常存档，但会让扩展 UI smoke 的预置存档场景全部卡在 launcher，影响 release/doctor UI expansion gate 的可信度。
+  - 修复方向：
+    - 给 `playwright_ui_smoke_expansion.ts` 的 fixture 生成与 `SaveManager.calculateChecksum()` 兼容的 checksum，或通过受控测试 helper 复用真实 `saveGame()` 生成 slot/save entry。
+    - 保留 `SaveManager.loadGame()` 的 checksum enforcement，不应为了测试 fixture 放宽生产读取校验。
+    - 修复后复跑 `npm run test:ui-smoke:expansion`，并确认 fresh report 至少包含 `map,combat,save_load,keybinds,reward,shop,event,upgrade,victory` 等后续 audits。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修业务代码。
+  - 已读 `test:ui-smoke`、focused UI unit、`check:ui-runtime-boundaries`、`test:supplemental-units`、`test:ui-smoke:expansion` 输出。
+  - 已读 fresh `ui_smoke_report.json` 与 `ui_smoke_expansion_report.json`。
+  - 已用最小 `npx tsx` 探针确认空 checksum slot 无法通过 `SaveManager.loadGame()`。
+- 下一轮建议：
+  - 第 90 轮展示 `UI-SMOKE-EXPANSION-SAVE-FIXTURE-CHECKSUM-001` 的文件/行号、失败命令、fresh report 截断位置、最小 checksum 探针、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 91 - Release Readiness Accepts Partial UI Expansion Report - 2026-05-20
+
+- 循环模式：第 91 轮，复跑 expansion UI smoke 生成 fresh 半截报告 + release readiness 复跑 + 源码审计找 bug。
+- 审计范围：
+  - 接续第 90 轮建议，验证 `check_release_readiness.ts` 是否会把 `test:ui-smoke:expansion` 失败后写出的半截 `ui_smoke_expansion_report.json` 判为通过。
+  - 本轮不修业务代码，只确认 release 准出覆盖缺口。
+- 新发现：
+  - **RELEASE-UI-SMOKE-EXPANSION-PARTIAL-REPORT-GAP-001 · `test:ui-smoke:expansion` 在 `UI Smoke Map` 加载后超时失败，但 `finally` 仍写出只有 4 个 audits 的 fresh `ui_smoke_expansion_report.json`；`check_release_readiness.ts` 只检查 console/page/request/auditFailures 与 freshness，不检查 required audit labels、`slotsLoaded` 完整性或脚本退出状态，因此把半截 expansion report 判为 `pass`。**
+  - 证据位置：
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:492-495` 加载 `UI Smoke Map` 后等待 `button[data-node-id]`，当前超时点在 `:494`。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:496-548` 失败点之后才会追加 `map,combat,settings_theme,save_load,keybinds,reward,shop,event,upgrade,victory` 等 audits。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts:549-559` `finally` 无论主流程是否完成都会写 `ui_smoke_expansion_report.json`。
+    - `scripts\validation\check_release_readiness.ts:77-85` `UiSmokeExpansionReport` 类型只建模 `consoleErrors/pageErrors/failedRequests/audits[].brokenImages/layoutIssues`，没有 `slotsLoaded`、`tutorialChecked`、audit label 或 completion marker。
+    - `scripts\validation\check_release_readiness.ts:342-360` release readiness 只读 error 数、audit brokenImages/layoutIssues 和 freshness；`cleanReport && fresh` 即 pass。
+  - 运行证据：
+    - 真实复跑 `npm run test:ui-smoke:expansion`：exit `1`，Playwright 报 `locator.waitFor: Timeout 10000ms exceeded`，等待 `locator('button[data-node-id]').first()`。
+    - fresh `output\playwright\ui_smoke_expansion_report.json`：mtime `2026-05-20T08:48:39.9795751Z`，`slotsLoaded=UI Smoke Map`，`audits=launcher,tutorial,launcher_tablet,character_select`，`AuditCount=4`，`consoleErrors=0`、`pageErrors=0`、`failedRequests=0`。
+    - 程序化对比 required audits `launcher,tutorial,launcher_tablet,character_select,map,combat,settings_theme,save_load,keybinds,reward,shop,event,upgrade,victory`：actual 只有前 4 个，missing `map,combat,settings_theme,save_load,keybinds,reward,shop,event,upgrade,victory`，`MissingCount=10`，但 scalar error fields clean。
+    - 真实运行 `npx tsx scripts/validation/check_release_readiness.ts`：exit `1`，总体 `pass=31 warn=0 fail=10`。
+    - fresh `reports\release\release-readiness.json`：mtime `2026-05-20T08:48:58.1311870Z`，其中 `id=ui_smoke_expansion_report`、`status=pass`、evidence 为 `ui smoke expansion report is clean and fresh: ...ui_smoke_expansion_report.json`。
+  - 风险：
+    - 第 89 轮已确认 expansion smoke 因 fixture checksum 失败而卡在 launcher；第 91 轮进一步确认 release readiness 会把该失败流程留下的半截报告当作 UI expansion pass。
+    - 当前 release 总体仍因其它 flow artifacts fail 而红，但一旦这些无关 fail 被修绿，半截 UI expansion report 可继续放过，导致 `map/combat/settings/save-load/keybinds/reward/shop/event/upgrade/victory` 扩展 UI 场景缺少发布准出表达。
+    - 这会削弱 doctor/release 对 UI 扩展覆盖的可信度：真正失败的是脚本主流程，但 release summary 只显示 `ui_smoke_expansion_report` clean and fresh。
+  - 优先级：P2。它不是直接 gameplay crash，但会把失败的 UI 扩展 smoke artifact 误收为 release pass，影响发布判断。
+  - 修复方向：
+    - 在 `playwright_ui_smoke_expansion.ts` report 中写入明确 `completed: true/false`、`error`、`requiredAudits` 或 `completedAt` 状态；主流程失败时 report 应可被下游识别为 fail。
+    - 在 `check_release_readiness.ts` 对 `ui_smoke_expansion_report` 增加 required audit label 集合校验，至少要求 `map,combat,settings_theme,save_load,keybinds,reward,shop,event,upgrade,victory` 全部出现。
+    - release readiness 不应仅因 console/page/request clean 就认为 expansion smoke pass；应同时验证脚本覆盖完整性。
+    - 修复第 89 轮 checksum fixture 后，复跑 `npm run test:ui-smoke:expansion` 与 `npx tsx scripts/validation/check_release_readiness.ts`，确认完整 report 才 pass。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修业务代码。
+  - 真实复跑并读完 `npm run test:ui-smoke:expansion` 输出，确认 fresh exit `1` 与同一 `button[data-node-id]` 超时。
+  - 真实运行并读完 `npx tsx scripts/validation/check_release_readiness.ts` 输出，确认 overall fail 但 `ui_smoke_expansion_report` 单项 pass。
+  - 读取 fresh `ui_smoke_expansion_report.json` 与 `release-readiness.json`，确认半截 audits 被 release readiness 标为 clean and fresh。
+- 下一轮建议：
+  - 第 92 轮展示 `RELEASE-UI-SMOKE-EXPANSION-PARTIAL-REPORT-GAP-001` 的文件/行号、两个 fresh 命令输出、required audit 缺口、release check 单项 pass、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 93 - RuntimeV2 Enemy HP Content Bundle Drift Finding - 2026-05-20
+
+- 循环模式：第 93 轮，content schema / runtimeV2 / Python process 数据流审计 + 最小 Python 规则运行复现找 bug。
+- 审计范围：
+  - 接续第 92 轮之后的奇数轮，避开已记录的 Python WASM loader、desktop CDN packaging、AI boundary、adapter differential parity 旧红灯。
+  - 本轮重点检查 `numericConfig` 补丁是否真正进入 RuntimeV2/Python content bundle，以及现有 content bundle gate 是否会抓到数值漂移。
+- 新发现：
+  - **RUNTIMEV2-CONTENT-BUNDLE-ENEMY-HP-DRIFT-001 · `buildRuntimeV2ContentBundle()` 仍从 raw `enemies.json` 投影敌人 HP，绕过 `numericSystem` 的 `numericConfig.enemies.byId` 补丁；同时只读取 `hp_range`，对 26 个只写 `minHp/maxHp` 的敌人全部投影为 `[1,1]`。Python process/WASM 用该 bundle 启动战斗时会生成未调参的精英，甚至 1 HP 精英，而 `check:content-bundle` 与现有 `runtimeV2ContentBundle.test` 仍绿。**
+  - 证据位置：
+    - `src\content\data\numericConfig.json:274-287` 对 `gremlin_nob` 设置 `hp_range[0]=66 / hp_range[1]=72`，对 `psychic_infiltrator` 设置 `minHp=maxHp=50`。
+    - `src\content\data\enemies.json:350-355` raw `gremlin_nob` 仍是 `hp_range=[80,85]`；`src\content\data\enemies.json:4113-4117` raw `psychic_infiltrator` 只写 `maxHp/minHp=65`，没有 `hp_range`。
+    - `src\content\narrative\numericSystem.ts:332` legacy/runtime 数值入口会先 `validateEnemiesData(rawEnemiesData)` 再 `applyEntityOverrides(... numericConfig.enemies?.byId ...)`。
+    - `src\content\narrative\numericSystem.ts:737-746` legacy `rollEnemyBaseHp()` 同时支持 `hp_range` 与 `minHp/maxHp`。
+    - `src\core\events\CombatManager.ts:297-311` legacy combat enemy pool 使用 `enemiesData`，再用 `rollEnemyBaseHp(def, rng)` 生成 HP。
+    - `src\runtimeV2\content\buildContentBundle.ts:12` 直接 import raw `enemies.json`；`:77-82` 只从 `entry.hp_range?.[0/1]` 投影，缺失时 fallback 为 `[1,1]`，没有使用 `enemiesData` 或 `minHp/maxHp`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:934-958` Python rules-core 的 `_start_combat()` 从 `content_bundle.map.encounters` 与 `content_bundle.enemies[*].hp_range` 取敌人并 roll HP，因此会消费错误 bundle。
+    - `tests\unit\runtimeV2ContentBundle.test.ts:63-67` 当前测试断言 `gremlin_nob.hp_range` 等于 raw `enemiesDataRaw`，把错误来源锁成期望。
+  - 运行证据：
+    - 真实运行 `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`1` 个测试通过。
+    - 最小 `npx tsx` bundle 探针输出：
+      - `gremlin_nob bundle_hp [80,85]`，`runtime_hp [66,72]`。
+      - `psychic_infiltrator` 在 bundle 中因缺 `hp_range` 变成 `[1,1]`，runtime 数值为 `[50,50]`。
+    - 影响面计数探针输出：`rawEnemyCount=58`，`rawMinMaxOnly=26`，`minMaxCollapsedToOneOne=26`，`patchedOrProjectedHpDiff=27`。示例包含 `coolant_hound [42,45] -> [1,1]`、`servo_confessor [46,52] -> [1,1]`、`data_leech [38,44] -> [1,1]`。
+    - 最小 Python 规则运行复现：用 `buildRuntimeV2ContentBundle()` 生成真实 bundle，只把 map 改成单层单节点 `Elite` 以强制进入精英战；Python `boot()` + `enter_node` 输出 `gremlin_nob hp=80/max_hp=80`、`psychic_infiltrator hp=1/max_hp=1`。
+    - 对照 legacy 强制同 seed 首节点为 `Elite`：`GameEngine` 输出 `runtimeGremlinHp=[66,72]`，实际 `gremlin_nob hp=72/maxHp=72`，确认 legacy 使用 patched 数值面。
+    - 真实运行 `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - 风险：
+    - RuntimeV2/Python 接管真实 combat 后，敌人 HP 与 legacy 调参系统分叉；被调低的早期精英会回到 raw 高血量，后期一批 `minHp/maxHp` 敌人会退化成 1 HP。
+    - 当前 parity 投影只看 combat enemy count/hand/draw/discard 等粗字段，没有比较 enemy `defId/hp/maxHp`，所以战斗平衡漂移可绕过 runtimeV2 parity。
+    - `check:content-bundle` 和现有单测均绿，说明发布前 content bundle gate 仍可能误报 Python content projection 安全。
+  - 优先级：P1/P2。若 RuntimeV2/Python combat 被启用，这是玩家可见的战斗平衡与敌人生成错误；当前默认路径若仍是 legacy，可按 P2 进入接管前必修。
+  - 修复方向：
+    - `buildRuntimeV2ContentBundle()` 应从 `numericSystem.enemiesData` 投影，而不是 raw `enemies.json`；投影时也要支持 `hp_range` 与 `minHp/maxHp` 两种 schema。
+    - `runtimeV2ContentBundle.test.ts` 应改为对比 `enemiesData` 的 patched HP，并加入 `psychic_infiltrator` 这类 `minHp/maxHp` regression。
+    - RuntimeV2 parity 的 combat stable projection 应至少纳入 enemy `defId/hp/maxHp/nextIntent`，避免只比较数量。
+    - 修复后复跑 `npm run check:content-bundle --silent`、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`、`npm run test:runtime-v2:ts`，并用最小 Python boot 探针确认 `gremlin_nob` 和 `psychic_infiltrator` HP 与 `numericSystem` 一致。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 已真实运行并读完 `npm run check:content-bundle --silent`、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`、`npx tsc --noEmit --pretty false --project tsconfig.json` 输出。
+  - 已用最小 `npx tsx` 探针确认 bundle/runtime HP 漂移、影响面计数和 Python `boot()` 真实战斗 HP。
+  - 已用 legacy `GameEngine` 对照探针确认同类精英战使用 patched `gremlin_nob` HP。
+- 下一轮建议：
+  - 第 94 轮展示 `RUNTIMEV2-CONTENT-BUNDLE-ENEMY-HP-DRIFT-001` 的文件/行号、bundle/runtime HP 探针、Python boot 复现、现有 gate 绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 95 - RuntimeV2 Combat Parity Enemy Projection Gap Finding - 2026-05-20
+
+- 循环模式：第 95 轮，runtimeV2 parity 投影源码审计 + 现有 parity 单测/报告复跑 + 最小 adapter 探针找 bug。
+- 审计范围：
+  - 接续第 94 轮建议，专门验证第 93 轮敌人 HP content bundle 漂移是否会被 runtimeV2 parity/report 抓到。
+  - 本轮不重复记录 `RUNTIMEV2-CONTENT-BUNDLE-ENEMY-HP-DRIFT-001` 的数据错源，只记录 parity 验证层的盲区。
+- 新发现：
+  - **RUNTIMEV2-PARITY-COMBAT-ENEMY-STABLE-FIELDS-GAP-001 · `runParityScenario(... strictStableFields: true)` 的 combat 投影只比较 `enemyCount/handCount/drawPileCount/discardPileCount`，完全丢弃敌人 `defId/hp/maxHp/nextIntent`；因此 Python candidate 即使把 `gremlin_nob 72 HP/rush` 变成 `psychic_infiltrator 1 HP/mind_peek`，parity 仍返回 `diffCount=0`。`runtime_v2_parity_report --require-perfect` 也会把 combat 条目标为 pass。**
+  - 证据位置：
+    - `src\runtimeV2\parity.ts:54-170` `projectStableFields()` 是 parity diff 的核心投影。
+    - `src\runtimeV2\parity.ts:155-161` combat 投影只保留 `enemyCount`、`handCount`、`drawPileCount`、`discardPileCount`，没有 `combat.enemies[*].defId/hp/maxHp/nextIntent`。
+    - `tests\unit\runtimeV2Parity.test.ts:967-1005` 名为 “matches stable combat fields” 的真实 Python combat baseline 只断言 player block/energy、hand/draw pile 数量，并把敌人 state 投影成 `{ block }` 后比较。
+    - `scripts\analysis\runtime_v2_parity_report.ts:199-222` combat report 的 pass 条件是 `stableDiffCount === 0` 加 reward count/source match；但 `stableDiffCount` 来自同一个粗 combat 投影。
+    - `scripts\analysis\runtime_v2_parity_report.ts:231-243` `--require-perfect` 只要求汇总没有 failed scenario，无法补充敌人字段覆盖。
+  - 运行证据：
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`30/30` pass。
+    - 最小 inline `npx tsx -` 探针构造两个固定 adapter，legacy snapshot 为 `gremlin_nob hp=72 maxHp=72 nextIntent=rush`，candidate snapshot 为 `psychic_infiltrator hp=1 maxHp=1 nextIntent=mind_peek`，两者只有 enemy 数量、手牌/抽弃堆数量一致；真实调用 `runParityScenario({ strictStableFields: true, commands: [] })` 输出：
+      - `diffCount: 0`
+      - `diffs: []`
+      - `legacyEnemy.defId=gremlin_nob / hp=72 / nextIntent=rush`
+      - `candidateEnemy.defId=psychic_infiltrator / hp=1 / nextIntent=mind_peek`
+    - 真实运行 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=1 --max-seed=20 --require-perfect`：exit `0`，只输出 fresh report path。
+    - 读取 fresh `output\runtime_v2\parity_report.json`：`generatedAt=2026-05-20T09:37:44.269Z`，`sampleCount=1`，`totalEntries=4`，`failedEntries=0`，combat entry `seed=1, passed=True, stableDiffCount=0`。
+  - 风险：
+    - 第 93 轮已确认 Python content bundle 可让敌人 HP/身份漂移；本轮确认 runtimeV2 parity 的 stable 字段本身看不见这类漂移。
+    - `--require-perfect` 报告会给 “combat_reward_stable passed” 的强信号，但实际只证明数量与 reward 粗字段一致，无法证明战斗敌人一致。
+    - 后续如果把 `runtime_v2_parity_report` 纳入 release/doctor，也仍会继承这个盲区，形成更隐蔽的假绿。
+  - 优先级：P2。它是验证/准出层 bug，不直接改变玩法；但会掩盖 RuntimeV2/Python combat 接管时的玩家可见敌人错误，应在接管前修。
+  - 修复方向：
+    - `projectStableFields()` 在 `strictStableFields` 下应投影 combat enemy stable list，例如按位置或 stable id 比较 `defId/hp/maxHp/block/nextIntent`。
+    - `tests\unit\runtimeV2Parity.test.ts` 增加红灯回归：candidate enemy `defId/hp/maxHp/nextIntent` 任一漂移时必须产生 diff。
+    - `runtime_v2_parity_report.ts` 的 combat pass 条件应明确依赖 enemy stable fields，不只依赖 `stableDiffCount` 的粗投影和 reward count/source。
+    - 修复后复跑 `npx tsx --test tests/unit/runtimeV2Parity.test.ts`、`npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=1 --max-seed=20 --require-perfect`，并用第 95 轮 inline probe 确认 `diffCount > 0`。
+- 验证：
+  - `git status --short`：工作树已有大量既有修改，本轮只追加此报告段，未修复业务代码。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` 输出，确认当前测试 30/30 pass。
+  - 已真实运行并读完 inline `runParityScenario()` 探针输出，确认敌人身份/HP/意图全错仍 `diffCount=0`。
+  - 已真实运行并读取 fresh `runtime_v2_parity_report.json`，确认 `--require-perfect` 小样本 report 仍 pass。
+- 下一轮建议：
+  - 第 96 轮展示 `RUNTIMEV2-PARITY-COMBAT-ENEMY-STABLE-FIELDS-GAP-001` 的文件/行号、inline parity 探针、fresh report pass 证据、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 97 - RuntimeV2 Combat Reward Parity Card Id Gap Finding - 2026-05-20
+
+- 循环模式：第 97 轮，runtimeV2 parity/report 源码审计 + 最小 reward adapter 探针 + 现有 parity 单测/report 复跑找 bug。
+- 审计范围：
+  - 接续第 96 轮建议，检查 combat reward parity/report 是否只证明 reward 数量一致，无法证明具体奖励卡一致。
+  - 本轮不修复第 95 轮 enemy stable field 盲区，只记录同一准出层的 reward card id 盲区。
+- 新发现：
+  - **RUNTIMEV2-PARITY-REPORT-REWARD-CARDIDS-GAP-001 · `runtime_v2_parity_report` 的 combat 条目调用 `runResolvedParityScenario()` 时没有启用 `strictStableFields`，而 `projectStableFields()` 只有在 strict 下才投影 `reward.cardIds`；report 额外 pass 条件也只比较 reward 卡数量和 source。因此 candidate 奖励从 `gather_intel/surveillance/precision_strike` 漂成 `strike/defend/watch` 时，默认 parity `stableDiffCount=0`，report 等价 pass 条件仍为 true。**
+  - 证据位置：
+    - `src\runtimeV2\parity.ts:163-168` reward 投影默认只保留 `cardCount/source`，`cardIds` 只在 `strictStableFields` 为 true 时加入。
+    - `src\runtimeV2\parity.ts:254-285` `runResolvedParityScenario()` 支持传入 `strictStableFields`，但默认不启用。
+    - `scripts\analysis\runtime_v2_parity_report.ts:203-208` combat report 调用 `runResolvedParityScenario()` 时没有传 `strictStableFields: true`。
+    - `scripts\analysis\runtime_v2_parity_report.ts:209-222` combat pass 条件为 `stableDiffCount === 0`、reward count match、reward source match，没有比较 `reward.cardIds`。
+    - `tests\unit\runtimeV2Parity.test.ts:932-961` “matches legacy reward offers” 只断言 `reward.cardIds.length` 一致。
+    - `tests\unit\runtimeV2Parity.test.ts:1050-1084` 默认 `take_reward` 后只断言 deck 长度一致，不断言拾取的具体 card id。
+  - 运行证据：
+    - inline `npx tsx -` 最小 adapter 探针构造 legacy reward `["gather_intel","surveillance","precision_strike"]`、candidate reward `["strike","defend","watch"]`，两边 reward count/source 相同。
+    - 同一探针默认调用 `runResolvedParityScenario()` 输出：`defaultStableDiffCount: 0`、`defaultDiffs: []`、`rewardCardCountMatches: true`、`rewardSourceMatches: true`、`reportPassEquivalent: true`。
+    - 同一探针改为 `strictStableFields: true` 输出：`strictStableDiffCount: 1`，diff field 为 `reward.cardIds`，证明底层已有严格比较能力但 report 没使用。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`30/30` pass。
+    - 真实运行 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=1 --max-seed=20 --require-perfect`：exit `0`，写出 `output\runtime_v2\parity_report.json`。
+    - 读取 fresh report：`generatedAt=2026-05-20T09:49:15.788Z`，`sampleCount=1`，`totalEntries=4`，`failedEntries=0`，combat entry `scenario=combat_reward_stable, seed=1, passed=True, stableDiffCount=0`。
+  - 风险：
+    - 奖励卡 ID 是玩家可见且影响构筑路线的结果；当前 report 可把“卡数正确但卡全错”的 Python combat reward 标为 pass。
+    - 这与第 95 轮 enemy stable field 盲区叠加后，`combat_reward_stable` 会同时漏敌人与奖励两个核心战斗结果。
+    - 如果 release/doctor 后续只依赖 `runtime_v2_parity_report --require-perfect`，会给出过强的 combat 接管绿灯。
+  - 优先级：P2。它是验证/准出层 bug，不直接生成错误奖励；但会掩盖 RuntimeV2/Python reward 接管时的玩家可见构筑漂移，应在接管前修。
+  - 修复方向：
+    - `collectCombatEntry()` 应传入 `strictStableFields: true`，或显式比较 `reward.cardIds` 的顺序/集合，避免只比较数量和 source。
+    - `tests\unit\runtimeV2Parity.test.ts` 增加红灯回归：reward 卡数量相同但 card id 不同时，combat report 或 parity helper 必须失败。
+    - report entry 可增加 `rewardCardIdsMatch` 字段，方便准出摘要区分 count/source/id 三类证据。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline reward adapter 探针输出，确认默认 parity/report 等价 pass 条件漏掉 reward card id 漂移。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` 输出，确认当前测试 30/30 pass。
+  - 已真实运行并读取 fresh `runtime_v2_parity_report.json`，确认 `--require-perfect` 小样本 report 仍 pass。
+- 下一轮建议：
+  - 第 98 轮展示 `RUNTIMEV2-PARITY-REPORT-REWARD-CARDIDS-GAP-001` 的文件/行号、inline reward 探针、fresh report pass 证据、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 99 - RuntimeV2 Take Reward Deck Content Parity Gap Finding - 2026-05-20
+
+- 循环模式：第 99 轮，runtimeV2 `take_reward` parity/report 源码审计 + 最小 take_reward adapter 探针 + 现有 parity 单测/report 复跑找 bug。
+- 审计范围：
+  - 接续第 98 轮建议，检查 `take_reward` 后 deck 内容是否只被数量断言掩盖，以及 `runtime_v2_parity_report` 是否覆盖 reward selection。
+  - 本轮不重复记录第 97 轮 reward offer card id 盲区；探针特意让 reward offer 完全相同，只让拾取后的 deck 内容漂移。
+- 新发现：
+  - **RUNTIMEV2-PARITY-TAKEREWARD-DECK-CONTENT-GAP-001 · 默认 `runResolvedParityScenario()` 对 player deck 只投影 `deckCount`，现有 `take_reward` 单测也只断言最终 deck 长度；同时 `runtime_v2_parity_report` 的 combat path 使用 `skip_reward`，完全不覆盖 `take_reward`。因此 candidate 即使在相同 reward offer 下把拾取结果从 `gather_intel` 变成 `strike`，默认 parity 仍返回 `defaultStableDiffCount=0`，report 也不会触达该路径。**
+  - 证据位置：
+    - `src\runtimeV2\parity.ts:101-116` player 投影默认只保留 `deckCount/relicCount/potionCount`，deck card id 只在 `strictStableFields` 为 true 时加入。
+    - `src\runtimeV2\parity.ts:254-285` `runResolvedParityScenario()` 支持 `strictStableFields`，但默认不启用。
+    - `tests\unit\runtimeV2Parity.test.ts:891-927` 默认 `take_reward` 真实 Python parity 只要求最后一步 `diffs.length === 0`，而默认 diff 看不到 deck card id。
+    - `tests\unit\runtimeV2Parity.test.ts:1050-1084` “matches legacy deck content after default reward pickup” 实际只断言 `player.deck.length` 一致。
+    - `scripts\analysis\runtime_v2_parity_report.ts:77-112` combat report 步骤是 `select_character -> enter_node -> complete_combat -> skip_reward`，没有 `take_reward`。
+    - `scripts\analysis\runtime_v2_parity_report.ts:199-222` `collectCombatEntry()` 只汇总上述步骤的 diffs 与 reward count/source，无法验证拾取后的 deck 内容。
+  - 运行证据：
+    - inline `npx tsx -` 最小 adapter 探针构造相同 reward offer `["gather_intel","surveillance","precision_strike"]`，legacy `take_reward` 后 deck 为 `["strike","defend","gather_intel"]`，candidate 为 `["strike","defend","strike"]`。
+    - 同一探针默认调用 `runResolvedParityScenario()` 输出：`defaultStableDiffCount: 0`、`defaultDiffs: []`、`identicalRewardOffer: true`、`finalDeckCountsMatch: true`。
+    - 同一探针改为 `strictStableFields: true` 输出：`strictStableDiffCount: 1`，diff field 为 `player.deck`，legacy deck counts 为 `defend:1/gather_intel:1/strike:1`，candidate 为 `defend:1/strike:2`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`30/30` pass。
+    - 真实运行 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=1 --max-seed=20 --require-perfect`：exit `0`，写出 `output\runtime_v2\parity_report.json`。
+    - 读取 fresh report：`generatedAt=2026-05-20T10:04:00.547Z`，`sampleCount=1`，`totalEntries=4`，`failedEntries=0`，combat entry `scenario=combat_reward_stable, seed=1, passed=True, stableDiffCount=0`。
+  - 风险：
+    - reward selection 是构筑核心路径；当前测试名声称匹配 deck content，但实际只证明 deck 数量一致。
+    - 即使修复第 97 轮 reward offer card id 比较，若 candidate 在 `take_reward` dispatch 内选错或落错 card id，默认 parity/report 仍可给绿灯。
+    - `runtime_v2_parity_report --require-perfect` 当前完全跳过 `take_reward`，因此不能作为 reward selection 接管准出证据。
+  - 优先级：P2。它是验证/准出层 bug，不直接导致错误拾取；但会掩盖 RuntimeV2/Python reward selection 接管时的玩家可见 deck 漂移，应在接管前修。
+  - 修复方向：
+    - `take_reward` 相关 parity 测试应启用 `strictStableFields: true` 或显式比较 `player.deck` 多重集合，不能只比较 deck 长度。
+    - `runtime_v2_parity_report.ts` 应增加 `take_reward` combat entry，至少覆盖默认拾取后的 deck card id 多重集合。
+    - report summary 可拆分 `combat_reward_offer_stable` 与 `combat_take_reward_stable`，避免 `skip_reward` pass 被误读成完整 reward selection pass。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline take_reward adapter 探针输出，确认相同 reward offer 下 deck 内容漂移仍被默认 parity 漏掉。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` 输出，确认当前测试 30/30 pass。
+  - 已真实运行并读取 fresh `runtime_v2_parity_report.json`，确认 `--require-perfect` 小样本 report 仍 pass 且 combat path 不覆盖 `take_reward`。
+- 下一轮建议：
+  - 第 100 轮展示 `RUNTIMEV2-PARITY-TAKEREWARD-DECK-CONTENT-GAP-001` 的文件/行号、相同 reward offer 探针、fresh report pass 证据、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 101 - RuntimeV2 Map Extra Node Parity Gap Finding - 2026-05-20
+
+- 循环模式：第 101 轮，runtimeV2 parity report summary/准出源码审计 + 最小 map snapshot 探针 + 现有 parity report 单测/report 复跑找 bug。
+- 审计范围：
+  - 接续第 100 轮建议，检查 `isPerfectParityReport()` 与下游 map/report 准出是否会把不完整 map 对比解释成完整绿灯。
+  - 本轮从 combat/reward 转向 runtimeV2 map parity，比对逻辑与 report map entries 是独立缺口。
+- 新发现：
+  - **RUNTIMEV2-PARITY-MAP-EXTRA-CANDIDATE-NODES-GAP-001 · `compareMapSnapshots()` 只遍历 legacy nodes，不检查 candidate 额外节点；candidate 比 legacy 多出 `n_extra` 时仍返回 `metadataMatches=true/topologyMatches=true`。同时 `runtime_v2_parity_report.ts` 的 map entries 没有调用 `compareMapSnapshots()`，而是用 candidate-only structural check 填充 `metadataMatches/topologyMatches=true`。因此 map parity summary 和 `isPerfectParityReport()` 可把“candidate 多出额外地图节点”的结构漂移判为 perfect。**
+  - 证据位置：
+    - `src\runtimeV2\parityReport.ts:70-102` `compareMapSnapshots()` 只创建 `candidateNodeMap` 并遍历 `legacy.map.nodes`；没有检查 candidate-only node ids。
+    - `src\runtimeV2\parityReport.ts:105-138` summary/perfect 判定只依赖 `entry.passed` 聚合；若上游 entry 将 extra-node mismatch 漏成 passed，summary 会继续绿。
+    - `scripts\analysis\runtime_v2_parity_report.ts:114-145` `map_full_bridge` 虽取了 legacy/candidate nodes，但 pass 只看 `candidateNodes.length > 0 && candidateBossCount >= 1`，并硬填空 mismatch arrays。
+    - `scripts\analysis\runtime_v2_parity_report.ts:152-190` `map_native_metadata/topology` 也只检查 candidate 有 boss/rest，硬填 `metadataMatches/topologyMatches=structuralPassed` 和空 mismatch arrays。
+    - `tests\unit\runtimeV2ParityReport.test.ts:59-75` 只覆盖 legacy 节点在 candidate 中类型/边变化，未覆盖 candidate 多出额外节点。
+  - 运行证据：
+    - inline `npx tsx -` 最小 map snapshot 探针构造 legacy 1 个节点 `n1`，candidate 包含同一个 `n1` 加额外 `n_extra`。
+    - 探针输出：`legacyNodeCount: 1`、`candidateNodeCount: 2`、`extraCandidateNodeIds: ["n_extra"]`，但 `comparison.metadataMatches: true`、`comparison.topologyMatches: true`、`metadataMismatchNodeIds: []`、`topologyMismatchNodeIds: []`。
+    - 同一探针把该 comparison 聚合为 `ParityReportEntry` 后，`summaries[0].passed=1/total=1/failed=0`，`isPerfectParityReport(summaries)` 输出 `true`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2ParityReport.test.ts`：exit `0`，`3/3` pass，确认现有单测未覆盖 extra candidate node。
+    - 真实运行 `npx tsx scripts/analysis/runtime_v2_parity_report.ts --samples=1 --max-seed=20 --require-perfect`：exit `0`，写出 `output\runtime_v2\parity_report.json`。
+    - 读取 fresh report：`generatedAt=2026-05-20T10:13:57.601Z`，`sampleCount=1`，`totalEntries=4`，`failedEntries=0`；map entries `map_full_bridge/map_native_metadata/map_native_topology` 均为 `passed=True, metadataMatches=True, topologyMatches=True, stableDiffCount=0`。
+  - 风险：
+    - map 拓扑/节点数量是路线选择与房间生成的核心结构；candidate 多出节点会影响 UI 可选路径或后续选择器边界。
+    - 当前 helper 和 report 都可能给出“perfect parity”强信号，但没有证明 candidate 节点集合等于 legacy。
+    - 这个缺口会污染下游 `generate_report_bundle.ts` 读取的 `output\runtime_v2\parity_report.json`，让报告把 map parity 解释得过强。
+  - 优先级：P2。它是验证/准出层 bug，不直接生成错误地图；但会掩盖 RuntimeV2/Python map 接管时的额外节点/结构漂移，应在接管前修。
+  - 修复方向：
+    - `compareMapSnapshots()` 应双向比较节点 ID 集合，把 candidate-only nodes 加入 metadata/topology mismatch 或新增 `extraCandidateNodeIds` 字段。
+    - `runtime_v2_parity_report.ts` 的 map entries 应调用 `compareMapSnapshots()`，不能用 candidate-only structural check 填充 metadata/topology matches。
+    - `tests\unit\runtimeV2ParityReport.test.ts` 增加红灯回归：candidate 多出节点时 `metadataMatches/topologyMatches` 至少一个必须为 false，`isPerfectParityReport()` 不应为 true。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline map snapshot 探针输出，确认 candidate extra node 被 `compareMapSnapshots()` 漏掉且 summary perfect。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2ParityReport.test.ts` 输出，确认当前报告单测 3/3 pass。
+  - 已真实运行并读取 fresh `runtime_v2_parity_report.json`，确认 `--require-perfect` 小样本 report 仍 pass，map entries 均显示 metadata/topology 绿灯。
+- 下一轮建议：
+  - 第 102 轮展示 `RUNTIMEV2-PARITY-MAP-EXTRA-CANDIDATE-NODES-GAP-001` 的文件/行号、extra-node 探针、fresh report pass 证据、P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 103 - RuntimeV2 Reward RenderModel Ignored By RewardView Finding - 2026-05-20
+
+- 循环模式：第 103 轮，UI/渲染层 + runtimeV2 render model 源码审计 + 最小 SSR 探针 + 现有 RewardView/EngineHost 单测复跑找 bug。
+- 审计范围：
+  - 接续第 102 轮建议，本轮从 parity/report 转向 UI/渲染层，专门检查 runtimeV2 `RenderModel` 是否真的驱动 Reward UI。
+  - 本轮不修复前几轮 parity 准出盲区，只记录 RewardView 消费 renderModel 的 UI 断层。
+- 新发现：
+  - **UI-RUNTIMEV2-REWARDVIEW-IGNORES-RENDERMODEL-CARDS-001 · `createRenderModel()` 已把 runtimeV2 `snapshot.reward.cardIds` 转成 `renderModel.reward.cards`，但 `RewardView` 只用 `renderModel` 读取 `offerCount`，实际卡牌列表仍来自 legacy `engine.state.rewardCards.slice(0, 3)`。因此 runtimeV2 reward snapshot 有 3 张奖励牌而 legacy engine state 没有同步 rewardCards 时，UI 会显示“可选印痕 3”但 draft stage 为空，runtimeV2 的奖励卡名/ID 完全不渲染。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:297-311` `deriveRewardCards()` 从 `snapshot.reward.cardIds` 构造 `RenderModelRewardCard[]`。
+    - `src\runtimeV2\renderModel.ts:352-358` `createRenderModel()` 将 `reward.cards` 和 `offerCount` 放入 render model。
+    - `src\ui\views\RewardView.tsx:69-73` RewardView 接受 `renderModel`，但 `cards` 固定来自 `engine.state.rewardCards.slice(0, 3)`；`renderModel` 只参与 `rewardOfferCount`。
+    - `src\ui\views\RewardView.tsx:126-173` 空态判断使用 `rewardOfferCount`，实际卡牌渲染使用 `cards.map(...)`；当 renderModel offerCount=3 且 engine rewardCards=[] 时会渲染空 draft stage。
+    - `src\ui\views\AppShell.tsx:1018-1021` AppShell 会把 `renderModel` 传入 RewardView，因此这是真实 UI 接线面。
+    - `tests\unit\tutorialModule.test.tsx:90-100` RewardView 现有测试只设置 legacy `engine.state.rewardCards`，不覆盖 renderModel-only reward。
+    - `tests\unit\runtimeV2Host.test.ts:535-583` EngineHost 只验证 render model 内 `reward.offerCount`，不验证 RewardView 是否消费 `renderModel.reward.cards`。
+  - 运行证据：
+    - inline `npx tsx -` SSR 探针构造 `engine.state.rewardCards=[]`，同时传入 `renderModel.reward.cards=[Runtime Alpha, Runtime Beta, Runtime Gamma]` 与 `room.offerCount=3`。
+    - 探针输出：`renderedOfferCount: true`、`hasDraftStage: true`、`hasRuntimeAlpha: false`、`hasRuntimeBeta: false`、`hasNoFragmentsEmptyState: false`；HTML snippet 中出现 `可选印痕 ... 3`，随后是空 `<div class="reward-view__draftStage ..."></div>`。
+    - 真实运行 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/runtimeV2Host.test.ts`：exit `0`，`36` tests，其中 `35` pass、`1` skip；当前测试未覆盖 renderModel-only RewardView。
+  - 风险：
+    - RuntimeV2/Python reward 接管时，规则层 snapshot 和 render model 可已有奖励卡，但 UI 仍依赖 legacy engine state；这会表现为奖励数量正确但卡牌不可见/不可选。
+    - 与第 97/99 轮 reward parity 盲区叠加后，准出层可能绿，UI 层仍无法展示 runtimeV2 奖励。
+    - 用户可见影响大：战斗结束后无法选择奖励，或者看到 legacy stale rewardCards 而非 runtimeV2 reward。
+  - 优先级：P1/P2 边界，建议按 P1 处理。它不是数值规则 bug，但会阻塞 runtimeV2 reward UI 接管的核心交互。
+  - 修复方向：
+    - RewardView 应优先将 `renderModel.reward.cards` 映射成可渲染/可点击的卡牌视图，或由 runtime host 同步 legacy-compatible `rewardCards`，但不能只用 renderModel 的 offerCount。
+    - 点击 runtimeV2 renderModel reward card 时需要派发对应 `take_reward` card id，而不是 legacy `card.instanceId`。
+    - 增加 SSR/React 单测：`engine.state.rewardCards=[]` 且 `renderModel.reward.cards` 有 3 张时，RewardView 必须渲染三张奖励卡；数量与实际卡片数不能分裂。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline RewardView SSR 探针输出，确认 runtimeV2 renderModel reward cards 被 UI 忽略。
+  - 已真实运行并读完 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/runtimeV2Host.test.ts` 输出，确认现有 RewardView/EngineHost 测试仍绿但未覆盖该路径。
+- 下一轮建议：
+  - 第 104 轮展示 `UI-RUNTIMEV2-REWARDVIEW-IGNORES-RENDERMODEL-CARDS-001` 的文件/行号、SSR 探针、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 105 - RuntimeV2 Shop RenderModel Ignored By ShopView Finding - 2026-05-20
+
+- 循环模式：第 105 轮，UI/渲染层 + runtimeV2 shop render model 源码审计 + 最小 SSR 探针 + 相关 runtimeV2/legacy shop 单测复跑找 bug。
+- 审计范围：
+  - 接续第 104 轮建议，本轮横向检查 `ShopView` 是否像 `RewardView` 一样只消费 renderModel 的 summary 字段，而商品列表仍依赖 legacy `GameEngine` state。
+  - 本轮只记录 shop UI 消费断层，不修复 RewardView 或 ShopView。
+- 新发现：
+  - **UI-RUNTIMEV2-SHOPVIEW-IGNORES-RENDERMODEL-OFFERS-001 · `createRenderModel()` 已把 runtimeV2 `snapshot.shop.cards/relics/potions` 转成 `renderModel.room.cards/relics/potions`，但 `ShopView` 的卡牌、遗物、药剂列表固定来自 legacy `engine.state.shopCards/shopRelics/shopPotions`。因此 runtimeV2/Python shop snapshot 有商品而 legacy engine state 没同步时，商店 UI 可以显示 renderModel 的金币/服务可用性，却完全不渲染 runtimeV2 商品，也没有可键盘选择的购买入口。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:88-141` shop screen 会把 `snapshot.shop.cards/relics/potions` 映射成 `room.cards/relics/potions`，并提供 `cardCount/relicCount/potionStockCount`。
+    - `src\ui\views\ShopView.tsx:54-70` `ShopView` 接收 `renderModel`，但商品列表源固定为 `engine.state.shopCards`、`engine.state.shopRelics`、`engine.state.shopPotions`；renderModel 只参与 `roomSummary`、金币和服务开关。
+    - `src\ui\views\ShopView.tsx:188-266` 卡牌区渲染 `cardOffers.map(...)`，而 `cardOffers` 由 legacy `cards` 派生；点击也调用 `engine.buyShopCard(card.instanceId, basePrice)`。
+    - `src\ui\views\ShopView.tsx:277-321` 遗物区渲染 legacy `relicOffers.map(...)`，没有 fallback 到 `roomSummary.relics`。
+    - `src\ui\views\ShopView.tsx:331-360` 药剂区渲染 legacy `potions.map(...)`，没有 fallback 到 `roomSummary.potions`。
+    - `src\ui\views\AppShell.tsx:1023-1026` AppShell 确实把 `renderModel` 传给 `ShopView`，因此这是当前真实 UI 接线面。
+    - `tests\unit\runtimeV2Host.test.ts:631-704` 和 `tests\unit\runtimeV2LegacyRenderBridge.test.ts:40-46` 只验证 render model / legacy projection 的 shop summary 或 legacy state，不验证 `ShopView` 消费 renderModel-only 商品。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `snapshot.shop.cards=[gather_intel, precision_strike]`、`relics=[tactical_vest]`、`potions=[healing_potion]`；`createRenderModel(snapshot)` 输出 `roomKind: "shop"`、`cardCount: 2`、`relicCount: 1`、`potionStockCount: 1`，且有卡名 `收集情报`、`精准打击` 和药剂名 `疗愈药剂`。
+    - inline `npx tsx -` SSR 探针构造 `engine.state.shopCards=[]`、`shopRelics=[]`、`shopPotions=[]`，同时传入 `renderModel.room.cards=[Runtime Shop Alpha, Runtime Shop Beta]`、`room.relics=[Runtime Relic Alpha]`、`room.potions=[Runtime Potion Alpha]`。
+    - SSR 探针输出：`renderedGold: true`，但 `hasRuntimeShopAlpha: false`、`hasRuntimeShopBeta: false`、`hasRuntimeRelicAlpha: false`、`hasRuntimePotionAlpha: false`、`keyboardOptionCount: 0`；说明 ShopView shell 使用了 renderModel 玩家金币，但商品列表和购买入口完全没消费 renderModel-only offers。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`54` tests，其中 `53` pass、`1` skip；当前测试未覆盖 renderModel-only ShopView。
+  - 风险：
+    - Python/runtimeV2 shop 接管时，规则层已有商品、render model 也已有商品，但 UI 仍依赖 legacy offer arrays；玩家会看到可用金币和商店壳，却没有卡牌/遗物/药剂可买。
+    - 与第 103 轮 RewardView 断层同类，说明 UI/renderModel 接管不是单点遗漏，而是 reward/shop 两个房间表面都存在 summary 与实际交互数据分裂。
+    - 当前单测容易给出假安全感：runtimeV2Host 能证明 shop snapshot 和 renderModel 存在，legacy delegation 能证明 legacy UI state 可购买，但没有证明 runtimeV2 renderModel-only UI 能购买。
+  - 优先级：P1/P2 边界，建议按 P1 处理。商店不是每局必经，但一旦 runtimeV2/Python shop 成为权威 surface，该问题会直接阻塞购买交互。
+  - 修复方向：
+    - `ShopView` 应优先消费 `renderModel.room.cards/relics/potions`，或 runtime host 必须同步 legacy-compatible `shopCards/shopRelics/shopPotions`；两种路径不能只接 summary。
+    - runtimeModel shop card 点击需要派发 `buy_shop_card` 的 `cardId`，不要依赖 legacy `card.instanceId`。
+    - 增加 SSR/React 单测：`engine.state.shopCards/shopRelics/shopPotions=[]` 且 `renderModel.room` 有 offers 时，ShopView 必须渲染商品名和购买按钮，并保留 keyboard options。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` shop 探针输出，确认 runtimeV2 render model 已含 shop offers。
+  - 已真实运行并读完 inline ShopView SSR 探针输出，确认 renderModel-only shop offers 被 UI 忽略且 `data-keyboard-option` 为 0。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 106 轮展示 `UI-RUNTIMEV2-SHOPVIEW-IGNORES-RENDERMODEL-OFFERS-001` 的文件/行号、两个 inline 探针、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 107 - RuntimeV2 Event RenderModel Ignored By EventView Finding - 2026-05-20
+
+- 循环模式：第 107 轮，UI/渲染层 + runtimeV2 event render model 源码审计 + 最小 SSR 对照探针 + event/runtimeV2 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 106 轮建议，本轮检查 `EventView` 是否也存在 renderModel 权威数据与 legacy `GameEngine` state 分裂。
+  - 本轮不修复 RewardView/ShopView/EventView，只记录新的 EventView 接线断层。
+- 新发现：
+  - **UI-RUNTIMEV2-EVENTVIEW-IGNORES-RENDERMODEL-ACTIVEEVENT-001 · `createRenderModel()` 已能把 runtimeV2 `snapshot.activeEvent` 转成 `renderModel.activeEvent` 和 `renderModel.room.choices`，但 `AppShell` 渲染 Event screen 时只传 `<EventView engine={engine} />`，`EventView` 自身也只读取 legacy `engine.state.activeEvent`。因此 runtimeV2/Python event snapshot 有事件和选项、legacy engine state 未同步 activeEvent 时，UI 会落到“无事件记录/返回地图”分支，事件标题与选项完全不可见。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:164-193` Event screen 会读取 `snapshot.activeEvent`，并为 story event 生成 `room.title/body/choices`。
+    - `src\runtimeV2\renderModel.ts:360` render model 顶层也保留 `activeEvent: snapshot.activeEvent`。
+    - `src\ui\views\AppShell.tsx:562` active screen 优先来自 `renderModel?.screen`，因此 runtimeV2 可以把 UI 带到 Event screen。
+    - `src\ui\views\AppShell.tsx:1053-1056` Event screen 只渲染 `<EventView engine={engine} />`，没有把 `renderModel` 传入 EventView。
+    - `src\ui\views\EventView.tsx:431-443` `EventView` 只读取 `engine.state.activeEvent`；当 legacy activeEvent 为空时直接渲染“无事件记录”和“返回地图”。
+    - `src\ui\views\EventView.tsx:304-309` story event panel 也强依赖 legacy `engine.state.activeEvent!`，选项由 `buildStoryEventOptions(engine)` 从 legacy event 构造。
+    - `tests\unit\gameEngineRuntimeDelegation.test.ts:451-468` 只验证 legacy activeEvent 存在时 `resolveEventChoice()` 能同步 delegate，不覆盖 renderModel-only event。
+    - `tests\unit\runtimeV2Host.test.ts:751-775` 只验证 legacy oracle event 离开后还有 follow-up map nodes，不验证 EventView 消费 renderModel event choices。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `snapshot.activeEvent={ id: 'rusting_medicae' }`；`createRenderModel(snapshot)` 输出 `screen: "Event"`、`activeEventId: "rusting_medicae"`、`roomKind: "event"`、`title: "腐朽的医疗伺服站"`、`choiceIds=["medicae_implant","medicae_extract","medicae_salvage"]`。
+    - inline `npx tsx -` EventView SSR 对照探针显示：legacy `engine.state.activeEvent=null` 时 `hasTerminalClass: true`、`hasStoryLayoutClass: false`、`keyboardOptionCount: 1`、`hasCampaignChoice: false`，snippet 为无事件记录/返回地图分支；legacy `activeEvent={ id: 'rusting_medicae' }` 时 `hasStoryLayoutClass: true`、`keyboardOptionCount: 3`、`hasCampaignChoice: true`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/eventManagerContract.test.ts tests/unit/eventChoiceTradeoff.test.ts`：exit `0`，`57` tests，其中 `56` pass、`1` skip；当前测试未覆盖 renderModel-only EventView。
+  - 风险：
+    - RuntimeV2/Python event 接管时，规则层和 render model 可已有事件选项，但 UI 只提供“返回地图”，玩家无法选择事件分支，甚至可能错误地离开 room。
+    - 与第 103/105 轮 RewardView、ShopView 断层同类，进一步说明 UI 层在多个房间 surface 上只部分接入 renderModel。
+    - 现有测试能证明 event command delegation 和 map follow-up，但不能证明 runtimeV2 renderModel-only event 能被 UI 展示或选择。
+  - 优先级：P1。Event room 是核心地图节点；UI 若误入无事件分支，会直接绕过事件选择和路线承诺。
+  - 修复方向：
+    - `EventView` 需要接受并优先消费 `renderModel.activeEvent` / `renderModel.room.choices`，或 runtime host 必须同步 legacy-compatible `engine.state.activeEvent`。
+    - runtimeModel event choice 点击应派发 `choose_event_option` 的 choice id，而不是只调用依赖 legacy activeEvent 的 `engine.resolveEventChoice()`。
+    - 增加 SSR/React 单测：`renderModel.screen='Event'` 且 `renderModel.activeEvent` 有 story event、legacy `engine.state.activeEvent=null` 时，EventView/AppShell 必须渲染 story layout 和所有 choice buttons。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` event 探针输出，确认 runtimeV2 render model 已含 event title 和 3 个 choices。
+  - 已真实运行并读完 inline EventView SSR 对照探针输出，确认 legacy activeEvent 为空时 UI 落入 terminal 分支，而 legacy activeEvent 存在时才渲染 story layout 和 3 个 keyboard options。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/eventManagerContract.test.ts tests/unit/eventChoiceTradeoff.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 108 轮展示 `UI-RUNTIMEV2-EVENTVIEW-IGNORES-RENDERMODEL-ACTIVEEVENT-001` 的文件/行号、renderModel event 探针、EventView SSR 对照、现有测试绿灯证据、P1 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 109 - RuntimeV2 Upgrade RenderModel Choices Ignored By UpgradeView Finding - 2026-05-20
+
+- 循环模式：第 109 轮，UI/渲染层 + runtimeV2 selector surface 源码审计 + UpgradeView SSR 对照探针 + runtimeV2 selector 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 108 轮建议，本轮检查剩余选择器 surface 是否继续存在 renderModel 权威 choices 与 legacy `GameEngine` state 分裂。
+  - 本轮聚焦 `UpgradeView` 的具体断点，不把未完成探针的 RemoveCard/Enchant/RelicUpgrade 扩大成结论。
+- 新发现：
+  - **UI-RUNTIMEV2-UPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001 · `createRenderModel()` 已能在 `screen='Upgrade'` 时从 runtimeV2 `snapshot.player.deck` 生成 `renderModel.room.choices`，但 `AppShell` 渲染 Upgrade screen 时只传 `<UpgradeView engine={engine} />`，`UpgradeView` 自身只读取 legacy `engine.state.player.deck`。因此 runtimeV2/Python snapshot 有可升级 choices、legacy engine deck 未同步或为空时，UI 会进入强化界面但不展示任何可强化卡牌。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:70-79` `deriveDeckSurfaceChoices()` 从 `snapshot.player.deck` 生成选择项 id/label/description。
+    - `src\runtimeV2\renderModel.ts:227-233` Upgrade screen 输出 `room.kind='upgrade'` 和 `choices: deriveDeckSurfaceChoices()`。
+    - `src\ui\views\AppShell.tsx:562` active screen 优先来自 `renderModel?.screen`，runtimeV2 可以把 UI 带到 Upgrade screen。
+    - `src\ui\views\AppShell.tsx:1033-1036` Upgrade screen 只渲染 `<UpgradeView engine={engine} />`，没有传 `renderModel`。
+    - `src\ui\views\UpgradeView.tsx:136-144` `UpgradeView` 只读取 legacy `engine.state.player.deck` 并从中筛 `upgradableCards`。
+    - `src\ui\views\UpgradeView.tsx:159-169` 实际渲染只遍历 legacy `upgradableCards`；为空时显示没有可强化卡牌。
+    - `tests\unit\runtimeV2Host.test.ts:805-810` 只验证 runtimeV2Host 的 render model 有 `screen='Upgrade'`、`room.kind='upgrade'` 和 choices，不验证 UpgradeView 是否消费这些 choices。
+    - `tests\unit\gameEngineRuntimeDelegation.test.ts:471-485` 只验证 legacy Upgrade flow 和 delegate command 同步，不覆盖 renderModel-only UpgradeView。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `screen='Upgrade'`、`snapshot.player.deck=['gather_intel','precision_strike']`；`createRenderModel(snapshot)` 输出 `roomKind: "upgrade"`、`choiceCount: 2`、`choiceIds=["0:gather_intel","1:precision_strike"]`、`choiceLabels=["收集情报","精准打击"]`。
+    - inline `npx tsx -` UpgradeView SSR 对照探针显示：legacy `engine.state.player.deck=[]` 时 `hasImmersiveCard: false`、`keyboardFocusCount: 1`、`cardViewCount: 0`；legacy starter deck 存在时 `hasImmersiveCard: true`、`keyboardFocusCount: 9`。说明 UpgradeView 只根据 legacy deck 渲染卡牌，无法使用 renderModel-only choices。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`54` tests，其中 `53` pass、`1` skip；当前测试未覆盖 renderModel-only UpgradeView。
+  - 风险：
+    - RuntimeV2/Python selector surface 接管时，规则层已知道可强化卡牌，但 UI 仍依赖 stale legacy deck；玩家会进入强化界面却无卡可选，只能取消。
+    - 该问题与 Reward/Shop/Event 三个断层同类，说明房间/选择器 UI 仍没有统一消费 renderModel 的权威 choices。
+    - 如果直接修 runtime command 而不补 UI SSR 验收，现有 `runtimeV2Host` 绿灯仍可能遗漏真实用户界面的空列表。
+  - 优先级：P1/P2 边界，建议按 P1 处理。Upgrade 是 Rest/Shop 服务链的核心选择器；runtimeV2 接管后空列表会阻断强化服务。
+  - 修复方向：
+    - `UpgradeView` 应接受并优先消费 `renderModel.room.kind === 'upgrade'` 的 `choices`，或 runtime host 必须同步 legacy-compatible deck/card instances。
+    - runtimeModel choice 点击需要把 `0:gather_intel` 这类 choice token 映射回 `upgrade_card` 可接受的 card instance/token，而不是只依赖 legacy `card.instanceId`。
+    - 增加 SSR/React 单测：`renderModel.screen='Upgrade'` 且 `renderModel.room.choices.length > 0`、legacy `engine.state.player.deck=[]` 时，UpgradeView/AppShell 必须渲染选择项而不是空强化列表。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` Upgrade 探针输出，确认 runtimeV2 render model 已含 2 个 upgrade choices。
+  - 已真实运行并读完 inline UpgradeView SSR 对照探针输出，确认 legacy deck 为空时 UpgradeView 不渲染卡牌，而 legacy starter deck 存在时才渲染卡牌。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 110 轮展示 `UI-RUNTIMEV2-UPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001` 的文件/行号、renderModel Upgrade 探针、UpgradeView SSR 对照、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 111 - RuntimeV2 RemoveCard RenderModel Choices Ignored By RemoveCardView Finding - 2026-05-20
+
+- 循环模式：第 111 轮，UI/渲染层 + runtimeV2 selector surface 源码审计 + RemoveCardView SSR 对照探针 + runtimeV2 remove-card 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 110 轮建议，本轮继续检查选择器 surface 是否存在 renderModel 权威 choices 与 legacy `GameEngine` state 分裂。
+  - 本轮聚焦 `RemoveCardView` 的具体断点，不把未完成探针的 Enchant/RelicUpgrade 扩大成结论。
+- 新发现：
+  - **UI-RUNTIMEV2-REMOVECARDVIEW-IGNORES-RENDERMODEL-CHOICES-001 · `createRenderModel()` 已能在 `screen='RemoveCard'` 时从 runtimeV2 `snapshot.player.deck` 生成 `renderModel.room.choices`，但 `AppShell` 渲染 RemoveCard screen 时只传 `<RemoveCardView engine={engine} />`，`RemoveCardView` 自身只读取 legacy `engine.state.player.deck`。因此 runtimeV2/Python snapshot 有可移除 choices、legacy engine deck 未同步或为空时，UI 会进入焚毁界面但没有任何卡牌可选，只剩取消/返回按钮。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:70-79` `deriveDeckSurfaceChoices()` 从 `snapshot.player.deck` 生成选择项 id/label/description。
+    - `src\runtimeV2\renderModel.ts:236-245` RemoveCard screen 输出 `room.kind='remove_card'`、`cardRemovalCost` 和 `choices: deriveDeckSurfaceChoices()`。
+    - `src\ui\views\AppShell.tsx:562` active screen 优先来自 `renderModel?.screen`，runtimeV2 可以把 UI 带到 RemoveCard screen。
+    - `src\ui\views\AppShell.tsx:1048-1051` RemoveCard screen 只渲染 `<RemoveCardView engine={engine} />`，没有传 `renderModel`。
+    - `src\ui\views\RemoveCardView.tsx:24-29` `RemoveCardView` 只读取 legacy `engine.state.player` 和 legacy event-removal 状态。
+    - `src\ui\views\RemoveCardView.tsx:45-68` 实际卡牌入口只遍历 legacy `player.deck.map(...)`；没有 fallback 到 `renderModel.room.choices`。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts:58-67` runtimeV2 remove command 已支持 `0:gather_intel` 这类 deck choice token 解析成 legacy instanceId。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts:242-259` `remove_card` 命令可进入 RemoveCard surface 或按 selector token 执行移除，说明 runtime 命令面已有对应路径。
+    - `tests\unit\runtimeV2Host.test.ts:833-843` 只验证 runtimeV2Host 的 render model 有 `screen='RemoveCard'`、`room.kind='remove_card'`、choice token 并可 dispatch，不验证 RemoveCardView 是否消费这些 choices。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `screen='RemoveCard'`、`snapshot.player.deck=['gather_intel','precision_strike']`；`createRenderModel(snapshot)` 输出 `roomKind: "remove_card"`、`cardRemovalCost: 75`、`choiceCount: 2`、`choiceIds=["0:gather_intel","1:precision_strike"]`、`choiceLabels=["收集情报","精准打击"]`。
+    - inline `npx tsx -` RemoveCardView SSR 对照探针显示：legacy `engine.state.player.deck=[]` 时 `hasImmersiveCard: false`、`keyboardOptionCount: 1`、`keyboardFocusCount: 1`、`cardViewClassCount: 0`、`hasCancelClose: true`；legacy starter deck 存在时 `hasImmersiveCard: true`、`keyboardOptionCount: 11`、`keyboardFocusCount: 11`。说明 RemoveCardView 只根据 legacy deck 渲染卡牌，无法使用 renderModel-only choices。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`54` tests，其中 `53` pass、`1` skip；当前测试未覆盖 renderModel-only RemoveCardView。
+  - 风险：
+    - RuntimeV2/Python remove-card selector surface 接管时，规则层已知道可移除卡牌且命令层能接受 selector token，但 UI 仍依赖 stale legacy deck；玩家会进入焚毁界面却无法选择任何卡牌。
+    - 该问题与 Upgrade selector 断层同类，说明 selector surface 的 renderModel choices 目前主要停留在 host/test 层，没有真正接到 React view。
+    - 若只验证 `runtimeV2Host` dispatch 或 legacy delegation，真实用户界面的空列表仍会漏检。
+  - 优先级：P1/P2 边界，建议按 P1 处理。RemoveCard 是 Shop/Event/Rest 服务链都会触达的选择器；空列表会阻断移除服务或事件献祭。
+  - 修复方向：
+    - `RemoveCardView` 应接受并优先消费 `renderModel.room.kind === 'remove_card'` 的 `choices`，或 runtime host 必须同步 legacy-compatible deck/card instances。
+    - runtimeModel choice 点击应直接派发/桥接 `remove_card` 的 choice token，而不是只调用依赖 legacy `card.instanceId` 的 `engine.removeCard(card.instanceId)`。
+    - 增加 SSR/React 单测：`renderModel.screen='RemoveCard'` 且 `renderModel.room.choices.length > 0`、legacy `engine.state.player.deck=[]` 时，RemoveCardView/AppShell 必须渲染选择项而不是空焚毁列表。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` RemoveCard 探针输出，确认 runtimeV2 render model 已含 2 个 remove-card choices。
+  - 已真实运行并读完 inline RemoveCardView SSR 对照探针输出，确认 legacy deck 为空时 RemoveCardView 不渲染卡牌，而 legacy starter deck 存在时才渲染卡牌。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 112 轮展示 `UI-RUNTIMEV2-REMOVECARDVIEW-IGNORES-RENDERMODEL-CHOICES-001` 的文件/行号、renderModel RemoveCard 探针、RemoveCardView SSR 对照、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 113 - RuntimeV2 Enchant RenderModel Choices Ignored By EnchantView Finding - 2026-05-20
+
+- 循环模式：第 113 轮，UI/渲染层 + runtimeV2 selector surface 源码审计 + EnchantView SSR 对照探针 + runtimeV2/enchant 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 112 轮展示，本轮继续检查选择器 surface 是否存在 renderModel 权威 choices 与 legacy `GameEngine` state 分裂。
+  - 本轮聚焦 `EnchantView` 的具体断点，不把未完成探针的 `RelicUpgradeView` 扩大成结论。
+- 新发现：
+  - **UI-RUNTIMEV2-ENCHANTVIEW-IGNORES-RENDERMODEL-CHOICES-001 · `createRenderModel()` 已能在 `screen='Enchant'` 时从 runtimeV2 `snapshot.player.deck` 生成 `renderModel.room.choices`，但 `AppShell` 渲染 Enchant screen 时只传 `<EnchantView engine={engine} />`，`EnchantView` 自身只读取 legacy `engine.state.player.deck` 与 `engine.state.enchantContext`。因此 runtimeV2/Python snapshot 有可附魔 choices、legacy engine deck 未同步或为空时，UI 会进入附魔界面但不展示任何可附魔卡牌，只剩取消按钮。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:70-79` `deriveDeckSurfaceChoices()` 从 `snapshot.player.deck` 生成选择项 id/label/description。
+    - `src\runtimeV2\renderModel.ts:248-254` Enchant screen 输出 `room.kind='enchant'`、title/body 和 `choices: deriveDeckSurfaceChoices()`。
+    - `src\ui\views\AppShell.tsx:562` active screen 优先来自 `renderModel?.screen`，runtimeV2 可以把 UI 带到 Enchant screen。
+    - `src\ui\views\AppShell.tsx:1043-1046` Enchant screen 只渲染 `<EnchantView engine={engine} />`，没有传 `renderModel`。
+    - `src\ui\views\EnchantView.tsx:28-44` `EnchantView` 只读取 legacy `engine.state.enchantContext`、legacy `engine.state.player.deck`，并从 legacy deck 中筛选可附魔卡牌。
+    - `src\ui\views\EnchantView.tsx:66-99` 实际卡牌入口只遍历 legacy `enchantableCards`；没有 fallback 到 `renderModel.room.choices`。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts:178-195` runtimeV2 命令面支持 `enter_enchant` 与 `apply_enchantment`，并用 `resolveDeckInstanceId()` 解析 choice token。
+    - `tests\unit\enchantmentFlow.test.ts:47-64` 只验证 legacy Rest/Shop 进入附魔上下文，不覆盖 renderModel-only EnchantView。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `screen='Enchant'`、`snapshot.player.deck=['gather_intel','precision_strike']`、`surfaceContext.enchantContext.title='Runtime Enchant'`；`createRenderModel(snapshot)` 输出 `roomKind: "enchant"`、`title: "Runtime Enchant"`、`choiceCount: 2`、choices 为 `0:gather_intel/收集情报` 与 `1:precision_strike/精准打击`。
+    - inline `npx tsx -` EnchantView SSR 对照探针显示：legacy `engine.state.player.deck=[]` 时 `hasImmersiveCard: false`、`keyboardOptionCount: 1`、`keyboardFocusCount: 1`、`cardViewClassCount: 0`、`hasCancelClose: true`；legacy starter deck 存在时 `hasImmersiveCard: true`、`keyboardOptionCount: 11`、`keyboardFocusCount: 11`。说明 EnchantView 只根据 legacy deck 渲染卡牌，无法使用 renderModel-only choices。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/enchantmentFlow.test.ts`：exit `0`，`61` tests，其中 `60` pass、`1` skip；当前测试未覆盖 renderModel-only EnchantView。
+  - 风险：
+    - RuntimeV2/Python enchant selector surface 接管时，规则层已知道可附魔卡牌且命令层存在 `apply_enchantment` 路径，但 UI 仍依赖 stale legacy deck；玩家会进入附魔界面却无法选择任何卡牌。
+    - 该问题与 Upgrade/RemoveCard selector 断层同类，说明 selector surface 的 renderModel choices 仍未统一接入 React view。
+    - 若只验证 legacy enchant flow 或 runtime host render model，真实用户界面的空附魔列表仍会漏检。
+  - 优先级：P1/P2 边界，建议按 P1 处理。Enchant 是 Rest/Shop/Event 服务链的选择器；空列表会阻断附魔服务或事件附魔奖励。
+  - 修复方向：
+    - `EnchantView` 应接受并优先消费 `renderModel.room.kind === 'enchant'` 的 `choices` 与 title/body，或 runtime host 必须同步 legacy-compatible deck/card instances 和 enchant context。
+    - runtimeModel choice 点击应直接派发/桥接 `apply_enchantment` 的 choice token，而不是只调用依赖 legacy `card.instanceId` 的 `engine.applyEnchantment(card.instanceId)`。
+    - 增加 SSR/React 单测：`renderModel.screen='Enchant'` 且 `renderModel.room.choices.length > 0`、legacy `engine.state.player.deck=[]` 时，EnchantView/AppShell 必须渲染选择项而不是空附魔列表。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` Enchant 探针输出，确认 runtimeV2 render model 已含 2 个 enchant choices。
+  - 已真实运行并读完 inline EnchantView SSR 对照探针输出，确认 legacy deck 为空时 EnchantView 不渲染卡牌，而 legacy starter deck 存在时才渲染卡牌。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/enchantmentFlow.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 114 轮展示 `UI-RUNTIMEV2-ENCHANTVIEW-IGNORES-RENDERMODEL-CHOICES-001` 的文件/行号、renderModel Enchant 探针、EnchantView SSR 对照、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 115 - RuntimeV2 RelicUpgrade RenderModel Choices Ignored By RelicUpgradeView Finding - 2026-05-20
+
+- 循环模式：第 115 轮，UI/渲染层 + runtimeV2 relic-upgrade selector surface 源码审计 + RelicUpgradeView SSR 对照探针 + runtimeV2/relic-upgrade 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 114 轮建议，本轮检查 `RelicUpgradeView` 是否也存在 renderModel 权威 choices 与 legacy `GameEngine` state 分裂。
+  - 本轮只记录 runtimeV2 choices 消费断点；不重复扩大第 13 轮已记录的 `RelicUpgradeView` 键盘焦点缺口，也不修业务代码。
+- 新发现：
+  - **UI-RUNTIMEV2-RELICUPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001 · `createRenderModel()` 已能在 `screen='RelicUpgrade'` 时从 runtimeV2 `snapshot.player.relicIds` 与 `snapshot.player.relicStates` 生成 `renderModel.room.choices`，但 `AppShell` 渲染 RelicUpgrade screen 时只传 `<RelicUpgradeView engine={engine} />`，`RelicUpgradeView` 自身只读取 legacy `engine.state.player.relics/relicStates`。因此 runtimeV2/Python snapshot 有可升级受污染遗物、legacy engine relic inventory 未同步或为空时，UI 会进入遗物升级界面但不展示 runtimeV2 可升级遗物，只剩返回按钮。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:61-68` `getRelicState()` / `isCorruptedRelic()` 会从 `snapshot.player.relicStates` 判定受污染遗物。
+    - `src\runtimeV2\renderModel.ts:257-275` RelicUpgrade screen 输出 `room.kind='relic_upgrade'`、title/body 和 `choices: relicChoices`。
+    - `src\ui\views\AppShell.tsx:1038-1041` RelicUpgrade screen 只渲染 `<RelicUpgradeView engine={engine} />`，没有传 `renderModel`。
+    - `src\ui\views\RelicUpgradeView.tsx:205-219` `RelicUpgradeView` 只读取 legacy `engine.state.player`，并用 `player.relics.includes(config.relicId)` 生成 `upgradableRelics`。
+    - `src\ui\views\RelicUpgradeView.tsx:256-274` 实际遗物入口只遍历 legacy `upgradableRelics`；没有 fallback 到 `renderModel.room.choices`。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts:198-222` runtimeV2 命令面支持 `enter_relic_upgrade` 与 `upgrade_relic`，并能在 RelicUpgrade phase 校验/执行遗物升级。
+    - `tests\unit\relicUpgradeFlow.test.ts:20-42` 只验证 legacy Rest -> RelicUpgrade -> upgrade/cancel flow，不覆盖 renderModel-only RelicUpgradeView。
+  - 运行证据：
+    - inline `npx tsx -` renderModel 探针构造 `screen='RelicUpgrade'`、`snapshot.player.relicIds=['entropy_sanctum_relic']`、`relicStates.entropy_sanctum_relic={ level: 1, corrupted: true }`；`createRenderModel(snapshot)` 输出 `roomKind: "relic_upgrade"`、`choiceCount: 1`、choice 为 `entropy_sanctum_relic / 熵变圣物 Lv.1`。
+    - inline `npx tsx -` RelicUpgradeView SSR 对照探针显示：legacy `engine.state.player.relics=[]` 且 `relicStates={}` 时 HTML 不含 `entropy_sanctum_relic` 或 `熵变圣物`，只保留 `data-keyboard-option`/`data-keyboard-focus` 各 1 个返回入口，并渲染“当前没有可升级的遗物”；legacy relic inventory 加入 `entropy_sanctum_relic` 且 relicState 为 corrupted 后，HTML 才包含该遗物 id 与名称。说明 RelicUpgradeView 只根据 legacy relic inventory 渲染，无法使用 renderModel-only choices。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/relicUpgradeFlow.test.ts tests/unit/runtimeV2Parity.test.ts`：exit `0`，`85` tests，其中 `84` pass、`1` skip；当前测试未覆盖 renderModel-only RelicUpgradeView。
+  - 风险：
+    - RuntimeV2/Python relic-upgrade selector surface 接管时，规则层已知道可升级 corrupted relic，命令层也有 `upgrade_relic`，但 UI 仍依赖 stale legacy relic inventory；玩家会进入遗物升级界面却看不到可升级遗物。
+    - 该问题与 Upgrade/RemoveCard/Enchant selector 断层同类，说明所有 deck/relic selector surface 的 renderModel choices 仍未统一接入 React view。
+    - 若只验证 legacy relicUpgrade flow、runtime parity 或 host render model，真实用户界面的空遗物列表仍会漏检。
+  - 优先级：P1/P2 边界，建议按 P1。RelicUpgrade 是 Rest 侧 corrupted relic 净化强化入口；空列表会阻断遗物升级服务，并让 Python/runtimeV2 规则状态与 UI 可操作性分裂。
+  - 修复方向：
+    - `RelicUpgradeView` 应接受并优先消费 `renderModel.room.kind === 'relic_upgrade'` 的 `choices` 与 title/body，或 runtime host 必须同步 legacy-compatible relic inventory/relicStates。
+    - runtimeModel choice 点击应直接派发/桥接 `upgrade_relic` 的 relic id，而不是只调用依赖 legacy `player.relics` 的 `engine.upgradeRelic(relicId)`。
+    - 增加 SSR/React 单测：`renderModel.screen='RelicUpgrade'` 且 `renderModel.room.choices.length > 0`、legacy `engine.state.player.relics=[]` 时，RelicUpgradeView/AppShell 必须渲染选择项而不是空遗物列表。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` RelicUpgrade 探针输出，确认 runtimeV2 render model 已含 1 个 relic-upgrade choice。
+  - 已真实运行并读完 inline RelicUpgradeView SSR 对照探针输出，确认 legacy relic inventory 为空时 RelicUpgradeView 不渲染 runtimeV2-only 遗物，而 legacy relic inventory 存在时才渲染该遗物。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/relicUpgradeFlow.test.ts tests/unit/runtimeV2Parity.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 116 轮展示 `UI-RUNTIMEV2-RELICUPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001` 的文件/行号、renderModel RelicUpgrade 探针、RelicUpgradeView SSR 对照、现有测试绿灯证据、P1/P2 风险和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 117 - Content Schema And RuntimeV2 Intent Policy Findings - 2026-05-20
+
+- 循环模式：第 117 轮，content schema + validation script + AI intent/runtimeV2 content bundle 源码审计 + `check:content-authoring`/runtime import/单测对照探针找 bug。
+- 审计范围：
+  - 接续第 116 轮建议，本轮转向未充分覆盖的 content schema / authoring validation 链。
+  - 先复验第 73 轮已记录的 `CONTENT-AUTHORING-RELIC-BOM-SILENT-PASS-001`，确认不是新 bug；本轮新增价值是证明该旧红灯在新增 `contentSchema.ts` / runtime schema 接入后仍未被 authoring gate 吸收。
+- 复验发现：
+  - **CONTENT-SCHEMA-AUTHORING-GATE-DIVERGES-FROM-RUNTIME-SCHEMA-001 · runtime 数据入口已经通过 `contentSchema.ts` 加载并验证 106 条 relic 数据，但 `check:content-authoring` 仍走自有 `JSON.parse()` + fail-open reader。结果是 runtime schema 路径看到 `relicsData.length=106`，authoring gate fresh report 却继续把同一文件记为 `relics.total=0` 且整体 pass。该状态复现了第 73 轮的 BOM silent-pass 根因，并说明新增 runtime schema 没有真正接入发布前 content authoring 准出。**
+  - 证据位置：
+    - `project-development-report.md:2981-3001` 第 73 轮已记录 `CONTENT-AUTHORING-RELIC-BOM-SILENT-PASS-001`；本轮不是重复新报，而是 fresh 复验该红灯仍存在。
+    - `scripts\validation\check_content_authoring.ts:81-87` `loadJsonFile()` catch 任意读取/解析错误并返回 `null`，没有报告文件路径或失败原因。
+    - `scripts\validation\check_content_authoring.ts:217-219` `cards/enemies/relics` 都使用 `loadJsonFile(...) || []`，解析失败会被等价为“空内容”。
+    - `scripts\validation\check_content_authoring.ts:283-292` relic summary 只看 `relics.length` 和 `invalidItems`，空数组会贡献 0 invalid。
+    - `scripts\validation\check_content_authoring.ts:345-350` 只在 `overallStatus === 'fail'` 时退出 1；空 relics 且其它项通过时会输出 passed。
+    - `src\content\narrative\numericSystem.ts:334` runtime 数据入口仍通过 `validateRelicsData(rawRelicsData, 'relics.json')` 导入真实 relic 数据；这条路径和 `check_content_authoring.ts` 的 JSON 读取行为不一致。
+    - `src\content\narrative\contentSchema.ts:365-382` 新 schema 已能验证 relic shape/唯一 ID，但 `check:content-authoring` 没有复用该 schema，也没有 fail closed。
+  - 运行证据：
+    - 真实运行 `npm run check:content-authoring --silent`：exit `0`，输出 `Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 0/0 valid`、`Pass rate: 100%`、`Content authoring check passed`。
+    - fresh `reports\content\content-authoring.json` 时间戳 `2026-05-20T12:06:05.267Z`：`relics.total=0`、`relics.valid=0`、`relics.invalid=0`、`summary.overallStatus="pass"`、`passRate=100`。
+    - `src\content\data\relics.json` 首字节为 `EF BB BF 5B ...`，确认文件以 UTF-8 BOM 开头。
+    - inline `npx tsx -` 用 `readFileSync('src/content/data/relics.json','utf-8')` + `JSON.parse()` 复现失败：`firstCharCode=65279`、`parsed=false`、错误为 `Unexpected token '﻿'... is not valid JSON`。
+    - inline `npx tsx -` 直接 import runtime 数据路径显示 `rawRelicsData` 是 array、`rawLength=106`，`relicsData.length=106`，且包含 `entropy_sanctum_relic`。说明 authoring report 的 `0/0` 不是内容真的为空，而是校验脚本读取失败被静默跳过。
+  - 风险：
+    - Release/content authoring 准出可以在完全没有验证 relic 内容时显示 100% pass；任何 relic 缺字段、坏 effect、重复 ID 或 schema 漂移都可能被隐藏。
+    - 新 `contentSchema.ts` 已被 runtime 数据入口使用，但 `check:content-authoring` 仍走一套宽松且 fail-open 的 JSON reader，导致“运行时实际加载 106 条 relics”与“准出报告 0 条 relics”分裂。
+    - 这类 bug 容易污染 release readiness：维护者看到 content authoring 绿灯，却没有意识到 relic 子域根本没有被检查。
+  - 优先级：P1。第 73 轮当时按 P2 记录，但本轮 fresh 证据显示 runtime schema 已新增并接入实际数据入口，发布前 authoring gate 仍对完整 relic 域 fail-open；建议提升为 P1 验收门风险。
+  - 修复方向：
+    - `loadJsonFile()` 应 fail closed：解析失败时记录具体文件路径和错误并让脚本退出非零，不能 fallback 到空数组。
+    - 读取 JSON 时应显式处理 UTF-8 BOM，或统一复用 TS JSON import / schema loader；至少对 cards/enemies/relics 增加 `Array.isArray` 与 `length > 0` 断言。
+    - `check_content_authoring.ts` 应复用 `contentSchema.ts` 的 `validateRelicsData()` / `validateEnemiesData()` / `validateCardsData()`，避免 runtime 与 authoring 两套 schema 分叉。
+- 新发现：
+  - **RUNTIMEV2-CONTENT-BUNDLE-CAMELCASE-INTENTPOLICY-DROPPED-001 · `src/content/data/enemies.json` 同时存在 snake_case `intent_policy` 与 camelCase `intentPolicy`，`contentSchema.validateEnemiesData()` 接受两者，但 `buildRuntimeV2ContentBundle()` 只读取 `entry.intent_policy`。因此 25 个只使用 camelCase `intentPolicy` 的敌人进入 runtimeV2/Python content bundle 后 `intent_policy=[]`；Python rules core `_roll_enemy_intent()` 看到空 policies 会固定 fallback 到 `"Attack"`，这些敌人的 authored AI 意图权重在 runtimeV2/Python 路径被静默丢失。**
+  - 证据位置：
+    - `src\content\narrative\contentSchema.ts:332-339` schema validation 用 `entry.intent_policy ?? entry.intentPolicy`，说明 authoring/schema 层认可 camelCase intent policy。
+    - `src\runtimeV2\content\buildContentBundle.ts:31-36` `EnemyEntry` 类型只声明 `intent_policy`，未声明 `intentPolicy`。
+    - `src\runtimeV2\content\buildContentBundle.ts:77-88` content bundle 投影只遍历 `(entry.intent_policy || [])`。
+    - `src\content\data\enemies.json:1371` `coolant_hound` 是一个实际敌人，`src\content\data\enemies.json:1381` 使用 camelCase `intentPolicy`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1243-1246` Python rules core 对空 `intent_policy` 直接消耗 RNG 并返回 `"Attack"`。
+    - `tests\unit\runtimeV2ContentBundle.test.ts:63-71` 只断言 `gremlin_nob` 这类 snake_case policy 敌人在 bundle 中有 policy，没有覆盖 camelCase policy 敌人。
+  - 运行证据：
+    - inline `npx tsx -` 对账 `enemiesData` 与 `buildRuntimeV2ContentBundle()`：`enemiesDataCount=58`、`camelOnlyCount=25`、`snakeCount=33`、`bundleEnemyCount=58`、`zeroPolicyCount=25`；`zeroPolicySample` 包括 `coolant_hound`、`servo_confessor`、`reactor_thrall`、`data_leech` 等。
+    - inline `npx tsx -` 抽样 bundle：`gremlin_nob.policyLength=3`，但 `coolant_hound.policyLength=0`、`servo_confessor.policyLength=0`。
+    - `Select-String src\content\data\enemies.json` 计数：`"intent_policy"` 为 `33`，`"intentPolicy"` 为 `25`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`18` tests 全部 pass；现有测试未覆盖 camelCase policy 投影到 runtimeV2 content bundle 后不应为空。
+  - 风险：
+    - runtimeV2/Python 接管敌人意图时，25 个扩展敌人的 authored AI policy 会退化成固定 `"Attack"` fallback，破坏敌人行为差异、AI profile rollout 和战斗平衡。
+    - schema 层接受 camelCase，content bundle 层只读 snake_case，使同一份通过 schema 的内容在 Python bundle 中丢策略；这是 content schema 与 runtimeV2 projection 的接口分裂。
+    - 现有 runtimeV2 content bundle 测试只覆盖 `gremlin_nob`，会让该缺口在 CI/本地测试中保持假绿。
+  - 优先级：P1。该问题影响 25/58 个敌人的 runtimeV2/Python AI 意图链，范围大于单个内容项。
+  - 修复方向：
+    - `buildRuntimeV2ContentBundle()` 应读取 `entry.intent_policy ?? entry.intentPolicy ?? []`，并复用 `contentSchema`/`intentPolicy` 正规化逻辑。
+    - 增加 runtimeV2 content bundle 单测：抽样 `coolant_hound` 或统计所有 source 中有 `intentPolicy/intent_policy` 的敌人，bundle 后 `intent_policy.length > 0`。
+    - 后续可逐步规范源 JSON 字段命名，但 bundle projection 需要先兼容已被 schema 接受的两种字段。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 `npm run check:content-authoring --silent` 输出，确认脚本 exit `0` 且 `Relics: 0/0 valid`。
+  - 已读取 fresh `reports\content\content-authoring.json`，确认 report 把 relics 记为 0 条且 overall pass。
+  - 已真实运行并读完 inline BOM/JSON.parse 探针和 runtime import 对照探针，确认同一份 `relics.json` 在脚本读取链失败、在 runtime import 链为 106 条。
+  - 已真实运行并读完 runtimeV2 content bundle intent policy 对照探针，确认 25 个 camelCase policy 敌人被投影为空 policy。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts` 输出，确认相关现有测试仍绿但不覆盖 camelCase policy bundle 投影。
+- 下一轮建议：
+  - 第 118 轮重点展示 `RUNTIMEV2-CONTENT-BUNDLE-CAMELCASE-INTENTPOLICY-DROPPED-001` 的文件/行号、复现证据、P1 风险、未修状态和修复验收标准；同时说明 `CONTENT-SCHEMA-AUTHORING-GATE-DIVERGES-FROM-RUNTIME-SCHEMA-001` 是第 73 轮旧红灯的 fresh 复验与升级风险，不当作全新 bug 重复展示。
+
+## DeckRogue Bug Loop Cycle 119 - RuntimeV2 Relic Corrupted Metadata Dropped From Python Bundle Finding - 2026-05-20
+
+- 循环模式：第 119 轮，runtimeV2 content bundle + Python rules-core relic upgrade 链路静态审计、实际 bundle 对账、最小 Python runtime 双分支探针、相关 TS/Python 测试复跑找 bug。
+- 审计范围：
+  - 接续第 118 轮展示，本轮继续检查 runtimeV2 content schema/projection 与 Python rules-core 消费契约是否分裂。
+  - 本轮先排除卡牌投影漂移与角色 `starting_gold` 漂移：实际 bundle cards 与 runtime cards 均为 354 且 `diffCount=0`；角色源数据无 `startingGold` 字段，bundle `starting_gold=99` 一致。
+  - 本轮不重复第 73/117 轮 relic authoring BOM 旧红灯，也不重复第 115 轮 RelicUpgradeView 不消费 renderModel choices 的 UI 红灯。
+- 新发现：
+  - **RUNTIMEV2-CONTENT-BUNDLE-RELIC-CORRUPTED-DROPPED-001 · `src/content/data/relics.json` 中 5 个遗物声明了 `corrupted: true`，但 `buildRuntimeV2ContentBundle()` 的 relic projection 只输出 `id/price/rarity`，`ContentBundleRelic` 契约也没有 `corrupted` 字段。Python rules-core 购买商店遗物时从 content bundle 读取 `relic_def.get("corrupted", False)` 写入 `player.relic_states`，因此 runtimeV2/Python 路径购买这些 corrupted relic 后会把状态写成 `corrupted=false`，随后 `enter_relic_upgrade` / `upgrade_relic` 认为没有可升级 corrupted relic。**
+  - 证据位置：
+    - `src\content\data\relics.json:174`、`:194`、`:215`、`:253`、`:449` 存在 5 个 `corrupted: true` relic；其中 `src\content\data\relics.json:444-449` 的 `entropy_sanctum_relic` 明确声明 `corrupted: true`。
+    - `src\runtimeV2\content\buildContentBundle.ts:97-101` relic projection 只输出 `id`、`price`、`rarity`，没有传递 `corrupted`。
+    - `src\runtimeV2\contracts.ts:34-38` `ContentBundleRelic` 只声明 `id`、`price`、`rarity?`，契约层也没有 `corrupted`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:610-615` `_apply_buy_shop_relic()` 从 `self._content_bundle.relics` 查 relic，并用 `bool(relic_def.get("corrupted", False))` 写入 `player.relic_states[relic_id].corrupted`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:713-723` `_apply_enter_relic_upgrade()` 只允许已有 `corrupted=true` relic 进入 relic upgrade。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:735-744` `_apply_upgrade_relic()` 对非 corrupted relic 直接报错。
+  - 运行证据：
+    - inline `npx tsx -` 实际 bundle 对账输出：`sourceRelicCount=106`、`bundleRelicCount=106`、`sourceCorruptedCount=5`、`bundleCorruptedFlagCount=0`、`missingCorruptedSample=["mark_of_entropy","corrupted_tome","corrupted_relic","rot_reliquary_blessing","entropy_sanctum_relic"]`、`entropyBundle={"id":"entropy_sanctum_relic","price":280}`。
+    - inline Python rules-core 双分支探针输出：缺 `corrupted` 字段时，购买 `entropy_sanctum_relic` 后 `bought_corrupted_state=False`，随后 `enter_relic_upgrade` 返回 `ok=False`、错误为 `No corrupted relic is available for relic upgrade`；同一探针只把 bundle relic 改为 `corrupted=True` 后，购买状态为 `True`，`enter_relic_upgrade` 返回 `ok=True`、`screen='RelicUpgrade'`、`phase='relic_upgrade'`。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2Parity.test.ts tests/unit/relicUpgradeFlow.test.ts`：exit `0`，`32` tests 全部 pass；当前测试只覆盖 relic upgrade 已有 corrupted state 或普通 content bundle shape，没有覆盖 source corrupted relic 被 bundle 投影后仍保留 `corrupted`。
+    - 真实运行 `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p 'test_*.py'`：exit `0`，`8` tests OK；Python rules-core 行为本身按 bundle 字段工作，但测试 content bundle helper 没有覆盖 corrupted relic 购买链。
+  - 风险：
+    - runtimeV2/Python 商店路径会让 5 个 authored corrupted relic 变成普通 relic state，阻断后续 relic upgrade/净化强化链路。
+    - 这会与第 115 轮 UI 层 RelicUpgrade choices 断点叠加：即使 UI 后续改为消费 runtimeV2 choices，Python rules state 仍可能没有任何 corrupted relic 可选。
+    - 现有 TS/Python 测试都全绿，说明缺口位于 content bundle projection 与 Python 消费契约之间，容易在 migration/parity 过程中保持假绿。
+  - 优先级：P1。该问题影响 runtimeV2/Python shop purchase -> relic state -> relic upgrade 的核心规则链路，并覆盖 5 个 corrupted relic 内容项。
+  - 修复方向：
+    - `ContentBundleRelic` 应声明 `corrupted?: boolean`，`buildRuntimeV2ContentBundle()` 应投影 `corrupted: entry.corrupted === true` 或至少在 true 时保留该字段。
+    - 增加 runtimeV2 content bundle 单测：所有 source 中 `corrupted === true` 的 relic，bundle 后必须保留 `corrupted === true`。
+    - 增加 Python rules-core 或跨层探针测试：商店购买 authored corrupted relic 后，`player.relic_states[relic_id].corrupted` 为 true，并能进入 `enter_relic_upgrade`。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `buildRuntimeV2ContentBundle()` relic corrupted 对账探针，确认 5 个 source corrupted relic 在 bundle 中全部丢失 `corrupted`。
+  - 已真实运行并读完 inline Python rules-core 双分支探针，确认缺字段会把购买后的 relic state 写为 false 并阻断 `enter_relic_upgrade`，带字段则可进入 RelicUpgrade。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2Parity.test.ts tests/unit/relicUpgradeFlow.test.ts` 输出，确认相关 TS 测试仍绿但不覆盖该投影缺口。
+  - 已真实运行并读完 `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p 'test_*.py'` 输出，确认 Python 现有测试仍绿但不覆盖 corrupted relic 购买链。
+- 下一轮建议：
+  - 第 120 轮展示 `RUNTIMEV2-CONTENT-BUNDLE-RELIC-CORRUPTED-DROPPED-001` 的文件/行号、bundle 对账、Python 双分支复现、P1 风险、未修状态和修复验收标准；同时说明它与第 115 轮 UI RelicUpgrade choices bug 是叠加风险但根因不同。
+
+## DeckRogue Bug Loop Cycle 121 - Python WASM Embedded Runtime Drift Finding - 2026-05-20
+
+- 循环模式：第 121 轮，Python WASM 适配层 + `python_runtime/src` 双 runtime 源漂移审计 + 最小双 runtime 行为探针 + runtimeV2/Python 相关测试复跑找 bug。
+- 审计范围：
+  - 接续第 120 轮展示，本轮继续沿 runtimeV2/content/Python 链路找新问题。
+  - 本轮先跑三层实体字段对账，确认只复现了已记录的 enemy HP、enemy intentPolicy、relic corrupted、potion/relic metadata 旧红灯；没有把这些重复当作新 bug。
+  - 本轮转向 Python WASM 适配与真实 Python process runtime 源码是否同步，避开第 83 轮已记录的 `entropy_sanctum_relic` 费用表 ID 漂移。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001 · `PythonWasmAdapter` 执行的内嵌 `PYTHON_RUNTIME_CODE` 已落后于 `python_runtime/src/deckrogue_rules_core/runtime.py`：WASM 内嵌 runtime 没有角色选择后的 `route_state` 初始化，也没有 process runtime 的 planned early reward 逻辑。结果是同一 content bundle、同一 seed、同一 combat 完成后，Python process 会按 route-aware planned reward 给 3 张牌，而 Python WASM 内嵌 runtime 没有 route state，只走旧随机奖励路径，甚至在最小复现中只给 2 张奖励。**
+  - 证据位置：
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:13` 从 `src\content\narrative\pythonRuntime.ts` 导入 `PYTHON_RUNTIME_CODE`，`src\runtimeV2\bridge\pythonWasmAdapter.ts:118` 将该字符串直接传给 Pyodide 执行。
+    - `src\content\narrative\pythonRuntime.ts:103-141` 内嵌 `_apply_select_character()` 只设置 player/map/combat/reward/shop/event/surface/room session，没有设置 `self._snapshot["route_state"]`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:102-140` 真实 process runtime 同一方法在最后设置 `self._snapshot["route_state"] = self._derive_route_state_from_deck(None)`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:374-431` 真实 process runtime 已有 `_generate_planned_reward_cards()`，会按 early route state、route tags、early game role 生成前两层 planned reward。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1098-1113` 真实 process runtime 的 `_generate_reward_cards()` 会先尝试 `planned_rewards`，有结果则直接返回。
+    - `src\content\narrative\pythonRuntime.ts:919-963` 内嵌 `_generate_reward_cards()` 仍是旧随机稀有度/卡池路径，没有 `card_pool_for_character`、`planned_rewards` 或 `_generate_planned_reward_cards()`。
+    - `tests\unit\pythonWasmAdapter.test.ts:1-28` 当前 Python WASM 单测只验证 snapshot envelope unwrap，不会执行 `PYTHON_RUNTIME_CODE` 或比较 WASM/process 行为。
+  - 运行证据：
+    - inline Node 漂移探针从 `PYTHON_RUNTIME_CODE` 抽取函数名，与 `python_runtime/src/deckrogue_rules_core/runtime.py` 对比：`embeddedLines=1607`、`pythonLines=1837`；`onlyInPython` 包含 `_card_route_signal`、`_known_route_tags_for_character`、`_derive_route_state_from_deck`、`_stable_hash`、`_choose_unique_seeded`、`_generate_planned_reward_cards` 等 6 个 runtime 行为函数。
+    - inline Python 双 runtime 行为探针读取 `PYTHON_RUNTIME_CODE` 并 `exec()`，同时用真实 `deckrogue_rules_core.boot()` 启动 process runtime；同一最小 content bundle、seed `121`、`select_character -> enter_node(Combat) -> complete_combat` 后：
+      - process runtime：`route_state_after_select={"primary_tag":"informant:intel","confidence":68,"stage":"committed","recent_commits":[]}`，`reward_cards=["confirm_intel","neutral_strike","payoff_intel"]`。
+      - embedded WASM runtime：`route_state_after_select=None`，`reward_cards=["payoff_intel","neutral_strike"]`。
+    - 真实运行 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2Parity.test.ts`：exit `0`，`35` tests 全部 pass；当前测试没有执行 Pyodide 内嵌 runtime 与 `python_runtime/src` 的 drift check。
+  - 风险：
+    - 如果浏览器/桌面未来启用 `PythonWasmAdapter` 作为 runtimeV2 规则源，路线状态与早期奖励会与 Python process/当前 parity 目标分叉；同一 seed 下 reward surface 可能数量、卡 ID、路线引导都不同。
+    - 现有 runtimeV2 parity 主要覆盖 Python process，Python WASM 测试只覆盖 normalize/unwrap，无法证明 WASM 内嵌规则与 process runtime 同步。
+    - 第 83 轮已经证明两份 runtime 源曾出现费用表漂移；本轮显示漂移范围还覆盖路线状态和奖励生成，属于更广的同步/准出缺口。
+  - 优先级：P1/P2 边界，建议按 P1 处理。它影响 Python WASM 接管时的核心 run progression 与 reward 选择，且测试绿灯会给出错误信心。
+  - 修复方向：
+    - 建立单一 Python runtime 源：由 `python_runtime/src/deckrogue_rules_core/runtime.py` 生成 `PYTHON_RUNTIME_CODE`，或让 WASM 适配器加载同一源码资产，避免手工双份维护。
+    - 增加 drift check：抽取 `PYTHON_RUNTIME_CODE` 与 `runtime.py` 关键函数/哈希比对；至少锁 `_derive_route_state_from_deck`、`_generate_planned_reward_cards`、费用表和 surface 命令路径。
+    - 增加 Python WASM fake-Pyodide 或 exec-based 单测：同一 content bundle 下，WASM runtime 与 process runtime 在 `select_character` 后都有 route state，combat reward card ids 一致。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完三层实体字段漂移探针，确认本轮没有重复 enemy HP、intentPolicy、relic corrupted、potion metadata 旧红灯。
+  - 已真实运行并读完 inline Node drift 探针，确认内嵌 runtime 少了 route/reward 相关函数。
+  - 已真实运行并读完 inline Python 双 runtime 行为探针，确认同一 content bundle 下 process runtime 与 embedded WASM runtime 的 route state 和 reward cards 分叉。
+  - 已真实运行并读完 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2Parity.test.ts` 输出，确认相关现有测试仍绿但不覆盖该漂移。
+- 下一轮建议：
+  - 第 122 轮展示 `RUNTIMEV2-PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001` 的文件/行号、函数漂移清单、双 runtime 行为复现、P1/P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 123 - RuntimeV2 Map RenderModel Nodes Ignored By MapView Finding - 2026-05-20
+
+- 循环模式：第 123 轮，UI/渲染层 + runtimeV2 map render model 接线源码审计 + MapView SSR 对照探针 + runtimeV2/map 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 122 轮展示，本轮转向 Map/runtimeV2 UI 接线面，避免重复 Python WASM lifecycle、desktop packaging、旧 Map keyboard overflow、runtimeV2 map parity extra candidate nodes、selector choices 等已记录红灯。
+  - 本轮只记录 MapView 消费 `renderModel.map.nodes` 的断点；未修改业务代码。
+- 新发现：
+  - **UI-RUNTIMEV2-MAPVIEW-IGNORES-RENDERMODEL-NODES-001 · `createRenderModel()` 已把 runtimeV2/Python snapshot 的 `map.nodes`、`availableNodeIds`、`currentNodeId` 投影到 `renderModel.map`，`AppShell` 也把 `renderModel` 传入 `MapView`；但 `MapView` 只用 renderModel 判断 `currentNodeId` 和节点可选性，实际楼层、连线、节点按钮、路线 dossier、HUD、点击 `engine.enterNode(node.id)` 都从 legacy `engine.state.map` 派生。因此 runtimeV2/Python map 已有可选节点、legacy map 为空或 stale 时，Map screen 会没有对应节点按钮，或继续渲染旧 legacy 节点。**
+  - 证据位置：
+    - `src\runtimeV2\renderModel.ts:25-38` `deriveAvailableNodeIds()` 从 `snapshot.map.nodes` 推导可选节点。
+    - `src\runtimeV2\renderModel.ts:339-345` `createRenderModel()` 输出 `map.nodes`、`currentFloor`、`revealedNodeIds`、`availableNodeIds`。
+    - `src\ui\views\AppShell.tsx:562` active screen 优先使用 `renderModel?.screen`；`src\ui\views\AppShell.tsx:1008-1011` Map screen 将 `renderModel` 传入 `<MapView />`。
+    - `src\ui\views\MapView.tsx:47` `const map = engine.state.map` 固定绑定 legacy map。
+    - `src\ui\views\MapView.tsx:63-67` `floors` 从 legacy `map.reduce(...)` 生成，未使用 `renderModel.map.nodes`。
+    - `src\ui\views\MapView.tsx:69-83` `isNodeSelectable()` / `selectableNodeIds` 可读 `renderModel.map.availableNodeIds`，但候选节点对象仍来自 legacy map。
+    - `src\ui\views\MapView.tsx:101-113` 路线 dossier、current/hovered node 都从 legacy map 查找。
+    - `src\ui\views\MapView.tsx:483-486` 连线遍历 legacy `map.map(...)` 和 `map.find(...)`。
+    - `src\ui\views\MapView.tsx:580-640` 节点按钮遍历 `floors.map(...floor.map(node...))`，`data-node-id` 与点击 `engine.enterNode(node.id)` 都来自 legacy node。
+  - 运行证据：
+    - inline `npx tsx -` `createRenderModel()` 探针构造 `snapshot.map.nodes=[rt-node-1]`、`currentNodeId=null`、首层节点 `revealed=true`；输出 `screen="Map"`、`nodeIds=["rt-node-1"]`、`availableNodeIds=["rt-node-1"]`、`revealedNodeIds=["rt-node-1"]`。
+    - inline `npx tsx -` MapView SSR 对照探针在同一 `renderModel.map.nodes/availableNodeIds=["rt-node-1"]` 下：
+      - legacy `engine.state.map=[]` 时，HTML `hasRuntimeNodeId=false`、`nodeButtonCount=0`、`keyboardOptionCount=0`。
+      - legacy `engine.state.map=[rt-node-1]` 时，HTML `hasRuntimeNodeId=true`、`nodeButtonCount=1`、`data-keyboard-option="1"` 存在。
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/mapRouteAdvisor.test.ts`：exit `0`，`55` tests，其中 `54` pass、`1` skip；现有测试覆盖 renderModel 推导和 legacy route dossier，但没有覆盖 MapView 在 renderModel-only map 下必须渲染节点。
+  - 风险：
+    - runtimeV2/Python map 成为权威状态时，React Map screen 可能进入正确 `screen='Map'` 却没有可点击节点，阻断 run progression。
+    - 若 legacy map stale，UI 可能显示/点击旧节点；`renderModel.map.availableNodeIds` 只会把旧节点标成不可选，不能补回 runtimeV2-only 节点。
+    - 该缺口处在 host/renderModel 单测和 legacy UI 单测之间，容易让 runtimeV2 map 接管在现有绿灯下漏检。
+  - 优先级：P1。地图节点是 run progression 的主入口；renderModel-only map 无节点按钮会直接阻断玩家进入下一房间。
+  - 修复方向：
+    - `MapView` 应在存在 `renderModel?.map.nodes` 时优先以该节点数组作为渲染源，并让 floors、连线、HUD、dossier、current/hovered node 全部基于同一权威 map。
+    - 点击路径应明确桥接 runtimeV2 `enter_node` 的 node id，或保证 `engine.enterNode()` 对 runtimeV2-only node 有合法同步路径。
+    - 增加 SSR/React 单测：`renderModel.map.nodes.length > 0` 且 legacy `engine.state.map=[]` 时，MapView/AppShell 必须渲染 `data-node-id` 和 keyboard option。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` Map 探针输出，确认 renderModel 能从 snapshot 生成 runtimeV2 map node 与 available node。
+  - 已真实运行并读完 inline MapView SSR 对照探针输出，确认 legacy map 为空时 MapView 不渲染 renderModel-only node，legacy map 填充时才渲染同一 node。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/mapRouteAdvisor.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 124 轮展示 `UI-RUNTIMEV2-MAPVIEW-IGNORES-RENDERMODEL-NODES-001` 的文件/行号、createRenderModel 探针、MapView SSR 对照、现有测试绿灯证据、P1 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 125 - RuntimeV2 Combat RenderModel Ignored By CombatView Finding - 2026-05-20
+
+- 循环模式：第 125 轮，UI/渲染层 + runtimeV2 combat render model 接线源码审计 + CombatView SSR 对照探针 + CombatView/runtimeV2 相关单测复跑找 bug。
+- 审计范围：
+  - 接续第 124 轮展示，本轮继续沿 UI/runtimeV2 接线面排查相邻 Combat screen。
+  - 本轮先排重 Reward/Shop/Event/Upgrade/RemoveCard/Enchant/RelicUpgrade/Map 已记录的 renderModel 消费断点；只记录 CombatView 新断点，不修业务代码。
+- 新发现：
+  - **UI-RUNTIMEV2-COMBATVIEW-IGNORES-RENDERMODEL-COMBAT-001 · `createRenderModel()` 已把 runtimeV2/Python snapshot 的 combat 敌人、手牌 id、回合和能量投影到 `renderModel.combat`，但 `AppShell` 渲染 Combat screen 时只传 `<CombatView engine={engine} />`，`CombatView` 自身没有 `renderModel` prop，且 `engine.state.combat` 为空时直接 `return null`。因此 runtimeV2/Python snapshot 已进入 `screen='Combat'` 且有敌人/手牌，但 legacy engine combat state 未同步或为空时，React 战斗界面会渲染空 HTML，玩家看不到敌人、手牌或任何可操作战斗入口。**
+  - 证据位置：
+    - `src\runtimeV2\contracts.ts:196-213` `RuleSnapshot.combat` 契约包含 `turn/isPlayerTurn/playerBlock/playerEnergy/enemyIds/enemies/hand/drawPileCount/discardPileCount`。
+    - `src\runtimeV2\contracts.ts:378-380` `RenderModel.combat` 明确扩展 `RuleSnapshot['combat']` 并加入 `enemyCount`。
+    - `src\runtimeV2\renderModel.ts:346-350` `createRenderModel()` 在 snapshot 有 combat 时输出 `...snapshot.combat` 和 `enemyCount`。
+    - `src\ui\views\AppShell.tsx:1013-1016` Combat screen 只渲染 `<CombatView engine={engine} backgroundVisualMode={backgroundVisualMode} />`，没有传 `renderModel`。
+    - `src\ui\views\CombatView.tsx:145-153` `CombatViewProps` 只有 `engine/backgroundVisualMode`，没有 renderModel。
+    - `src\ui\views\CombatView.tsx:154-159` legacy `engine.state.combat` 为空时直接返回 `null`，否则 `const state = engine.state.combat`。
+    - `src\ui\views\CombatView.tsx:247-249` combat hooks 均从 `engine` 派生。
+    - `src\ui\views\CombatView.tsx:289-309` 卡牌选择与敌人点击使用 legacy `state.hand/state.enemies` 与 `engine.playCard(card.instanceId, enemyId)`。
+    - `src\ui\views\CombatView.tsx:580-621` Battlefield 与 ActionHand 只接收 `engine` 和 legacy-derived handlers；子组件也读取 `engine.state.combat`。
+    - `tests\unit\tutorialModule.test.tsx:67-88` CombatView SSR 测试只用 real `GameEngine.startCombat()` legacy combat state，不覆盖 renderModel-only combat。
+    - `tests\unit\runtimeV2Host.test.ts:566-582` host render model 测试验证 renderModel 派生，但没有渲染 CombatView。
+  - 运行证据：
+    - inline `npx tsx -` `createRenderModel()` 探针构造 `snapshot.lifecycle.screen='Combat'`、`combat.enemies=[rt_enemy_1]`、`combat.hand=['gather_intel']`；输出 `screen="Combat"`、`enemyCount=1`、`enemyIds=["rt_enemy_1"]`、`hand=["gather_intel"]`。
+    - 同一 inline `npx tsx -` CombatView SSR 对照探针：
+      - legacy `engine.state.combat=null` 且额外传入同一 `renderModel` 时，HTML `htmlLength=0`、`hasRuntimeEnemy=false`、`hasRuntimeCard=false`。
+      - legacy `engine.state.combat` 填入同一敌人与手牌对象后，HTML `htmlLength=22519`、`hasRuntimeEnemy=true`、`hasRuntimeCard=true`、`keyboardCardOptions=1`、`keyboardEnemyTargets=1`。
+    - 真实运行 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/runtimeV2Host.test.ts tests/unit/combatViewModel.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`59` tests，其中 `58` pass、`1` skip；现有测试能证明 legacy CombatView 和 renderModel host 各自工作，但没有覆盖 runtimeV2 renderModel-only CombatView。
+  - 风险：
+    - runtimeV2/Python combat 成为权威状态时，AppShell 可按 `renderModel.screen='Combat'` 切到战斗页，但 CombatView 因 legacy combat 为空直接空渲染，阻断战斗主循环。
+    - 即使未来给 CombatView 传 renderModel，当前 CombatView/子组件/点击路径仍依赖 legacy card `instanceId`、enemy object 和 `engine.playCard()`，而 `RenderModel.combat.hand` 只有 card ids；需要明确 bridge 或 legacy-compatible projection。
+    - 该问题与 Reward/Shop/Event/Map 断层同属 UI/renderModel 接管缺口，但影响 Combat 主屏，比可选房间 surface 更核心。
+  - 优先级：P1。战斗界面是核心 loop；renderModel-only combat 空渲染会让 runtimeV2/Python combat 接管不可玩。
+  - 修复方向：
+    - `AppShell` 应把 `renderModel` 传给 `CombatView`，或 runtime host 必须在进入 Combat 前同步完整 legacy-compatible `engine.state.combat`。
+    - `CombatView`/Battlefield/ActionHand 应基于同一权威 combat state 渲染敌人、手牌、能量、牌堆计数；若使用 renderModel，需要把 card ids 映射为可显示卡牌并把点击桥接到 runtimeV2 play-card/target command。
+    - 增加 SSR/React 单测：`renderModel.screen='Combat'` 且 `renderModel.combat.enemyCount > 0`、legacy `engine.state.combat=null` 时，CombatView/AppShell 不能输出空 HTML，必须显示敌人与可操作手牌或明确 fallback 错误态。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `createRenderModel()` Combat 探针输出，确认 runtimeV2 render model 已含 combat enemy/hand。
+  - 已真实运行并读完 inline CombatView SSR 对照探针输出，确认 legacy combat 为空时 CombatView 忽略 renderModel-only combat 并输出空 HTML，legacy combat 填充后才渲染敌人和手牌入口。
+  - 已真实运行并读完 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/runtimeV2Host.test.ts tests/unit/combatViewModel.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 输出，确认相关现有测试仍绿但不覆盖该 UI 消费路径。
+- 下一轮建议：
+  - 第 126 轮展示 `UI-RUNTIMEV2-COMBATVIEW-IGNORES-RENDERMODEL-COMBAT-001` 的文件/行号、createRenderModel 探针、CombatView SSR 对照、现有测试绿灯证据、P1 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 127 - RuntimeV2 Combat Interaction Commands Missing Finding - 2026-05-20
+
+- 循环模式：第 127 轮，runtimeV2 combat 命令契约 + Python process/WASM dispatch + GameEngine delegation 接线审计 + 最小行为探针找 bug。
+- 审计范围：
+  - 接续第 126 轮展示，本轮继续打 runtimeV2 combat 接管链路，但不重复 `CombatView` 不消费 renderModel 的 UI 空渲染问题。
+  - 本轮重点检查：即使 UI 后续能显示 runtimeV2 combat snapshot，runtimeV2/Python 规则层是否已经支持真实打牌、结束回合等 playable combat interaction。
+  - 本轮只记录命令面缺口，未修改业务代码。
+- 新发现：
+  - **RUNTIMEV2-COMBAT-INTERACTION-COMMANDS-MISSING-001 · runtimeV2/Python 已能进入 Combat 并用 `complete_combat` 快捷跳到 Reward，但 `RuleCommand`、Python process runtime 和 Python WASM 内嵌 runtime 都没有 `play_card` / `end_turn` 等真实战斗交互命令。`PythonProcessAdapter` 与 `PythonWasmAdapter` 只把命令转成 snake_case 后透传给 Python dispatch，因此即使后续 `CombatView` 改为消费 renderModel，点击手牌或结束回合也无法通过 runtimeV2/Python 执行，只能继续走 legacy `CombatManager` 或 `complete_combat` 跳关。**
+  - 证据位置：
+    - `src\runtimeV2\contracts.ts:265-285` `RuleCommand` 列出 `complete_combat`、`take_reward`、`skip_reward` 等命令，但没有 `play_card`、`end_turn`、`use_potion` 或 target/card interaction command。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:36-82` process runtime dispatch 只处理 `complete_combat` 等 surface/shortcut 命令，未知命令直接 `ValueError("Unsupported command: ...")`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1026` `_apply_complete_combat()` 是战斗快捷完成入口，会直接清空 combat 并进入 reward。
+    - `src\content\narrative\pythonRuntime.ts:37-83` Python WASM 内嵌 runtime 的 dispatch 同样没有 `play_card` / `end_turn`，未知命令同样 unsupported。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts:63` / `src\runtimeV2\node\pythonProcessAdapter.ts:131-137` Python process adapter 只做 camelCase -> snake_case 转换并发送给 Python。
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts:67-79` WASM adapter 同样把 snake_case 命令 JSON 传给 `dispatch_command(...)`。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts:153-157` legacy oracle 的 runtimeV2 combat 支持也是 `complete_combat` 调 `engine.handleCombatVictory()`，不是真实逐张牌执行。
+    - `src\core\events\gameEngine.ts:107-108` 默认 delegated slice 仍是 `boot_and_map`；`src\core\events\gameEngine.ts:698` 只有 delegated complete combat 尝试；`src\core\events\gameEngine.ts:838-843` `playCard()` / `endTurn()` 仍直接调用 legacy `combatManager`；`src\core\events\gameEngine.ts:1303-1304` 战斗胜利才写入 `complete_combat` delegate command。
+    - `tests\unit\runtimeV2Parity.test.ts:780-785` combat parity happy path 是 `enter_node -> complete_combat -> skip_reward`；`tests\unit\runtimeV2Parity.test.ts:967` 附近的 real Python combat baseline 也验证 stable combat fields 与 shortcut flow，没有覆盖 `play_card` 或 `end_turn`。
+  - 运行证据：
+    - inline Python process rules-core 探针使用最小 content bundle 进入 combat 后，输出：
+      - `phase_before combat`
+      - `hand ['neutral_strike', 'payoff_intel', 'gather_intel']`
+      - `enemy_ids ['slime']`
+      - `play_card ValueError Unsupported command: play_card`
+      - `end_turn ValueError Unsupported command: end_turn`
+      - 正对照 `complete_combat` 成功：`positive_control runtime.complete_combat reward {'card_ids': ['neutral_strike'], 'source': 'combat'}`
+    - inline `npx tsx -` EngineHost + real `PythonProcessAdapter` 探针在真实 content bundle、seed `127`、`usePrebuiltMapNodes=true` 下进入 `floor_1_node_1` combat，输出：
+      - `phase_before combat`
+      - `hand ["weak_point_analysis","calculated_strike","surveillance","defend","dead_drop"]`
+      - `enemy_ids ["slime_small_glass"]`
+      - `play_card false Unsupported command: play_card`
+      - `end_turn false Unsupported command: end_turn`
+      - 正对照 `complete_combat` 成功：`positive_control true reward ["intel_network","weak_point_analysis","precision_strike"]`
+    - 真实运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2Parity.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`79` tests，其中 `78` pass、`1` skip；当前 runtimeV2 host/parity/delegation 测试仍绿，但 combat 覆盖路径主要是 `complete_combat` 快捷命令。
+    - 真实运行 `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK；Python rules-core 单测也没有覆盖 playable combat interaction command。
+  - 风险：
+    - 第 125 轮 UI 空渲染问题修掉后，玩家仍可能无法通过 runtimeV2/Python 打出手牌或结束回合；runtimeV2 combat 只能被显示或被 `complete_combat` 跳过，不能成为 authoritative playable combat runtime。
+    - 现有 parity 与 host 绿灯容易给出错误信心，因为它们验证的是 combat snapshot、reward transition、delegated victory shortcut，而不是真实战斗主循环。
+    - 如果未来把 `CombatView` click path 改接 runtimeV2，但没有同时扩展 RuleCommand/Python rules，UI 会从“看不见战斗”变成“看得见但操作失败”。
+  - 优先级：P1。它阻断 runtimeV2/Python combat 接管的核心可玩性；战斗主循环不能只靠 `complete_combat` shortcut 代表。
+  - 修复方向：
+    - 扩展 `RuleCommand`：至少加入 `play_card` / `end_turn`，并明确 card instance/id、target id、能量、抽弃牌、敌人回合、胜负结算事件的契约；若要支持药水，也应加入 `use_potion`。
+    - 在 `python_runtime/src/deckrogue_rules_core/runtime.py` 与 `src/content/narrative/pythonRuntime.ts` 同步实现这些命令，避免 Python process 与 WASM 再次漂移。
+    - `GameEngine` / `CombatView` 接 runtimeV2 combat 时，应让点击手牌和结束回合能 dispatch 到同一权威 runtime，或明确保持 legacy combat 为权威并禁止 runtimeV2 combat 接管。
+    - 增加最小验收测试：进入 combat 后 `play_card` 能降低敌人 HP/消耗能量/移动手牌，`end_turn` 能推进回合并产生敌人行动；parity tests 不应只依赖 `complete_combat`。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline Python rules-core 探针，确认 `play_card` / `end_turn` unsupported，且同一 combat snapshot 下 `complete_combat` 正对照成功。
+  - 已真实运行并读完 inline `PythonProcessAdapter` + EngineHost 探针，确认真实 TS runtimeV2 host 收到 `ok=false` 和 `Unsupported command`，且正对照 `complete_combat` 成功进入 reward。
+  - 已真实运行并读完 `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2Parity.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts` 输出，确认相关现有 TS 测试仍绿但不覆盖 playable combat commands。
+  - 已真实运行并读完 `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"` 输出，确认 Python 现有测试仍绿但不覆盖 playable combat commands。
+- 下一轮建议：
+  - 第 128 轮展示 `RUNTIMEV2-COMBAT-INTERACTION-COMMANDS-MISSING-001` 的文件/行号、Python 与 TS 双探针、现有测试绿灯证据、P1 风险、未修状态和修复验收标准；强调它与第 125 轮 `CombatView` renderModel 空渲染是串联风险，但根因不同。
+
+## DeckRogue Bug Loop Cycle 129 - Legacy AI IntentPolicy CamelCase Ignored Finding - 2026-05-20
+
+- 循环模式：第 129 轮，AI 意图链 + content schema 字段兼容 + 真实 `selectEnemyIntentForCombat()` 探针 + AI/profile 检查复跑找 bug。
+- 审计范围：
+  - 接续第 128 轮展示，本轮避开 runtimeV2 combat 命令面缺口，转向当前默认 legacy AI 意图链。
+  - 本轮先排重第 117 轮已记录的 `RUNTIMEV2-CONTENT-BUNDLE-CAMELCASE-INTENTPOLICY-DROPPED-001`：第 117 轮根因是 runtimeV2 content bundle 只投影 snake_case；本轮根因是 legacy `IntentSelector` 自己只读取 `enemyDef.intent_policy`，即使不经过 runtimeV2/Python 也会丢 25 个 camelCase authored policies。
+  - 本轮只记录问题，未修改业务代码。
+- 新发现：
+  - **AI-LEGACY-INTENTPOLICY-CAMELCASE-IGNORED-001 · `contentSchema.validateEnemiesData()`、`check_content_authoring.ts`、`check_enemy_ai_profiles.ts` 和现有 profile coverage 单测都承认 `intent_policy ?? intentPolicy`，但生产 `IntentSelector` / `selectEnemyIntentForCombat()` 只读取 snake_case `intent_policy`。因此 `src/content/data/enemies.json` 中 25 个只声明 camelCase `intentPolicy` 的敌人，在当前默认 legacy 战斗路径里也会固定 fallback 到 `"Attack"`，不会按 authored `bite/spray/cool_run` 等权重与 AI profile 行为选择意图。**
+  - 证据位置：
+    - `src\content\data\enemies.json:1371` `coolant_hound` 是真实敌人；`src\content\data\enemies.json:1381-1391` 只声明 camelCase `intentPolicy`，意图为 `bite/spray/cool_run`。
+    - `src\content\narrative\contentSchema.ts:332-333` schema 校验使用 `entry.intent_policy ?? entry.intentPolicy`，说明 authored camelCase policy 是合法输入。
+    - `src\content\narrative\numericSystem.ts:332` `enemiesData` 由 `validateEnemiesData(rawEnemiesData, 'enemies.json')` 输出，但没有把 `intentPolicy` 归一写回 `intent_policy`。
+    - `src\core\ai\intentSelector.ts:38-41` `EnemyDefBase` 只声明 `intent_policy?: IntentPolicy[]`；`src\core\ai\intentSelector.ts:130-132` `selectIntent()` 只读取 `enemyDef.intent_policy`，缺失时直接 `return 'Attack'`。
+    - `src\core\ai\selectEnemyIntent.ts:341-374` `applyIntentProfile()` 同样只在 `Array.isArray(enemyDef.intent_policy)` 时调整权重并返回 snake_case `intent_policy`，不会处理 camelCase `intentPolicy`。
+    - `tests\unit\enemyAiProfileCoverage.test.ts:15-17`、`:31-33`、`:45-47` 测试 helper 使用 `enemy.intent_policy || enemy.intentPolicy || []`，所以 profile/coverage 测试能看到 camelCase policy，但 selector 没有同样兼容。
+    - `scripts\validation\check_enemy_ai_profiles.ts:45` profile checker 也读取 `enemy.intent_policy || enemy.intentPolicy || []`，因此 checker pass 不代表生产 selector 能消费这些 policies。
+  - 运行证据：
+    - inline `npx tsx -` 真实数据探针统计当前 `enemiesData`：
+      - `total=58`
+      - `snakePolicy=33`
+      - `camelOnly=25`
+      - `firstCamelOnly=["coolant_hound","servo_confessor","reactor_thrall","data_leech","iron_choir_twin_a","iron_choir_twin_b","scrap_surgeon","sanctum_praetor"]`
+    - inline `npx tsx -` 使用真实 `coolant_hound` + `selectEnemyIntentForCombat()` 的 A/B 探针：
+      - `source_keys=["intentPolicy"]`
+      - `camel_policy_len=3`
+      - `snake_policy_len=0`
+      - `roll=0`: current legacy path `actual="Attack"`；手动归一 `{ ...enemy, intent_policy: enemy.intentPolicy }` 后 `normalized="bite"`。
+      - `roll=0.6`: current legacy path `actual="Attack"`；归一后 `normalized="spray"`。
+      - `roll=0.95`: current legacy path `actual="Attack"`；归一后 `normalized="cool_run"`。
+    - 真实运行 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests 全部 pass；当前 AI 单测没有覆盖“camelCase policy 必须被 selector 消费”。
+    - 真实运行 `npm run check:enemy-ai-profiles --silent`：exit `0`，输出 `[check_enemy_ai_profiles] OK`；checker 只证明 profile 引用合法，不证明 production selector 读取字段一致。
+  - 风险：
+    - 这影响当前默认 legacy 战斗路径，不需要等 runtimeV2/Python 接管。25/58 个敌人的 authored AI policy 会被生产 selector 视为空 policy，固定退回 `Attack`。
+    - AI profile、move 引用和 schema/checker 均显示合法，测试绿灯会误导为这些敌人已经接入统一 AI rollout。
+    - 与第 117 轮 runtimeV2 content bundle 投影缺口叠加：同一批 camelCase enemies 同时在 legacy selector 与 runtimeV2/Python bundle 两条路径中丢失策略，只是失败层不同。
+  - 优先级：P1。它影响 25 个敌人的默认战斗 AI 行为，范围大且玩家可见。
+  - 修复方向：
+    - 在内容入口或 AI 入口统一归一化：`validateEnemiesData()` / `numericSystem` 应把 `intentPolicy` 映射到 canonical `intent_policy`，或 `IntentSelector` / `selectEnemyIntentForCombat()` 应读取 `enemyDef.intent_policy ?? enemyDef.intentPolicy`。
+    - `EnemyDefBase` 类型应显式包含兼容字段，避免 TypeScript 接口给出“只有 snake_case 合法”的假象。
+    - 增加回归测试：用 `coolant_hound` 这类 camelOnly 敌人调用 `selectEnemyIntentForCombat()`，断言返回值属于 authored `intentPolicy` 集合且不固定为 `Attack`。
+    - 修复 runtimeV2 bundle 时应复用同一个 policy normalization helper，避免 legacy 与 runtimeV2 再次分叉。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 inline `enemiesData` 统计探针，确认 25 个敌人只声明 camelCase `intentPolicy`。
+  - 已真实运行并读完 inline `selectEnemyIntentForCombat()` A/B 探针，确认当前 legacy path 固定 `Attack`，归一化后可选到 `bite/spray/cool_run`。
+  - 已真实运行并读完 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts` 输出，确认相关 AI 单测仍绿但不覆盖 selector 字段兼容。
+  - 已真实运行并读完 `npm run check:enemy-ai-profiles --silent` 输出，确认 AI profile checker OK 但不证明 production selector 消费 camelCase policy。
+- 下一轮建议：
+  - 第 130 轮展示 `AI-LEGACY-INTENTPOLICY-CAMELCASE-IGNORED-001` 的文件/行号、A/B selector 探针、现有测试/checker 绿灯证据、P1 风险、未修状态和修复验收标准；说明它与第 117 轮 runtimeV2 bundle bug 是同一批数据在不同层的串联故障，不要合并成重复项。
+
+## DeckRogue Bug Loop Cycle 131 - UI Modal Keyboard Menu Toggle Leak Finding - 2026-05-20
+
+- 循环模式：第 131 轮，UI/桌面 hostPlatform 存档链路初筛 + AppShell/ErrorBoundary/全局键盘输入合约审计 + focused tests + inline 行为探针找 bug。
+- 审计范围：
+  - 接续第 130 轮展示，本轮先排查 desktop bridge -> SaveGameV2 hostPlatform 候选；当前证据显示 `SaveGameV2` 仍属于 runtimeV2/debug/parity 合约面，正式入口保存路径仍是 legacy `SaveManager`，该候选暂不作为本轮新生产 bug 记录。
+  - 随后转向 UI/渲染层键盘与 modal 合约，重点检查 `AppShell` 重开战斗确认 modal、Combat 牌堆/弃牌堆 modal、overlay 期间的全局快捷键解析是否会穿透。
+  - 本轮只记录问题，未修改业务代码。
+- 新发现：
+  - **UI-KEYBOARD-MODAL-MENU-TOGGLE-LEAK-001 · `resolveKeyboardAction()` 在检查 `context.overlay || context.modal` 之前就先处理 `toggleMenu`，因此任意 modal/overlay 打开时按 `KeyM` 仍会返回 `toggleMenu`。`AppShell.handleKeyboardAction()` 收到该动作后会直接切换 `showMenu`，导致“重开当前战斗”确认层、Combat 牌堆/弃牌堆 modal 或其他 keyboard modal 打开时，系统菜单可被打开到 modal 后方；关闭 modal 后菜单会残留，造成 UI 状态栈穿透。**
+  - 证据位置：
+    - `src\ui\input\useGlobalKeyboardInput.ts:38-42` 会把 `[data-keyboard-modal="true"]` 或 `context.modal` 写入 runtime keyboard context，说明 modal 状态本应参与全局快捷键仲裁。
+    - `src\ui\input\keybinds.ts:164-165` 先返回 `close` / `toggleMenu`；`src\ui\input\keybinds.ts:175-178` 的 modal/overlay 分支在其后才执行，所以 `KeyM` 不会被 modal 分支限制。
+    - `src\ui\views\AppShell.tsx:289-293` 收到 `toggleMenu` 后无视 `showRestartCombatConfirm` / modal 状态，直接 `setShowMenu((open) => !open)`。
+    - `src\ui\views\AppShell.tsx:345-351` 已把 `showRestartCombatConfirm` 映射成 `modal: 'restartCombatConfirm'`，但当前解析顺序让该 modal 对 `KeyM` 无效。
+    - `src\ui\views\AppShell.tsx:967-992` 重开战斗确认层是 `z-[70]`；系统菜单容器在同文件菜单块使用 `z-[60]`，因此快捷键打开的菜单会被压在确认层后方并在确认层关闭后残留。
+  - 运行证据：
+    - inline `npx tsx -` 键盘解析探针输出：
+      - `plain-combat: KeyM -> toggleMenu`
+      - `restart-modal: KeyM -> toggleMenu`
+      - `combat-deck-modal: KeyM -> toggleMenu`
+      - `overlay: KeyM -> toggleMenu`
+      - `menu-open: KeyM -> close`
+      - 同一探针中 `restart-modal: Digit1 -> selectOption1`、`combat-deck-modal: Digit1 -> selectOption1`，说明 modal 分支本身存在，但 `KeyM` 被提前截走。
+    - 真实运行 `npx tsx --test tests/unit/keybinds.test.ts tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts`：exit `0`，`37` tests 全部 pass；现有测试覆盖 modal 下数字选项与 AppShell modal 状态存在性，但没有覆盖 modal/overlay 下 `toggleMenu` 不应穿透。
+    - 真实运行 `npx tsx --test tests/unit/desktopHost.test.ts tests/unit/runtimeV2Persistence.test.ts tests/unit/runtimeV2Migration.test.ts`：exit `0`，`5` tests 全部 pass；desktop/save hostPlatform 候选目前仅证明 helper 与 bridge 独立可用，未形成正式入口 bug。
+  - 风险：
+    - P2。该问题不直接破坏战斗规则，但会破坏 modal 栈与键盘焦点模型：确认重开战斗时可把系统菜单打开在遮罩后，随后 Esc/点击关闭确认层后进入一个用户没有显式打开的菜单状态。
+    - Combat 牌堆/弃牌堆 modal 使用 `[data-keyboard-modal="true"]`，也会受到同一全局解析顺序影响；玩家查看牌堆时按菜单键会穿透到应用系统菜单，而不是保持当前 modal 上下文。
+    - 现有测试绿灯会给出错误信心，因为它们只断言 modal 下数字键转为 `selectOption`，没有断言 `toggleMenu` 在 modal/overlay 下被屏蔽或降级为 `close`。
+  - 修复方向：
+    - 调整 `resolveKeyboardAction()` 优先级：`close` 可继续作为 Escape 的全局关闭动作，但 `toggleMenu` 应在 `context.menuOpen`、`context.overlay`、`context.modal` 分支之后处理；modal/overlay 下 `KeyM` 应返回 `null` 或明确返回 `close`，不能返回 `toggleMenu`。
+    - `AppShell.handleKeyboardAction()` 可增加保护：当 `showRestartCombatConfirm` 或其他 modal/overlay 存在时忽略 `toggleMenu`，避免未来解析层再次放行。
+    - 增加回归测试：`resolveKeyboardAction('KeyM', { modal: 'restartCombatConfirm', menuOpen: false, ... }, DEFAULT_KEYBINDS)` 不应返回 `toggleMenu`；overlay 场景同理。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 desktop host + runtimeV2 persistence/migration focused tests，确认 desktop/save 候选暂不作为新生产 bug。
+  - 已真实运行并读完 AppShell/ErrorBoundary/keybind focused tests，确认相关测试绿但不覆盖 modal/overlay 下 `KeyM` 穿透。
+  - 已真实运行并读完 inline `resolveKeyboardAction()` 探针，确认 modal/overlay 状态下 `KeyM` 返回 `toggleMenu`。
+- 下一轮建议：
+  - 第 132 轮展示 `UI-KEYBOARD-MODAL-MENU-TOGGLE-LEAK-001` 的文件/行号、inline 键盘解析探针、现有测试绿灯证据、P2 风险、未修状态和修复验收标准；说明本轮已排除 desktop SaveGameV2 hostPlatform 候选为生产级新 bug。
+
+## DeckRogue Bug Loop Cycle 133 - Tutorial Overlay Keyboard Context Leak Finding - 2026-05-21
+
+- 循环模式：第 133 轮，UI/渲染层全局键盘输入 + Tutorial overlay + Combat/Launcher 背景交互穿透审计 + focused tests + SSR/keyboard inline 探针找 bug。
+- 审计范围：
+  - 接续第 132 轮展示，本轮继续 UI 键盘状态栈，但不重复 `UI-KEYBOARD-MODAL-MENU-TOGGLE-LEAK-001` 的 `KeyM` modal 优先级问题。
+  - 本轮重点检查教程 overlay：从 Launcher 打开教程、从 Combat 首战引导打开教程时，全局键盘输入是否会进入 tutorial 自己的 modal/overlay 上下文，还是继续驱动背后的启动器/战斗界面。
+  - 本轮只记录问题，未修改业务代码。
+- 新发现：
+  - **UI-TUTORIAL-OVERLAY-KEYBOARD-CONTEXT-LEAK-001 · `TutorialView` 是 `z-[130]` 的全屏固定覆盖层，但没有 `data-keyboard-modal="true"` / `data-keyboard-overlay="true"`，关闭按钮和底部按钮也没有 `data-keyboard-close` / `data-keyboard-option`。`AppShell` 的 keyboard context 也没有把 `showTutorial` 或 Combat 内 `showTutorialOverlay` 纳入 modal/overlay 状态。因此教程打开时，数字键、结束回合键和确认/关闭键仍按背后的 `Launcher` 或 `Combat` screen 解析：Launcher 教程上按 `Digit1` 会指向背后的“开始新战区”，Combat 教程上按 `Digit1` / `KeyE` 会指向背后的手牌 / 结束回合，而 `Escape` 也无法可靠关闭教程。**
+  - 证据位置：
+    - `src\ui\views\TutorialView.tsx:91-93` 顶层覆盖层只有 `data-screen="Tutorial"`，没有 keyboard modal/overlay 标记。
+    - `src\ui\views\TutorialView.tsx:117-120` 右上关闭按钮只有 `aria-label="关闭教程"`，没有 `data-keyboard-close` / `data-keyboard-focus`。
+    - `src\ui\views\TutorialView.tsx:190-201` 底部“直接开始新局 / 返回当前界面”按钮没有 `data-keyboard-option`，无法在 tutorial 自己的键盘上下文中被数字键选择。
+    - `src\ui\views\AppShell.tsx:345-351` keyboard context 的 `overlay` 固定为 `null`，`modal` 只看 `showRestartCombatConfirm`，没有 `showTutorial`。
+    - `src\ui\views\AppShell.tsx:540-556` Launcher 分支在 `SetupLauncher` 后渲染 `TutorialView open={showTutorial}`；背后的 Launcher 按钮仍保留 `data-keyboard-option="1"` / `"2"` 等。
+    - `src\ui\views\AppShell.tsx:994-999` 运行中也渲染全局 `TutorialView open={showTutorial}`，同样不改变 keyboard context。
+    - `src\ui\views\CombatView.tsx:653-659` Combat 内 `showTutorialOverlay` 直接渲染 `TutorialView`，但这个 state 只在 CombatView 内部，`AppShell` 的全局 `useGlobalKeyboardInput` 不知道它存在。
+    - `src\ui\views\combat\ActionHand.tsx:52-58` 结束回合按钮有 `data-keyboard-end-turn="true"`；`src\ui\views\combat\ActionHand.tsx:86-89` 手牌有 `data-keyboard-option` / `data-keyboard-card-index`，所以 Combat 教程打开时这些背后控件仍可被全局键盘动作命中。
+  - 运行证据：
+    - inline SSR + keyboard 解析探针输出：
+      - `tutorial_has_screen true`
+      - `tutorial_has_keyboard_modal false`
+      - `tutorial_has_keyboard_overlay false`
+      - `tutorial_has_keyboard_close false`
+      - `tutorial_keyboard_option_count 0`
+      - `combined_tutorial_screen_count 1`
+      - `combined_launcher_screen_count 1`
+      - `combined_keyboard_option_1_count 1`
+      - `combined_keyboard_modal_count 0`
+      - `combined_keyboard_overlay_count 0`
+      - `launcher_context_digit1 selectOption1`
+      - `launcher_context_escape close`
+      - `combat_context_digit1 playCard1`
+      - `combat_context_keye endTurn`
+    - 真实运行 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/appShellUiContracts.test.ts tests/unit/keybinds.test.ts`：exit `0`，`41` tests 全部 pass；现有教程测试只断言内容出现，keybind 测试只断言抽象 context，未覆盖“教程打开时必须占用 keyboard modal/overlay”。
+  - 风险：
+    - P1/P2。教程 overlay 是用户首次接触规则和术语的路径；在 Launcher 上按数字键可能意外启动新局，在 Combat 上按数字键或 `KeyE` 可能打出手牌/结束回合，属于覆盖层可见但输入仍作用于背后界面的交互破坏。
+    - 该问题也会让 `Escape` 的恢复预期失效：`resolveKeyboardAction('Escape')` 返回 `close`，但 `AppShell.handleClose()` 只知道 rebinding/restart/menu，最后寻找 `[data-keyboard-close="true"]`；`TutorialView` 的关闭按钮没有该标记。
+    - 与第 131 轮 `KeyM` 穿透不同，本轮根因是教程 overlay 没注册为任何 keyboard modal/overlay，也没有自己的键盘可达控件。
+  - 修复方向：
+    - 给 `TutorialView` 顶层或面板增加 `data-keyboard-modal="true"` 或 `data-keyboard-overlay="true"`，让 `useGlobalKeyboardInput()` 能自动把上下文切到 modal/overlay。
+    - 给教程关闭按钮和底部“返回当前界面”补 `data-keyboard-close="true"` / `data-keyboard-focus="true"`；如保留“直接开始新局”，应明确给 `data-keyboard-option` 并只在 tutorial modal 上下文中可达。
+    - `AppShell` 可把 `showTutorial` 纳入 `keyboardContext.modal`，但 Combat 内 `showTutorialOverlay` 在子组件内，仍建议由 DOM `data-keyboard-modal` 作为通用修复。
+    - 增加回归测试：SSR/DOM 断言 `TutorialView open` 输出 keyboard modal/close 标记；再加 keybind 行为测试，教程打开时 `Digit1` 不应解析/点击背后的 Launcher 或 Combat 控件。
+- 验证：
+  - `git status --short --branch`：工作树已有大量既有修改和未跟踪文件，本轮只追加此报告段，未修业务代码。
+  - 已真实运行并读完 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/appShellUiContracts.test.ts tests/unit/keybinds.test.ts`，确认现有 41 个相关测试全绿但不覆盖教程 keyboard modal 占用。
+  - 已真实运行并读完 inline SSR/keyboard 探针，确认 Tutorial overlay 无 keyboard modal/overlay/close/option 标记，且 Launcher/Combat context 下按键仍解析到背后 screen。
+- 下一轮建议：
+  - 第 134 轮展示 `UI-TUTORIAL-OVERLAY-KEYBOARD-CONTEXT-LEAK-001` 的文件/行号、SSR/keyboard inline 探针、focused tests 绿灯证据、P1/P2 风险、未修状态和修复验收标准；强调它与第 131 轮 `KeyM` modal 优先级 bug 是相邻但不同的键盘状态栈漏洞。
+
+## DeckRogue Automation Startup Repair - 2026-05-21
+
+- 范围：检查 `deckrogue-bug-loop` heartbeat 自动化无法启动 / stale path 报错。
+- 证据：
+  - `C:\Users\123\.codex\automations\deckrogue-bug-loop\automation.toml` 仍为 `status = "ACTIVE"`，`rrule = "FREQ=MINUTELY;INTERVAL=5"`，目标线程为 `019e351c-414a-7620-bc8d-63b84772537e`。
+  - `state_5.sqlite` / `logs_2.sqlite` 初查 `PRAGMA quick_check = ok`。
+  - 当前 Codex App bundle 中 heartbeat scheduler 的 `Bn()` 仍直接调用 `resumeThread(e.id,{cwd:e.cwd,path:e.path})`，没有 Windows extended-path fallback；WindowsApps 安装目录由 TrustedInstaller / SYSTEM 持有，当前用户无写权限，未热补丁安装包。
+  - `.codex-global-state.json` 顶层 `queued-follow-ups` 堆积了两个 stale path 报错线程的手动“继续”：DeckRogue `4` 条、Peptide `2` 条。
+- 修复：
+  - 已备份 `C:\Users\123\.codex\.codex-global-state.json` 到 `C:\Users\123\.codex\backups\automation-stale-queue-fix-20260521-082131\.codex-global-state.json`。
+  - 已只删除顶层 `queued-follow-ups` 中 DeckRogue / Peptide 两个报错线程的陈旧队列项，避免 App 继续消费旧 follow-up 并触发 `requested C:\... active \\?\C:\...` 的重复 resume 冲突。
+- 已知边界：
+  - 当前 turn 正在目标线程内运行，会让 heartbeat 在本轮结束前被 `active_recent_rollout_activity` / thread busy 类状态自然挡住，不能在同一 turn 内证明下一次 5 分钟 heartbeat 已成功注入。
+  - 根因级 App bundle 修复应在上游加入 Windows path normalization 或 retry fallback；本轮未改 WindowsApps 安装包。
+
+### Second queue cleanup verification - 2026-05-21 08:28 Asia/Shanghai
+
+- 复查原因：第一轮清理后，Codex App 又把旧运行态队列落回 `.codex-global-state.json`；新状态显示 `queued-follow-ups` 仍有 DeckRogue `3` 条、Peptide `1` 条旧“继续”。
+- 修复动作：
+  - 先备份 `C:\Users\123\.codex\.codex-global-state.json` 到 `C:\Users\123\.codex\backups\automation-queued-followups-fix-20260521-082832\.codex-global-state.json`。
+  - 只删除 `019e351c-414a-7620-bc8d-63b84772537e` 和 `019e395a-d484-7190-bc46-9a2c4cb915b1` 两个 stale path 报错线程的 queued follow-ups。
+- 验证：
+  - 清理脚本输出 `before`: DeckRogue `3`、Peptide `1`；`after`: `{}`。
+  - Node JSON parse 复查：`queueKeys = []`，`hasDeck = false`，`hasPeptide = false`。
+  - `state_5.sqlite` / `logs_2.sqlite`：`PRAGMA quick_check = ok`。
+  - 75 秒观察窗口后 `.codex-global-state.json` mtime 仍为 `2026-05-21T00:28:32.580Z`，`queueKeys = []`，说明旧队列没有立即被 App 内存态再次写回。
+  - `deckrogue-bug-loop` automation card 可由 Codex App 渲染，配置仍存在并为 ACTIVE。
+  - 目标 rollout 复查：最后一次真实 `<heartbeat>` 仍停在 `2026-05-20T15:02:59.471Z`；本轮只是清除启动阻塞，尚不能在当前 active turn 内证明下一次 5 分钟 heartbeat 已成功注入。
+- 剩余风险：
+  - 当前 thread 正在运行，heartbeat scheduler 可能仍因 active/recent activity 跳过本轮窗口；真实恢复证明需要本 turn 结束后等待下一个 5 分钟周期。
+  - 上游 App scheduler 仍缺 Windows `C:\...` 与 `\\?\C:\...` path normalization；若未来有新的 queued follow-up 在 active thread 上触发，仍可能复现 stale path。
+
+### App-level automation refresh and live queue cleanup - 2026-05-21 08:35 Asia/Shanghai
+
+- 复查原因：用户继续后 `.codex-global-state.json` 再次出现旧运行态队列，但条目时间戳仍是 `2026-05-20T23:42Z`，不是新的 heartbeat 任务；说明 App renderer/main 运行态仍持有旧 queued follow-ups。
+- App 级修复：
+  - 通过 Codex App automation API 更新 `deckrogue-bug-loop`，保持同一 `id` / `kind = heartbeat` / `rrule = FREQ=MINUTELY;INTERVAL=5` / `target_thread_id = 019e351c-414a-7620-bc8d-63b84772537e`，让 App 内部 scheduler 重新读取自动化配置。
+  - 更新后 `automation.toml` 的 `updated_at` 刷新为 `1779323732648`。
+- 队列修复：
+  - 先备份 `C:\Users\123\.codex\.codex-global-state.json` 到 `C:\Users\123\.codex\backups\automation-live-refresh-queue-clear-20260521-083549\.codex-global-state.json`。
+  - 删除旧队列：DeckRogue `2` 条、Peptide `1` 条；清理脚本输出 `after = {}`。
+- 验证：
+  - 90 秒观察后 `.codex-global-state.json` 仍为 `queueKeys = []`，mtime 保持 `2026-05-21T00:35:49.304Z`，旧运行态队列没有再次落盘。
+  - `state_5.sqlite` / `logs_2.sqlite`：`PRAGMA quick_check = ok`。
+  - `automation.toml` 仍为 `status = "ACTIVE"`，目标线程未变。
+  - 目标 rollout 仍未出现新的 `<heartbeat>`；最后真实 heartbeat 仍是 `2026-05-20T15:02:59.471Z`，当前 turn active 仍会自然阻挡 scheduler 的运行证明。
+  - 修复后错误日志没有 DeckRogue stale-path ERROR；仅看到 Peptide 线程一条 shell tool 退出码错误，与本次 DeckRogue heartbeat stale path 无关。
+- 结论：
+  - 当前已清除可见的直接阻塞项，并用 App API 刷新了自动化运行态；下一次可靠验证点是本 turn 结束后的 5 分钟周期。
+  - 若下个周期仍没有 `<heartbeat>`，下一层根因优先看 scheduler 的 `missing_collaboration_mode` / renderer eligibility，而不是继续重复清同一批旧 queue。
+
+### Final stale queue clear and reappearance follow-up - 2026-05-21 08:41-08:49 Asia/Shanghai
+
+- 复查原因：上一轮摘要显示 `automation-final-stale-queue-clear-20260521-084135` 已清掉最后一批旧 queued follow-ups，但该段尚未写入报告；本轮重新进入线程后需要确认旧队列是否再次落盘。
+- 08:41 清理记录：
+  - 备份路径：`C:\Users\123\.codex\backups\automation-final-stale-queue-clear-20260521-084135\.codex-global-state.json`。
+  - 删除旧项：DeckRogue `8e7fa6bb-065d-46ae-bfb8-428418200d24`，createdAt `2026-05-20T23:42:30.961Z`；Peptide `3e12aee7-373e-4964-93fa-815dc4a2ecc8`，createdAt `2026-05-20T23:42:08.566Z`。
+  - 验证：清理输出 `after = {}`；90 秒观察后 `queueKeys = []`，`hasDeck = false`，`hasPeptide = false`。
+- 本轮新增证据：
+  - 08:45 复查 `.codex-global-state.json` 时，同一 DeckRogue queued follow-up 又以 `019e351c-414a-7620-bc8d-63b84772537e -> 8e7fa6bb-065d-46ae-bfb8-428418200d24` 回写；这说明 Codex App 内存态仍持有旧“继续”队列，文件级清理会被运行态再次落盘。
+  - 08:46 已再次备份并删除该 DeckRogue 旧队列，备份路径：`C:\Users\123\.codex\backups\automation-reappeared-deckrogue-queue-clear-20260521-084620\.codex-global-state.json`。
+  - 清理脚本输出：`before=019e351c-414a-7620-bc8d-63b84772537e:8e7fa6bb-065d-46ae-bfb8-428418200d24:1779320550961`，`removed=...`，`afterCount=0`。
+  - 95 秒观察后 `.codex-global-state.json` 仍为 `afterSleepPropCount=0`、`afterSleepPropNames=`，旧队列没有立刻再次回写。
+- 当前状态：
+  - `C:\Users\123\.codex\sqlite\codex-dev.db` 中 `deckrogue-bug-loop` 仍为 `ACTIVE`，`rrule = FREQ=MINUTELY;INTERVAL=5`，`next_run_at = 2026-05-21T00:43:19Z`，`last_run_at = 2026-05-20T23:36:15Z`。
+  - `state_5.sqlite` 目标线程 `rollout_path` 是 `\\?\C:\Users\123\.codex\sessions\2026\05\17\rollout-2026-05-17T16-45-04-019e351c-414a-7620-bc8d-63b84772537e.jsonl`，解释了 plain `C:\...` 请求与 active `\\?\C:\...` 的 stale path 冲突来源。
+  - `state_5.sqlite` / `logs_2.sqlite`：`PRAGMA quick_check = ok`。
+  - 目标 rollout 最后真实 `<heartbeat>` 仍停在 `2026-05-20T15:02:59.471Z`；当前 turn 仍处于 active 状态，不能把本轮内未注入 heartbeat 作为最终失败证明。
+- App API 二次刷新验证：
+  - 队列清空并短窗稳定后，通过 Codex App automation API 原样更新 `deckrogue-bug-loop`，刷新后 `automation.toml` 的 `updated_at = 1779324654540`。
+  - 即时复查：`status = ACTIVE`，`rrule = FREQ=MINUTELY;INTERVAL=5`，`target_thread_id` 未变；`.codex-global-state.json` 仍为 `propCount=0`。
+  - 35 秒观察后，scheduler 将 `next_run_at` 从过期的 `2026-05-21T00:43:19Z` 推进到 `2026-05-21T00:52:49Z`，证明 App 级刷新被调度器读取。
+  - 跨过 `00:52:49Z` 调度点后，`next_run_at` 继续推进到 `2026-05-21T00:54:49Z`，`.codex-global-state.json` 仍为 `propCount=0`，未再触发 stale path queued follow-up。
+  - 同期目标 rollout 未新增 `<heartbeat>`，最后真实 heartbeat 仍为 `2026-05-20T15:02:59.471Z`；这是当前人工 turn 仍 active 的预期结果，不能作为空闲状态下失败证据。
+- 判断：
+  - 文件层直接阻塞已再次清除，App API 刷新已落盘，且 scheduler 已跨一个调度点安全推进；当前状态可判为“调度器已恢复运行，目标线程仍因当前人工 turn active 而未注入 heartbeat”。
+  - 若本 turn 结束后同一 ID 再次出现，下一步应重启 Codex App 清空 renderer/main 运行态，再复查队列与 5 分钟 heartbeat。
+  - 不建议硬改 WindowsApps 安装包；上游根因仍是 heartbeat scheduler 缺少 `C:\...` / `\\?\C:\...` path normalization 或 retry fallback。
+
+## DeckRogue Bug Loop Cycle 134 - Tutorial Overlay Keyboard Context Leak Exhibit - 2026-05-21
+
+- 循环模式：第 134 轮，按交替节奏展示第 133 轮发现的 `UI-TUTORIAL-OVERLAY-KEYBOARD-CONTEXT-LEAK-001`。
+- 自动化恢复证据：
+  - 本轮收到真实 `<heartbeat>`：目标 rollout `heartbeatUserCount=145`，最后 heartbeat 行为 line `15948`，timestamp `2026-05-21T00:56:17.100Z`，`current_time_iso=2026-05-21T00:55:53.762Z`。
+  - `C:\Users\123\.codex\sqlite\codex-dev.db` 中 `deckrogue-bug-loop` 为 `ACTIVE`，`last_run_at=2026-05-21T00:55:53Z`，`next_run_at=2026-05-21T01:00:51Z`。
+  - `.codex-global-state.json` 复查 `queued-follow-ups` 为 `propCount=0`，说明上轮 stale path 队列清理没有阻塞本次 heartbeat。
+- Bug 展示：
+  - **UI-TUTORIAL-OVERLAY-KEYBOARD-CONTEXT-LEAK-001**：`TutorialView` 可见时是 `z-[130]` 的全屏覆盖层，但它没有声明 keyboard modal/overlay，也没有可由全局键盘层识别的 close/option 控件；同时 `AppShell` 的全局 keyboard context 没有把 tutorial 打开状态纳入 `modal` 或 `overlay`。结果是教程覆盖层可见时，`Digit1` / `KeyE` 等按键仍会按背后的 Launcher/Combat screen 解析。
+- 当前文件/行号：
+  - `src\ui\views\TutorialView.tsx:91-93`：顶层只输出 `data-screen="Tutorial"`，没有 `data-keyboard-modal` / `data-keyboard-overlay`。
+  - `src\ui\views\TutorialView.tsx:117-120`：右上关闭按钮只有 `aria-label="关闭教程"`，没有 `data-keyboard-close`。
+  - `src\ui\views\TutorialView.tsx:190-201`：底部“直接开始新局 / 返回当前界面”按钮没有 `data-keyboard-option`，也没有 close/focus 标记。
+  - `src\ui\views\AppShell.tsx:345-351`：`keyboardContext.overlay` 固定为 `null`，`modal` 只看 `showRestartCombatConfirm`，没有 `showTutorial`。
+  - `src\ui\views\AppShell.tsx:551-556` 与 `src\ui\views\AppShell.tsx:994-999`：全局 tutorial 被渲染，但不改变 keyboard context。
+  - `src\ui\views\CombatView.tsx:653-659`：Combat 内 `showTutorialOverlay` 直接渲染 `TutorialView`，该状态不被 `AppShell` 的 `useGlobalKeyboardInput` 感知。
+  - `src\ui\views\combat\ActionHand.tsx:52-58` / `85-89`：背后的结束回合按钮和手牌仍暴露 `data-keyboard-end-turn`、`data-keyboard-option`，会被全局键盘输入命中。
+- Fresh 验证：
+  - 运行 `npx tsx --test tests/unit/tutorialModule.test.tsx tests/unit/appShellUiContracts.test.ts tests/unit/keybinds.test.ts`：exit `0`，`41` tests 全部 pass；现有测试未覆盖 tutorial 打开时应占用 keyboard modal/overlay。
+  - 运行无 JSX inline SSR + keyboard resolver 探针：exit `0`，关键输出为：
+    - `tutorial_has_screen true`
+    - `tutorial_has_keyboard_modal false`
+    - `tutorial_has_keyboard_overlay false`
+    - `tutorial_has_keyboard_close false`
+    - `tutorial_keyboard_option_count 0`
+    - `combined_tutorial_screen_count 1`
+    - `combined_launcher_screen_count 1`
+    - `combined_keyboard_option_1_count 1`
+    - `combined_keyboard_modal_count 0`
+    - `combined_keyboard_overlay_count 0`
+    - `launcher_context_digit1 selectOption1`
+    - `combat_context_digit1 playCard1`
+    - `combat_context_keye endTurn`
+- 优先级：P1/P2。Launcher 教程打开时 `Digit1` 可落到背后“开始新战区”；Combat 教程打开时 `Digit1` / `KeyE` 可落到背后手牌或结束回合，破坏新手教程和战斗输入隔离。
+- 是否已修：未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收建议：
+  - `TutorialView` 顶层或面板增加 `data-keyboard-modal="true"` 或 `data-keyboard-overlay="true"`。
+  - 关闭按钮增加 `data-keyboard-close="true"` 与可聚焦标记；底部按钮按 tutorial 自身语义增加 `data-keyboard-option` 或 close 标记。
+  - 增加回归测试：`TutorialView open` 输出 keyboard modal/close 标记；tutorial 打开时 `Digit1` / `KeyE` 不应解析到背后 Launcher/Combat 控件。
+- 下一轮建议：
+  - 第 135 轮回到奇数轮找 bug，优先转向 content schema / AI intent chain，不重复 UI tutorial overlay；建议先跑或审计 `contentSchema.ts`、`intentPolicy.ts` 与 runtimeV2 bundle 构建边界。
+
+## DeckRogue Bug Loop Cycle 135 - Enemy AI Boundary Deep Import Finding - 2026-05-21
+
+- 循环模式：第 135 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找 bug。
+- 审计范围：
+  - 避免重复第 134 轮 tutorial overlay 键盘穿透展示。
+  - 本轮优先打 content schema、AI intent chain、runtimeV2 content bundle 构建边界。
+- 新发现：
+  - **AI-BOUNDARY-DEEP-IMPORT-LEAK-001 · 敌人 AI 层边界检查失败：外部模块直接导入 `@/core/ai/...` 深层模块，绕过统一 `@/core/ai` facade。**
+  - `npm run check:enemy-ai-boundaries --silent` exit `1`，输出 2 个 violation：
+    - `src/core/events/gameEngine.ts: '@/core/ai/combatMemory' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+    - `src/runtimeV2/content/buildContentBundle.ts: '@/core/ai/intentPolicy' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+  - 文件/行号：
+    - `src\core\events\gameEngine.ts:61` 直接导入 `combatMemory`。
+    - `src\core\events\gameEngine.ts:323` 和 `src\core\events\gameEngine.ts:750` 直接调用 `combatMemory.clear()`。
+    - `src\runtimeV2\content\buildContentBundle.ts:18` 直接导入 `normalizeIntentPolicyIntent` / `parseIntentPolicyWeight`。
+    - `src\runtimeV2\content\buildContentBundle.ts:85-86` 在 content bundle projection 中直接调用 intent policy helper。
+    - `src\core\ai\index.ts:9` 已统一导出 `combatMemory`；但当前 `index.ts` 还没有导出 `intentPolicy.ts`，使 runtimeV2 bundle 无法通过 facade 使用 intent policy helper。
+  - 检查脚本根因边界：
+    - `scripts\validation\check_enemy_ai_boundaries.ts:78-83` 明确禁止非 `src/core/ai/` 文件导入 `@/core/ai/` 深层路径，并要求外部消费者走 `@/core/ai`。
+- 对照通过项：
+  - `npm run check:content-authoring --silent` exit `0`：Cards `354/354` valid，Enemies `58/58` valid，Pass rate `100%`。
+  - `npm run check:content-bundle --silent` exit `0`：`7/7 passed`。
+  - `npm run check:ui-runtime-boundaries --silent` exit `0`：`[check_ui_runtime_boundaries] OK`。
+  - `npm run check:content-contract-layer --silent` exit `0`：`[check_content_contract_layer] OK`。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts` exit `0`：`18` tests pass。
+- 风险：
+  - P2。当前行为测试仍绿，但项目自带架构边界 gate 失败，意味着敌人 AI facade 约束已被 runtimeV2 content builder 与 legacy GameEngine 绕开。
+  - 对 runtimeV2 特别敏感：`buildContentBundle.ts` 是 Python/core content projection 入口，深层依赖 AI helper 会让 content bundle 层继续耦合 AI 内部实现，后续移动或替换 intent policy helper 时容易破坏 runtimeV2 打包。
+  - 对 legacy GameEngine：直接清 `combatMemory` 会让生命周期管理依赖 AI 内部 singleton，而不是通过统一 AI facade 暴露的生命周期 API。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - 在 `src\core\ai\index.ts` 增加 `export * from '@/core/ai/intentPolicy';`。
+  - 将 `src\runtimeV2\content\buildContentBundle.ts` 的导入改为从 `@/core/ai` 获取 `normalizeIntentPolicyIntent` / `parseIntentPolicyWeight`。
+  - 将 `src\core\events\gameEngine.ts` 的 `combatMemory` 导入改为从 `@/core/ai` facade 进入；如希望进一步收口，可在 facade 暴露 `clearCombatMemory()`，避免外部直接触碰 singleton。
+  - 增加或更新 focused gate：`npm run check:enemy-ai-boundaries --silent` 必须 exit `0`。
+- 下一轮建议：
+  - 第 136 轮展示 `AI-BOUNDARY-DEEP-IMPORT-LEAK-001`：给出两个 violation、文件/行号、通过项对照、P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 136 - Enemy AI Boundary Deep Import Exhibit - 2026-05-21
+
+- 循环模式：第 136 轮，按交替节奏展示第 135 轮发现的 `AI-BOUNDARY-DEEP-IMPORT-LEAK-001`。
+- 展示 bug：
+  - **AI-BOUNDARY-DEEP-IMPORT-LEAK-001**：敌人 AI 层边界检查失败，非 `src/core/ai/` 文件直接导入 `@/core/ai/...` 深层模块，绕过统一 `@/core/ai` facade。
+- Fresh 复现证据：
+  - 运行 `npm run check:enemy-ai-boundaries --silent`：exit `1`。
+  - 输出：
+    - `src/core/events/gameEngine.ts: '@/core/ai/combatMemory' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+    - `src/runtimeV2/content/buildContentBundle.ts: '@/core/ai/intentPolicy' -> External consumers should import the AI layer through "@/core/ai" instead of deep AI module paths.`
+- 文件/行号：
+  - `src\core\events\gameEngine.ts:61`：`import { combatMemory } from '@/core/ai/combatMemory';`
+  - `src\core\events\gameEngine.ts:323`：`dispose()` 中直接 `combatMemory.clear()`。
+  - `src\core\events\gameEngine.ts:750`：`selectCharacter()` 中直接 `combatMemory.clear()`。
+  - `src\runtimeV2\content\buildContentBundle.ts:18`：`import { normalizeIntentPolicyIntent, parseIntentPolicyWeight } from '@/core/ai/intentPolicy';`
+  - `src\runtimeV2\content\buildContentBundle.ts:85-86`：runtimeV2 content projection 直接调用 intent policy helper。
+  - `src\core\ai\index.ts:8-15`：facade 已导出 `combatMemory` 等模块，但当前没有导出 `intentPolicy.ts`。
+  - `scripts\validation\check_enemy_ai_boundaries.ts:78-83`：检查脚本明确将外部 `@/core/ai/` 深层导入视为 violation。
+- 对照通过项：
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354` valid，Enemies `58/58` valid，Pass rate `100%`。
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`18` tests pass。
+- 优先级：
+  - P2。功能测试仍绿，但架构 gate 红灯，说明 AI facade 约束已经被 legacy GameEngine 和 runtimeV2 content builder 绕过。
+  - runtimeV2 风险更直接：`buildContentBundle.ts` 是 Python/core content projection 入口，深层依赖 AI 内部 helper 会让 content bundle 打包继续耦合 AI 内部实现。
+- 是否已修：未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `src\core\events\gameEngine.ts` 不再从 `@/core/ai/combatMemory` 深层导入。
+  - `src\runtimeV2\content\buildContentBundle.ts` 不再从 `@/core/ai/intentPolicy` 深层导入。
+  - `src\core\ai\index.ts` 暴露必要 intent policy API，或提供更窄的 facade 生命周期/API。
+  - `npm run check:enemy-ai-boundaries --silent` exit `0`。
+- 下一轮建议：
+  - 第 137 轮回到找 bug；优先继续 runtimeV2 / Python WASM / content schema 边界，不重复 AI import boundary。
+
+## DeckRogue Bug Loop Cycle 137 - Python WASM Init Promise Poison Finding - 2026-05-21
+
+- 循环模式：第 137 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找 bug。
+- 审计范围：
+  - 避免重复第 135-136 轮 `AI-BOUNDARY-DEEP-IMPORT-LEAK-001`。
+  - 本轮优先检查 runtimeV2 / Python WASM / content schema 边界。
+- 新发现：
+  - **PYTHON-WASM-INIT-PROMISE-POISON-001 · `PythonWasmAdapter` 的 Pyodide loader 一旦失败，会保留 rejected `initPromise`；后续同一个 adapter 即使 `window.loadPyodide` 已恢复，也不会重新加载，直接复用第一次失败。**
+- 文件/行号：
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:45`：`initPromise` 作为 adapter 级字段保存。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-107`：`ensurePyodide()` 在 `this.initPromise` 存在时直接返回该 promise；`this.initPromise = this.loadPyodide()` 后没有 `catch/finally` 清理失败状态。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:109-118`：`loadPyodide()` 负责解析 loader、创建 pyodide 并运行 runtime code，任一阶段失败都会让 `initPromise` 变成 rejected promise。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:134-156`：script 注入失败会 reject `Failed to load Pyodide loader script`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:90-94`：只有显式 `dispose()` 会把 `initPromise` 清为 `null`。
+- Fresh 复现证据：
+  - inline fake DOM/Pyodide 探针：第一次 `appendChild` 后触发 script `error`，第二次设置 `window.loadPyodide` 为可用 loader 再调用 `adapter.start()`。
+  - 探针输出：
+    - `first_error Failed to load Pyodide loader script`
+    - `second_error Failed to load Pyodide loader script`
+    - `second_reused_first_failure true`
+    - `load_calls_after_second_attempt 0`
+    - `init_promise_still_set true`
+  - 这证明第二次启动没有尝试调用新可用的 `window.loadPyodide`，而是复用了第一次 rejected `initPromise`。
+- 对照通过项：
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p 'test_*.py'`：`Ran 8 tests`，`OK`。
+  - `npm run test:runtime-v2:ts --silent`：`107` tests，`106` pass，`1` skip，`0` fail；其中 `python wasm rest command heals and returns to map with follow-up nodes intact` 仍是 skip。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`：`4` tests pass；当前 `pythonWasmAdapter.test.ts` 只覆盖 snapshot envelope unwrap，没有覆盖 Pyodide loader 失败后重试。
+- 风险：
+  - P2。浏览器端 Pyodide CDN/脚本加载失败可能是临时网络、CSP、service worker 或缓存问题；当前 adapter 会把一次临时失败变成同一实例的永久失败，直到调用方 dispose/recreate。
+  - `EngineHost`/UI 层如果复用同一个 `PythonWasmAdapter`，用户重试或网络恢复后仍会失败，误导为 Python runtime 永久不可用。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - 在 `ensurePyodide()` 中给 `this.loadPyodide()` 加 `catch` / `finally`：失败时若 `this.pyodide` 仍为空，应清掉 `this.initPromise`，允许下一次 `start()` / `dispatch()` 重试。
+  - 增加回归测试：模拟首次 `injectPyodideScript` error，随后提供 `window.loadPyodide`，第二次 `start()` 必须调用新 loader，而不是复用旧 rejected promise。
+- 下一轮建议：
+  - 第 138 轮展示 `PYTHON-WASM-INIT-PROMISE-POISON-001`：给出源码行号、inline 探针输出、现有测试覆盖缺口、P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 138 - Python WASM Init Promise Poison Exhibit - 2026-05-21
+
+- 循环模式：第 138 轮，按交替节奏展示第 137 轮发现的 `PYTHON-WASM-INIT-PROMISE-POISON-001`。
+- 展示 bug：
+  - **PYTHON-WASM-INIT-PROMISE-POISON-001**：`PythonWasmAdapter` 的 Pyodide loader 首次失败后会保留 rejected `initPromise`；后续同一 adapter 即使 `window.loadPyodide` 已恢复，也直接复用第一次失败，无法重试初始化。
+- Fresh 源码定位：
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:45`：`private initPromise: Promise<void> | null = null;` 保存 adapter 级初始化 promise。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:90-94`：只有显式 `dispose()` 会清理 `initPromise`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:96-107`：`ensurePyodide()` 在 `this.initPromise` 存在时直接返回；`this.initPromise = this.loadPyodide()` 后没有失败清理。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:109-118`：`loadPyodide()` 解析 loader、创建 pyodide、运行 runtime code，任一阶段失败都会把 `initPromise` 固化为 rejected promise。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:134-156`：script `error` 会 reject `Failed to load Pyodide loader script`。
+- Fresh 复现证据：
+  - 运行 inline fake DOM/Pyodide 探针：第一次 `document.head.appendChild(script)` 后触发 `error`；第二次设置 `window.loadPyodide` 为可用 loader 再调用 `adapter.start()`。
+  - 探针输出：
+    - `first_error Failed to load Pyodide loader script`
+    - `second_error Failed to load Pyodide loader script`
+    - `second_reused_first_failure true`
+    - `append_calls_after_first_attempt 1`
+    - `load_calls_after_second_attempt 0`
+    - `init_promise_still_set true`
+  - 解释：第二次启动没有调用恢复后的 `window.loadPyodide`，说明同一个 rejected promise 被复用，初始化通道被一次失败污染。
+- 对照测试：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`：exit `0`，`4` tests pass。
+  - 现有 `tests\unit\pythonWasmAdapter.test.ts:15-28` 只覆盖 snapshot envelope unwrap；未覆盖 Pyodide loader 失败后同一 adapter 重试。
+- 优先级：
+  - P2。浏览器端 Pyodide 脚本失败可能来自临时网络、CDN、CSP、service worker 或缓存异常；当前实现会把临时失败变成同一 adapter 实例的永久失败。
+  - runtimeV2/UI 风险：如果 `EngineHost` 或 UI 复用同一个 `PythonWasmAdapter`，用户重试或网络恢复后仍会得到第一次 loader 失败，误判 Python WASM runtime 永久不可用。
+- 是否已修：未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `ensurePyodide()` 在 `loadPyodide()` reject 且 `this.pyodide` 仍为空时清理 `this.initPromise`。
+  - 增加回归测试：首次 script `error` 后，第二次提供 `window.loadPyodide` 并调用 `start()`，必须调用新 loader 且不复用旧 rejected promise。
+  - 复跑 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/pythonInterop.test.ts`，必要时再跑 `npm run test:runtime-v2:ts --silent`。
+- 下一轮建议：
+  - 第 139 轮回到找 bug；优先继续 Python WASM adapter 的成功初始化边界、desktop packaging、runtimeV2 process adapter 或 content schema gate，避免重复展示本轮 initPromise 污染问题。
+
+## DeckRogue Bug Loop Cycle 139 - Python Process Stdout Desync Finding - 2026-05-21
+
+- 循环模式：第 139 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找 bug。
+- 审计范围：
+  - 避免重复第 137-138 轮 `PYTHON-WASM-INIT-PROMISE-POISON-001`。
+  - 本轮优先检查 desktop packaging / runtimeV2 Python process adapter / Python WASM adaptation 边界。
+- 新发现：
+  - **PYTHON-PROCESS-STDOUT-NONJSON-DESYNC-001 · `PythonProcessAdapter` 收到一行非 JSON stdout 时会直接 `shift()` 最早 pending 请求；后续同一 `request_id` 的合法 JSON 响应会被当作 unknown response 忽略，导致该请求永久失败且 snapshot 不更新。**
+- 文件/行号：
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:160-170`：stdout line reader 对 `JSON.parse(line)` 失败的处理是 `const pending = this.pending.shift()`，并 reject 最早请求。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:174-180`：后续合法响应按 `request_id` 查 pending；由于原 pending 已被 shift 掉，`pendingIndex < 0` 后直接 return。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:232-249`：每个 outbound 请求会分配 `req_N` 并压入 pending，再写入 stdin。
+  - `python_runtime\src\deckrogue_rules_core\cli.py:18-20`：Python CLI stdout 协议预期输出 JSON line；任何 runtime/依赖误打到 stdout 的日志都会进入 Node adapter 的同一 parser。
+  - `tests\unit\runtimeV2Parity.test.ts:230-264`：现有测试覆盖 out-of-order response 和 unknown request id，但没有覆盖 malformed / log line 污染 stdout 的场景。
+- Fresh 复现证据：
+  - 运行 inline fake Python process 探针：创建 `PythonProcessAdapter.createForTesting()`，发送一个 `dispatch`，先向 stdout 写入 `debug: booted python runtime\n`，再写入带同一 `request_id` 的合法 JSON snapshot。
+  - 探针输出：
+    - `request_id req_1`
+    - `rejected_after_log_line Unexpected token 'd', "debug: boo"... is not valid JSON`
+    - `pending_after_valid_response 0`
+    - `snapshot_after_valid_response null`
+  - 解释：非 JSON 行先把 `req_1` 从 pending 队列弹掉；随后合法 `{ request_id: "req_1", ok: true, snapshot: ... }` 无 pending 可匹配，被忽略，adapter snapshot 仍为 `null`。
+- 对照测试 / gate：
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts --test-name-pattern "PythonProcessAdapter"`：exit `0`，输出 `30` tests pass；其中包含 PythonProcessAdapter out-of-order / unknown-id 用例，但未覆盖非 JSON stdout 污染。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=31 warn=0 fail=10`；当前 release gate 红灯主要是 doctor/flow smoke 报告缺失或非绿，不是本 bug 的直接根因，只作为 desktop packaging 面的当前状态对照。
+- 风险：
+  - P2。Python process adapter 是 Node/desktop 侧 runtimeV2 的 Python 适配路径；一旦 Python runtime、第三方库、调试代码或警告误写 stdout，单个非协议行会破坏 pending 请求匹配。
+  - 该问题比普通请求失败更隐蔽：后续合法响应包含正确 `request_id`，但因为 pending 已被提前删除，adapter 不会恢复 snapshot，也不会记录“合法响应被丢弃”的诊断。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - JSON parse 失败时不要 `shift()` 任意 pending；应把非 JSON stdout 行记录到 diagnostic buffer，或在严格协议模式下 reject 全部 pending 并标记 process 协议损坏。
+  - 若要保留单请求失败语义，必须要求错误行携带 request id；无 request id 的 malformed line 不能猜测归属到最早 pending。
+  - 增加回归测试：stdout 先输出非 JSON 日志行，再输出带正确 `request_id` 的合法响应；adapter 应忽略/记录日志行并 resolve 正确 snapshot，或以明确 protocol-fatal 错误拒绝且终止后续匹配。
+- 下一轮建议：
+  - 第 140 轮展示 `PYTHON-PROCESS-STDOUT-NONJSON-DESYNC-001`：给出 fake process 复现、源码行号、现有测试覆盖缺口、P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 140 - Python Process Stdout Desync Exhibit - 2026-05-21
+
+- 循环模式：第 140 轮，按交替节奏展示第 139 轮发现的 `PYTHON-PROCESS-STDOUT-NONJSON-DESYNC-001`。
+- 展示 bug：
+  - **PYTHON-PROCESS-STDOUT-NONJSON-DESYNC-001**：`PythonProcessAdapter` 收到非 JSON stdout 行时会误删最早 pending 请求，后续带正确 `request_id` 的合法响应无法匹配，导致请求失败且 snapshot 不更新。
+- Fresh 源码定位：
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:160-170`：`lineReader.on('line')` 中 `JSON.parse(line)` 失败后执行 `this.pending.shift()`，将 malformed stdout 行归因给最早 pending request。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:174-180`：合法响应依赖 `requestId` / `request_id` 查找 pending；原请求已被 shift 后，`pendingIndex < 0` 直接 return。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:232-249`：`sendRequest()` 分配 `req_N`、压入 pending，并将带 `request_id` 的 JSON 请求写入 Python stdin。
+  - `python_runtime\src\deckrogue_rules_core\cli.py:18-20`：Python CLI 正常协议是每条 stdout 输出 JSON line；因此任何误写 stdout 的日志/警告都会进入同一个 Node parser。
+  - `tests\unit\runtimeV2Parity.test.ts:199-228`：fake Python process 测试工具只建 stdin/stdout/stderr 管道。
+  - `tests\unit\runtimeV2Parity.test.ts:230-264`：现有用例覆盖 out-of-order 和 unknown request id，但没有覆盖非 JSON stdout 行。
+- Fresh 复现证据：
+  - 运行 inline fake process 探针：创建 `PythonProcessAdapter.createForTesting()`，发送一个 `dispatch`，先写入 `debug: booted python runtime\n`，再写入同一 `request_id` 的合法 JSON snapshot。
+  - 探针输出：
+    - `request_id req_1`
+    - `rejected_after_log_line Unexpected token 'd', "debug: boo"... is not valid JSON`
+    - `pending_after_valid_response 0`
+    - `snapshot_after_valid_response null`
+  - 解释：非 JSON 行先让 `req_1` reject 并被移出 pending；随后 `{ request_id: "req_1", ok: true, snapshot: { seed: 7 } }` 无法再匹配，adapter 没有恢复 snapshot。
+- 对照测试：
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts --test-name-pattern "PythonProcessAdapter"`：exit `0`，`30` tests pass，`0` fail。
+  - 关键缺口：当前测试能证明乱序响应和 unknown request id 不破坏队列，但没有证明 malformed stdout / 普通日志行不会破坏当前 pending。
+- 优先级：
+  - P2。Node/desktop 侧 Python process adapter 与 Python runtime 的协议边界过脆弱；任何第三方库、调试 print、warning 或启动日志误写 stdout，都可能让一个本应可成功的请求永久失败。
+  - 风险集中在诊断困难：合法响应带正确 `request_id` 却被静默忽略，最终表现为 runtimeV2 Python process 适配器没有 snapshot 或超时/失败，根因会被非 JSON 行掩盖。
+- 是否已修：未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `JSON.parse(line)` 失败时不得 `shift()` 任意 pending 请求。
+  - 非 JSON stdout 行应进入 diagnostic buffer；或者在严格协议模式中以明确 protocol-fatal 错误拒绝所有 pending 并阻止后续静默错配。
+  - 增加回归测试：stdout 先输出非 JSON 行，再输出带正确 `request_id` 的合法响应；期望 adapter 忽略/记录日志并 resolve snapshot，或显式进入 protocol-fatal 状态。
+  - 复跑 `npx tsx --test tests/unit/runtimeV2Parity.test.ts --test-name-pattern "PythonProcessAdapter"` 和 `npm run test:runtime-v2:ts --silent`。
+- 下一轮建议：
+  - 第 141 轮回到找 bug；优先继续 desktop packaging release gate、runtimeV2 content schema、AI intent chain，避免重复 Python process malformed stdout 展示。
+
+## DeckRogue Bug Loop Cycle 141 - Content Authoring Relic BOM Silent Skip Finding - 2026-05-21
+
+- 循环模式：第 141 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找 bug。
+- 审计范围：
+  - 避免重复第 139-140 轮 `PYTHON-PROCESS-STDOUT-NONJSON-DESYNC-001`。
+  - 本轮优先检查 content schema / authoring gate 与 runtimeV2 content bundle 边界。
+- 新发现：
+  - **CONTENT-AUTHORING-RELIC-BOM-SILENT-SKIP-001 · `check:content-authoring` 无法解析带 BOM 的 `relics.json`，但 `loadJsonFile()` 吞掉 parse error 并回落空数组，导致 106 个 relics 被统计为 `0/0 valid` 且 gate 仍 pass。**
+- 文件/行号：
+  - `scripts\validation\check_content_authoring.ts:81-87`：`loadJsonFile()` 捕获任何读取/解析异常后直接返回 `null`，没有把错误转为 validation issue。
+  - `scripts\validation\check_content_authoring.ts:213-219`：`relicsPath = src/content/data/relics.json`，随后 `const relics = loadJsonFile(relicsPath) || []`；解析失败被折叠为空数组。
+  - `scripts\validation\check_content_authoring.ts:247-254`：relic 校验循环只遍历 `relics`；当数组为空时完全跳过。
+  - `scripts\validation\check_content_authoring.ts:256-292`：`totalItems` 与 `invalidItems` 没有包含“文件解析失败”状态，`invalidItems === 0` 使 summary 继续 pass。
+  - `scripts\validation\check_content_authoring.ts:308-310`：日志直接输出 `Relics: 0/0 valid`，但没有将 0 relics 当作异常。
+  - `src\content\data\relics.json:1`：文件开头存在 UTF-8 BOM；字节证据为 `EF BB BF 5B 0D 0A 20 20`。
+- Fresh 复现证据：
+  - 运行 `npm run check:content-authoring --silent`：exit `0`。
+  - 输出：
+    - `Cards: 354/354 valid`
+    - `Enemies: 58/58 valid`
+    - `Relics: 0/0 valid`
+    - `Pass rate: 100%`
+    - `Content authoring check passed`
+  - `reports\content\content-authoring.json` 写入：
+    - `"relics": { "total": 0, "valid": 0, "invalid": 0, ... }`
+    - `"summary": { "overallStatus": "pass", "passRate": 100 }`
+  - 直接解析探针：
+    - `first_codepoint_hex feff`
+    - `plain_parse_error Unexpected token '﻿', "﻿[ ... is not valid JSON`
+    - `bom_stripped_count 106`
+    - `first_relic_id burning_blood`
+  - 文本 grep 证据：`src\content\data\relics.json` 中有 `106` 个 `"id"` 行和 `123` 个 `"effect"` 行，说明不是空内容。
+- 对照通过项：
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`，其中 `Mirror/branch relics` 通过。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - 解释：content bundle 侧仍能通过，不代表 authoring gate 正确覆盖 relic schema；本 bug 是 authoring gate 对解析失败的静默跳过。
+- 风险：
+  - P1/P2。内容 authoring gate 在“relics 文件存在但 parse 失败”的情况下给出绿灯，会让 relic 描述、effect、trigger、price、tags 等 schema 问题完全逃逸。
+  - 当前 `Relics: 0/0 valid` 是强异常信号，却没有被 gate 视为失败；后续新增或破坏 relic 内容时 CI/本地检查会产生假阴性。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - `loadJsonFile()` 应返回 `{ ok, data, error }` 或直接抛出，并把 parse/read error 纳入 report issues。
+  - 对关键内容文件增加非空断言：cards/enemies/relics 缺失、解析失败或总数为 0 时必须 fail。
+  - 解析 JSON 前统一 strip UTF-8 BOM，或确保内容文件写入不带 BOM；无论选择哪种路径，parse 失败都不能回落 pass。
+  - 增加回归测试或 validation fixture：带 BOM 的 JSON 应可解析，或应以明确错误 fail；空 relics 数组不得通过 authoring gate。
+- 下一轮建议：
+  - 第 142 轮展示 `CONTENT-AUTHORING-RELIC-BOM-SILENT-SKIP-001`：给出 content-authoring 输出、BOM/parse 探针、源码行号、P1/P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 142 - Content Authoring Relic BOM Silent Skip Exhibit - 2026-05-21
+
+- 循环模式：第 142 轮，按交替节奏展示第 141 轮发现的 `CONTENT-AUTHORING-RELIC-BOM-SILENT-SKIP-001`。
+- 展示 bug：
+  - **CONTENT-AUTHORING-RELIC-BOM-SILENT-SKIP-001**：`check:content-authoring` 读取 `src\content\data\relics.json` 时遇到 UTF-8 BOM 导致 `JSON.parse` 失败，但校验脚本吞掉错误并回落 `[]`，最终把实际 106 个 relics 报成 `0/0 valid` 且整体 pass。
+- Fresh 源码定位：
+  - `scripts\validation\check_content_authoring.ts:81-87`：`loadJsonFile()` 捕获读取/解析错误后返回 `null`，没有向 report 暴露 parse error。
+  - `scripts\validation\check_content_authoring.ts:213-219`：`relicsPath` 指向 `src/content/data/relics.json`，随后 `loadJsonFile(relicsPath) || []` 把 parse failure 折叠为空数组。
+  - `scripts\validation\check_content_authoring.ts:247-254`：relic 校验只遍历 `relics`；空数组会完全跳过 relic authoring 校验。
+  - `scripts\validation\check_content_authoring.ts:256-292`：`invalidItems` 不包含文件读取/解析失败，`invalidItems === 0` 会让 summary pass。
+  - `scripts\validation\check_content_authoring.ts:308-310`：日志输出 `Relics: ${valid}/${total} valid`，但没有对 `0/0` 做异常判断。
+  - `src\content\data\relics.json:1`：文件首字节为 UTF-8 BOM；fresh 字节输出 `EF BB BF 5B 0D 0A 20 20`。
+- Fresh 复现证据：
+  - `npm run check:content-authoring --silent`：exit `0`。
+  - 输出：
+    - `Cards: 354/354 valid`
+    - `Enemies: 58/58 valid`
+    - `Relics: 0/0 valid`
+    - `Pass rate: 100%`
+    - `Content authoring check passed`
+  - `reports\content\content-authoring.json` fresh timestamp `2026-05-21T01:40:39.776Z`，关键字段：
+    - `"relics": { "total": 0, "valid": 0, "invalid": 0, "missingEffect": 0, "issues": [] }`
+    - `"summary": { "overallStatus": "pass", "passRate": 100 }`
+  - BOM/parse 探针：
+    - `first_codepoint_hex feff`
+    - `plain_parse_error Unexpected token '﻿', "﻿[ ... is not valid JSON`
+    - `bom_stripped_count 106`
+    - `first_relic_id burning_blood`
+  - 内容非空旁证：
+    - `relic_id_lines 106`
+    - `relic_effect_lines 123`
+- 对照通过项：
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`，其中 `Mirror/branch relics` 通过。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - 结论：content bundle/contract gate 的通过不能覆盖 authoring gate 的 relic parse failure 静默跳过；这是 content authoring 层的假阴性。
+- 优先级：
+  - P1/P2。Authoring gate 给出 100% pass 会让 relic effect、trigger、price、tags、description 等内容问题完全逃逸，尤其影响后续 content schema / runtimeV2 bundle 质量门禁的信任度。
+  - 当前 `Relics: 0/0 valid` 是明确异常，但脚本没有把关键内容文件空集、解析失败或 BOM 处理失败升级为 fail。
+- 是否已修：未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `loadJsonFile()` 不再吞掉 parse/read error；报告中必须包含具体文件和错误信息。
+  - 关键内容文件 cards/enemies/relics 缺失、解析失败或解析后 total 为 0 时，`check:content-authoring` 必须 exit `1`。
+  - 选择性支持 BOM：读取 JSON 时统一 strip `\uFEFF`，或修正文件编码；但无论选择哪种，不能回落 pass。
+  - 增加回归测试或 fixture：带 BOM 的 relic JSON 可被正确计数为 106，或明确 fail；空 relic 文件不能 `0/0 valid` pass。
+  - 复跑 `npm run check:content-authoring --silent`，期望 `Relics` 不再是 `0/0`，并根据修复策略 pass 或明确 fail。
+- 下一轮建议：
+  - 第 143 轮回到找 bug；优先继续 desktop packaging release gate、AI intent chain facade/authoring、runtimeV2 content schema，不重复 relic BOM silent skip。
+
+## DeckRogue Bug Loop Cycle 143 - RuntimeV2 Camel IntentPolicy Dropped Finding - 2026-05-21
+
+- 循环模式：第 143 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找 bug。
+- 审计范围：
+  - 避免重复第 141-142 轮 `CONTENT-AUTHORING-RELIC-BOM-SILENT-SKIP-001`。
+  - 本轮聚焦 AI intent chain 与 runtimeV2 content bundle 的字段兼容边界。
+- 新发现：
+  - **RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001**：`buildRuntimeV2ContentBundle()` 只读取 snake_case `intent_policy`，会把 25 个仅声明 camelCase `intentPolicy` 的敌人投影成空 `intent_policy`。这些敌人在 raw authoring 数据中有策略和 AI profile，但进入 runtimeV2 ContentBundle 后策略丢失，后续 runtimeV2/Python runtime 侧只能看到空策略。
+- 文件/行号：
+  - `src\runtimeV2\content\buildContentBundle.ts:31-36`：`EnemyEntry` 类型只声明 `intent_policy`，没有声明 legacy/camelCase `intentPolicy`。
+  - `src\runtimeV2\content\buildContentBundle.ts:77-88`：content bundle 构建敌人时只使用 `(entry.intent_policy || [])`，没有 fallback 到 `entry.intentPolicy`。
+  - `src\runtimeV2\contracts.ts:45-52`：RuntimeV2 `ContentBundleEnemy` 契约只暴露 snake_case `intent_policy`，所以构建阶段必须完成字段归一化。
+  - `src\content\data\enemies.json:1381-1394`：`coolant_hound` 使用 camelCase `intentPolicy`，包含 `bite/spray/cool_run` 3 条策略。
+  - `src\content\data\enemies.json:4124-4135`：同一文件后段仍存在 snake_case `intent_policy` 敌人，说明当前内容数据两种命名混用。
+  - `src\content\narrative\contentSchema.ts:332-339`：content schema 已兼容 `entry.intent_policy ?? entry.intentPolicy`，因此 schema 层能看见 camelCase 策略。
+  - `tests\unit\enemyAiProfileCoverage.test.ts:15-17` 与 `tests\unit\enemyAiProfileCoverage.test.ts:31-48`：focused test 也用 `enemy.intent_policy || enemy.intentPolicy`，所以测试覆盖的是 raw/narrative 数据，不覆盖 runtimeV2 bundle 投影结果。
+  - `src\core\ai\intentSelector.ts:130-132`：intent selector 收到空/缺失 `intent_policy` 时直接回退 `Attack`。
+  - `src\core\ai\selectEnemyIntent.ts:341-351`：AI profile bias 应用同样要求 `Array.isArray(enemyDef.intent_policy)`，空策略会跳过 profile 调权。
+- Fresh 复现证据：
+  - 运行 inline runtimeV2 bundle 探针：
+    - `coolant_hound raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `servo_confessor raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `reactor_thrall raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `data_leech raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `iron_choir_twin_a raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `raw_enemy_count 58`
+    - `camel_only_count 25`
+    - `dropped_camel_policy_count 25`
+    - `dropped_first5 coolant_hound,servo_confessor,reactor_thrall,data_leech,iron_choir_twin_a`
+  - 解释：raw `enemies.json` 的 25 个 camelCase-only policy 在 bundle 中全部变成空数组；这不是单个敌人的数据问题，是 runtimeV2 bundle 投影规则缺少兼容字段。
+- 对照通过项：
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，输出 `[check_enemy_ai_profiles] OK`。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，输出 `[check_enemy_variant_behavior] OK (14 variants checked)`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass，`0` fail。
+  - 结论：现有 AI profile/variant/facade gates 都在 raw/narrative 或部分样例层面通过，无法证明 runtimeV2 ContentBundle 保留了 authored intent policy。
+- 优先级：
+  - P2。runtimeV2 内容包是跨 JS runtime、Python runtime、桌面打包和后续规则引擎的边界；策略在这里被静默投影为空，会让 authored AI 行为在 runtimeV2 侧退化。
+  - 风险集中在假阴性：内容 schema 和 AI coverage 测试都绿，但真实 runtimeV2 bundle 已经丢掉 25/58 个敌人的策略。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - `EnemyEntry` 增加 `intentPolicy?: Array<{ intent?: string; weight?: number }>`，构建时使用 `const sourcePolicy = entry.intent_policy ?? entry.intentPolicy ?? []`。
+  - 在 bundle 构建阶段继续输出 snake_case `intent_policy`，保持 `ContentBundleEnemy` 契约稳定。
+  - 增加回归测试：选择 `coolant_hound` 或另一个 camelCase-only 敌人，断言 `buildRuntimeV2ContentBundle().enemies.find(...).intent_policy.length === raw.intentPolicy.length`，并断言 intent/weight 经 normalize 后保留。
+  - 复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:enemy-ai-profiles --silent`、`npm run check:enemy-variant-behavior --silent`，再补跑 runtimeV2 bundle/content 相关 gate。
+- 下一轮建议：
+  - 第 144 轮展示 `RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001`：给出 25 个策略丢失的投影探针、源码/数据行号、现有绿灯缺口、P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 144 - RuntimeV2 Camel IntentPolicy Dropped Exhibit - 2026-05-21
+
+- 循环模式：第 144 轮，按交替节奏展示第 143 轮发现的 `RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001`。
+- 展示 bug：
+  - **RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001**：RuntimeV2 content bundle 构建器只读取 snake_case `intent_policy`，把 25 个仅声明 camelCase `intentPolicy` 的敌人策略投影为空数组；这些敌人在 raw 内容中有 authored policy，但 runtimeV2/Python runtime 边界收到的是空策略。
+- Fresh 源码定位：
+  - `src\runtimeV2\content\buildContentBundle.ts:31-36`：`EnemyEntry` 只声明 `intent_policy?: ...`，没有声明 `intentPolicy`。
+  - `src\runtimeV2\content\buildContentBundle.ts:77-88`：构建 `enemies` 时使用 `(entry.intent_policy || []).map(...)`，缺少 camelCase fallback。
+  - `src\content\data\enemies.json:1381-1394`：`coolant_hound` 使用 camelCase `intentPolicy`，有 `bite/spray/cool_run` 三条策略。
+  - `src\content\data\enemies.json:4124-4135`：同一文件后段仍有 snake_case `intent_policy`，证明敌人内容目前两种字段混用。
+  - `tests\unit\enemyAiProfileCoverage.test.ts:15-17` 与 `tests\unit\enemyAiProfileCoverage.test.ts:43-48`：现有 AI coverage 测试用 `enemy.intent_policy || enemy.intentPolicy` 检查 raw/narrative 数据，未覆盖 runtimeV2 bundle 投影。
+  - `src\core\ai\intentSelector.ts:130-132`：运行时 AI selector 收到空/缺失 `intent_policy` 会直接回退 `Attack`。
+- Fresh 复现证据：
+  - inline runtimeV2 bundle 探针输出：
+    - `coolant_hound raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `servo_confessor raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `reactor_thrall raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `data_leech raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `iron_choir_twin_a raw_intentPolicy 3 raw_intent_policy none bundle_intent_policy 0`
+    - `raw_enemy_count 58`
+    - `camel_only_count 25`
+    - `dropped_camel_policy_count 25`
+    - `dropped_first5 coolant_hound,servo_confessor,reactor_thrall,data_leech,iron_choir_twin_a`
+  - 解释：至少 25/58 个敌人的 authored intent policy 在 RuntimeV2 ContentBundle 中丢失；示例敌人 raw 中每个有 3 条策略，bundle 中均为 0。
+- 对照 gate：
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，`[check_enemy_variant_behavior] OK (14 variants checked)`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass，`0` fail。
+  - 结论：当前 gate 能证明 raw/narrative AI intent 数据自洽，但不能证明 runtimeV2 bundle 保留了这些策略。
+- 优先级：
+  - P2。影响面是 runtimeV2 content schema / AI intent chain / Python runtime 适配边界；25 个敌人的策略在跨 runtime 内容包中静默丢失，会使 authored AI 行为退化为默认攻击或跳过 profile 调权。
+  - 假阴性风险较高：内容 schema 和 focused AI tests 仍全绿，容易让打包或 Python WASM/runtimeV2 侧继续携带空策略。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `EnemyEntry` 支持 `intentPolicy?: Array<{ intent?: string; weight?: number }>`。
+  - bundle 构建使用 `entry.intent_policy ?? entry.intentPolicy ?? []`，输出仍保持 `ContentBundleEnemy.intent_policy` snake_case 契约。
+  - 增加 runtimeV2 content bundle 回归测试：`coolant_hound` 等 camelCase-only 敌人的 bundle `intent_policy.length` 与 raw `intentPolicy.length` 一致，并检查 intent/weight 保留和 normalize。
+  - 复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:enemy-ai-profiles --silent`、`npm run check:enemy-variant-behavior --silent`，再补跑 runtimeV2 content/bundle gate。
+- 下一轮建议：
+  - 第 145 轮回到找 bug；优先继续 desktop packaging release readiness、Python WASM adapter 边界、UI/rendering smoke 或 runtimeV2 content contract，避免重复展示 intentPolicy 投影问题。
+
+## DeckRogue Bug Loop Cycle 145 - Real UI Modal Active Screen Misdetect Finding - 2026-05-21
+
+- 循环模式：第 145 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找新 bug。
+- 审计范围：
+  - 避免重复第 143-144 轮 `RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001`。
+  - 本轮优先检查 UI/rendering smoke、desktop packaging release readiness 与 runtimeV2/Python WASM 边界。
+- 新发现：
+  - **REAL-UI-30CLICKS-MODAL-ACTIVE-SCREEN-MISDETECT-001**：`test:real-ui-30-clicks` 在教程 modal 打开后仍把第一个 `[data-screen]` 判定为 active screen，因此审计了背景 `Launcher` 根节点而不是前景 `Tutorial` overlay；背景 Launcher 的隐藏/底层滚动宽度触发 `horizontal-overflow`，导致 30-click UI 回归在第 1 个场景假失败。
+- 文件/行号：
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:116-117`：`getActiveScreen()` 使用 `page.locator('[data-screen]').first()`，modal 场景会取到 DOM 中先出现的背景屏。
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:259-300`：visual audit 使用 `document.querySelector('[data-screen]')` 作为 `activeRoot`，同样取第一个 `[data-screen]`，随后用该 root 的 `scrollWidth` 做 overflow 判断。
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:318-325`：第 1 个场景点击 Launcher 上的教程按钮，并等待 `术语索引` 出现；这说明前景 Tutorial 已打开后才进入视觉审计。
+  - `src\ui\launcher\SetupLauncher.tsx:119`：Launcher 根节点带 `data-screen="Launcher"`。
+  - `src\ui\views\TutorialView.tsx:92-94`：Tutorial overlay 也带 `data-screen="Tutorial"`，并作为固定层覆盖页面；由于 AppShell 同时保留 Launcher，页面上会同时存在两个 `[data-screen]`。
+  - `src\ui\views\AppShell.tsx:543-554` 与 `src\ui\views\AppShell.tsx:994-997`：Launcher 和 Tutorial overlay 在同一 shell 中共存；modal 打开不卸载 Launcher。
+- Fresh 复现证据：
+  - `npm run test:real-ui-30-clicks --silent`：exit `1`。
+  - 控制台输出：
+    - `[real-ui-30-clicks] 1/30 launcher tutorial opens on desktop: launcher: open tutorial`
+    - `[real-ui-30-clicks] 1/30 launcher tutorial opens on desktop: fail (2498ms, clicks=1)`
+    - `real-ui-30-clicks failed: completed=1/30 failed=launcher tutorial opens on desktop console=0 page=0 requests=0`
+  - `reports\flows\real-ui-30-clicks.json`：
+    - `totalScenarios: 1`
+    - `passedScenarios: 0`
+    - `failedScenarios: 1`
+    - 失败项 `activeScreen: "Launcher"`
+    - `error: "visual issues: brokenImages=0 layoutIssues=1"`
+    - visual audit issue：`selector: "document"`, `problem: "horizontal-overflow"`, `detail: "1712 > 1440"`
+  - 失败截图：`output\playwright\real-ui-30-clicks\01-launcher-tutorial-opens-on-desktop-failed.png` 显示前景是“新手战区教程 / 术语索引”modal，说明教程确实打开。
+  - 独立 Playwright DOM 探针在点击教程并等待 `术语索引` 后输出：
+    - `screens[0] = { screen: "Launcher", scrollWidth: 1709, clientWidth: 1440 }`
+    - `screens[1] = { screen: "Tutorial", scrollWidth: 1440, clientWidth: 1440 }`
+    - `firstScreen: "Launcher"`
+    - `documentScrollWidth: 1440`
+    - `windowInnerWidth: 1440`
+  - 解释：真实前景 Tutorial 与 document 本身并无横向溢出；失败来自 harness 取错 active root 后审计了背景 Launcher。
+- 对照通过项：
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+  - `npm run test:ui-smoke --silent`：exit `0`，写入 `output\playwright\ui_smoke_report.json`，9 个视图 audit 均无 `consoleErrors/pageErrors/failedRequests/brokenImages/layoutIssues`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests run，`106` pass，`1` skip，`0` fail。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=31 warn=0 fail=10`，其中 flow smoke 报告仍红；本轮新 bug解释了 `real-ui-30-clicks` 这个 UI smoke gate 的第 1 场景假阴性。
+- 相关但未作为本轮主 bug：
+  - `npm run test:reward-flow-smoke --silent`：exit `1`，读取 fixture 后等不到 `选取一张记忆印痕`，报告 `reachedReward=false`。
+  - `npm run test:shop-flow-smoke --silent`：exit `1`，读取 fixture 后等不到 `黑市拾荒者`，报告 `reachedShop=false`。
+  - 这两个 flow smoke 仍需后续轮次继续查；它们可能是 fixture load 或真实屏幕恢复问题，不能混同到本轮 modal active-root bug。
+- 优先级：
+  - P2。`real-ui-30-clicks` 是 UI/rendering 回归网的高层 smoke；第 1 个教程 modal 场景假失败会阻断后续 29 个真实交互场景，使 UI regression gate 失去覆盖。
+  - 风险集中在门禁可靠性：真实 overlay 已打开且没有前景横向溢出，但 gate 报 `horizontal-overflow` 并提前停止。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - active screen 解析应优先选择可见且位于最上层的 `[data-screen]`，或在存在 modal overlay 时显式选择最后一个可见 `[data-screen]` / `data-screen="Tutorial"`。
+  - visual audit 的 `activeRoot` 不应使用 `document.querySelector('[data-screen]')`；可复用 `getActiveScreenRoot()`，按 z-index/visibility/last DOM order 选前景根。
+  - 对 modal 场景增加回归断言：教程打开后 `activeScreen === "Tutorial"`，并且 overflow 检查针对 Tutorial root 而非 Launcher。
+  - 复跑 `npm run test:real-ui-30-clicks --silent`，期望第 1 场景不再因背景 Launcher `scrollWidth` 假失败，并继续执行后续场景。
+- 下一轮建议：
+  - 第 146 轮展示 `REAL-UI-30CLICKS-MODAL-ACTIVE-SCREEN-MISDETECT-001`：给出报告 JSON、截图、DOM 探针、源码行号、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 146 - Real UI Modal Active Screen Misdetect Exhibit - 2026-05-21
+
+- 循环模式：第 146 轮，按交替节奏展示第 145 轮发现的 `REAL-UI-30CLICKS-MODAL-ACTIVE-SCREEN-MISDETECT-001`。
+- 展示 bug：
+  - **REAL-UI-30CLICKS-MODAL-ACTIVE-SCREEN-MISDETECT-001**：`test:real-ui-30-clicks` 打开教程 modal 后，仍用第一个 `[data-screen]` 当 active root，实际审计背景 `Launcher` 而非前景 `Tutorial` overlay；因此背景 Launcher 的 scrollWidth 被误报为教程场景横向溢出，导致第 1 个 UI 回归场景假失败并阻断后续 29 个场景。
+- Fresh 源码定位：
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:116-117`：`getActiveScreen()` 用 `page.locator('[data-screen]').first()` 读取 active screen，modal 场景会命中 DOM 中先出现的背景屏。
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:259-300`：visual audit 用 `document.querySelector('[data-screen]')` 作为 `activeRoot`，随后检查该 root 的 `scrollWidth > window.innerWidth + 24`。
+  - `scripts\validation\playwright_real_ui_30_clicks.ts:318-325`：第 1 个场景点击 Launcher 教程按钮并等待 `术语索引`，说明 Tutorial 已打开后才进入 visual audit。
+  - `src\ui\launcher\SetupLauncher.tsx:119-121`：Launcher 根节点带 `data-screen="Launcher"` 并保留在页面中。
+  - `src\ui\launcher\SetupLauncher.tsx:196-202`：教程入口按钮文案为 `战区教程 / 术语、资源与战斗流程`，正是 smoke 点击目标。
+  - `src\ui\views\TutorialView.tsx:89-94`：Tutorial 打开后渲染 `fixed inset-0 z-[130]` 的 `data-screen="Tutorial"` overlay；Launcher 与 Tutorial 两个 `[data-screen]` 会同时存在。
+- Fresh 复现证据：
+  - `npm run test:real-ui-30-clicks --silent`：exit `1`。
+  - 控制台输出：
+    - `[real-ui-30-clicks] 1/30 launcher tutorial opens on desktop: launcher: open tutorial`
+    - `[real-ui-30-clicks] 1/30 launcher tutorial opens on desktop: fail (2191ms, clicks=1)`
+    - `real-ui-30-clicks failed: completed=1/30 failed=launcher tutorial opens on desktop console=0 page=0 requests=0`
+  - Fresh `reports\flows\real-ui-30-clicks.json` 摘要：
+    - `totalScenarios: 1`
+    - `passedScenarios: 0`
+    - `failedScenarios: 1`
+    - first result `activeScreen: "Launcher"`
+    - first result `error: "visual issues: brokenImages=0 layoutIssues=1"`
+    - visual issue `selector: "document"`, `problem: "horizontal-overflow"`, `detail: "1712 > 1440"`
+  - Fresh 失败截图：
+    - `output\playwright\real-ui-30-clicks\01-launcher-tutorial-opens-on-desktop-failed.png`
+    - 截图前景显示“新手战区教程 / 术语索引”，说明教程 modal 已打开，失败不是按钮未响应。
+  - Fresh 独立 DOM 探针：
+    - `screens[0] = { screen: "Launcher", scrollWidth: 1709, clientWidth: 1440 }`
+    - `screens[1] = { screen: "Tutorial", scrollWidth: 1440, clientWidth: 1440 }`
+    - `firstScreen: "Launcher"`
+    - `documentScrollWidth: 1440`
+    - `windowInnerWidth: 1440`
+  - 结论：真正前景 Tutorial root 与 document 本身没有横向溢出；harness 因 `first()` / `querySelector()` 取错 root 才把背景 Launcher 的 scrollWidth 归咎于教程场景。
+- 优先级：
+  - P2。该 bug 影响 UI/rendering 高层回归门禁可靠性；`real-ui-30-clicks` 在第 1 场景假失败后提前停止，后续 29 个真实交互场景完全失去覆盖。
+  - 风险不是玩家直接崩溃，而是 UI gate 被假阴性占满，使真正的 UI 回归更难进入检测面。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - `getActiveScreen()` 与 visual audit 共用同一个前景 root 选择器：优先选可见 modal / z-index 更高 / DOM order 最后的可见 `[data-screen]`。
+  - 教程打开后报告应记录 `activeScreen: "Tutorial"`，overflow 检查针对 Tutorial root，而不是背景 Launcher。
+  - 增加/保留回归：第 1 场景打开教程后应通过，不再报 `document horizontal-overflow 1712 > 1440`。
+  - 复跑 `npm run test:real-ui-30-clicks --silent`，期望至少第 1 场景通过并继续执行后续场景；若后续场景失败，应记录新的真实 UI 问题而非复用本 bug。
+- 下一轮建议：
+  - 第 147 轮回到找 bug；优先继续查 `reward-flow-smoke` / `shop-flow-smoke` 读取 fixture 后无法进入 Reward/Shop 的失败，或转向 Python WASM adapter 与 desktop release readiness 的剩余红灯。
+
+## DeckRogue Bug Loop Cycle 147 - Flow Smoke Fixture Blank Checksum Finding - 2026-05-21
+
+- 循环模式：第 147 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找新 bug。
+- 审计范围：
+  - 避免重复第 145-146 轮 `REAL-UI-30CLICKS-MODAL-ACTIVE-SCREEN-MISDETECT-001`。
+  - 本轮优先检查 release readiness 中仍然失败的 Reward/Shop flow smoke fixture 读取链路。
+- 新发现：
+  - **FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001**：`flow_smoke_helpers` 生成的预置存档 slot 把 `checksum` 写成空字符串，并直接把 slot/saveData 注入 `localStorage`；但 `SaveManager.loadGame()` 在读取任何 slot 时要求 `slot.checksum` 存在并与保存内容匹配。结果是 Reward/Shop 等 flow smoke fixture 在 launcher 点击“读取”后无法加载引擎，测试继续等待目标页面文案并超时。
+- 文件/行号：
+  - `scripts\validation\flow_smoke_helpers.ts:112-145`：`buildSaveData()` 生成 fixture，其中 `slot.checksum` 在 `:130` 固定为 `''`。
+  - `scripts\validation\flow_smoke_helpers.ts:407-429`：`buildStoragePayload()` / `bootstrapContext()` 把这些 slots 和 `deckrogue_save_<slotId>` save entries 直接写入 `localStorage`，没有按 SaveManager 算法补 checksum。
+  - `scripts\validation\flow_smoke_helpers.ts:432-439`：`loadSlotFromLauncher()` 点击 slot 卡片里的“读取”，会走真实 launcher load path。
+  - `src\core\persistence\saveManager.ts:157-186`：真实 `saveGame()` 先 `JSON.stringify(saveData)`，再用 `calculateChecksum(serialized)` 写入 slot checksum。
+  - `src\core\persistence\saveManager.ts:248-260`：`loadGame()` 读取 slot 后若 `!slot?.checksum`，发布 `LoadFailed: Save checksum missing` 并返回 `null`；checksum 不匹配也返回 `null`。
+  - `src\core\persistence\saveManager.ts:603-610`：checksum 算法是私有 `calculateChecksum(data: string)`。
+  - `src\core\persistence\setup.ts:182-195`：`loadRun()` 在 `saveManager.loadGame(slotId)` 返回 `null` 时直接返回 `null`。
+  - `src\ui\views\AppShell.tsx:381-390`：`handleLoadSlot()` 收到 `loadedEngine === null` 后只设置 launcher error，不会 `setEngine()`。
+  - `scripts\validation\playwright_reward_flow_smoke.ts:51-76`：Reward smoke 注入 `createRewardFixture()`，点击读取后等待 `选取一张记忆印痕`。
+  - `scripts\validation\playwright_shop_flow_smoke.ts:53-79`：Shop smoke 注入 `createShopFixture()`，点击读取后等待 `黑市拾荒者`。
+  - `tests\unit\flowSmokeHelpers.test.ts:50-66`：现有 helper 单测只断言 roomSession/routeState/surfaceContext 被序列化，没有断言 fixture 能被 `SaveManager.loadGame()` 成功读取。
+- Fresh 复现/验证证据：
+  - `npm run test:reward-flow-smoke --silent`：exit `1`，Playwright 在 `scripts\validation\playwright_reward_flow_smoke.ts:74:38` 超时，等待 `getByText('选取一张记忆印痕')` 可见失败。
+  - `reports\flows\reward-flow-smoke.json`：
+    - `reachedReward: false`
+    - `returnedToMap: false`
+    - `consoleErrors: []`
+    - `pageErrors: []`
+  - `npm run test:shop-flow-smoke --silent`：exit `1`，Playwright 在 `scripts\validation\playwright_shop_flow_smoke.ts:77:35` 超时，等待 `getByText('黑市拾荒者')` 可见失败。
+  - `reports\flows\shop-flow-smoke.json`：
+    - `reachedShop: false`
+    - `reachedEnchant: false`
+    - `returnedToShop: false`
+    - `returnedToMap: false`
+    - `consoleErrors: []`
+    - `pageErrors: []`
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=31 warn=0 fail=10`；失败项包括 `reward_flow_smoke`、`shop_flow_smoke` 以及同类 fixture-load flow smoke。
+  - `npx tsx --test tests/unit/flowSmokeHelpers.test.ts`：exit `0`，`2` tests pass，说明现有单测没有覆盖 `SaveManager.loadGame(fixture.slotId)` 可加载性。
+- 结论：
+  - 这不是单个 Reward/Shop 页面文案缺失；两个 smoke 都从 launcher 读取 fixture 后等不到目标屏幕，且无 console/page error。
+  - 源码链路显示 fixture slot 的空 checksum 会被真实读取路径拒绝，随后 AppShell 停留在 launcher error 分支；因此所有依赖 `bootstrapContext()` 注入 slot 再 `loadSlotFromLauncher()` 的 flow smoke 都可能是假红。
+- 优先级：
+  - P2。该问题会让 release readiness 中多个 flow smoke 长期红灯，阻断 Reward/Shop/Event/Rest/Upgrade 等真实流程回归覆盖，并把调试焦点错误引向各个页面自身。
+  - 风险集中在验证体系：预置存档 fixture 与生产 SaveManager 契约不一致，导致测试夹具不可加载。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - 在 `buildSaveData()` 或 `buildStoragePayload()` 中按 `SaveManager.saveGame()` 同一算法计算 `JSON.stringify(saveData)` 的 checksum，并写入对应 slot。
+  - 避免复制私有算法漂移：可提取公共 checksum helper，或提供验证脚本专用 helper，但输出必须与 `SaveManager.loadGame()` 的校验一致。
+  - 增加回归测试：fixture 构建后，在 browser/localStorage-like 环境中断言 `saveManager.loadGame(fixture.slotId)` 返回非空，至少覆盖 Reward 和 Shop fixture。
+  - 复跑 `npm run test:reward-flow-smoke --silent`、`npm run test:shop-flow-smoke --silent`、`npm run check:release-readiness --silent`。修复后若 Reward/Shop 仍失败，应作为页面/流程层新问题另行记录，不能复用本 fixture checksum bug。
+- 下一轮建议：
+  - 第 148 轮展示 `FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001`：给出 Reward/Shop smoke 超时、report JSON、blank checksum 源码、SaveManager load guard、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 148 - Flow Smoke Fixture Blank Checksum Exhibit - 2026-05-21
+
+- 循环模式：第 148 轮，按交替节奏展示第 147 轮发现的 `FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001`。
+- 展示 bug：
+  - **FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001**：flow smoke 预置存档 fixture 的 slot `checksum` 固定为空字符串，但真实 `SaveManager.loadGame()` 要求 checksum 存在且匹配保存内容；因此 Reward/Shop 等 smoke 从 launcher 点击“读取”后不会进入游戏引擎，随后等待目标页面文案超时。
+- Fresh 源码定位：
+  - `scripts\validation\flow_smoke_helpers.ts:112-145`：`buildSaveData()` 生成 fixture；其中 `slot.checksum` 在 `:130` 被写成 `''`。
+  - `scripts\validation\flow_smoke_helpers.ts:407-429`：`buildStoragePayload()` 与 `bootstrapContext()` 把 slots 和 `deckrogue_save_<slotId>` entries 直接写进 `localStorage`，没有计算 checksum。
+  - `scripts\validation\flow_smoke_helpers.ts:432-439`：`loadSlotFromLauncher()` 点击 launcher slot 卡片的“读取”，走真实 UI 读取路径。
+  - `src\core\persistence\saveManager.ts:157-186`：真实保存路径先 `JSON.stringify(saveData)`，再 `calculateChecksum(serialized)`，并把 checksum 写入 slot。
+  - `src\core\persistence\saveManager.ts:248-260`：真实读取路径若 `!slot?.checksum`，发布 `LoadFailed: Save checksum missing` 并返回 `null`；checksum mismatch 也返回 `null`。
+  - `src\core\persistence\saveManager.ts:603-610`：checksum 算法目前是 `SaveManager` 私有方法，fixture helper 无法复用同一实现。
+  - `src\core\persistence\setup.ts:182-195`：`loadRun()` 在 `saveManager.loadGame(slotId)` 失败时返回 `null`。
+  - `src\ui\views\AppShell.tsx:381-390`：`handleLoadSlot()` 收到 `loadedEngine === null` 后只设置 launcher error，不执行 `setEngine()`。
+  - `tests\unit\flowSmokeHelpers.test.ts:50-66`：现有 helper 单测只验证 first-room fixture 的 room/session 字段被序列化，没有验证 fixture 能被真实 SaveManager 读取。
+- Fresh 复现证据：
+  - `npm run test:reward-flow-smoke --silent`：exit `1`。
+    - Playwright 输出：`waiting for getByText('选取一张记忆印痕') to be visible` 超时。
+    - 失败位置：`scripts\validation\playwright_reward_flow_smoke.ts:74:38`。
+  - `reports\flows\reward-flow-smoke.json`：
+    - `reachedReward: false`
+    - `returnedToMap: false`
+    - `consoleErrors: []`
+    - `pageErrors: []`
+  - `npm run test:shop-flow-smoke --silent`：exit `1`。
+    - Playwright 输出：`waiting for getByText('黑市拾荒者') to be visible` 超时。
+    - 失败位置：`scripts\validation\playwright_shop_flow_smoke.ts:77:35`。
+  - `reports\flows\shop-flow-smoke.json`：
+    - `reachedShop: false`
+    - `reachedEnchant: false`
+    - `returnedToShop: false`
+    - `returnedToMap: false`
+    - `consoleErrors: []`
+    - `pageErrors: []`
+  - `npm run check:release-readiness --silent`：exit `1`，输出 `pass=31 warn=0 fail=10`。
+    - `reports\release\release-readiness.json` 失败项包含 `reward_flow_smoke`、`shop_flow_smoke`、`event_flow_smoke`、`rest_flow_smoke`、`upgrade_flow_smoke`、`remove_card_flow_smoke`、`boss_phase_flow_smoke`、`boss_terminal_flow_smoke` 等同类 flow gate。
+  - `npx tsx --test tests/unit/flowSmokeHelpers.test.ts`：exit `0`，`2` tests pass；这只能证明 fixture 内部状态字段被序列化，不能证明 fixture 可被真实存档读取路径加载。
+- 复现路径：
+  - 运行 `npm run test:reward-flow-smoke --silent` 或 `npm run test:shop-flow-smoke --silent`。
+  - 测试先通过 `bootstrapContext()` 注入 fixture slot/saveData，再在 launcher 点击对应 slot 的“读取”。
+  - 真实读取路径因 slot checksum 为空被 `SaveManager.loadGame()` 拒绝，`gameSetup.loadRun()` 返回 `null`，`AppShell` 留在 launcher error 分支。
+  - 测试继续等待 Reward/Shop 页面文案，最终 10 秒超时。
+- 优先级：
+  - P2。该 bug 主要破坏验证体系和 release gate：多个高价值 flow smoke 被不可加载 fixture 统一阻断，导致 Reward/Shop/Event/Rest/Upgrade 等真实流程覆盖无法推进。
+  - 直接玩家风险较低；玩家正常 `saveGame()` 会写 checksum。但测试夹具与生产存档契约漂移会长期制造假红，并遮蔽真实流程缺陷。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - flow smoke fixture slot 的 checksum 必须按 `JSON.stringify(saveData)` 后的同一算法生成，并与 `SaveManager.loadGame()` 校验一致。
+  - 最好把 checksum 计算提取为共享 helper，避免在 fixture helper 中复制私有算法后再次漂移。
+  - 增加回归：至少覆盖 Reward/Shop fixture 在 localStorage-like 环境里可被 `saveManager.loadGame(fixture.slotId)` 读回非空。
+  - 复跑 `npm run test:reward-flow-smoke --silent`、`npm run test:shop-flow-smoke --silent`、`npm run check:release-readiness --silent`。若修复后仍出现目标页面自身失败，应另立新 bug，不再归因于 checksum fixture。
+- 下一轮建议：
+  - 第 149 轮回到找 bug；优先继续 UI/rendering、runtimeV2 content schema、AI intent chain、desktop packaging 或 Python WASM adapter。若先修 `FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001`，修复后应重跑 flow smoke，挖出被 fixture 入口遮蔽的下一层真实流程问题。
+
+## DeckRogue Bug Loop Cycle 149 - Python WASM Embedded Runtime Drift Finding - 2026-05-21
+
+- 循环模式：第 149 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找新 bug。
+- 审计范围：
+  - 避免重复第 147-148 轮 `FLOW-SMOKE-FIXTURE-BLANK-CHECKSUM-UNLOADABLE-001`。
+  - 本轮优先检查 Python WASM adapter、runtimeV2 内容包和桌面打包；桌面 build/smoke 与 content reachability 作为对照。
+- 新发现：
+  - **PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001**：`PythonWasmAdapter` 实际在浏览器/Pyodide 中执行 `src\content\narrative\pythonRuntime.ts` 内嵌的 `PYTHON_RUNTIME_CODE`，但该内嵌 runtime 已落后于 `python_runtime\src\deckrogue_rules_core\runtime.py` 包侧实现。包侧已有 `_generate_planned_reward_cards()`、`boot()`、`create_save_game_v2()`、`restore_snapshot_from_save_game()`，内嵌 WASM runtime 缺失这些函数；因此 Python process/package 侧通过的 reward planning / persistence 能力不会进入真实 Python WASM lane。
+- 文件/行号：
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:13`：WASM adapter 从 `@/content/narrative/pythonRuntime` 导入 `PYTHON_RUNTIME_CODE`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:116-118`：Pyodide 初始化后直接 `runPythonAsync(PYTHON_RUNTIME_CODE)`；这证明浏览器 WASM lane 使用的是内嵌 TS 字符串，而不是 `python_runtime` 包文件。
+  - `src\content\narrative\pythonRuntime.ts:919-928`：内嵌 runtime 的 `_generate_reward_cards()` 直接进入随机 rarity loop，没有调用 planned reward route shaping。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:374-430`：包侧 runtime 有 `_generate_planned_reward_cards()`，根据 floor、route_state、early_game_role、route tags 生成前期规划 reward。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1098-1113`：包侧 `_generate_reward_cards()` 会先调用 `_generate_planned_reward_cards()`，有 planned rewards 就直接返回。
+  - `src\content\narrative\pythonRuntime.ts:1600-1617`：内嵌 runtime 末尾只有 `init_runtime()`、`dispatch_command()`、`get_snapshot()`，没有包侧 persistence helpers。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1806-1820`：包侧暴露 `boot()`、`create_save_game_v2()`、`restore_snapshot_from_save_game()`。
+  - `python_runtime\tests\test_persistence.py:11-29`：包侧测试实际导入并验证 `create_save_game_v2()` / `restore_snapshot_from_save_game()` 往返。
+  - `tests\unit\pythonWasmAdapter.test.ts:13-27`：现有 WASM adapter 单测只测 `unwrapPythonSnapshotEnvelope()`，未启动 Pyodide 或执行内嵌 Python runtime。
+  - `tests\unit\runtimeV2Host.test.ts:952-983`：唯一 `createPythonWasmAdapter()` 真实 host 场景是 `test.skip(...)`。
+  - `tests\unit\runtimeV2Parity.test.ts:891-960`：真实 Python parity 用的是 `PythonProcessAdapter`，不是 `PythonWasmAdapter`，所以绿灯覆盖包侧/进程侧，不覆盖 WASM 内嵌代码漂移。
+- Fresh 验证证据：
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+    - skip 项：`python wasm rest command heals and returns to map with follow-up nodes intact # SKIP`。
+    - 结论：runtimeV2 套件全绿，但真实 Python WASM host 场景未执行。
+  - `npm run build:desktop --silent`：exit `0`，Vite production build `2265 modules transformed`，`✓ built`。
+  - `npm run test:desktop-smoke --silent`：exit `0`，production desktop smoke 重新 build 并通过；桌面入口本身不是本轮新 bug。
+  - `npm run check:content-reachability --silent`：exit `0`，`Summary: 11/11 reachable`，`Total broken edges: 0`；内容 reachability 不能发现 WASM 内嵌 runtime 漂移。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`Ran 8 tests`，`OK`；包侧 Python runtime 和 persistence 测试通过。
+  - Fresh 静态漂移探针：
+    - `_generate_planned_reward_cards: embedded=False package=True`
+    - `boot: embedded=False package=True`
+    - `create_save_game_v2: embedded=False package=True`
+    - `restore_snapshot_from_save_game: embedded=False package=True`
+    - exit `1`，错误：`embedded runtime missing package functions: _generate_planned_reward_cards, boot, create_save_game_v2, restore_snapshot_from_save_game`
+- 结论：
+  - 这不是桌面构建失败，也不是 content reachability 失败；它是 Python WASM lane 的源代码漂移。
+  - Python process adapter / 包侧单测验证的是 `python_runtime\src\deckrogue_rules_core\runtime.py`，而浏览器 WASM adapter 执行的是另一份内嵌字符串。两者已经出现功能差异，现有绿灯无法证明 WASM lane 拥有包侧 reward planning 与 SaveGameV2 helpers。
+- 优先级：
+  - P2。当前默认 runtime 仍可通过 legacy/Python process 路径工作，但一旦切到 Python WASM adapter，reward planning 和 persistence helper 能力会落后于包侧 runtime；同时真实 WASM host 测试被 skip，漂移会持续累积。
+  - 风险集中在跨 runtime 一致性：desktop/build/runtimeV2 parity 都可能绿，但浏览器 Pyodide lane 使用旧代码。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - 建立单一 Python runtime source of truth：构建时从 `python_runtime\src\deckrogue_rules_core\runtime.py` 生成 `PYTHON_RUNTIME_CODE`，或让 WASM adapter 加载同一源文件内容，避免手工双维护。
+  - 至少新增漂移检查：对比包侧 runtime 与内嵌 runtime 的 exported helpers /关键函数集合，缺失时 fail。
+  - 取消或替换 `tests\unit\runtimeV2Host.test.ts:952` 的永久 `test.skip`：用 fake Pyodide 或浏览器集成 smoke 覆盖 `createPythonWasmAdapter().start()` + reward/rest/persistence 关键路径。
+  - 复跑 `npm run test:runtime-v2:ts --silent`、Python unit tests、以及新的 WASM drift check；如果接入真实 Pyodide，还应跑浏览器 smoke 验证 `PYTHON_RUNTIME_CODE` 实际能启动并执行 planned reward / SaveGameV2 helper。
+- 下一轮建议：
+  - 第 150 轮展示 `PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001`：给出内嵌 runtime vs 包侧 runtime 的缺失函数、真实 adapter 执行入口、测试 skip 覆盖缺口、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 150 - Python WASM Embedded Runtime Drift Exhibit - 2026-05-21
+
+- 循环模式：第 150 轮，按交替节奏展示第 149 轮发现的 `PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001`。
+- 展示 bug：
+  - **PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001**：`PythonWasmAdapter` 在浏览器/Pyodide 中执行的是 `src\content\narrative\pythonRuntime.ts` 内嵌 `PYTHON_RUNTIME_CODE`，但这份内嵌 runtime 已落后于 `python_runtime\src\deckrogue_rules_core\runtime.py` 包侧实现。包侧已有 reward planning 与 SaveGameV2 helpers，WASM 内嵌代码缺失这些能力。
+- Fresh 源码定位：
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:13`：adapter 直接导入 `PYTHON_RUNTIME_CODE`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:116-118`：Pyodide 初始化后执行 `this.pyodide.runPythonAsync(PYTHON_RUNTIME_CODE)`，说明 WASM lane 的源是内嵌 TS 字符串。
+  - `src\content\narrative\pythonRuntime.ts:919-955`：内嵌 `_generate_reward_cards()` 直接进入随机 rarity/card pool loop，没有 planned reward route shaping。
+  - `src\content\narrative\pythonRuntime.ts:1600-1617`：内嵌 runtime 只暴露 `init_runtime()`、`dispatch_command()`、`get_snapshot()`，没有 `boot()` / SaveGameV2 helpers。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:374-430`：包侧有 `_generate_planned_reward_cards()`，基于 `route_state`、`early_game_role` 与 route tags 规划前期 reward。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1098-1113`：包侧 `_generate_reward_cards()` 先调用 `_generate_planned_reward_cards()`，若有规划 reward 就直接返回。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1806-1820`：包侧暴露 `boot()`、`create_save_game_v2()`、`restore_snapshot_from_save_game()`。
+  - `python_runtime\tests\test_persistence.py:11-29`：包侧测试实际导入并验证 `create_save_game_v2()` / `restore_snapshot_from_save_game()`。
+  - `tests\unit\pythonWasmAdapter.test.ts:13-27`：现有 WASM adapter 单测只测 envelope unwrap，没有启动 Pyodide 或执行内嵌 Python runtime。
+  - `tests\unit\runtimeV2Host.test.ts:952-983`：唯一真实 `createPythonWasmAdapter()` host 场景仍是 `test.skip(...)`。
+- Fresh 复现/验证证据：
+  - Fresh 静态漂移探针：exit `1`。
+    - `_generate_planned_reward_cards: embedded=False package=True`
+    - `boot: embedded=False package=True`
+    - `create_save_game_v2: embedded=False package=True`
+    - `restore_snapshot_from_save_game: embedded=False package=True`
+    - 错误：`embedded runtime missing package functions: _generate_planned_reward_cards, boot, create_save_game_v2, restore_snapshot_from_save_game`
+  - `npm run test:runtime-v2:ts --silent`：exit `0`。
+    - `tests 107`
+    - `pass 106`
+    - `skipped 1`
+    - skip 项：`python wasm rest command heals and returns to map with follow-up nodes intact # SKIP`
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`Ran 8 tests`，`OK`。
+  - 结论：Python 包侧能力通过自己的测试；runtimeV2 总套件也绿，但真实 Python WASM host 执行路径仍未覆盖，且内嵌 runtime 与包侧 runtime 已发生可复跑的函数级漂移。
+- 复现路径：
+  - 运行漂移探针，对比 `src\content\narrative\pythonRuntime.ts` 与 `python_runtime\src\deckrogue_rules_core\runtime.py` 是否包含关键函数。
+  - 观察 `PythonWasmAdapter` 的加载路径：它不会读取 `python_runtime` 包侧文件，而是把 `PYTHON_RUNTIME_CODE` 送入 Pyodide。
+  - 运行 `npm run test:runtime-v2:ts --silent`，可以看到套件仍绿，但真实 WASM host 用例被 skip，因此无法阻止内嵌 runtime 漂移。
+- 优先级：
+  - P2。该问题不会直接破坏当前 legacy / Python process 默认路径，但会让 Python WASM lane 在 reward planning、SaveGameV2 helper 等能力上落后于包侧 runtime。
+  - 风险集中在跨 runtime 一致性：桌面 build、Python process parity、runtimeV2 总套件均可能绿，同时浏览器 Pyodide lane 仍执行旧代码。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改业务代码。
+- 修复验收标准：
+  - 建立单一 Python runtime source of truth：由 `python_runtime\src\deckrogue_rules_core\runtime.py` 生成或注入 `PYTHON_RUNTIME_CODE`，避免手工双维护。
+  - 新增 drift check：关键函数 / exported helper 集合在包侧和 WASM 内嵌侧不一致时 fail。
+  - 替换 `tests\unit\runtimeV2Host.test.ts:952` 的永久 skip：至少用 fake Pyodide 覆盖 `createPythonWasmAdapter().start()` 与一次 reward/rest/persistence 关键路径。
+  - 复跑 `npm run test:runtime-v2:ts --silent`、Python unit tests 和新的 WASM drift check；若接入真实 Pyodide，再跑浏览器 smoke 验证 `PYTHON_RUNTIME_CODE` 能实际启动并包含 planned reward / SaveGameV2 helper。
+- 下一轮建议：
+  - 第 151 轮回到找 bug；优先继续 runtimeV2 content schema、AI intent chain、UI/rendering 或 desktop release gate。避免重复 `PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001`，除非切换到修复该问题。
+
+## DeckRogue Bug Loop Cycle 151 - Dead File Scan Root Drift Finding - 2026-05-21
+
+- 循环模式：第 151 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找新 bug。
+- 审计范围：
+  - 先复核第 150 轮报告尾部与当前 `git status --short --branch`，工作树仍有大量既有修改，本轮只追加本报告段。
+  - 避免重复 `PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001`、adapter differential parity 旧红灯、AI boundary 旧红灯和 flow fixture checksum 旧红灯。
+  - 本轮实际覆盖 CI 审计、code-health/security 报告、map responsive smoke，并核查 dead file scan 的 Windows 路径处理。
+- 新发现：
+  - **CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001**：`scan:dead` 入口从 `scripts\validation\dead_file_scan.ts` 计算 `ROOT = path.resolve(__dirname, '..')`，实际得到 `E:\deckrogue\deckrogue-mainline-merge\scripts`，不是仓库根目录。因此源码、public assets 与 scripts 扫描都落到不存在的 `scripts\src`、`scripts\public`、`scripts\scripts`，输出 `0/0` 后仍让 `review:ci` 判定 all passed。
+- 文件/行号：
+  - `package.json:24-25`：`scan:dead` 暴露为 npm 脚本，`review:ci` 会调用统一 CI 审计入口。
+  - `scripts\validation\review_ci.ts:30-35`：`Dead File Scan (CI)` 是 `review:ci` 的最后一步；该步骤 exit `0` 后 `review:ci` 会继续打印 all passed。
+  - `scripts\validation\review_ci.ts:41-48`：子命令状态非 0 才会阻断 CI。
+  - `scripts\validation\dead_file_scan.ts:38-40`：`__dirname` 是 `scripts\validation`，但 `ROOT` 只上跳一级到 `scripts`。
+  - `scripts\validation\dead_file_scan.ts:51`：扫描入口仍宣称是 `src/main.tsx`，相对于错误的 `ROOT` 会变成 `scripts\src\main.tsx`。
+  - `scripts\validation\dead_file_scan.ts:82-84`：目标目录不存在时 `walkFiles()` 直接返回空数组。
+  - `scripts\validation\dead_file_scan.ts:191-204`、`:260-267`、`:313-325`：repo corpus、public assets、script files 都基于错误的 `ROOT` 派生。
+  - `scripts\validation\dead_file_scan.ts:378-381`：`--ci` 只在 `orphanSourceFiles.length > 0` 时失败；当扫描面为 `0` 时不会失败。
+- Fresh 复现/验证证据：
+  - `npm run review:ci --silent`：exit `0`。
+    - typecheck/build 通过，Vite build `2265 modules transformed`。
+    - damage tests `5/5` pass。
+    - numeric diagnostics `errors=0, warnings=11`。
+    - `Dead File Scan (CI)` 输出 `Source files: 0/0 reachable from src/main.tsx`、`Public assets: total=0`、`Scripts: total=0`。
+    - 末尾仍打印 `All review checks passed.`。
+  - `npm run scan:dead -- --ci`：exit `0`，同样输出：
+    - `Source files: 0/0 reachable from src/main.tsx`
+    - `Public assets: total=0, exact=0, dynamic-dir=0`
+    - `Scripts: total=0`
+  - `npm run scan:dead -- --json`：exit `0`，结构化结果中 `source.totalSourceFiles=0`、`publicAssets.totalFiles=0`、`scripts.totalFiles=0`。
+  - 真实文件计数对照：
+    - `Test-Path .\scripts\src`、`.\scripts\public`、`.\scripts\scripts` 均为 `False`。
+    - `Test-Path .\src\main.tsx` 为 `True`。
+    - 仓库真实 `src` 下 `.ts/.tsx` 文件数为 `265`。
+    - 仓库真实 `public` 文件数为 `728`。
+    - 仓库真实 `scripts` 文件数为 `105`。
+  - 对照绿灯：
+    - `npm run report:code-health --silent`：exit `0`，状态 `HEALTHY`，但它不验证 dead-file 扫描面。
+    - `npm run report:security --silent`：exit `0`，状态 `HEALTHY`，不覆盖 dead-file root。
+    - `npm run test:map-responsive-smoke --silent`：exit `0`，`output\playwright\map-responsive\map_responsive_report.json` 中 `consoleErrors=[]`、`pageErrors=[]`、`failedRequests=[]`、`issues=[]`；UI 响应式烟测本轮未暴露新 bug。
+- 结论：
+  - 这是 CI/静态审计假绿，而不是当前 UI 或 runtimeV2 业务崩溃。
+  - `review:ci` 的死文件扫描当前没有扫描真实仓库；维护者看到 all passed 会误以为源码孤儿文件、public asset 与 scripts 死文件都被覆盖。
+- 优先级：
+  - P2。该问题会持续削弱 CI 审计和清理安全性，尤其在当前工作树包含大量 `src`、`public`、`scripts` 文件时，`0/0` 假绿会遮蔽真实孤儿文件与未引用脚本。
+  - 直接玩家风险较低；风险集中在工程治理与发布前审计信号可信度。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - 将 `dead_file_scan.ts` 的 `ROOT` 修为 `path.resolve(__dirname, '..', '..')`，并像 `review_ci.ts` 一样检查 `package.json` 或 `src/main.tsx` 是否存在。
+  - `--ci` 增加扫描面 sanity gate：`totalSourceFiles === 0`、entrypoint 不存在、`publicAssets.totalFiles === 0` 或 `scripts.totalFiles === 0` 时应 fail，而不是报告 clean。
+  - 增加单测或脚本自检：在当前仓库运行 `npm run scan:dead -- --json` 时，至少断言 `source.totalSourceFiles > 0`、`scripts.totalFiles > 0`，并确认 entrypoint `src/main.tsx` 可达。
+  - 修复后复跑 `npm run scan:dead -- --ci`、`npm run review:ci --silent`；若修复后出现真实 orphan 列表，应作为清理任务另行处理，不能归入本 root 漂移 bug。
+- 下一轮建议：
+  - 第 152 轮展示 `CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001`：给出错误 `ROOT` 行号、`review:ci` all passed 假绿、`0/0` JSON 输出、真实文件计数对照、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 152 - Dead File Scan Root Drift Exhibit - 2026-05-21
+
+- 循环模式：第 152 轮，按交替节奏展示第 151 轮发现的 `CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001`。
+- 展示 bug：
+  - **CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001**：`scan:dead` 当前把仓库根目录误算成 `scripts` 目录，导致源码、public assets 与 scripts 扫描面全部为空；`--ci` 只在发现 orphan source 时失败，所以 `0/0` 假绿会进入 `review:ci`。
+- Fresh 源码定位：
+  - `package.json:24-25`：`scan:dead` 指向 `tsx scripts/validation/dead_file_scan.ts`，`review:ci` 指向 `tsx scripts/validation/review_ci.ts`。
+  - `scripts\validation\review_ci.ts:17`：`review_ci.ts` 自己正确使用 `path.resolve(__dirname, '..', '..')` 定位仓库根。
+  - `scripts\validation\review_ci.ts:35`：`Dead File Scan (CI)` 调用 `npm run scan:dead -- --ci`。
+  - `scripts\validation\dead_file_scan.ts:40`：`dead_file_scan.ts` 使用 `path.resolve(__dirname, '..')`，从 `scripts\validation` 只上跳到 `scripts`。
+  - `scripts\validation\dead_file_scan.ts:51`：入口仍声明为 `src/main.tsx`，但在错误 root 下会查找 `scripts\src\main.tsx`。
+  - `scripts\validation\dead_file_scan.ts:82`：`walkFiles()` 对不存在目录直接返回空数组，隐藏了 root 错误。
+  - `scripts\validation\dead_file_scan.ts:313-324`：`buildReport()` 从错误 root 派生 `src`、`public`、`scripts` 三个扫描面。
+  - `scripts\validation\dead_file_scan.ts:378`：`--ci` 只检查 `report.source.orphanSourceFiles.length > 0`，没有扫描面 sanity gate。
+- Fresh 复现/验证证据：
+  - `npm run scan:dead -- --ci`：exit `0`，输出：
+    - `Source files: 0/0 reachable from src/main.tsx`
+    - `Source orphan files: none`
+    - `Public assets: total=0, exact=0, dynamic-dir=0`
+    - `Scripts: total=0`
+  - `npm run scan:dead -- --json`：exit `0`，结构化结果显示：
+    - `source.totalSourceFiles: 0`
+    - `source.reachableSourceFiles: 0`
+    - `publicAssets.totalFiles: 0`
+    - `scripts.totalFiles: 0`
+  - 真实文件计数对照：
+    - `Test-Path .\scripts\src`: `False`
+    - `Test-Path .\scripts\public`: `False`
+    - `Test-Path .\scripts\scripts`: `False`
+    - `Test-Path .\src\main.tsx`: `True`
+    - 仓库真实 `src` 下 `.ts/.tsx` 文件数：`265`
+    - 仓库真实 `public` 文件数：`728`
+    - 仓库真实 `scripts` 文件数：`105`
+  - 第 151 轮已跑 `npm run review:ci --silent` 并读完输出：typecheck/build/damage/numeric 通过后，`Dead File Scan (CI)` 输出同样的 `0/0`，末尾仍打印 `All review checks passed.`。本轮为避免再次改写 `output\numerics\baseline_audit.json`，刷新的是 `scan:dead` 本体证据与源码定位。
+- 复现路径：
+  - 从仓库根运行 `npm run scan:dead -- --ci`。
+  - 观察输出为 `0/0`、`total=0`、`Scripts: total=0`，且进程 exit `0`。
+  - 对照 `src\main.tsx` 存在、真实 `src/public/scripts` 文件计数非零，可确认扫描面不是仓库根。
+- 优先级：
+  - P2。玩家运行不直接受影响，但工程治理风险高：CI 审计会报告无死文件、无未引用 public assets、无未引用 scripts，而实际根本没扫描真实仓库。
+  - 在当前大型脏工作树上，这类假绿会误导清理、发布前审计和代码健康判断。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改 `dead_file_scan.ts`。
+- 修复验收标准：
+  - `dead_file_scan.ts` 的 `ROOT` 改为仓库根，例如 `path.resolve(__dirname, '..', '..')`，并检查 `package.json` 与 `src/main.tsx` 存在。
+  - `--ci` 加扫描面 sanity gate：当 `source.totalSourceFiles === 0`、entrypoint 不存在、`scripts.totalFiles === 0` 或预期 public 目录为空时失败。
+  - 增加测试或脚本自检，断言当前仓库 `npm run scan:dead -- --json` 至少看到 `source.totalSourceFiles > 0` 和 `scripts.totalFiles > 0`。
+  - 修复后复跑 `npm run scan:dead -- --ci` 与 `npm run review:ci --silent`；若修复后暴露真实 orphan，应拆成独立清理任务。
+- 下一轮建议：
+  - 第 153 轮回到找 bug；优先继续 UI/rendering、runtimeV2 content schema、AI intent chain、desktop packaging 或 Python WASM adaptation，避免重复本 dead-file scan root 漂移问题。
+
+## DeckRogue Bug Loop Cycle 153 - Experience Polish Partial UI Audit Pass Finding - 2026-05-21
+
+- 循环模式：第 153 轮，按交替节奏回到真实构建/测试/静态检查/代码审计找新 bug。
+- 审计范围：
+  - 先读取第 152 轮尾部和当前 `git status --short --branch`；工作树仍有大量既有修改，本轮只追加本报告段。
+  - 避免重复 `CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001`、UI expansion checksum/partial-report 旧红灯、runtimeV2 content bundle HP/intent/relic 旧红灯、AI camelCase intentPolicy 旧红灯。
+  - 本轮实际覆盖 content authoring、enemy AI profile/facade tests、UI expansion smoke、content bundle、runtimeV2 content bundle、system/experience/asset polish。
+- 新发现：
+  - **EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001**：`check:experience-polish` 会读取 `output\playwright\ui_smoke_expansion_report.json` 作为体验证据，但它不要求 UI expansion 主流程完成，也不要求 `combat/reward/shop/event/upgrade` 等关键 audit 存在。当前 expansion report 只有 `launcher/tutorial/launcher_tablet/character_select` 四个 audits、只加载了 `UI Smoke Map` 一个 slot；`check:experience-polish` 仍 exit `0` 并打印 `Experience polish check passed`，且 game doctor 会把它作为独立 stage 运行。
+- 文件/行号：
+  - `package.json:53`：`check:experience-polish` 暴露为 `tsx scripts/validation/check_experience_polish.ts`。
+  - `scripts\doctor\gameDoctor.ts:224-236`：doctor 先运行 `UI Smoke Expansion`，随后又运行 `Check Experience Polish`；后者如果 exit `0` 会在 doctor stage 中独立绿灯。
+  - `scripts\validation\check_experience_polish.ts:57-62`：`UiSmokeExpansionReport` 只声明 `consoleErrors/pageErrors/failedRequests/audits`，没有 `completed`、`failedStep`、`requiredAudits` 或 `slotsLoaded` contract。
+  - `scripts\validation\check_experience_polish.ts:88-98`：直接读取 `output/playwright/ui_smoke_expansion_report.json`；JSON 能解析就作为依据。
+  - `scripts\validation\check_experience_polish.ts:101-104`：`hasCleanAudit()` 只检查某个 label 的 `brokenImages/layoutIssues` 是否为空；缺失 label 返回 false，但后续大多降级为 partial。
+  - `scripts\validation\check_experience_polish.ts:120-145`、`:165-183`：combat audit 缺失时把命中、击杀、弃置、伤害颜色、状态排序标为 `partial`，不是 fail。
+  - `scripts\validation\check_experience_polish.ts:230-288`：reward/shop/event/upgrade audit 缺失时同样标为 `partial`。
+  - `scripts\validation\check_experience_polish.ts:323-327`：pass rate 把 `partial` 记为 `0.5` 分。
+  - `scripts\validation\check_experience_polish.ts:360-363`：只打印 UI audit 数和 console/page/request issue 数，不检查必须覆盖的 audit labels。
+  - `scripts\validation\check_experience_polish.ts:370-374`：`passRate >= 70` 打印通过；低于阈值也只打印 needs improvement，没有 `process.exit(1)`。
+- Fresh 复现/验证证据：
+  - `npm run test:ui-smoke:expansion --silent`：exit `1`。
+    - Playwright 在 `scripts\validation\playwright_ui_smoke_expansion.ts:494:56` 超时：`waiting for locator('button[data-node-id]').first() to be visible`。
+    - 这是旧 checksum/fixture 入口问题，本轮不重复登记该根因，只作为 `experience-polish` 输入状态。
+  - fresh `output\playwright\ui_smoke_expansion_report.json`：
+    - `audits = ["launcher","tutorial","launcher_tablet","character_select"]`
+    - `slotsLoaded = ["UI Smoke Map"]`
+    - `consoleErrors = []`
+    - `pageErrors = []`
+    - `failedRequests = []`
+    - 没有 `completed` / `failedStep` / `error` 字段。
+  - `npm run check:experience-polish --silent`：exit `0`。
+    - 输出 `Pass rate: 80%`
+    - `Implemented: 15`
+    - `Partial: 10`
+    - `Missing: 0`
+    - `UI audits: 4`
+    - `Console/page/request issues: 0/0/0`
+    - 末尾 `✅ Experience polish check passed`
+  - fresh `reports\content\experience-polish.json`：
+    - `summary.total = 25`
+    - `summary.implemented = 15`
+    - `summary.partial = 10`
+    - `summary.missing = 0`
+    - `summary.passRate = 80`
+  - 对照绿灯：
+    - `npm run check:content-authoring --silent`：exit `0`，但 relic `0/0` 是旧红灯，不作为本轮新问题。
+    - `npm run check:enemy-ai-profiles --silent`：exit `0`。
+    - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`1` test pass。
+    - `npm run check:system-assertions --silent`：exit `0`，`probes: 5/5`。
+    - `npm run check:asset-polish --silent`：exit `0`，`errors=0, warnings=0`。
+- 结论：
+  - 这是体验/doctor 验证层假绿，不是新的 UI expansion fixture 根因。
+  - 当前 `check:experience-polish` 能在 UI 扩展 smoke 只跑完 4 个早期 audits、核心 combat/reward/shop/event/upgrade audits 全缺失时，仍把 10 个关键项降级为 partial 并通过。
+- 优先级：
+  - P2。它会削弱 doctor 对 UI/体验完成度的可信度：体验报告显示通过，但实际依赖的扩展 UI smoke 主流程已经失败，关键玩法页面没有进入体验审计。
+  - 直接玩家风险取决于被缺失 audit 遮蔽的真实 UI 问题；验证风险明确存在。
+- 是否已修：未修。本轮只找 bug 并记录证据。
+- 修复方向：
+  - `playwright_ui_smoke_expansion.ts` report 应写入 `completed`、`failedStep/error`、`requiredAudits` 与 `slotsLoaded` 完整性。
+  - `check_experience_polish.ts` 应要求 UI expansion report `completed === true`，并校验至少包含 `combat/reward/shop/event/upgrade` 等体验依赖 audits；缺失时应产生 `missing` 或直接 exit `1`。
+  - `partial` 项不应自动让 CI/doctor 绿灯；至少应有 `--allow-partial` 或阈值策略，默认 doctor 模式下 `partial > 0` 或关键 audit 缺失应 fail。
+  - 修复后复跑 `npm run test:ui-smoke:expansion --silent`、`npm run check:experience-polish --silent`、`npm run doctor:game`；若 UI expansion fixture 仍未修，experience-polish 应明确失败，而不是 pass。
+- 下一轮建议：
+  - 第 154 轮展示 `EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001`：给出文件/行号、fresh `test:ui-smoke:expansion` 失败、半截 report、`check:experience-polish` exit 0、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 154 - Experience Polish Partial UI Audit Pass Exhibit - 2026-05-21
+
+- 循环模式：第 154 轮，按交替节奏展示第 153 轮发现的 `EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001`。
+- 展示 bug：
+  - **EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001**：`check:experience-polish` 依赖 `output\playwright\ui_smoke_expansion_report.json`，但不要求 UI expansion 主流程完成，也不要求 `combat/reward/shop/event/upgrade` 等关键 audit 出现。当前 UI expansion fresh 失败后只留下 4 个早期 audits，`check:experience-polish` 仍 exit `0` 并打印通过。
+- Fresh 源码定位：
+  - `package.json:53`：`check:experience-polish` 指向 `tsx scripts/validation/check_experience_polish.ts`。
+  - `scripts\doctor\gameDoctor.ts:224-236`：doctor stage 中 `UI Smoke Expansion` 后还有独立的 `Check Experience Polish`；后者 exit `0` 会成为单独绿灯。
+  - `scripts\validation\check_experience_polish.ts:57-62`：`UiSmokeExpansionReport` 只建模 `consoleErrors/pageErrors/failedRequests/audits`，没有 `completed`、`failedStep`、`requiredAudits`、`slotsLoaded`。
+  - `scripts\validation\check_experience_polish.ts:88-98`：只要 `output/playwright/ui_smoke_expansion_report.json` 可解析，就被当作输入证据。
+  - `scripts\validation\check_experience_polish.ts:101-104`：`hasCleanAudit()` 只检查单个 label 的 `brokenImages/layoutIssues`；缺失 label 返回 false。
+  - `scripts\validation\check_experience_polish.ts:120-145`、`:165-183`：combat 关键 audit 缺失只降级为 `partial`。
+  - `scripts\validation\check_experience_polish.ts:230-288`：reward/shop/event/upgrade audit 缺失同样只降级为 `partial`。
+  - `scripts\validation\check_experience_polish.ts:323-327`：`partial` 按半分计入 pass rate。
+  - `scripts\validation\check_experience_polish.ts:360-363`：只打印 UI audit 数量和 console/page/request issue 数，不校验必须覆盖的 labels。
+  - `scripts\validation\check_experience_polish.ts:370-374`：`passRate >= 70` 打印通过；低于阈值也没有 `process.exit(1)`。
+- Fresh 复现/验证证据：
+  - `npm run test:ui-smoke:expansion --silent`：exit `1`。
+    - Vite 启动在 `http://127.0.0.1:64852/`。
+    - Playwright 报 `locator.waitFor: Timeout 10000ms exceeded`。
+    - 失败点：`scripts\validation\playwright_ui_smoke_expansion.ts:494:56`，等待 `locator('button[data-node-id]').first()` 可见。
+  - fresh `output\playwright\ui_smoke_expansion_report.json` 摘要：
+    - `baseUrl = "http://127.0.0.1:64852"`
+    - `audits = ["launcher","tutorial","launcher_tablet","character_select"]`
+    - `auditCount = 4`
+    - `slotsLoaded = ["UI Smoke Map"]`
+    - `consoleErrors/pageErrors/failedRequests = 0/0/0`
+    - `completed` 字段不存在，`error` 字段不存在。
+  - `npm run check:experience-polish --silent`：exit `0`。
+    - `Pass rate: 80%`
+    - `Implemented: 15`
+    - `Partial: 10`
+    - `Missing: 0`
+    - `UI audits: 4`
+    - `Console/page/request issues: 0/0/0`
+    - 末尾：`✅ Experience polish check passed`
+  - fresh `reports\content\experience-polish.json`：
+    - `summary.total = 25`
+    - `summary.implemented = 15`
+    - `summary.partial = 10`
+    - `summary.missing = 0`
+    - `summary.passRate = 80`
+    - `partialComponents = ["命中反馈","击杀反馈","回合结束","伤害类型区分","图标层级","选项提示","构筑适配","风险评估","即时收益","为什么值得升"]`
+- 复现路径：
+  - 先运行 `npm run test:ui-smoke:expansion --silent`，得到 `button[data-node-id]` 超时失败和半截 `ui_smoke_expansion_report.json`。
+  - 再运行 `npm run check:experience-polish --silent`。
+  - 尽管半截 report 没有 `combat/reward/shop/event/upgrade` audits，也没有完成状态字段，experience polish 仍以 `80%` pass rate 通过。
+- 优先级：
+  - P2。该问题不直接证明玩家流程坏，但会让 doctor/体验验收误报：关键 UI/玩法页面没有进入体验 audit，报告仍给通过。
+  - 它与旧 `UI-SMOKE-EXPANSION-SAVE-FIXTURE-CHECKSUM-001` / partial report gap 相关，但本 bug 的根因在 `check_experience_polish.ts` 自身的输入 contract 和退出语义。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改 `check_experience_polish.ts`。
+- 修复验收标准：
+  - `playwright_ui_smoke_expansion.ts` report 写入 `completed`、`failedStep/error`、`requiredAudits` 和 `slotsLoaded` 完整性字段。
+  - `check_experience_polish.ts` 要求 UI expansion report `completed === true`，并校验 `combat/reward/shop/event/upgrade` 等体验依赖 audits 全部存在。
+  - 默认 doctor/CI 模式下，关键 audit 缺失、`partial > 0` 或 `completed !== true` 应 exit `1`；如需允许 partial，应显式传 `--allow-partial`。
+  - 修复后复跑 `npm run test:ui-smoke:expansion --silent`、`npm run check:experience-polish --silent`、`npm run doctor:game`；在 UI expansion 仍失败时，experience-polish 必须明确失败。
+- 下一轮建议：
+  - 第 155 轮回到找 bug；优先继续 UI/rendering、runtimeV2 content schema、AI intent chain、desktop packaging 或 Python WASM adaptation，避免重复本 experience-polish 假绿。
+
+## DeckRogue Bug Loop Cycle 155 - Codex Enemy Catalog Field Drift Finding - 2026-05-21
+
+- 循环模式：第 155 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取第 154 轮报告尾部与当前 `git status --short --branch`；工作树仍有大量既有修改，本轮只追加本报告段。
+  - 已排除本轮不能复用的旧红灯：`EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001`、`CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001`、`RUNTIMEV2-CONTENT-BUNDLE-ENEMY-HP-DRIFT-001`、`RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001`、`AI-BOUNDARY-DEEP-IMPORT-001`、`RELEASE-UI-SMOKE-EXPANSION-PARTIAL-REPORT-GAP-001`。
+  - 本轮实际跑过 `check:content-contract-layer`、`check:ui-runtime-boundaries`、`check:enemy-ai-boundaries`、`check:release-readiness`、`npm run lint --silent`、focused content/schema tests、Codex catalog inline 探针。
+- 新发现：
+  - **UI-CODEX-ENEMY-FIELD-DRIFT-001**：Codex 图鉴敌人条目仍只读取 `enemy.hp_range` 与 `enemy.intent_policy`。当前内容 schema 与真实数据已允许 `minHp/maxHp`、`intentPolicy` 两种字段；因此 26 个真实敌人在图鉴里显示 `生命值 - · 0 种意图`，且没有意图演示帧。该问题发生在玩家可见 UI catalog，不是第 93/117/143 轮已记录的 runtimeV2/Python content bundle 投影红灯。
+- 文件/行号：
+  - `src\ui\overlays\codexCatalog.ts:361-364`：`createEnemyDemo()` 只在 `enemy.intent_policy` 是数组时创建演示；camelCase `intentPolicy` 敌人直接没有 demo。
+  - `src\ui\overlays\codexCatalog.ts:425-444`：`parseEnemyMoves()` 只遍历 `enemy.intent_policy`，因此 mechanics/interactions/examples 全部缺失 authored intent 解释。
+  - `src\ui\overlays\codexCatalog.ts:629-641`：`buildEnemyEntries()` 只用 `enemy.hp_range` 生成生命区间，缺失时显示 `-`；summary 只统计 `enemy.intent_policy.length`。
+  - `src\ui\overlays\codexCatalog.ts:665-672`：图鉴 data points 与 demo 同样只消费 `hp_range/intent_policy`。
+  - `src\content\narrative\contentSchema.ts:326-332`：schema 明确允许 `hp_range` 或 `minHp/maxHp`，也允许 `entry.intent_policy ?? entry.intentPolicy`。
+  - `src\content\narrative\numericSystem.ts:332`：运行时导出的 `enemiesData` 已走 `validateEnemiesData(...)`，所以 Codex catalog 输入本身是 schema-accepted 内容。
+  - `src\content\data\enemies.json:1371-1394`：真实敌人 `coolant_hound` 使用 `minHp=42/maxHp=45` 和 camelCase `intentPolicy`，包含 `bite/spray/cool_run` 三条策略。
+  - `tests\unit\gothicExpansionContent.test.ts:184-195`：现有 Codex catalog 测试只覆盖卡牌/遗物 lore 与升级点，不断言敌人 catalog 的生命值或意图数。
+  - `tests\unit\fullExpansionScale.test.ts:236-245`：敌人内容测试能接受 `enemy.hp_range ?? [enemy.minHp, enemy.maxHp]`，但随后只覆盖该测试的 wave II 范围，未覆盖 Codex catalog 输出。
+- Fresh 复现/验证证据：
+  - `npm run lint --silent`：exit `0`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+  - `npm run check:enemy-ai-boundaries --silent`：exit `1`，但输出仍是旧 `AI-BOUNDARY-DEEP-IMPORT-001` 类深层 import 问题，本轮不复用。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=31 warn=0 fail=10`；其中 UI expansion 单项 pass 与第 91/153 轮旧问题相关，本轮不复用。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/numericsDomain.test.ts`：exit `0`，`13` tests pass。
+  - `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/fullExpansionScale.test.ts`：exit `0`，`10` tests pass；现有测试没有抓到 Codex enemy 条目丢字段。
+  - inline 内容字段统计：
+    - `total=58`
+    - `camelOnlyCount=25`
+    - `noHpRangeCount=26`
+    - `codexBlindCount=26`
+    - 示例 `coolant_hound`: `hp_range=false`、`minHp=42`、`maxHp=45`、`intent_policy=null`、`intentPolicy=3`。
+  - inline `getCodexCatalog()` 抽样：
+    - `coolant_hound`: `summary="生命值 - · 0 种意图"`，`dataPoints=[生命值 "-", 意图数 "0", 分类 "Normal"]`，`mechanicsCount=1`，`demoFrames=0`。
+    - `servo_confessor`: `summary="生命值 - · 0 种意图"`，`demoFrames=0`。
+    - `sanctum_praetor`: `summary="生命值 - · 0 种意图"`，`demoFrames=0`，而源数据为 `minHp=118/maxHp=126`、`intentPolicy=3`。
+    - 对照 `gremlin_nob`: `生命值 66-72`、`意图数 3`、`mechanicsCount=6`、`demoFrames=3`，说明 snake_case 敌人图鉴路径正常。
+- 结论：
+  - 当前图鉴 UI 对 schema-accepted 敌人字段仍有旧字段假设；26 个敌人的 HP 与 intent 信息在玩家图鉴中被显示为空。
+  - 这与 runtimeV2 bundle 的旧 HP/intent 投影 bug 同源于字段混用，但影响面是 `src\ui\overlays\codexCatalog.ts` 的玩家可见说明、搜索文本、mechanics 与 demo，而不是 Python/runtimeV2 content bundle。
+- 优先级：
+  - P2。它不直接破坏战斗结算，但会让 Codex/图鉴给出错误敌情：真实有 42-45 HP 与 3 个意图的敌人显示成生命未知、0 意图、无演示。对玩家学习敌人、内容审校和 UI 验收都有明确误导。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有改 `codexCatalog.ts`。
+- 修复方向：
+  - 在 `codexCatalog.ts` 中增加统一读取 helper：`getEnemyHpRange(enemy)` 支持 `hp_range` 与 `minHp/maxHp`；`getEnemyIntentPolicy(enemy)` 支持 `intent_policy ?? intentPolicy ?? []`。
+  - `createEnemyDemo()`、`parseEnemyMoves()`、summary、dataPoints、searchText 全部走 helper，避免 UI 再维护一套旧字段语义。
+  - 增加 Codex catalog 单测：抽样 `coolant_hound` / `sanctum_praetor`，断言图鉴生命值不是 `-`、意图数为 `3`、demo frames 大于 `0`。
+  - 修复后复跑 `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/fullExpansionScale.test.ts`、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 156 轮展示 `UI-CODEX-ENEMY-FIELD-DRIFT-001`：给出文件/行号、`getCodexCatalog()` 抽样输出、字段统计、现有测试绿灯证据、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 156 - Codex Enemy Catalog Field Drift Exhibit - 2026-05-21
+
+- 循环模式：第 156 轮，按交替节奏展示第 155 轮发现的 `UI-CODEX-ENEMY-FIELD-DRIFT-001`。
+- 展示 bug：
+  - **UI-CODEX-ENEMY-FIELD-DRIFT-001**：Codex 图鉴敌人条目只读取 `enemy.hp_range` 与 `enemy.intent_policy`，但当前内容 schema 和真实敌人数据已允许 `minHp/maxHp` 与 camelCase `intentPolicy`。结果是 26 个真实敌人在玩家图鉴里显示 `生命值 - · 0 种意图`，并缺少敌人意图演示帧。
+- Fresh 源码定位：
+  - `src\ui\overlays\codexCatalog.ts:361-364`：`createEnemyDemo()` 只从 `enemy.intent_policy` 取策略；camelCase-only 敌人直接返回 `undefined`，没有 demo。
+  - `src\ui\overlays\codexCatalog.ts:425-444`：`parseEnemyMoves()` 只遍历 `enemy.intent_policy`，导致 mechanics/interactions/examples 不含 authored intent 解释。
+  - `src\ui\overlays\codexCatalog.ts:635`：`hpRange` 只接受 `enemy.hp_range`，缺失时输出 `-`。
+  - `src\ui\overlays\codexCatalog.ts:640-641`：summary 只统计 `enemy.intent_policy.length`，并把 `hpRange` 直接展示给玩家。
+  - `src\ui\overlays\codexCatalog.ts:665-672`：图鉴 data points 与 demo 同样只消费 `hp_range/intent_policy`。
+  - `src\content\narrative\contentSchema.ts:319-332`：敌人 schema 明确接受 `hp_range` 或 `minHp/maxHp`，并用 `entry.intent_policy ?? entry.intentPolicy` 验证 intent policy。
+  - `src\content\narrative\numericSystem.ts:332`：Codex catalog 消费的 `enemiesData` 已经来自 `validateEnemiesData(...)` 之后的 schema-accepted 数据。
+  - `src\content\narrative\numericSystem.ts:737-744`：运行时 HP roller 同时支持 `hp_range` 与 `minHp/maxHp`，说明 UI 图鉴是单独落后的展示层假设。
+  - `src\content\data\enemies.json:1371-1394`：真实 `coolant_hound` 有 `minHp=42/maxHp=45` 和 `bite/spray/cool_run` 三条 camelCase `intentPolicy`。
+  - `tests\unit\gothicExpansionContent.test.ts:188`：现有 Codex catalog 测试只检查卡牌/遗物图鉴叙事，不检查敌人 HP/意图展示。
+  - `tests\unit\fullExpansionScale.test.ts:236-245`：内容测试对 HP 使用 `enemy.hp_range ?? [enemy.minHp, enemy.maxHp]`，但同一测试随后只检查 `enemy.intent_policy`，且范围限于 wave II，不覆盖全部图鉴输出。
+- Fresh 复现/验证证据：
+  - 预检 `git status --short --branch`：分支仍为 `mainline-upload-20260511`，工作树已有大量既有修改；本轮只追加报告。
+  - inline 源数据统计：
+    - `total=58`
+    - `codexBlindCount=26`
+    - 示例 `coolant_hound`: `hp_range=false`、`minHp=42`、`maxHp=45`、`intent_policy=null`、`intentPolicy=3`
+    - 示例 `servo_confessor`: `hp_range=false`、`minHp=46`、`maxHp=52`、`intentPolicy=3`
+    - 示例 `reactor_thrall`: `hp_range=false`、`minHp=50`、`maxHp=58`、`intentPolicy=3`
+  - inline `getCodexCatalog()` 抽样：
+    - `coolant_hound`: `summary="生命值 - · 0 种意图"`，data points 为 `生命值 "-"`、`意图数 "0"`，`mechanicsCount=1`，`demoFrames=0`。
+    - `servo_confessor`: `summary="生命值 - · 0 种意图"`，`demoFrames=0`。
+    - `sanctum_praetor`: `summary="生命值 - · 0 种意图"`，`demoFrames=0`；源数据实际为 `minHp=118/maxHp=126`、`intentPolicy=3`。
+    - 对照 `gremlin_nob`: 图鉴显示 `生命值 66-72`、`意图数 3`、`mechanicsCount=6`、`demoFrames=3`，说明 snake_case 敌人路径正常。
+  - `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/fullExpansionScale.test.ts`：exit `0`，`10` tests pass；现有测试没有覆盖这些 Codex enemy 输出。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`；UI runtime boundary gate 不检查图鉴字段语义。
+- 复现路径：
+  - 从仓库根运行 inline `getCodexCatalog()` 探针，查找 `coolant_hound` / `servo_confessor` / `sanctum_praetor`。
+  - 对照 `src\content\data\enemies.json` 中这些敌人的 `minHp/maxHp` 与 `intentPolicy`。
+  - 观察图鉴 entry summary/dataPoints/demo：内容存在，但玩家可见图鉴显示生命值为空、意图数为 0、没有 demo frames。
+- 优先级：
+  - P2。该问题不直接破坏战斗结算，但会让 Codex/图鉴给玩家与内容审校者提供错误敌情；真实有 HP 区间和 3 个 authored intents 的敌人被展示成未知生命、0 意图、无演示。
+  - 它与 runtimeV2 content bundle 的旧 HP/intent 投影问题同源于字段混用，但本 bug 的影响面在 UI 图鉴展示、搜索文本、mechanics 与 demo，不是 Python/runtimeV2 bundle。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有改 `codexCatalog.ts`。
+- 修复验收标准：
+  - `codexCatalog.ts` 增加统一 helper：`getEnemyHpRange(enemy)` 支持 `hp_range` 与 `minHp/maxHp`；`getEnemyIntentPolicy(enemy)` 支持 `intent_policy ?? intentPolicy ?? []`。
+  - `createEnemyDemo()`、`parseEnemyMoves()`、summary、dataPoints、searchText 全部走统一 helper。
+  - 增加 Codex catalog 回归测试：抽样 `coolant_hound` 与 `sanctum_praetor`，断言生命值不是 `-`、意图数为 `3`、demo frames 大于 `0`。
+  - 修复后复跑 `npx tsx --test tests/unit/gothicExpansionContent.test.ts tests/unit/fullExpansionScale.test.ts`、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 157 轮回到找 bug；优先继续 UI/rendering、runtimeV2/Python adapter、content schema gate、AI intent chain 或 desktop packaging，避免重复 Codex catalog 字段漂移。
+
+## DeckRogue Bug Loop Cycle 157 - RestView RuntimeV2 Relic Upgrade Gate Finding - 2026-05-21
+
+- 循环模式：第 157 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取第 156 轮报告尾部与当前 `git status --short --branch`；工作树仍有大量既有修改，本轮只追加本报告段。
+  - 已排除上一轮 `UI-CODEX-ENEMY-FIELD-DRIFT-001`，以及旧 `UI-RUNTIMEV2-RELICUPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001`。本轮问题发生在 Rest 服务入口按钮 gate，早于进入 `RelicUpgradeView`。
+- 新发现：
+  - **UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001**：`createRenderModel()` 在 Rest screen 已从 runtimeV2 `snapshot.player.relicIds/relicStates` 计算 `room.canRelicUpgrade`，但 `RestView` 的“遗物升级”按钮没有读取该字段，而是继续用 legacy `engine.state.player.relics` 扫 `RELIC_UPGRADE_CONFIGS`。当 runtimeV2/Python snapshot 表示存在可升级腐化遗物、legacy engine relic inventory 未同步或为空时，Rest 页会把“遗物升级”入口禁用，玩家无法进入 runtimeV2 已允许的遗物升级服务。
+- 文件/行号：
+  - `src\runtimeV2\contracts.ts:341-347`：`RenderModelRoom` 已定义 `canUpgrade/canHeal/canEnchant/canRelicUpgrade` 等 Rest capability 字段。
+  - `src\runtimeV2\renderModel.ts:145-160`：Rest room summary 计算 `canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isCorruptedRelic(relicId))`。
+  - `src\ui\views\RestView.tsx:27-32`：`RestView` 对 `heal/upgrade/enchant` 读取 `roomSummary`，但 `canUpgradeRelic` 只读取 legacy `player.relics`。
+  - `src\ui\views\RestView.tsx:41-52`：路线建议也收到 stale `canUpgradeRelic`，因此提示层会同步丢失 runtimeV2 relic-upgrade 建议。
+  - `src\ui\views\RestView.tsx:173-185`：“遗物升级”按钮的 `disabled` 与视觉态全部依赖这个 stale `canUpgradeRelic`。
+  - `tests\unit\restRouteAdvisor.test.ts:65`、`:93`、`:119`：只测 advisor 输入布尔值，不测 `RestView` 是否从 `renderModel.room.canRelicUpgrade` 传入正确值。
+  - `tests\unit\runtimeV2LegacyRenderBridge.test.ts:38-50`：legacy Rest summary 只断言 `canHeal/healAmount`，未断言 relic-upgrade capability。
+  - `tests\unit\relicUpgradeFlow.test.ts:17-34`：legacy flow 能从 Rest 升级腐化遗物，但测试前手动写入 `engine.state.player.relics`，不能覆盖 runtimeV2 snapshot 与 legacy inventory 分裂。
+- Fresh 复现/验证证据：
+  - 临时 SSR 探针模拟 `renderModel.room.canRelicUpgrade=true`、`engine.state.player.relics=[]`，渲染 `<RestView engine={engine} renderModel={renderModel} />`：
+    - `renderModelRoomCanRelicUpgrade=true`
+    - `legacyRelics=0`
+    - `relicUpgradeButtonFound=true`
+    - `snippetHasDisabled=true`
+    - snippet 中 `data-keyboard-option="5"` 的按钮带 `disabled=""`，class 为 `border-slate-700 opacity-50 cursor-not-allowed`。
+  - 临时探针文件 `tmp_cycle157_restview_probe.tsx` 跑完后已删除，未留下业务代码改动。
+  - `npx tsx --test tests/unit/restRouteAdvisor.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/relicUpgradeFlow.test.ts`：exit `0`，`9` tests pass；现有测试没有覆盖 runtimeV2 Rest 入口 gate。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`；边界检查没有发现 RestView 对 `canRelicUpgrade` 的遗漏。
+- 结论：
+  - 这是一个独立于 `RelicUpgradeView` 列表渲染的入口级 runtimeV2 UI 投影 bug：即使规则层已经通过 `RenderModelRoom.canRelicUpgrade` 告知 Rest 页可进入遗物升级，按钮 gate 仍可能被 legacy inventory 禁掉。
+  - 影响面包括按钮可用性、视觉状态和路线建议，因为 `buildRestRouteAdvice()` 也收到 stale `canUpgradeRelic`。
+- 优先级：
+  - P1/P2 边界，建议按 P1。遗物升级是 Rest 侧腐化遗物强化入口；入口按钮被禁用会直接阻断服务，比进入 RelicUpgrade 页面后空列表更早失败。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有改 `RestView.tsx`。
+- 修复方向：
+  - `RestView.tsx` 将 `canUpgradeRelic` 改为 `roomSummary?.canRelicUpgrade ?? RELIC_UPGRADE_CONFIGS.some(...)`，保持 legacy fallback。
+  - 路线建议的 `relicIds` 若有 renderModel/runtimeV2 relic surface，也应避免只依赖 stale legacy relic list；至少先修 capability gate。
+  - 增加 `RestView` SSR 单测：`renderModel.room.canRelicUpgrade=true` 且 legacy `player.relics=[]` 时，`data-keyboard-option="5"` 不应 disabled。
+  - 修复后复跑 `npx tsx --test tests/unit/restRouteAdvisor.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/relicUpgradeFlow.test.ts`、新增 `RestView` 渲染测试、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 158 轮展示 `UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001`：给出 RestView/renderModel/contracts 行号、SSR 探针输出、focused tests 绿灯但未覆盖的证据、P1/P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 158 - RestView RuntimeV2 Relic Upgrade Gate Exhibit - 2026-05-21
+
+- 循环模式：第 158 轮，按交替节奏展示第 157 轮发现的 `UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001`。
+- 展示 bug：
+  - **UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001**：`createRenderModel()` 已在 Rest screen 从 runtimeV2 snapshot 计算 `room.canRelicUpgrade`，但 `RestView` 的“遗物升级”入口仍只看 legacy `engine.state.player.relics`。当 runtimeV2/Python snapshot 有可升级腐化遗物、legacy relic inventory 未同步或为空时，Rest 页直接禁用入口按钮，玩家无法进入 runtimeV2 规则层已经允许的遗物升级服务。
+- Fresh 源码定位：
+  - `src\runtimeV2\contracts.ts:341-347`：`RenderModelRoom` 已声明 `canUpgrade`、`canMix`、`canHeal`、`canEnchant`、`canRelicUpgrade` 等 capability 字段。
+  - `src\runtimeV2\renderModel.ts:145-160`：Rest room summary 设置 `canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isCorruptedRelic(relicId))`。
+  - `src\ui\views\RestView.tsx:27-32`：`RestView` 对 `heal/upgrade/enchant` 读取 `roomSummary`，但 `canUpgradeRelic` 固定为 `RELIC_UPGRADE_CONFIGS.some(config => player.relics.includes(config.relicId))`。
+  - `src\ui\views\RestView.tsx:41-52`：`buildRestRouteAdvice()` 收到的 `canUpgradeRelic` 同样来自 stale legacy relic list；路线建议提示会一起丢失。
+  - `src\ui\views\RestView.tsx:173-185`：“遗物升级”按钮的 `disabled`、边框颜色、cursor 与图标颜色全部依赖 stale `canUpgradeRelic`。
+  - `project-development-report.md:3917`：旧 `UI-RUNTIMEV2-RELICUPGRADEVIEW-IGNORES-RENDERMODEL-CHOICES-001` 是进入 `RelicUpgradeView` 后列表忽略 `renderModel.room.choices`；本轮问题发生在 Rest 入口 gate，早于进入升级界面。
+- Fresh 复现/验证证据：
+  - 临时 SSR 探针 `tmp_cycle158_restview_probe.tsx` 构造：
+    - `renderModel.room.kind = "rest"`
+    - `renderModel.room.canRelicUpgrade = true`
+    - `engine.state.player.relics = []`
+    - 渲染 `<RestView engine={engine} renderModel={renderModel} />`
+  - 探针输出：
+    - `renderModelRoomCanRelicUpgrade=true`
+    - `legacyRelics=0`
+    - `relicUpgradeButtonFound=true`
+    - `snippetHasDisabled=true`
+    - snippet 显示 `data-keyboard-option="5"` 的按钮带 `disabled=""`，并使用 `border-slate-700 opacity-50 cursor-not-allowed`。
+  - 临时探针文件跑完已删除；后续 `Test-Path .\tmp_cycle158_restview_probe.tsx` 应为 `False`。
+  - `npx tsx --test tests/unit/restRouteAdvisor.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/relicUpgradeFlow.test.ts`：exit `0`，`9` tests pass。
+    - `tests\unit\restRouteAdvisor.test.ts` 只验证 advisor 接收布尔后的排序。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 的 Rest summary 测试只断言 `canHeal/healAmount`。
+    - `tests\unit\relicUpgradeFlow.test.ts` 走 legacy path，并手动把 `entropy_sanctum_relic` 写入 `engine.state.player.relics`。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`；当前边界检查没有覆盖 Rest capability gate 的字段遗漏。
+- 复现路径：
+  - 从仓库根运行 SSR 探针，设置 `room.canRelicUpgrade=true` 但 legacy `player.relics=[]`。
+  - 查找 SSR HTML 中 `data-keyboard-option="5"` 的 Rest “遗物升级”按钮。
+  - 实际结果：按钮存在但带 `disabled=""`，视觉态为不可用；预期应以 `renderModel.room.canRelicUpgrade` 为准保持可点。
+- 优先级：
+  - P1/P2 边界，建议按 P1。该问题会在 Rest 页入口直接阻断 runtimeV2/Python 已允许的腐化遗物升级服务；比进入 `RelicUpgradeView` 后空列表更早失败。
+  - 附带风险：路线建议层也会因 stale `canUpgradeRelic` 不展示 relic-upgrade hint，玩家既看不到可用入口，也看不到强化建议。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `RestView.tsx`。
+- 修复验收标准：
+  - `RestView.tsx` 将 `canUpgradeRelic` 改为 `roomSummary?.canRelicUpgrade ?? RELIC_UPGRADE_CONFIGS.some(config => player.relics.includes(config.relicId))`，保留 legacy fallback。
+  - 如后续 renderModel 暴露 runtimeV2 relic ids，也应避免 `buildRestRouteAdvice()` 的 `relicIds` 只依赖 stale legacy relic list；短期至少先修 capability gate。
+  - 增加 `RestView` SSR 回归测试：`renderModel.room.canRelicUpgrade=true` 且 legacy `player.relics=[]` 时，`data-keyboard-option="5"` 不应 disabled。
+  - 修复后复跑新增 `RestView` 测试、`npx tsx --test tests/unit/restRouteAdvisor.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/relicUpgradeFlow.test.ts`、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 159 轮回到找 bug；优先继续 runtimeV2/Python adapter、content schema gate、AI intent chain 或 desktop packaging，避免重复 RestView relic-upgrade gate。
+
+## DeckRogue Bug Loop Cycle 159 - Legacy AI Camel IntentPolicy Fallback Finding - 2026-05-21
+
+- 循环模式：第 159 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取第 158 轮报告尾部与当前 `git status --short --branch`；工作树仍有大量既有修改，本轮只追加本报告段。
+  - 已排除上一轮 `UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001`，以及旧 `RUNTIMEV2-CAMEL-INTENTPOLICY-DROPPED-001`。本轮不是 runtimeV2 content bundle 投影后策略为空，而是默认 legacy combat / unified AI selector 直接消费 `enemiesData` 时没有归一化 camelCase `intentPolicy`。
+- 新发现：
+  - **AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001**：内容 schema、authoring check 与 AI profile coverage 都接受 `intent_policy` / `intentPolicy` 两种字段，但 `selectEnemyIntentForCombat()` 和底层 `IntentSelector` 只读取 `enemyDef.intent_policy`。默认 legacy combat 生成敌人和回合后刷新意图时直接把 `enemiesData` 的敌人定义传给 `selectEnemyIntentForCombat()`；因此 25 个只声明 camelCase `intentPolicy` 的真实敌人，在当前默认战斗 AI 路径下也会固定回退 `"Attack"`，忽略 authored `bite/spray/cool_run` 等动作与 ai_profile bias。
+- 文件/行号：
+  - `src\content\narrative\contentSchema.ts:326-339`：schema 已通过 `entry.intent_policy ?? entry.intentPolicy` 验证敌人策略。
+  - `scripts\validation\check_enemy_ai_profiles.ts:16-20`、`:44-55`：authoring gate 类型与检查同样接受 `enemy.intent_policy || enemy.intentPolicy`。
+  - `tests\unit\enemyAiProfileCoverage.test.ts:15-17`、`:43-48`：AI coverage 测试也按 `intent_policy || intentPolicy` 检查 raw/narrative 数据。
+  - `src\core\events\CombatManager.ts:321-335`：legacy combat 敌人生成时将 `def` 直接传给 `selectEnemyIntentForCombat()` 生成 `nextIntent`。
+  - `src\core\events\CombatManager.ts:1211-1218`：敌人回合后刷新 `nextIntent` 时也将 `enemyDef` 直接传给 `selectEnemyIntentForCombat()`。
+  - `src\core\ai\selectEnemyIntent.ts:347-374`：`applyIntentProfile()` 只在 `Array.isArray(enemyDef.intent_policy)` 时应用 ai_profile intent bias/anti-stall；camelCase-only 敌人直接跳过 profile 调权。
+  - `src\core\ai\selectEnemyIntent.ts:397-414`：最终把未归一化的 `profiledEnemyDef` 传给 `intentSelector.selectIntent()`。
+  - `src\core\ai\intentSelector.ts:130-132`：底层 selector 只读 `enemyDef.intent_policy`；缺失或空数组时直接返回 `"Attack"`。
+  - `src\content\data\enemies.json:1371-1394`：真实敌人 `coolant_hound` 只有 camelCase `intentPolicy`，包含 `bite/spray/cool_run` 三个 authored intents。
+  - `tests\unit\enemyIntentFacade.test.ts:207-220`：统一 AI 入口测试只构造 snake_case `intent_policy` 敌人。
+  - `tests\unit\enemyIntentFacade.test.ts:252-258`：正权重 fallback 回归只筛 `Array.isArray(enemy.intent_policy)`，不会覆盖 camelCase-only 敌人。
+- Fresh 复现/验证证据：
+  - inline `coolant_hound` 行为探针：
+    - raw `enemiesData`：`hasSnake=false`、`camelLength=3`、`moveKeys=["bite","spray","cool_run"]`。
+    - `selectEnemyIntentForCombat()` 直接消费 raw enemy，rng 为 `0/0.2/0.5/0.9` 时结果全部为 `"Attack"`。
+    - 将同一敌人临时归一化为 `{ ...enemy, intent_policy: enemy.intentPolicy }` 后，同样 rng 序列返回 `["bite","bite","spray","cool_run"]`。
+  - inline 批量统计：
+    - `camelOnlyCount=25`
+    - `rawAttackCount=25`
+    - 抽样 `coolant_hound / servo_confessor / reactor_thrall / data_leech / iron_choir_twin_a / iron_choir_twin_b / scrap_surgeon / sanctum_praetor` 都是 `camelPolicy=3`、`moves=3`，raw 结果为 `"Attack"`，归一化后返回 authored intent。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`；authoring gate 认可这些 camelCase policy。
+  - `npm run check:content-authoring --silent`：exit `0`，`Enemies: 58/58 valid`，`Pass rate: 100%`。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，`14 variants checked`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass；现有 tests 没有覆盖 legacy selector 直接消费 camelCase-only raw enemy。
+- 结论：
+  - 当前默认 combat AI 入口与内容/authoring/schema 的字段契约分裂：内容层允许并验证 camelCase `intentPolicy`，但 legacy AI selector 只执行 snake_case `intent_policy`。
+  - 这与第 143/144 轮 runtimeV2 content bundle 丢 camelCase policy 同源但不同路径：本轮影响当前 legacy combat 的 `CombatManager -> selectEnemyIntentForCombat -> IntentSelector`，不需要经过 runtimeV2 bundle 或 Python runtime。
+- 优先级：
+  - P1/P2 边界，建议按 P1。默认战斗路径中 25 个扩展敌人的 authored AI 行为会退化成固定 `"Attack"`，敌人差异、ai_profile bias、anti-stall 与 moves 设计都不会生效。
+  - 测试假绿风险明确：content authoring、enemy AI profile、enemy intent facade tests 全部通过，但真实 selector 行为与已验证内容不一致。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有改 AI selector 或内容数据。
+- 修复方向：
+  - 在 `selectEnemyIntentForCombat()` 入口或 `applyIntentProfile()` 前统一归一化：`const policies = enemyDef.intent_policy ?? (enemyDef as any).intentPolicy ?? []`，输出仍使用 `intent_policy` 给底层 `IntentSelector`。
+  - `EnemyDefBase` 类型增加 `intentPolicy?: IntentPolicy[]` 或引入 `normalizeEnemyIntentPolicy(enemyDef)` helper，避免 runtimeV2、UI Codex、legacy AI 各自维护字段兼容逻辑。
+  - 更新 `enemyIntentFacade.test.ts`：用 `coolant_hound` 或人工 camelCase-only fixture 断言 `selectEnemyIntentForCombat()` 不回退 `"Attack"`，且返回 authored intents。
+  - 更新正权重 fallback 回归，筛选 `enemy.intent_policy ?? (enemy as any).intentPolicy`。
+  - 修复后复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:enemy-ai-profiles --silent`、`npm run check:content-authoring --silent`、`npm run check:enemy-variant-behavior --silent`。
+- 下一轮建议：
+  - 第 160 轮展示 `AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001`：给出 CombatManager/selectEnemyIntent/intentSelector/contentSchema 行号、raw vs normalized 探针、25 个敌人统计、focused gates 全绿证据、P1 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 160 - Legacy AI Camel IntentPolicy Fallback Exhibit - 2026-05-21
+
+- 循环模式：第 160 轮，按交替节奏展示第 159 轮发现的 `AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001`。
+- 展示 bug：
+  - **AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001**：默认 legacy combat 的 `CombatManager -> selectEnemyIntentForCombat -> IntentSelector` 只执行 snake_case `intent_policy`。内容 schema、content authoring 和 AI profile coverage 已接受 camelCase `intentPolicy`，但真实 selector 没有把它归一化；因此 25 个 camelCase-only 敌人在默认战斗 AI 路径下固定回退 `"Attack"`，不会使用 authored `bite/spray/cool_run` 等 moves 或 ai_profile bias。
+- Fresh 源码定位：
+  - `src\content\narrative\contentSchema.ts:326-339`：schema 明确通过 `entry.intent_policy ?? entry.intentPolicy` 读取并验证策略。
+  - `src\core\events\CombatManager.ts:321-335`：legacy combat 生成敌人 `nextIntent` 时把 `def` 直接传入 `selectEnemyIntentForCombat()`。
+  - `src\core\events\CombatManager.ts:1211-1218`：敌人回合后刷新 `nextIntent` 时同样把 `enemyDef` 直接传入 `selectEnemyIntentForCombat()`。
+  - `src\core\ai\selectEnemyIntent.ts:347-374`：`applyIntentProfile()` 只在 `Array.isArray(enemyDef.intent_policy)` 时执行 ai_profile intent bias / anti-stall 调权，camelCase-only 敌人直接跳过。
+  - `src\core\ai\selectEnemyIntent.ts:397-414`：未归一化的 `profiledEnemyDef` 传入 `intentSelector.selectIntent()`。
+  - `src\core\ai\intentSelector.ts:130-132`：底层 selector 只读 `enemyDef.intent_policy`，缺失或空数组直接返回 `"Attack"`。
+  - `src\content\data\enemies.json:1371-1394`：真实 `coolant_hound` 使用 camelCase `intentPolicy`，包含 `bite/spray/cool_run` 三个 authored intents。
+  - `tests\unit\enemyIntentFacade.test.ts:207-220`：统一 AI 入口测试只构造 snake_case `intent_policy` fixture。
+  - `tests\unit\enemyIntentFacade.test.ts:252-258`：正权重 fallback 回归只筛 `Array.isArray(enemy.intent_policy)`，不会覆盖 camelCase-only 敌人。
+- Fresh 复现/验证证据：
+  - inline `coolant_hound` 行为探针：
+    - `hasSnake=false`
+    - `camelLength=3`
+    - `moveKeys=["bite","spray","cool_run"]`
+    - `rolls=[0,0.2,0.5,0.9]`
+    - raw `selectEnemyIntentForCombat()` 结果：`["Attack","Attack","Attack","Attack"]`
+    - 临时归一化 `{ ...enemy, intent_policy: enemy.intentPolicy }` 后结果：`["bite","bite","spray","cool_run"]`
+  - inline 批量统计：
+    - `camelOnlyCount=25`
+    - `rawAttackCount=25`
+    - 抽样 `coolant_hound / servo_confessor / reactor_thrall / data_leech / iron_choir_twin_a / iron_choir_twin_b / scrap_surgeon / sanctum_praetor` 都是 `camelPolicy=3`、`moves=3`；raw 结果为 `"Attack"`，归一化后返回 authored intent。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:content-authoring --silent`：exit `0`，`Enemies: 58/58 valid`，`Pass rate: 100%`。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，`[check_enemy_variant_behavior] OK (14 variants checked)`。
+- 复现路径：
+  - 从 `enemiesData` 取 `coolant_hound`。
+  - 确认其没有 `intent_policy`，但有 3 条 `intentPolicy` 和对应 `moves`。
+  - 直接调用 `selectEnemyIntentForCombat(state, enemy, ...)`，任意 roll 都回退 `"Attack"`。
+  - 将同一对象临时补上 `intent_policy: enemy.intentPolicy` 再调用，立即返回 authored intents，说明问题是字段归一化缺失。
+- 优先级：
+  - P1/P2 边界，建议按 P1。它影响默认战斗路径，不是仅 runtimeV2/Python 候选路径；25 个扩展敌人的行为会退化为固定 Attack，敌人差异、ai_profile bias、anti-stall 与 moves 设计都不会生效。
+  - 测试假绿风险明确：content authoring、enemy AI profile、enemy intent facade tests 全部通过，但真实 selector 行为与被验证的内容契约不一致。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `selectEnemyIntent.ts`、`intentSelector.ts` 或内容数据。
+- 修复验收标准：
+  - `selectEnemyIntentForCombat()` 入口或 `applyIntentProfile()` 前统一归一化 `enemyDef.intent_policy ?? enemyDef.intentPolicy ?? []`，并向底层 `IntentSelector` 传稳定 snake_case `intent_policy`。
+  - `EnemyDefBase` 类型增加 `intentPolicy?: IntentPolicy[]`，或新增共享 `normalizeEnemyIntentPolicy(enemyDef)` helper，供 legacy AI、runtimeV2 bundle、Codex UI 复用。
+  - `enemyIntentFacade.test.ts` 增加 camelCase-only fixture 或 `coolant_hound` 回归：直接调用 `selectEnemyIntentForCombat()` 不得回退 `"Attack"`，必须返回 authored intent。
+  - 正权重 fallback 回归改为筛 `enemy.intent_policy ?? (enemy as any).intentPolicy`。
+  - 修复后复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:enemy-ai-profiles --silent`、`npm run check:content-authoring --silent`、`npm run check:enemy-variant-behavior --silent`。
+- 下一轮建议：
+  - 第 161 轮回到找 bug；优先继续 UI/rendering、runtimeV2/Python adapter、desktop packaging 或 content schema gate，避免重复 AI legacy camelCase intentPolicy。
+
+## DeckRogue Bug Loop Cycle 161 - RestView RuntimeV2 Potion Mix Gate Finding - 2026-05-21
+
+- 循环模式：第 161 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取第 160 轮报告尾部与当前 `git status --short --branch`；分支仍为 `mainline-upload-20260511`，工作树有大量既有修改，本轮只追加本报告段。
+  - 已排除上一轮 `AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001`，也排除第 157/158 轮 RestView 遗物升级 gate、第 111 轮 RemoveCard choices、第 105 轮 ShopView offers、第 9/10 轮 Rest 键盘 option 冲突等旧问题。
+- 新发现：
+  - **UI-RUNTIMEV2-RESTVIEW-POTION-MIX-GATE-001**：runtimeV2 `RuleSnapshot.player.potionIds` 和 `RenderModel.player.potionCount` 已能表示玩家持有药剂，`RenderModelRoom` 也声明了 `canMix` capability；但 `RestView` 的炼金调和下拉项和按钮仍只读取 legacy `engine.state.player.potions`。当 runtimeV2/Python snapshot 有 2 瓶药剂、legacy engine potion list 未同步或为空时，Rest 页的“蒸馏配方”按钮会禁用，两个 select 也没有任何 potion option，玩家无法使用 runtimeV2 已允许的药剂调和服务。
+- 文件/行号：
+  - `src\runtimeV2\contracts.ts:338-344`：`RenderModelRoom` 已声明 `canMix?: boolean`。
+  - `src\runtimeV2\contracts.ts:370`：`RenderModel.player.potionCount` 是渲染层玩家摘要字段。
+  - `src\runtimeV2\renderModel.ts:145-160`：runtimeV2 Rest room summary 输出 `canHeal/canUpgrade/canRemove/canEnchant/canRelicUpgrade`，但没有从 `snapshot.player.potionIds.length >= 2` 输出 `canMix`。
+  - `src\runtimeV2\renderModel.ts:336`：顶层 player summary 确实设置 `potionCount: snapshot.player.potionIds.length`。
+  - `src\runtimeV2\legacyRenderBridge.ts:73-81`：legacy bridge 在 Rest room 中补 `canMix: player.potions.length >= 2`，说明该 capability 已存在于 legacy projection，而纯 runtimeV2 projection 缺失。
+  - `src\ui\views\RestView.tsx:27-40`：`RestView` 读取 `roomSummary`，但 `potionChoices` 固定来自 `player.potions`；`canMix` 即使拿到 `roomSummary.canMix=true`，还会继续要求 `player.potions[mixA] && player.potions[mixB]`。
+  - `src\ui\views\RestView.tsx:204-240`：两个药剂 `<select>` 只渲染 `potionChoices.map(...)`，按钮 `disabled={!canMix}`。
+  - `tests\unit\runtimeV2LegacyRenderBridge.test.ts:66-78`：Rest summary 测试只断言 `canHeal/healAmount`，没有断言 `canMix` 或 runtimeV2-only potion list。
+  - `tests\unit\runtimeV2Host.test.ts:952-983`：唯一 Python WASM Rest host 场景仍是 `test.skip(...)`，且只测 rest heal 返回地图，不覆盖 potion mix UI。
+- Fresh 复现/验证证据：
+  - inline SSR 探针构造：
+    - `renderModel.room.kind="rest"`
+    - `renderModel.room.canMix=true`
+    - `renderModel.player.potionCount=2`
+    - legacy `engine.state.player.potions=[]`
+    - 渲染 `<RestView engine={engine} renderModel={renderModel} />`
+  - 探针输出：
+    - `renderModelRoomCanMix=true`
+    - `renderModelPotionCount=2`
+    - `legacyPotionCount=0`
+    - `selectOptionCount=0`
+    - `option4ButtonCount=2`
+    - `option4DisabledFlags=[true,true]`
+    - 第二个 `data-keyboard-option="4"` 按钮 snippet 为“蒸馏配方”，带 `disabled=""` 和 `cursor-not-allowed`。
+  - 同一探针对纯 `createRenderModel(snapshot)` 也输出：
+    - `createRenderModelPotionCount=2`
+    - `createRenderModelRestCanMix=null`
+    - 说明 Rest render model 自身没有把 `potionIds.length >= 2` 转成 `room.canMix`。
+  - 临时探针通过 stdin 运行，没有写入文件；`Test-Path .\tmp_cycle161_restview_mix_probe.tsx` 输出 `False`。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/restRouteAdvisor.test.ts`：exit `0`，`39` tests，`38` pass，`1` skip；现有 focused tests 没覆盖 runtimeV2-only potion mix UI。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`；边界检查没有发现 Rest alchemy capability 断层。
+  - 对照检查 `npx tsx --test tests/unit/numericsDomain.test.ts`：exit `0`，`12/12` pass；`npm run check:content-authoring --silent`：exit `0`，内容 authoring 绿灯，说明本轮不是内容数据本身损坏。
+- 结论：
+  - 这是独立于第 157/158 轮遗物升级 gate 的 Rest service 接线 bug：遗物升级是 `canRelicUpgrade` 被 UI 忽略；本轮是药剂调和 capability 和 option list 同时没有从 runtimeV2 `potionIds` 接入 React view。
+  - 当前 RestView 即使收到 `room.canMix=true`，仍会被 legacy `player.potions` 二次 gate 禁用；如果只在 `createRenderModel()` 增加 `canMix`，不改 RestView 的 potion choices 来源，仍无法完成修复。
+- 优先级：
+  - P2。它不影响默认 legacy Rest 调和，但会直接阻断 runtimeV2/Python 接管后的 Rest alchemy service；且 UI boundary / runtimeV2Host / legacy bridge focused tests 全绿，会给出错误覆盖感。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `RestView.tsx` 或 `renderModel.ts`。
+- 修复方向：
+  - `createRenderModel()` Rest branch 增加 `canMix: snapshot.player.potionIds.length >= 2`，必要时在 `RenderModelRoom` 中增加 `potions`/`potionChoices` 字段，承载 `{ id, label, description }`。
+  - `RestView.tsx` 的 `potionChoices` 应优先消费 renderModel/runtimeV2 potion surface，legacy `player.potions` 只作 fallback；`canMix` 不应在 `roomSummary.canMix=true` 后再用 legacy `player.potions[mixA/B]` 否决。
+  - 点击调和时需要 runtimeV2 命令面或桥接路径，避免继续只调用 legacy `engine.mixPotions(mixA, mixB)`。
+  - 增加 SSR 回归测试：`renderModel.room.canMix=true`、`renderModel.player.potionCount=2`、legacy `player.potions=[]` 时，RestView 应显示两个 potion option 且“蒸馏配方”不 disabled。
+  - 修复后复跑新增 RestView 测试、`npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/restRouteAdvisor.test.ts`、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 162 轮展示 `UI-RUNTIMEV2-RESTVIEW-POTION-MIX-GATE-001`：给出 RestView/renderModel/contracts/legacyRenderBridge 行号、SSR 探针输出、focused tests 绿灯但未覆盖的证据、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 162 - RestView RuntimeV2 Potion Mix Gate Exhibit - 2026-05-21
+
+- 循环模式：第 162 轮，按交替节奏展示第 161 轮发现的 `UI-RUNTIMEV2-RESTVIEW-POTION-MIX-GATE-001`。
+- 展示 bug：
+  - **UI-RUNTIMEV2-RESTVIEW-POTION-MIX-GATE-001**：runtimeV2/Python snapshot 已通过 `RuleSnapshot.player.potionIds` 和 `RenderModel.player.potionCount` 表示玩家持有药剂，`RenderModelRoom` 也有 `canMix` capability；但 `RestView` 的炼金调和 select 与“蒸馏配方”按钮仍固定消费 legacy `engine.state.player.potions`。因此 runtimeV2 snapshot 有 2 瓶药剂、legacy potion list 未同步或为空时，Rest 页会显示 0 个药剂 option，并禁用调和按钮。
+- Fresh 源码定位：
+  - `src\runtimeV2\contracts.ts:186`：`RuleSnapshot.player.potionIds` 是 runtimeV2 玩家药剂来源。
+  - `src\runtimeV2\contracts.ts:343`：`RenderModelRoom` 已声明 `canMix?: boolean`。
+  - `src\runtimeV2\contracts.ts:370`：`RenderModel.player.potionCount` 已存在于渲染摘要。
+  - `src\runtimeV2\renderModel.ts:145-160`：Rest room summary 输出 `canHeal/canUpgrade/canRemove/canEnchant/canRelicUpgrade`，但未从 `snapshot.player.potionIds.length >= 2` 输出 `canMix`。
+  - `src\runtimeV2\renderModel.ts:336`：顶层 player summary 设置 `potionCount: snapshot.player.potionIds.length`。
+  - `src\runtimeV2\legacyRenderBridge.ts:73-81`：legacy Rest projection 会补 `canMix: player.potions.length >= 2`，说明 legacy bridge 有该 capability，纯 runtimeV2 projection 缺失。
+  - `src\ui\views\RestView.tsx:27-40`：`RestView` 接收 `roomSummary`，但 `potionChoices` 固定来自 `player.potions`；`canMix` 即使拿到 `roomSummary.canMix=true`，仍继续要求 `player.potions[mixA] && player.potions[mixB]`。
+  - `src\ui\views\RestView.tsx:210`、`:225`：两个 `<select>` 只渲染 `potionChoices.map(...)`。
+  - `src\ui\views\RestView.tsx:240`：调和按钮 `disabled={!canMix}`。
+  - `tests\unit\runtimeV2LegacyRenderBridge.test.ts:66-78`：Rest summary 测试只断言 `canHeal/healAmount`，没有断言 `canMix` 或 runtimeV2-only potion choices。
+  - `tests\unit\runtimeV2Host.test.ts:952`：唯一 Python WASM Rest host 测试仍是 `test.skip(...)`。
+- Fresh 复现/验证证据：
+  - 当前轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - inline SSR 探针构造：
+    - `renderModel.room.kind="rest"`
+    - `renderModel.room.canMix=true`
+    - `renderModel.player.potionCount=2`
+    - legacy `engine.state.player.potions=[]`
+    - 渲染 `<RestView engine={engine} renderModel={renderModel} />`
+  - 探针输出：
+    - `renderModelRoomCanMix=true`
+    - `renderModelPotionCount=2`
+    - `legacyPotionCount=0`
+    - `selectOptionCount=0`
+    - `option4ButtonCount=2`
+    - `option4DisabledFlags=[true,true]`
+    - `distillButtonIndexAssumption=1`
+    - `distillButtonDisabled=true`
+    - `distillButtonCursorNotAllowed=true`
+    - `createRenderModelPotionCount=2`
+    - `createRenderModelRestCanMix=null`
+  - 解释：
+    - 第一个 `data-keyboard-option="4"` 是旧 Rest“驱散”按钮；第二个是“蒸馏配方”按钮。第二个按钮在 runtimeV2 有 2 瓶药剂时仍被禁用。
+    - `createRenderModelRestCanMix=null` 说明纯 runtimeV2 Rest render model 没把 `potionIds.length >= 2` 投影为 `room.canMix`。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/restRouteAdvisor.test.ts`：exit `0`，`39` tests，`38` pass，`1` skip。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+- 复现路径：
+  - 构造 Rest screen render model：`room.canMix=true`、`player.potionCount=2`。
+  - 同时让 legacy `engine.state.player.potions=[]`，模拟 runtimeV2/Python snapshot 与 legacy UI state 未同步。
+  - SSR 渲染 `RestView` 后检查 `<option>` 数量和第二个 `data-keyboard-option="4"` 按钮。
+  - 实际结果：`selectOptionCount=0`，调和按钮 disabled。
+  - 预期结果：RestView 应从 runtimeV2 potion surface 得到两个可选药剂，并允许调和，或明确显示 runtimeV2 尚未支持调和而不是静默按 legacy 空列表禁用。
+- 优先级：
+  - P2。该问题不会破坏当前 legacy Rest 调和，但会阻断 runtimeV2/Python 接管后的 Rest alchemy service；而 focused tests 与 UI boundary gate 仍全绿，覆盖风险明确。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `RestView.tsx`、`renderModel.ts` 或 runtimeV2 命令面。
+- 修复验收标准：
+  - `createRenderModel()` Rest branch 增加 `canMix: snapshot.player.potionIds.length >= 2`。
+  - `RenderModelRoom` 增加 potion choices surface，或以其他稳定字段承载 runtimeV2 药剂 `{ id, label, description }`。
+  - `RestView.tsx` 的 `potionChoices` 优先消费 renderModel/runtimeV2 potion surface，legacy `player.potions` 只作 fallback。
+  - `canMix` 不应在 `roomSummary.canMix=true` 后继续被 legacy `player.potions[mixA/B]` 否决。
+  - 点击调和需要 runtimeV2 命令或桥接路径，不能只调用依赖 legacy potion index 的 `engine.mixPotions(mixA, mixB)`。
+  - 增加 SSR 回归测试：`renderModel.room.canMix=true`、`renderModel.player.potionCount=2`、legacy `player.potions=[]` 时，RestView 应显示两个 potion option 且“蒸馏配方”不 disabled。
+  - 修复后复跑新增 RestView 测试、`npx tsx --test tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/restRouteAdvisor.test.ts`、`npm run check:ui-runtime-boundaries --silent`、`npm run lint --silent`。
+- 下一轮建议：
+  - 第 163 轮回到找 bug；优先继续 UI/rendering 的 runtimeV2 surface 接线、desktop packaging release gate 或 Python WASM adapter，避免重复本 Rest potion mix gate。
+
+## DeckRogue Bug Loop Cycle 163 - Desktop Smoke Parallel Isolation Finding - 2026-05-21
+
+- 循环模式：第 163 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取第 162 轮报告尾部与当前 `git status --short --branch`；分支仍为 `mainline-upload-20260511`，工作树有大量既有修改，本轮只追加本报告段。
+  - 已排除上一轮 `UI-RUNTIMEV2-RESTVIEW-POTION-MIX-GATE-001`，也排除旧 `AI-BOUNDARY-DEEP-IMPORT-001`、`DESKTOP-SMOKE-001` 和 runtimeV2/Python adapter 已登记问题。
+- 新发现：
+  - **DESKTOP-SMOKE-PARALLEL-ISOLATION-001**：`test:desktop-smoke` 的 production 模式在每次运行时都会调用 `npm run build:desktop`，而 `build:desktop` 固定写入同一个 `dist/`、`reports/desktop/desktop-build.json`。Electron smoke 自身也固定使用同一个 `$env:TEMP\deckrogue-electron-smoke-user-data`、`reports/desktop/desktop-smoke.json` 和 `output/playwright/desktop_*.png`。当两个自动化/人工 smoke 并发触发时，一个进程会在另一个进程读取 `deckrogue://app/assets/...` 期间清理或重写 `dist`，导致 Vite `ENOTEMPTY`、Electron 资源 `net::ERR_UNEXPECTED`，并把共享 smoke 报告覆盖成失败。
+- 文件/行号：
+  - `scripts\validation\playwright_electron_smoke.ts:146-148`：固定 `path.join(os.tmpdir(), 'deckrogue-electron-smoke-user-data')`，每次运行先 `rmSync` 再 `mkdirSync`。
+  - `scripts\validation\playwright_electron_smoke.ts:151-155`：production smoke 内部直接执行 `npm run build:desktop`。
+  - `scripts\validation\playwright_electron_smoke.ts:162-171`：Electron 进程使用同一个 `DECKROGUE_USER_DATA_DIR`。
+  - `scripts\validation\playwright_electron_smoke.ts:197-235`：截图路径固定为 `output\playwright\desktop_launcher.png` 等共享文件名。
+  - `scripts\validation\playwright_electron_smoke.ts:245-254`：成功/失败都写入同一个 `reports\desktop\desktop-smoke.json`。
+  - `scripts\desktop\build_desktop.ts:40-43`：桌面构建只运行共享 `npm run build --silent`，没有 per-run `outDir` 或锁。
+  - `vite.config.ts:20-61`：未配置独立 `build.outDir`，因此 Vite 使用默认共享 `dist/`。
+- Fresh 复现/验证证据：
+  - 单独运行 `npm run build:desktop --silent`：exit `0`，Vite build 成功，`reports\desktop\desktop-build.json` 为 `overallStatus="pass"`。
+  - 单独运行 `npm run test:desktop-smoke --silent`：exit `0`；读取 `reports\desktop\desktop-smoke.json` 输出：
+    - `status=pass`
+    - `steps=launcher,tutorial,character_select,map,combat`
+    - `consoleErrors=0`
+    - `pageErrors=0`
+    - `failedRequests=0`
+  - 并发复现命令：用 PowerShell `Start-Job` 启动两个 `npm run test:desktop-smoke --silent`，第二个延迟 `500ms`。
+  - 并发复现输出：
+    - Job A：Vite build 成功后 Electron smoke 失败，`[test:desktop-smoke] failed: Error: Desktop smoke detected console, page, or network errors`，`EXIT=1`。
+    - Job B：Vite build 过程中失败，`ENOTEMPTY: directory not empty, rmdir 'E:\deckrogue\deckrogue-mainline-merge\dist\assets\music\event'`，随后 `[build:desktop] failed`，`EXIT=1`。
+  - 并发后读取共享 `reports\desktop\desktop-smoke.json`：
+    - `status=fail`
+    - `steps=launcher,tutorial,character_select,map,combat`
+    - `consoleErrors=663`
+    - `pageErrors=0`
+    - `failedRequests=663`
+    - first failed request：`other deckrogue://app/assets/backgrounds/bg_gemini_map.png net::ERR_UNEXPECTED`
+  - 为确认不是单次 smoke 永久损坏，之后再次单独运行 `npm run test:desktop-smoke --silent`：exit `0`；报告恢复为 `status=pass`、`consoleErrors=0`、`failedRequests=0`。
+  - `npm run check:release-readiness --silent` 当前 exit `1`，`reports\release\release-readiness.json` 为 `pass=31 warn=0 fail=10`；其中桌面 build/smoke 本身为 fresh pass，release 失败主要来自 doctor/flow 报告缺失或旧红灯，不是本轮新 bug 证据。
+- 结论：
+  - 这是桌面验证链路的并发隔离 bug：单次 smoke 可以通过，但两个调度器、heartbeat 或人工命令重叠时会互相清理 `dist` 与用户数据/报告目录，造成假红灯或污染发布证据。
+  - 它不同于旧 `DESKTOP-SMOKE-001`：旧问题是 smoke 永远只覆盖 legacy entry；本轮问题是同一 smoke 在并发执行时没有锁或隔离目录，导致 build/runtime/report 三层共享状态竞争。
+- 优先级：
+  - P2。默认单次发布 smoke 不一定失败，但自动化恢复、手动复跑和 release gate 并行化时会产生非确定性失败，并可能把最后一次共享报告覆盖成误导性的 pass 或 fail。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改桌面 smoke 或构建脚本。
+- 修复方向：
+  - 给 `test:desktop-smoke` / `build:desktop` 加 repo-local lock，或让 smoke 使用 per-run temp output：独立 `dist`/`outDir`、独立 `DECKROGUE_USER_DATA_DIR`、独立截图目录和临时 report，再原子写入 canonical report。
+  - 如果保留 canonical `dist/`，production smoke 应先确保没有正在运行的 Electron smoke/build，或复用已完成的 fresh build 而不是每个 smoke 内部重建。
+  - 并发 smoke 的报告应包含 run id，避免 A/B 两个进程互相覆盖 `reports\desktop\desktop-smoke.json`。
+  - 修复后复跑单次 `npm run test:desktop-smoke --silent`、双并发 Start-Job smoke，以及 `npm run check:release-readiness --silent` 中的桌面 build/smoke fresh gate。
+- 下一轮建议：
+  - 第 164 轮展示 `DESKTOP-SMOKE-PARALLEL-ISOLATION-001`：给出固定 temp/report/dist 路径行号、单跑 pass 与双跑 fail 的复现输出、P2 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 164 - Desktop Smoke Parallel Isolation Exhibit - 2026-05-21
+
+- 循环模式：第 164 轮，按交替节奏展示第 163 轮发现的 `DESKTOP-SMOKE-PARALLEL-ISOLATION-001`。
+- 展示 bug：
+  - **DESKTOP-SMOKE-PARALLEL-ISOLATION-001**：production `test:desktop-smoke` 没有并发隔离。它每次都触发共享 `dist/` 的 `build:desktop`，同时复用固定 Electron user-data、固定截图目录和固定 canonical report。两个 smoke 重叠时，一个进程可在另一个 Electron 正读取 `deckrogue://app/assets/...` 时清理或重写 `dist`，导致 Vite build 与 Electron asset loading 同时出现非确定性失败。
+- Fresh 源码定位：
+  - `scripts\validation\playwright_electron_smoke.ts:146-148`：固定 `$env:TEMP\deckrogue-electron-smoke-user-data`，每次运行先删除再重建。
+  - `scripts\validation\playwright_electron_smoke.ts:151-155`：production smoke 内部直接执行 `npm run build:desktop`。
+  - `scripts\validation\playwright_electron_smoke.ts:162-171`：Electron 使用同一个 `DECKROGUE_USER_DATA_DIR`。
+  - `scripts\validation\playwright_electron_smoke.ts:197-235`：截图文件名固定为 `output\playwright\desktop_launcher.png` / `desktop_tutorial.png` / `desktop_character_select.png` / `desktop_map.png` / `desktop_combat.png`。
+  - `scripts\validation\playwright_electron_smoke.ts:245-254`：成功和失败都写入同一个 `reports\desktop\desktop-smoke.json`。
+  - `scripts\desktop\build_desktop.ts:33-43`：桌面构建检查共享 `dist\index.html`，并执行共享 `npm run build --silent`。
+  - `scripts\desktop\build_desktop.ts:59-78`：桌面 build 成功/失败都写入同一个 `reports\desktop\desktop-build.json`。
+  - `vite.config.ts:20-61`：build 配置没有 per-run `outDir`，Vite 默认写入共享 `dist/`。
+- Fresh 复现/验证证据：
+  - 第 164 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - Fresh 并发复现命令：PowerShell `Start-Job` 启动两个 `npm run test:desktop-smoke --silent`，第二个延迟 `500ms`。
+  - Fresh 并发复现输出摘要：
+    - Job A：`exit=1`，关键行 `Desktop smoke detected console, page, or network errors`。
+    - Job B：`exit=1`，关键行 `error during build:`、`ENOTEMPTY: directory not empty, rmdir 'E:\deckrogue\deckrogue-mainline-merge\dist\assets'`、`[build:desktop] failed: Error: Command failed: npm run build --silent`、`[test:desktop-smoke] failed: Error: Command failed: npm run build:desktop`。
+  - 并发后读取共享 `reports\desktop\desktop-smoke.json`：
+    - `timestamp=2026-05-21T04:50:46.284Z`
+    - `status=fail`
+    - `steps=launcher,tutorial,character_select,map,combat`
+    - `consoleErrors=61`
+    - `failedRequests=61`
+    - first failed request：`other deckrogue://app/assets/backgrounds/bg_gemini_map.png net::ERR_UNEXPECTED`
+  - 为确认这是并发隔离而不是单跑损坏，随后单独运行 `npm run test:desktop-smoke --silent`：exit `0`。
+  - 单跑恢复后读取 `reports\desktop\desktop-smoke.json`：
+    - `timestamp=2026-05-21T04:51:16.823Z`
+    - `status=pass`
+    - `steps=launcher,tutorial,character_select,map,combat`
+    - `consoleErrors=0`
+    - `failedRequests=0`
+  - 同时读取 `reports\desktop\desktop-build.json`：
+    - `timestamp=2026-05-21T04:51:21.952Z`
+    - `overallStatus=pass`
+    - `evidence=["renderer dist built","electron main entry present","electron preload entry present"]`
+- 复现路径：
+  - 在同一个工作树中并发启动两个 `npm run test:desktop-smoke --silent`。
+  - 两个进程都会进入 production path 并触发 `npm run build:desktop`。
+  - Vite 使用同一个 `dist/`，Electron 使用同一个 `deckrogue://app` dist 资源来源；因此一个 build 清理 `dist/assets` 时，另一个 smoke 已加载的 Electron 页面会出现 `net::ERR_UNEXPECTED`。
+  - 任意一个进程结束时都可能覆盖 `reports\desktop\desktop-smoke.json`，发布门禁读取的是最后写入者，而不是稳定 run id。
+- 优先级：
+  - P2。单次 smoke 正常，但自动化 heartbeat、人工复跑、release gate 并行化或 CI 并行矩阵都可能触发非确定性红灯；更糟糕的是 canonical report 可能被最后写入者覆盖，导致 pass/fail 都不可信。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `playwright_electron_smoke.ts`、`build_desktop.ts` 或 Vite build 配置。
+- 修复验收标准：
+  - production desktop smoke 和 `build:desktop` 需互斥锁或 per-run 隔离目录，避免两个进程同时清理/写入同一个 `dist/`。
+  - `DECKROGUE_USER_DATA_DIR`、截图目录和中间 report 应带 run id；只有验证通过后再原子写 canonical `reports\desktop\desktop-smoke.json`。
+  - 如果继续复用 canonical `dist/`，smoke 应复用已完成 fresh build 或等待 build lock，而不是每次内部重建。
+  - 修复后必须验证：单次 `npm run test:desktop-smoke --silent` pass，双并发 Start-Job smoke 两个都 pass 或一个明确等待锁后 pass，`reports\desktop\desktop-smoke.json` 不被失败半成品覆盖。
+- 下一轮建议：
+  - 第 165 轮回到找 bug；优先继续桌面 packaging 的 artifact/report 原子性、Python WASM adapter 的资源本地化/loader 边界，或 runtimeV2 content schema 对未覆盖实体字段的静态 gate。
+
+## DeckRogue Bug Loop Cycle 165 - Python WASM Dispatch Autostart Gap Finding - 2026-05-21
+
+- 循环模式：第 165 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改，本轮只追加本报告段。
+  - 已读取第 164 轮报告尾部，上一轮展示的是 `DESKTOP-SMOKE-PARALLEL-ISOLATION-001`。
+  - 已查重 `project-development-report.md` 中 `Runtime not initialized`、`dispatch without start`、`PWASM-DISPATCH`、`PythonWasmAdapter.dispatch`、`init_runtime`、`dispatch_command`。旧记录覆盖 seed 源码拼接、`PY-WASM-HALFBOOT-001`、dispose race、包/内嵌 runtime drift 等问题；未发现“未 start 直接 dispatch 时 Python WASM 不自启动 runtime”的登记。
+- 新发现：
+  - **PWASM-DISPATCH-AUTOSTART-MISSING-001**：`PythonWasmAdapter.dispatch()` 在没有先调用 `start()` 时只会加载 Pyodide 和注入 Python runtime code，然后直接执行 `dispatch_command(...)`。它不会调用 `init_runtime(...)` 初始化 `_runtime_instance`，因此会抛出 `Runtime not initialized`。同一 `RuleRuntimeAdapter` 契约下，`LegacyOracleAdapter.dispatch()` 与 `PythonProcessAdapter.dispatch()` 都会在未启动时自动 `start()`，所以 Python WASM adapter 对直接 adapter 使用或误用 `EngineHost.dispatch()` 的失败方式不一致，且 focused tests 仍全绿。
+- 文件/行号：
+  - `src\runtimeV2\contracts.ts:432-436`：`RuleRuntimeAdapter` 暴露统一 `start()` / `dispatch()` / `getSnapshot()` / `dispose()` 契约，接口未声明 Python WASM 需要先手动 `start()` 才能 dispatch。
+  - `src\runtimeV2\bridge\legacyOracleAdapter.ts:50-53`：legacy oracle dispatch 在 `!this.engine` 时 `await this.start()`。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:131-134`：Python process dispatch 在 `!this.process` 时 `await this.start()`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:47-60`：`start()` 会 `ensurePyodide()`，再通过 `init_runtime(json.loads(__deckrogue_content_bundle_json), seed)` 初始化 runtime。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:67-80`：`dispatch()` 只在 `!this.pyodide` 时 `ensurePyodide()`，随后直接调用 `dispatch_command(json.loads(__deckrogue_command_json))`，没有先执行 `init_runtime(...)` 或检查 `this.snapshot`。
+  - `src\runtimeV2\bridge\engineHost.ts:193-238`：`EngineHost.dispatch()` 直接代理 `adapter.dispatch(command)`；如果没有 startup snapshot，失败会抛 `DispatchFailedError`。
+  - `src\content\narrative\pythonRuntime.ts:1600-1609`：内嵌 Python runtime 中 `_runtime_instance` 初始为 `None`；`dispatch_command()` 在未初始化时抛 `RuntimeError("Runtime not initialized")`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1787-1795`：包侧 runtime 同样要求 `init_runtime()` 先设置 `_runtime_instance`，否则 `dispatch_command()` 抛 `Runtime not initialized`。
+  - `tests\unit\pythonWasmAdapter.test.ts:1-24`：当前 Python WASM 单测只覆盖 snapshot envelope unwrap，没有 adapter lifecycle / dispatch-before-start。
+  - `tests\unit\runtimeV2Host.test.ts:952`：唯一 Python WASM host flow 仍是 `test.skip(...)`，也没有覆盖未 start dispatch。
+- Fresh 复现/验证证据：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`：exit `0`，`33` tests，`32` pass，`1` skip。说明 focused suite 绿灯但未覆盖本 lifecycle gap。
+  - fake Pyodide 直接 adapter 探针：构造 `window.loadPyodide`，让 runtime code 注入成功，但任何未初始化的 `dispatch_command(...)` 抛 `Runtime not initialized`；直接调用 `adapter.dispatch({ type: "select_character", characterId: "informant" })`。
+  - 直接 adapter 探针输出：
+    - `dispatchWithoutStart="rejected"`
+    - `message="Runtime not initialized"`
+    - `calls=["runtime_code_loaded","set:__deckrogue_command_json:{\"type\":\"select_character\",\"character_id\":\"informant\"}","dispatch_command(json.loads(__deckrogue_command_json))"]`
+    - `snapshot=null`
+  - fake Pyodide + `EngineHost` 探针：`new EngineHost(new PythonWasmAdapter())` 后直接 `host.dispatch({ type: "select_character", characterId: "informant" })`。
+  - `EngineHost` 探针输出：
+    - `hostDispatchWithoutStart="threw"`
+    - `name="DispatchFailedError"`
+    - `message="Dispatch select_character failed: Runtime not initialized"`
+    - `calls=["runtime_code_loaded","set:__deckrogue_command_json:{\"type\":\"select_character\",\"character_id\":\"informant\"}","dispatch_command(json.loads(__deckrogue_command_json))"]`
+    - `hostSnapshot=null`
+- 复现路径：
+  - 在浏览器或 fake Pyodide 环境中创建 `new PythonWasmAdapter()`。
+  - 不调用 `start()`，直接调用 `dispatch({ type: "select_character", characterId: "informant" })`。
+  - 实际结果：adapter 会加载 Pyodide 和注入 runtime code，但没有执行 `init_runtime`，然后由 Python runtime 抛 `Runtime not initialized`。
+  - 预期结果：要么 `dispatch()` 与 legacy/process adapter 一致地自动 `start()` 并完成命令，要么在调用 Python 前明确抛出 adapter 契约错误，例如 `Python WASM adapter has not been started`，并由 `EngineHost`/调用方统一强制 start-before-dispatch。
+- 结论：
+  - 这是 Python WASM lifecycle contract gap，不同于旧 `PY-WASM-HALFBOOT-001`。旧问题是 runtime code 注入失败后同实例半初始化；本轮问题是 runtime code 已注入成功，但 `dispatch()` 没有初始化游戏 runtime。
+  - 该问题也不同于包/内嵌 runtime drift：包侧和内嵌 runtime 都正确要求 `init_runtime()` 先运行，缺口在 TypeScript WASM adapter 的 dispatch 生命周期。
+- 优先级：
+  - P2。默认规范路径可能先 `host.start()`，但自动化、调试工具、UI 快捷入口或未来 adapter 直接复用容易触发；更重要的是三个 adapter 的未启动 dispatch 行为不一致，测试绿灯会掩盖 Python WASM 接管风险。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `pythonWasmAdapter.ts`、`engineHost.ts` 或测试。
+- 修复方向：
+  - 方案 A：让 `PythonWasmAdapter.dispatch()` 在 `this.snapshot === null` 时调用 `await this.start()`，并注意 `start_run` / seed 语义，保证与 legacy/process adapter 的自启动行为一致。
+  - 方案 B：统一收紧契约，让所有 adapter 的 `dispatch()` 在未启动时 fail fast，并让 `EngineHost.dispatch()` 明确检查 `this.snapshot`，报出统一 start-before-dispatch 错误；但这会改变 legacy/process adapter 现有宽容行为。
+  - 增加 fake Pyodide 单测：直接 `dispatch()` 时必须看到 `init_runtime(...)` 发生在 `dispatch_command(...)` 之前，或必须得到统一的未启动契约错误；同时增加 `EngineHost` 未 start dispatch 的一致性测试。
+  - 修复后复跑 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`、`npm run test:runtime-v2:ts`，并视实现复跑 Python unittest。
+- 下一轮建议：
+  - 第 166 轮展示 `PWASM-DISPATCH-AUTOSTART-MISSING-001`：给出 adapter contract 行号、fake Pyodide 复现输出、focused tests 绿灯但覆盖缺口、P2 风险、未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 166 - Python WASM Dispatch Autostart Gap Exhibit - 2026-05-21
+
+- 循环模式：第 166 轮，按交替节奏展示第 165 轮发现的 `PWASM-DISPATCH-AUTOSTART-MISSING-001`。
+- 展示 bug：
+  - **PWASM-DISPATCH-AUTOSTART-MISSING-001**：`PythonWasmAdapter.dispatch()` 在未先 `start()` 时只加载 Pyodide 和注入 Python runtime code，随后直接运行 `dispatch_command(...)`。因为 `init_runtime(...)` 从未运行，Python runtime 的 `_runtime_instance` 仍为 `None`，最终抛 `Runtime not initialized`。这与 legacy oracle / Python process adapter 的未启动 dispatch 自启动行为不一致。
+- Fresh 源码定位：
+  - `src\runtimeV2\contracts.ts:432`：`RuleRuntimeAdapter` 定义统一 adapter contract。
+  - `src\runtimeV2\bridge\legacyOracleAdapter.ts:50-52`：legacy oracle `dispatch()` 在 `!this.engine` 时会 `await this.start()`。
+  - `src\runtimeV2\node\pythonProcessAdapter.ts:131-133`：Python process `dispatch()` 在 `!this.process` 时会 `await this.start()`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:60`：只有 `start()` 路径执行 `init_runtime(json.loads(__deckrogue_content_bundle_json), seed)`。
+  - `src\runtimeV2\bridge\pythonWasmAdapter.ts:67-79`：`dispatch()` 只加载 Pyodide，随后直接执行 `dispatch_command(json.loads(__deckrogue_command_json))`，没有 `init_runtime(...)` 或 `this.snapshot` guard。
+  - `src\runtimeV2\bridge\engineHost.ts:193` / `:211` / `:247`：`EngineHost.dispatch()` 直接调用 `this.adapter.dispatch(command)`；没有 startup snapshot 时 adapter 失败会抛 `DispatchFailedError`。
+  - `src\content\narrative\pythonRuntime.ts:1600-1608`：内嵌 runtime 要求 `init_runtime()` 先设置 `_runtime_instance`，否则 `dispatch_command()` 抛 `Runtime not initialized`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1787-1795`：包侧 runtime 也有相同 init-before-dispatch 要求。
+  - `tests\unit\pythonWasmAdapter.test.ts:13-27`：当前 Python WASM 单测只覆盖 `unwrapPythonSnapshotEnvelope`。
+  - `tests\unit\runtimeV2Host.test.ts:952`：唯一 Python WASM host flow 仍是 skipped。
+- Fresh 复现/验证证据：
+  - 第 166 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - fresh fake Pyodide 直接 adapter 探针：
+    - `new PythonWasmAdapter()`
+    - 不调用 `start()`
+    - 直接 `adapter.dispatch({ type: "select_character", characterId: "informant" })`
+  - 直接 adapter 探针输出：
+    - `direct.status="rejected"`
+    - `direct.name="Error"`
+    - `direct.message="Runtime not initialized"`
+    - `direct.calls=["runtime_code_loaded","set:__deckrogue_command_json:{\"type\":\"select_character\",\"character_id\":\"informant\"}","dispatch_command(json.loads(__deckrogue_command_json))"]`
+    - `direct.snapshot=null`
+  - fresh fake Pyodide + EngineHost 探针：
+    - `new EngineHost(new PythonWasmAdapter())`
+    - 不调用 `host.start()`
+    - 直接 `host.dispatch({ type: "select_character", characterId: "informant" })`
+  - EngineHost 探针输出：
+    - `hosted.status="threw"`
+    - `hosted.name="DispatchFailedError"`
+    - `hosted.message="Dispatch select_character failed: Runtime not initialized"`
+    - `hosted.calls=["runtime_code_loaded","set:__deckrogue_command_json:{\"type\":\"select_character\",\"character_id\":\"informant\"}","dispatch_command(json.loads(__deckrogue_command_json))"]`
+    - `hosted.snapshot=null`
+  - Focused tests：
+    - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`：exit `0`，`33` tests，`32` pass，`1` skip。
+  - RuntimeV2 suite：
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+  - 解释：两组测试都绿，但没有断言 `PythonWasmAdapter.dispatch()` 在未 start 时的 contract；探针显示 `init_runtime(...)` 没出现在调用序列中。
+- 复现路径：
+  - 在浏览器或 fake Pyodide 环境中创建 `PythonWasmAdapter`。
+  - 直接调用 `dispatch({ type: "select_character", characterId: "informant" })`，不要先调用 `start()`。
+  - 实际结果：只加载 runtime code，然后调用 `dispatch_command(...)`，抛 `Runtime not initialized`。
+  - 预期结果：要么 Python WASM dispatch 与 legacy/process adapter 一样自动 start 并完成 command，要么所有 adapter / `EngineHost` 统一 fail fast，明确要求 start-before-dispatch。
+- 优先级：
+  - P2。常规路径可能先调用 `host.start()`，但调试工具、UI 快捷入口、自动化探针或 future host misuse 会触发；更关键的是三个 adapter 的 lifecycle contract 不一致，当前测试绿灯会掩盖 Python WASM 接管风险。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `pythonWasmAdapter.ts`、`engineHost.ts` 或测试。
+- 修复验收标准：
+  - 选择并固定一个 contract：
+    - 宽容路线：`PythonWasmAdapter.dispatch()` 在 `this.snapshot === null` 时调用 `await this.start()`，并确认 `init_runtime(...)` 发生在 `dispatch_command(...)` 之前。
+    - 严格路线：`EngineHost.dispatch()` 或所有 adapter 未 start 时统一抛明确 contract 错误，legacy/process adapter 不再静默自启动。
+  - 增加 fake Pyodide 单测覆盖直接 adapter dispatch-before-start。
+  - 增加或调整 EngineHost 单测覆盖 host dispatch-before-start 的统一行为。
+  - 修复后复跑 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts`、`npm run test:runtime-v2:ts --silent`，必要时补跑 Python unittest。
+- 下一轮建议：
+  - 第 167 轮回到找 bug；优先继续 Python WASM adapter loader/resource 边界、runtimeV2 content schema 对实体字段的静态 gate，或 AI intent chain 的 fallback/normalization 覆盖。
+
+## DeckRogue Bug Loop Cycle 167 - AI Intent Zero Weight Boundary Finding - 2026-05-21
+
+- 循环模式：第 167 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改，本轮只追加本报告段。
+  - 已读取第 166 轮报告尾部，上一轮展示的是 `PWASM-DISPATCH-AUTOSTART-MISSING-001`。
+  - 已查重 `project-development-report.md` 中 `zero-weight`、`zero weight`、`零权重`、`roll <= 0`、`negative intent`、`负权重`、`intent_policy.weight` 等关键词；未发现“混合 0/正权重策略在 rng=0 时选中 0 权重项”的登记。
+  - 已排除旧 `AI-BOUNDARY-DEEP-IMPORT-001`：`npm run check:enemy-ai-boundaries --silent` 当前仍报相同 2 个 deep import violation，但该问题已在第 71/72 轮登记，本轮不重复记录。
+- 新发现：
+  - **AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001**：`IntentSelector.selectIntent()` 的 weighted roll 使用 `roll -= option.finalWeight; if (roll <= 0) return option.intent`。当第一项 `finalWeight` 为 `0` 且 RNG 返回 `0` 或极小正数时，循环会选中这个 0 权重 intent，而不是跳到后面的正权重 intent。`parseIntentPolicyWeight()` 又会把负权重 clamp 成 `0`，而 schema/content-authoring 只检查 finite number、不拒绝负数，因此未来 authoring 中的负权重或显式 0 权重都可能变成“理论禁用但低边界仍可选中”的意图。
+- 文件/行号：
+  - `src\core\ai\intentPolicy.ts:6-13`：`parseIntentPolicyWeight()` 拒绝非 number / 非 finite，但对负 number 返回 `Math.max(0, value)`，即静默 clamp 为 0。
+  - `src\content\narrative\contentSchema.ts:338`：enemy `intent_policy.weight` 只要求 finite number，没有非负约束。
+  - `scripts\validation\check_content_authoring.ts:185`：content authoring 只拒绝非 number / 非 finite weight，负数会通过。
+  - `scripts\validation\check_enemy_ai_profiles.ts:19-20`：AI profile checker 的 `EnemyRecord` policy 类型只声明 `intent`，不读取或验证 policy weight。
+  - `src\core\ai\intentSelector.ts:216`：最终权重被 `Math.max(0, finalWeight)` clamp，0 权重项会保留在 options 中。
+  - `src\core\ai\intentSelector.ts:225-228`：`roll = rng() * totalWeight` 后先减当前 option 权重，再用 `roll <= 0` 命中；第一项权重为 0 且 roll 为 0 / 极小值时可被选中。
+  - `src\infrastructure\rng\rng.ts:9`：项目 deterministic RNG 返回 `uint32 / 4294967296`，取值域包含 0 边界。
+  - `src\infrastructure\rng\stateRandom.ts:40-41`：`stateRandom()` 对 `raw <= 0` 明确返回 0，说明 runtime RNG contract 允许 0。
+  - `tests\unit\enemyIntentFacade.test.ts:223-240`：现有回归只覆盖“所有 final weight 都为 0 时 fallback 到 Attack”，没有覆盖“0 权重项 + 正权重项混合时 0 权重不得被选中”。
+  - `tests\unit\enemyIntentFacade.test.ts:245-249`：parser 测试覆盖非 number 拒绝，但没有断言负权重应拒绝或至少不应可被选中。
+  - `tests\unit\enemyIntentFacade.test.ts:255`：正权重 fallback 检查只筛 `enemy.intent_policy`，当前也不覆盖 camelCase policies；这是旧 camelCase 覆盖洞的残留，不作为本轮新 bug 主因。
+- Fresh 复现/验证证据：
+  - inline selector 探针构造：
+    - enemy policy：`[{ intent: "ZeroIntent", weight: 0 }, { intent: "PositiveIntent", weight: 1 }]`
+    - `rng()` 分别返回 `0`、`Number.MIN_VALUE`、`1e-12`、`0.5`、`0.999999`
+  - 探针输出：
+    - `roll=0 -> selected="ZeroIntent"`
+    - `roll=5e-324 -> selected="ZeroIntent"`
+    - `roll=1e-12 -> selected="ZeroIntent"`
+    - `roll=0.5 -> selected="PositiveIntent"`
+    - `roll=0.999999 -> selected="PositiveIntent"`
+  - inline negative weight 探针构造：
+    - enemy policy：`Attack weight=-5`、`Defend weight=1`
+    - `validateEnemiesData([enemy])`
+    - 模拟 `check_content_authoring.ts` 的 policy checks
+    - 调用 `parseIntentPolicyWeight()` 与 `IntentSelector.selectIntent()`
+  - negative weight 探针输出：
+    - `schemaAccepted=true`
+    - `contentAuthoringWouldPass=true`
+    - `contentAuthoringIssues=[]`
+    - `runtimeWeights={"Attack":0,"Defend":1}`
+    - `selectedByRoll=["Attack","Defend","Defend","Defend"]`
+  - 当前真实内容统计：
+    - `enemyCount=58`
+    - `policyCount=156`
+    - `negativeCount=0`
+    - `nonNumberCount=0`
+    - `zeroOrLessOnlyCount=0`
+    - `mixedZeroCount=0`
+  - Fresh gate / test 输出：
+    - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass。
+    - `npx tsx --test tests/unit/enemyIntentFacade.test.ts`：exit `0`，`14` tests pass。
+    - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`，Enemies `58/58`，Relics `0/0`，passRate `100%`。
+    - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+- 复现路径：
+  - 调用 `new IntentSelector().selectIntent(...)`，传入第一条 policy 权重为 `0`、第二条 policy 权重为 `1` 的 enemy。
+  - 让 RNG 返回 `0` 或非常接近 0 的正数。
+  - 实际结果：返回第一条 0 权重 intent。
+  - 预期结果：0 finalWeight 的 option 永远不应被 weighted random selection 选中；循环应跳过 `finalWeight <= 0` 的 option，或用严格 `< 0` / cumulative upper-bound 方式处理。
+- 结论：
+  - 这是 AI intent weighted selection 的边界 bug，不同于旧 `CODEX-INTENT-001`、camelCase `intentPolicy` 丢失、或 AI boundary deep import。
+  - 当前 authored enemies 尚未出现 mixed zero / negative weight，因此不是现有战斗内容的高频 P1；但 runtime API 与 authoring gate 已允许产生该状态，且项目 RNG contract 明确包含 0。
+- 优先级：
+  - P3。当前内容未触发，但属于 AI intent chain 的低边界正确性缺口；如果后续用 0/负权重临时禁用某个 intent，该 intent 仍可能在 RNG 低边界被选中。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `intentSelector.ts`、`intentPolicy.ts`、schema 或测试。
+- 修复方向：
+  - `IntentSelector.selectIntent()` 在 weighted loop 中跳过 `option.finalWeight <= 0`，或改为 cumulative 比较 `if (roll < cumulative)`，确保 0 权重项不可被选中。
+  - `parseIntentPolicyWeight()` 和 authoring/schema gate 需要统一决策：负权重要么 fail fast，要么明确作为 0 处理但必须不会被选中。
+  - 增加回归：混合 `[0, 1]` 权重时 `rng=0`、`Number.MIN_VALUE`、`1e-12` 均返回正权重 intent；负权重 fixture 被拒绝或被 clamp 后仍不可被选中。
+  - 修复后复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:content-authoring --silent`、`npm run check:enemy-ai-profiles --silent`。
+- 下一轮建议：
+  - 第 168 轮展示 `AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001`：给出 selector/RNG/schema/checker 行号、0 权重与负权重探针输出、现有测试全绿但缺覆盖的证据、P3 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 168 - AI Intent Zero Weight Boundary Exhibit - 2026-05-21
+
+- 循环模式：第 168 轮，按交替节奏展示第 167 轮发现的 `AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001`。
+- 展示 bug：
+  - **AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001**：`IntentSelector.selectIntent()` 在 weighted selection 中先减当前 option 的 `finalWeight`，再用 `roll <= 0` 判断命中。因此当第一项 `finalWeight` 为 `0` 且 RNG 返回 `0` 或极小正数时，0 权重 intent 会被选中。由于 `parseIntentPolicyWeight()` 会把负权重 clamp 成 0，而 schema/content authoring gate 只要求 weight 是 finite number，未来作者用 `0` 或负数禁用某个 intent 时仍可能在 RNG 低边界触发该 intent。
+- Fresh 源码定位：
+  - `src\core\ai\intentPolicy.ts:6-13`：`parseIntentPolicyWeight()` 只拒绝非 number / 非 finite；负数返回 `Math.max(0, value)`。
+  - `src\content\narrative\contentSchema.ts:338`：enemy `intent_policy.weight` 只调用 `assertFiniteNumber(...)`，没有非负约束。
+  - `scripts\validation\check_content_authoring.ts:185`：content authoring 只拒绝非 number / 非 finite weight。
+  - `scripts\validation\check_enemy_ai_profiles.ts:19-20`：AI profile checker 的 policy 类型只声明 `intent`，不读取或验证 weight。
+  - `src\core\ai\intentSelector.ts:191`：selector 使用 `parseIntentPolicyWeight(policy.weight, ...)` 取得 base weight。
+  - `src\core\ai\intentSelector.ts:225-228`：`roll = rng() * totalWeight`，随后 `roll -= option.finalWeight`，并在 `roll <= 0` 时返回当前 intent。
+  - `src\infrastructure\rng\rng.ts:9`：deterministic RNG 返回 `uint32 / 4294967296`，取值域包含 `0`。
+  - `src\infrastructure\rng\stateRandom.ts:41`：`stateRandom()` 对 `raw <= 0` 明确返回 `0`。
+  - `tests\unit\enemyIntentFacade.test.ts:223-240`：现有测试只覆盖“全部 final weight 为 0 时 fallback 到 Attack”，没有覆盖混合 0/正权重时 0 权重不得被选中。
+  - `tests\unit\enemyIntentFacade.test.ts:245-249`：parser 测试覆盖非 number 拒绝，但没有覆盖负权重。
+- Fresh 复现/验证证据：
+  - 第 168 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - 0 权重 selector 探针：
+    - policy：`[{ intent: "ZeroIntent", weight: 0 }, { intent: "PositiveIntent", weight: 1 }]`
+    - 输出：
+      - `roll=0 -> selected="ZeroIntent"`
+      - `roll=5e-324 -> selected="ZeroIntent"`
+      - `roll=1e-12 -> selected="ZeroIntent"`
+      - `roll=0.5 -> selected="PositiveIntent"`
+      - `roll=0.999999 -> selected="PositiveIntent"`
+  - 负权重 + gate 探针：
+    - policy：`Attack weight=-5`、`Defend weight=1`
+    - 输出：
+      - `schemaAccepted=true`
+      - `contentAuthoringWouldPass=true`
+      - `contentAuthoringIssues=[]`
+      - `runtimeWeights={"Attack":0,"Defend":1}`
+      - `selectedByRoll=["Attack","Defend","Defend","Defend"]`
+  - 当前内容统计：
+    - `enemyCount=58`
+    - `policyCount=156`
+    - `negativeCount=0`
+    - `nonNumberCount=0`
+    - `zeroOrLessOnlyCount=0`
+    - `mixedZeroCount=0`
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests pass。
+    - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`，Enemies `58/58`，Relics `0/0`，passRate `100%`。
+    - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+- 复现路径：
+  - 创建 `IntentSelector`。
+  - 传入第一条 policy 权重为 `0`、第二条 policy 权重为 `1` 的敌人定义。
+  - 让 RNG 返回 `0` 或极小正数。
+  - 实际结果：selector 返回第一条 0 权重 intent。
+  - 预期结果：0 finalWeight option 永远不应被 weighted random selection 选中；即使 RNG 为 0，也应选择第一个正权重 option。
+- 优先级：
+  - P3。当前 authored enemy 内容没有 mixed-zero 或负权重触发项，所以不是现有战斗路径高频红灯；但 AI intent chain、schema 和 authoring gate 的组合允许未来内容进入该状态，且 deterministic RNG contract 包含 0。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `intentSelector.ts`、`intentPolicy.ts`、content schema 或 tests。
+- 修复验收标准：
+  - `IntentSelector.selectIntent()` 跳过 `option.finalWeight <= 0` 的 option，或改成 cumulative upper-bound 比较，确保 0 权重项不可被选中。
+  - `parseIntentPolicyWeight()`、`validateEnemiesData()`、`check_content_authoring.ts` 对负权重给出统一策略：拒绝负数，或允许 clamp 但确保运行时不可选中。
+  - 增加回归：混合 `[0, 1]` 权重时 `rng=0`、`Number.MIN_VALUE`、`1e-12` 均返回正权重 intent。
+  - 增加回归：负权重 fixture 要么在 schema/authoring 阶段失败，要么 clamp 后在低边界仍不可被选中。
+  - 修复后复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`、`npm run check:content-authoring --silent`、`npm run check:enemy-ai-profiles --silent`。
+- 下一轮建议：
+  - 第 169 轮回到找 bug；优先继续 runtimeV2 content schema 静态 gate、UI/rendering 的 runtimeV2 surface 接线，或 desktop packaging/report 原子性未覆盖面，避免重复 AI intent zero-weight 边界。
+
+## DeckRogue Bug Loop Cycle 169 - Map Replacement Zero Weight Boundary Finding - 2026-05-21
+
+- 循环模式：第 169 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 168 轮报告尾部，上一轮展示的是 `AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001`。
+  - 已查重交接中列出的旧问题，本轮不重复登记 AI intent、Python WASM lifecycle、runtimeV2 content bundle、UI render model 等既有 bug。
+- 新发现：
+  - **MAP-REPLACEMENT-ZERO-WEIGHT-RNG-BOUNDARY-001**：地图生成的 per-floor cap replacement 逻辑在候选权重归零后仍保留候选，并使用 `roll -= weight; if (roll <= 0)` 命中。当第一个候选因 floor cap 被置为 `0`，且 RNG 返回 `0` 时，会选择这个已被 cap 禁止的房间类型。TypeScript `RunGenerator`、包侧 Python runtime、内嵌 Python runtime 均有同构实现。
+- 文件/行号：
+  - `src\core\events\runGenerator.ts:250-262`：`enforcePerFloorCaps()` 在某类型超过 cap 时调用 `pickReplacementType(...)` 替换节点。
+  - `src\core\events\runGenerator.ts:391-428`：`pickReplacementType()` 构造 replacement candidates，cap 命中时把 candidate weight 置为 `0`，随后 `roll -= Math.max(0, candidate.weight)` 并在 `roll <= 0` 时返回当前 candidate。
+  - `src\content\narrative\numericSystem.ts:437-443`：默认 `floorTypeCaps` 对 Event/Shop/Rest/Elite 进行 cap 归一化，Event 默认 cap 为 `1`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1492-1533`：包侧 `_pick_replacement_type()` 使用同样的 zeroed candidate + `roll <= 0` 选择逻辑。
+  - `src\content\narrative\pythonRuntime.ts:1305-1338`：内嵌 Python runtime 也有同构 replacement selection 逻辑。
+  - `tests\unit\runGenerator.test.ts:64-78`：现有测试只断言 seed 1..40 生成结果中 Event 每层不超过 1，没有覆盖 replacement private boundary 或大 seed。
+  - `scripts\validation\check_map_route_constraints.ts:50-87`：route constraint gate 只扫描 seed 1..40 的公开生成结果，未覆盖 cap replacement 直接边界。
+- Fresh 复现/验证证据：
+  - LCG 零输出前驱计算：
+    - `seed=2088216195`
+    - `((seed * 1103515245 + 12345) & 0x7fffffff) = 0`
+    - `nextValue=0`
+  - TypeScript inline probe：
+    - 构造 `new RunGenerator(2088216195)`。
+    - 节点：`["Event", "Combat", "Combat"]`，`floor=4`，`removedType="Combat"`。
+    - replacement candidates：`Event weight=0`（Event cap 已满）、`Shop weight=0.14`、`Rest weight=0.12`、`Elite weight=0.24`。
+    - 预期：选择第一个正权重候选 `Shop`，绝不选择已 cap 的 `Event`。
+    - 实际输出：`actual="Event"`。
+  - Python package inline probe：
+    - 使用 `RuleRuntime.__new__(RuleRuntime)` 设置最小 `runtime_strategy.floor_type_caps`，调用 `_pick_replacement_type(4, 10, nodes, "Combat", lambda: 0.0)`。
+    - 节点与候选同上。
+    - 预期：选择第一个正权重候选 `Shop`。
+    - 实际输出：`actual="Event"`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/runGenerator.test.ts`：exit `0`，`5` tests pass。
+    - `npm run check:map-route-constraints --silent`：exit `0`，`[check_map_route_constraints] OK`。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 用合法 seed `2088216195` 创建 `RunGenerator`，该 seed 的下一次 LCG 输出为 `0`。
+  - 在 `pickReplacementType()` 输入中让第一个 replacement candidate 因 cap 被置为 `0`，例如 Event 已达到 cap 且正在替换多余 Combat。
+  - 实际结果：`roll` 初始为 `0`，第一个 zero-weight Event 经过 `roll -= 0` 后满足 `roll <= 0`，函数返回已 cap 的 `Event`。
+  - 预期结果：weight 为 `0` 的 candidate 表示不可选，应被跳过；应返回第一个正权重候选。
+- 结论：
+  - 这是 map replacement weighted selection 的边界 bug，不同于第 167/168 轮的 AI intent zero-weight bug；位置在地图 per-floor cap replacement，影响 TypeScript 运行时和 Python runtimeV2 适配面的一致性。
+  - 当前 seed 1..40 的公开地图约束检查没有触发，因此不是高频内容破坏；但项目自己的 LCG 存在合法 seed 产生 `0`，且 private replacement 入口确实会选择已 cap/禁用候选。
+- 优先级：
+  - P3。触发需要特定 RNG 边界和 cap replacement 状态，概率低；一旦触发，会违反 per-floor cap 修复逻辑的局部契约，并可能造成 TS/Python 双运行时一致地保留非法房间类型。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `runGenerator.ts`、Python runtime、内嵌 runtime 或测试。
+- 修复方向：
+  - 在 TypeScript 和 Python replacement selection loop 中跳过 `weight <= 0` 的候选，或改为 cumulative upper-bound 比较，确保 zero-weight candidate 不可命中。
+  - 增加回归：`seed=2088216195`、第一个 candidate 被 cap 为 `0`、后续 candidate 正权重时，replacement 不得返回 zero-weight/capped type。
+  - Python package 与内嵌 runtime 同步修复，并增加 `_pick_replacement_type(..., lambda: 0.0)` 的最小单测。
+  - 修复后复跑 `npx tsx --test tests/unit/runGenerator.test.ts`、`npm run check:map-route-constraints --silent`、`npm run test:runtime-v2:ts --silent`、Python unittest。
+- 下一轮建议：
+  - 第 170 轮展示 `MAP-REPLACEMENT-ZERO-WEIGHT-RNG-BOUNDARY-001`：给出 TS/Python 行号、合法 seed 零输出证据、inline probe 输出、现有 route/content/Python checks 绿灯但覆盖缺口、P3 风险、未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 170 - Map Replacement Zero Weight Boundary Exhibit - 2026-05-21
+
+- 循环模式：第 170 轮，按交替节奏展示第 169 轮发现的 `MAP-REPLACEMENT-ZERO-WEIGHT-RNG-BOUNDARY-001`。
+- 展示 bug：
+  - **MAP-REPLACEMENT-ZERO-WEIGHT-RNG-BOUNDARY-001**：地图 per-floor cap replacement 在候选被 cap 置为 `0` 后仍保留该候选，并在 weighted loop 中使用 `roll -= weight; if (roll <= 0)`。当 RNG 返回 `0` 时，第一项 zero-weight/capped candidate 会被返回，违反“cap 后不可选”的局部契约。TypeScript `RunGenerator`、包侧 Python runtime、内嵌 Python runtime 均存在同构逻辑。
+- Fresh 源码定位：
+  - `src\core\events\runGenerator.ts:250-262`：`enforcePerFloorCaps()` 对超过 cap 的房间类型调用 `pickReplacementType(...)`。
+  - `src\core\events\runGenerator.ts:391-428`：`pickReplacementType()` 在 cap 命中时把 candidate weight 置为 `0`，但选择循环仍会在 `roll <= 0` 时返回当前 candidate。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1492-1533`：包侧 `_pick_replacement_type()` 复刻同样的 zeroed candidate + `roll <= 0` 逻辑。
+  - `src\content\narrative\pythonRuntime.ts:1305-1346`：内嵌 Python runtime 也复刻同构 replacement selection。
+  - `src\content\narrative\numericSystem.ts:437-443`：`floorTypeCaps` 默认 Event/Shop/Rest/Elite cap 归一化，Event 默认 cap 为 `1`。
+  - `tests\unit\runGenerator.test.ts:64-78`：现有测试只扫描 seed `1..40` 的公开生成结果中 Event cap，不覆盖 private replacement RNG 边界。
+  - `scripts\validation\check_map_route_constraints.ts:50-87`：route constraint gate 也只扫描 seed `1..40` 的公开生成结果，不覆盖合法大 seed 或 direct replacement probe。
+- Fresh 复现/验证证据：
+  - LCG 零输出前驱：
+    - 命令输出：`{"seed":2088216195,"next":0,"nextValue":0}`。
+    - 说明：`new RunGenerator(2088216195)` 的下一次 `rng()` 可返回 `0`。
+  - TypeScript direct probe：
+    - 输入：`surface="typescript"`，`seed=2088216195`，`floor=4`，`removedType="Combat"`，nodes 为 `["Event","Combat","Combat"]`。
+    - candidates：`Event weight=0 reason="cap reached"`、`Shop weight=0.14`、`Rest weight=0.12`、`Elite weight=0.24`。
+    - 输出：`expected="Shop"`，`actual="Event"`。
+  - Python package direct probe：
+    - 输入：`surface="python-package"`，`floor=4`，`total_floors=10`，`removed_type="Combat"`，nodes 为 `["Event","Combat","Combat"]`，`rng=0.0`。
+    - candidates 同上。
+    - 输出：`expected="Shop"`，`actual="Event"`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/runGenerator.test.ts`：exit `0`，`5` tests pass。
+    - `npm run check:map-route-constraints --silent`：exit `0`，`[check_map_route_constraints] OK`。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 让 replacement candidate 的第一项因为 cap 达到上限被置为 `0`，例如当前 floor 已有一个 `Event`，而 `floorTypeCaps.Event=1`。
+  - 使 replacement RNG 返回 `0`。本项目 LCG 可用合法 seed `2088216195` 产生该边界；Python probe 可直接传 `lambda: 0.0`。
+  - 实际结果：选择已被 cap 禁用的 `Event`。
+  - 预期结果：zero-weight/capped candidate 应被跳过，选择第一个正权重候选，例如 `Shop`。
+- 优先级：
+  - P3。触发条件是低概率 RNG 边界 + cap replacement 状态；但一旦触发，地图 cap 修复会反向选回被禁止类型，并且 TS/Python runtimeV2 两侧一致地继承该错误。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `src\core\events\runGenerator.ts`、`python_runtime\src\deckrogue_rules_core\runtime.py`、`src\content\narrative\pythonRuntime.ts` 或测试。
+- 修复验收标准：
+  - TS 与 Python replacement loop 跳过 `weight <= 0` 的候选，或改为 cumulative upper-bound 选择，确保 zero-weight candidate 永远不可命中。
+  - 新增 TS 回归：`seed=2088216195`、第一个 candidate cap 为 `0`、后续 candidate 为正权重时，replacement 不返回 capped type。
+  - 新增 Python 回归：`_pick_replacement_type(..., lambda: 0.0)` 在同样输入下返回正权重候选。
+  - 修复后复跑 `npx tsx --test tests/unit/runGenerator.test.ts`、`npm run check:map-route-constraints --silent`、`npm run test:runtime-v2:ts --silent`、Python unittest。
+- 下一轮建议：
+  - 第 171 轮回到找 bug；优先继续 UI/runtimeV2 render-model 接线、desktop packaging smoke 原子性、content schema 对 runtime bundle 的 projection gate，避免继续重复 zero-weight selection 家族。
+
+## DeckRogue Bug Loop Cycle 171 - RuntimeV2 Python Special Resource Snapshot Dropped Finding - 2026-05-21
+
+- 循环模式：第 171 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 170 轮报告尾部，上一轮展示的是 `MAP-REPLACEMENT-ZERO-WEIGHT-RNG-BOUNDARY-001`。
+  - 已按旧问题清单查重，本轮不重复 AI intent/map zero-weight、Python WASM lifecycle、runtimeV2 content bundle enemy/reward/shop parity、UI renderModel ignored 系列。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001**：RuntimeV2 内容包把三名职业的 `special_resource` 投给 Python core，但 Python `RuleRuntime` 在 `select_character` 和进入 combat 时没有把 `timeLayer` / `thread` / `concoction` 写入 `player` 或 `combat` 快照；`RuleSnapshot` / `RenderModel` 契约也没有承载这些字段。结果是 Python/runtimeV2 路径无法表示旧战斗系统已经初始化并由 UI/卡牌逻辑读取的职业特殊资源。
+- 文件/行号：
+  - `src\content\data\characters.json:177`、`:224`、`:270`：`puppeteer` / `chronomancer` / `alchemist` 分别声明 `specialResource` 为 `thread` / `timeLayer` / `concoction`。
+  - `src\core\events\CombatManager.ts:182-184` 与 `src\core\combat\CombatManager.ts:74-76`：旧战斗初始化分别为 `timeLayer=1`、`thread=2`、`concoction=1`。
+  - `src\runtimeV2\content\buildContentBundle.ts:54-62` 与 `src\runtimeV2\contracts.ts:14-22`：RuntimeV2 内容包保留 `special_resource` / `secondary_resource`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:102-122`：`_apply_select_character()` 只写入 hp/gold/intel/devotion/corruption/deck/relic/potion 字段，没有写入 special resource。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:984-994`：`_start_combat()` 只写入 turn/player_energy/hand/draw/discard/enemy 字段，没有写入 special resource。
+  - `src\runtimeV2\contracts.ts:176-188` 与 `src\runtimeV2\contracts.ts:196-214`：`RuleSnapshot.player` 和 `RuleSnapshot.combat` 契约没有 `timeLayer` / `thread` / `concoction` 或统一 special-resource map。
+  - `src\runtimeV2\contracts.ts:365-372` 与 `src\runtimeV2\renderModel.ts:325-338`：`RenderModel.player` 只投影基础资源和计数，也没有特殊资源。
+  - `src\ui\views\combat\combatViewModel.ts:77-99`、`src\ui\views\combat\Battlefield.tsx:198-209`、`src\core\types\combat.ts:72-74`、`src\types\combat.ts:230-232`：现有 UI/旧 combat 类型明确读取并展示这些特殊资源。
+  - `tests\unit\starterBalanceDetection.test.ts:210-225`：现有测试确认三名角色应声明 specialResource，但未验证 runtimeV2/Python 快照承载。
+- Fresh 复现/验证证据：
+  - Python package direct probe：
+    - 使用最小 `content_bundle`，为 `chronomancer` / `puppeteer` / `alchemist` 分别设置 `special_resource`，再 dispatch `select_character` 与 `enter_node`。
+    - 输出中三名角色的 `player_keys_after_select` 均只有 `character_id/corruption/deck/devotion/gold/hp/intel/max_hp/potion_ids/relic_ids/relic_states`。
+    - 输出中三名角色的 `combat_keys` 均只有 `discard_pile_count/draw_pile_count/enemies/enemy_ids/hand/is_player_turn/player_block/player_energy/turn`。
+    - 输出中三名角色均为 `player_has_special_key=false`、`combat_has_special_key=false`，即 `timeLayer/thread/concoction` 没进入快照。
+  - TypeScript content bundle direct probe：
+    - `npx tsx -e ... buildRuntimeV2ContentBundle()` 输出：
+      - `puppeteer -> special_resource="thread"`
+      - `chronomancer -> special_resource="timeLayer"`
+      - `alchemist -> special_resource="concoction"`
+      - 三者 `deckSize=10`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/starterBalanceDetection.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`32` tests pass。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 构造或使用真实 RuntimeV2 content bundle，选择 `alchemist`、`chronomancer` 或 `puppeteer`。
+  - 通过 Python `RuleRuntime.dispatch({"type":"select_character", ...})`，再进入一个 Combat node。
+  - 实际结果：快照中没有 `concoction` / `timeLayer` / `thread` 初始值，也没有统一资源容器。
+  - 预期结果：Python/runtimeV2 快照应能表达旧 combat 初始化的同等资源状态，至少在对应角色进入 combat 时承载 `concoction=1`、`timeLayer=1`、`thread=2`，并投影到 render model/UI 可读字段。
+- 结论：
+  - 这是 RuntimeV2/Python 适配面的快照契约缺口，不同于已有 Python reward/shop parity 或 UI renderModel ignored 系列；内容包已经提供 special resource，丢失发生在 Python runtime state/snapshot contract 层。
+  - 现有 content bundle、runtimeV2 TS、Python unittest 全绿，说明当前 gate 没覆盖三职业特殊资源从 content bundle 到 Python snapshot/render model 的链路。
+- 优先级：
+  - P2。影响三名带核心职业机制的角色；在 Python/runtimeV2 路径下，特殊资源初始值与后续 UI/卡牌资源读取面无法从快照恢复或展示。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 Python runtime、RuntimeV2 contracts/renderModel、UI 或测试。
+- 修复方向：
+  - 在 Python `select_character` 或 `_start_combat()` 中依据 `special_resource` 初始化并保留 `timeLayer/thread/concoction`，与旧 `CombatManager` 初始值一致。
+  - 扩展 `RuleSnapshot` 与 `RenderModel.player` 契约，或引入统一 `specialResources` map，避免 Python/TS snapshot normalization 丢字段。
+  - 增加回归：三名 specialResource 角色经 Python `select_character -> enter_node` 后快照包含对应初始资源；render model/CombatHUD helper 能读取该资源。
+  - 修复后复跑 `npm run test:runtime-v2:ts --silent`、`npx tsx --test tests/unit/starterBalanceDetection.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`、`npm run check:content-bundle --silent`、Python unittest。
+- 下一轮建议：
+  - 第 172 轮展示 `RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001`：给出 content bundle -> Python runtime -> snapshot contract -> UI helper 的文件/行号、direct probe 输出、绿灯测试覆盖缺口、P2 风险和未修状态。
+
+## DeckRogue Bug Loop Cycle 172 - RuntimeV2 Python Special Resource Snapshot Dropped Exhibit - 2026-05-21
+
+- 循环模式：第 172 轮，按交替节奏展示第 171 轮发现的 `RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001`。
+- 展示 bug：
+  - **RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001**：RuntimeV2 内容包已把 `puppeteer` / `chronomancer` / `alchemist` 的 `special_resource` 传给 Python core，但 Python `RuleRuntime` 在 `select_character` 和进入 combat 后的快照中没有承载 `thread` / `timeLayer` / `concoction`。旧 combat 初始化和 UI helper 都明确读取这些资源，因此 Python/runtimeV2 路径无法表达三名核心职业的特殊资源初始状态。
+- Fresh 源码定位：
+  - `src\content\data\characters.json:177`、`:224`、`:270`：三名角色分别声明 `specialResource` 为 `thread`、`timeLayer`、`concoction`。
+  - `src\core\events\CombatManager.ts:182-184` 与 `src\core\combat\CombatManager.ts:74-76`：旧战斗初始化分别写入 `timeLayer=1`、`thread=2`、`concoction=1`。
+  - `src\runtimeV2\content\buildContentBundle.ts:61-62` 与 `src\runtimeV2\contracts.ts:21-22`：RuntimeV2 内容包/契约保留 `special_resource` 与 `secondary_resource`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:102-122`：`_apply_select_character()` 写入 player 基础字段，但没有写入 `special_resource` 对应资源值。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:984-994`：`_start_combat()` 写入 `player_energy`、hand、draw/discard、enemy 字段，但没有写入 `timeLayer` / `thread` / `concoction`。
+  - `src\runtimeV2\contracts.ts:176-188`、`:196-214`、`:365-372` 与 `src\runtimeV2\renderModel.ts:325-338`：`RuleSnapshot.player`、`RuleSnapshot.combat` 和 `RenderModel.player` 都没有这些特殊资源或统一 special-resource map。
+  - `src\ui\views\combat\combatViewModel.ts:77-99`：`getCharacterResourceSnapshot()` 对 chronomancer / puppeteer / alchemist 分别读取 `player.timeLayer`、`player.thread`、`player.concoction`。
+  - `src\ui\views\combat\Battlefield.tsx:198-209`：legacy battlefield 直接显示 `player.timeLayer || 0`、`player.thread || 0`、`player.concoction || 0`。
+  - `tests\unit\starterBalanceDetection.test.ts:210-225`：现有资源闭环测试只确认角色数据声明了 specialResource，没有验证 Python/runtimeV2 快照投影。
+- Fresh 复现/验证证据：
+  - 第 172 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - TypeScript content bundle probe：
+    - `puppeteer -> special_resource="thread"`，`deckSize=10`。
+    - `chronomancer -> special_resource="timeLayer"`，`deckSize=10`。
+    - `alchemist -> special_resource="concoction"`，`deckSize=10`。
+  - Python package direct probe：
+    - 对 `chronomancer/timeLayer/expected_initial=1`、`puppeteer/thread/expected_initial=2`、`alchemist/concoction/expected_initial=1` 分别 dispatch `select_character -> enter_node`。
+    - 三组输出均为 `player_has_special_key=false`、`combat_has_special_key=false`。
+    - `player_keys_after_select` 只有 `character_id/corruption/deck/devotion/gold/hp/intel/max_hp/potion_ids/relic_ids/relic_states`。
+    - `combat_keys` 只有 `discard_pile_count/draw_pile_count/enemies/enemy_ids/hand/is_player_turn/player_block/player_energy/turn`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/starterBalanceDetection.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`32` tests pass。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 用 RuntimeV2 content bundle 选择 `chronomancer`、`puppeteer` 或 `alchemist`。
+  - 通过 Python `RuleRuntime.dispatch({"type":"select_character", ...})` 后进入一个 Combat node。
+  - 实际结果：快照不包含对应的 `timeLayer`、`thread`、`concoction` 初始值，也没有统一资源容器。
+  - 预期结果：Python/runtimeV2 快照应与旧 combat 初始化一致，至少在进入 combat 时承载 `timeLayer=1`、`thread=2`、`concoction=1`，并让 render model/UI helper 可读取。
+- 优先级：
+  - P2。影响三名带核心特殊资源机制的角色；Python/runtimeV2 路径下资源状态无法从规则快照恢复、展示或继续参与后续卡牌逻辑。
+- 是否已修：
+  - 未修。第 172 轮 fresh direct probe 仍复现 `player_has_special_key=false` / `combat_has_special_key=false`；本轮没有修改 Python runtime、RuntimeV2 contracts/renderModel、UI 或测试。
+- 修复验收标准：
+  - Python `RuleRuntime` 在角色选择或 combat 初始化中依据 `special_resource` 初始化并保留 `timeLayer/thread/concoction`，数值与旧 `CombatManager` 一致。
+  - `RuleSnapshot` / normalization / `RenderModel.player` 明确承载这些字段，或使用统一 `specialResources` map 并完成 UI helper 映射。
+  - 新增回归：三名 specialResource 角色经 Python `select_character -> enter_node` 后快照包含对应初始资源；render model 能投影到 `getCharacterResourceSnapshot()` 读取面。
+  - 修复后复跑 `npm run test:runtime-v2:ts --silent`、`npx tsx --test tests/unit/starterBalanceDetection.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`、`npm run check:content-bundle --silent`、Python unittest。
+- 下一轮建议：
+  - 第 173 轮回到找 bug；优先继续 Python WASM/desktop packaging 的 adapter smoke、runtimeV2 combat command parity、或 content schema 对 RuntimeV2 snapshot/resource projection 的静态 gate，避免继续重复 special-resource 展示。
+
+## DeckRogue Bug Loop Cycle 173 - RuntimeV2 Python Secondary Resource Normalize Dropped Finding - 2026-05-21
+
+- 循环模式：第 173 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 172 轮报告尾部，上一轮展示的是 `RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001`。
+  - 已查重 `project-development-report.md` 中 `secondary_resource`、`secondaryResources`、`evidence/rage/command/verdict/seal`、Python WASM lifecycle、desktop smoke 和 zero-weight 家族；未发现 secondary resource normalize/load_snapshot 丢失的独立登记。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001**：RuntimeV2 内容包把五名角色的 `secondary_resource` 投给 Python core，旧 UI/action 层也通过 `secondaryResources` 或直挂字段读取/写入 `evidence`、`rage`、`command`、`verdict`、`seal`。但 `RuleSnapshot.player` 和 `normalizePythonSnapshot()` 只白名单基础 player 字段；当 Python `load_snapshot` 或 Python core 返回 `secondary_resources` / direct secondary fields 时，TS adapter normalize 会把这些资源全部丢掉，随后 `RenderModel.player` 也无法承载到 UI。
+- 文件/行号：
+  - `src\content\data\characters.json:3-8`、`:50-55`、`:98-103`、`:285-290`、`:334-339`：五名角色分别声明 `secondaryResource` 为 `evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `src\runtimeV2\content\buildContentBundle.ts:60-62` 与 `src\runtimeV2\contracts.ts:21-22`：RuntimeV2 content bundle 和 `ContentBundleCharacter` 契约保留 `secondary_resource`。
+  - `src\runtimeV2\contracts.ts:176-188`：`RuleSnapshot.player` 只包含 `characterId/hp/maxHp/gold/intel/devotion/corruption/deck/relicIds/potionIds/relicStates`，没有 `secondaryResources` 或五个 secondary direct fields。
+  - `src\runtimeV2\contracts.ts:364-372` 与 `src\runtimeV2\renderModel.ts:325-338`：`RenderModel.player` 只投影基础 player 字段，同样没有 secondary resource 承载面。
+  - `src\runtimeV2\pythonInterop.ts:103-145`：`normalizePythonSnapshot()` 先能把 snake_case 转 camelCase，但最终构造 `player` 时只复制基础字段和 `relicStates`，丢弃 `secondaryResources`、`evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:78-80`、`:91-99` 与 `src\content\narrative\pythonRuntime.ts:79-81`、`:92-99`：包侧和内嵌 Python runtime 的 `load_snapshot` / `load()` 对 snapshot 做 deepcopy，raw Python 层能保留未知 player 字段；丢失发生在 TS normalize。
+  - `src\core\actions\v2\SpecialActions.ts:96-124`：路线资源 action 对 secondary resources 读取 `state.player.secondaryResources?.[resource] ?? state.player[resource]`，并写回 direct field 与 `secondaryResources` map。
+  - `src\ui\views\combat\CombatHUD.tsx:66-83` 与 `src\ui\views\combat\combatViewModel.ts:80-92`：战斗 HUD/helper 会读取五类 secondary resources 并显示对应职业资源。
+  - `tests\unit\pythonInterop.test.ts:6-59`：现有 normalize 测试只覆盖 active event 与 generatedAt fallback，没有 secondary resource normalize 回归。
+  - `tests\unit\runtimeV2ContentBundle.test.ts:51-60` 与 `tests\unit\combatViewModel.test.ts:22-54`：现有测试分别确认 content bundle 投影和 UI helper 可显示 secondary resources，但没有覆盖 Python adapter normalize 端到端承载。
+- Fresh 复现/验证证据：
+  - TypeScript content bundle probe：
+    - 输出 `informant -> evidence`、`brute -> rage`、`tactician -> command`、`penitent_judge -> verdict`、`void_sanctioner -> seal`，五者 `starting_deck_size=10`。
+  - Raw Python package `load_snapshot` probe：
+    - 传入 `player.secondary_resources={"evidence":3}` 与 `player.evidence=4`。
+    - 输出 `raw_python_player_keys` 包含 `secondary_resources` 和 `evidence`。
+    - 输出 `raw_secondary_resources={"evidence":3}`、`raw_evidence=4`。
+  - `normalizePythonSnapshot()` direct probe：
+    - 输入同样包含 `secondary_resources.evidence=3` 和 direct `evidence=4`。
+    - 输出 `normalizedPlayerKeys` 只有 `characterId/corruption/deck/devotion/gold/hp/intel/maxHp/potionIds/relicIds/relicStates`。
+    - 输出 `normalizedSecondaryResources=null`、`normalizedEvidence=null`。
+    - `createRenderModel(normalized)` 输出 `renderSecondaryResources=null`、`renderEvidence=null`，`renderPlayerKeys` 也只有基础字段与计数。
+  - Real `PythonProcessAdapter` integrated probe：
+    - 通过 `adapter.dispatch({ type: "load_snapshot", snapshot })` 发送包含 `secondaryResources.evidence=3` 和 `evidence=4` 的 TS snapshot。
+    - adapter 成功返回，但 `loadedPlayerKeys` 只有基础字段，`loadedSecondaryResources=null`、`loadedEvidence=null`、`metaAdapter="python-process"`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`8` tests pass。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`。
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 构造一个 RuntimeV2 snapshot，`player.characterId="informant"`，并让 player 带 `secondaryResources.evidence=3` 或 Python snake_case `secondary_resources.evidence=3`。
+  - 通过 Python raw runtime `load_snapshot` 能保留该字段。
+  - 通过 TS `normalizePythonSnapshot()` 或 `PythonProcessAdapter.dispatch(load_snapshot)` 接收该快照。
+  - 实际结果：normalized `RuleSnapshot.player` 丢掉 `secondaryResources` 和 direct `evidence`，render model 也没有对应字段。
+  - 预期结果：Python/runtimeV2 边界应保留 secondary resource map 或 direct fields，至少能让 `CombatHUD` / `getCharacterResourceSnapshot()` 读取五名角色的 secondary resource 状态。
+- 结论：
+  - 这是 RuntimeV2/Python snapshot normalization 的资源投影 bug，和第 171/172 轮的 `special_resource` 初始化缺口不同：本轮问题聚焦 `secondary_resource` 已存在状态跨 Python adapter 回传时被 TS normalize 白名单丢弃。
+  - 现有 bundle、combatViewModel、runtimeV2、Python unittest 全绿，说明 gate 只分别覆盖“声明存在”和“UI 可显示”，没有覆盖 Python adapter snapshot resource preservation。
+- 优先级：
+  - P2。影响五名带路线 secondary resource 的角色；一旦 Python runtimeV2 接管带资源的 combat/save/load_snapshot 流，`evidence/rage/command/verdict/seal` 状态会在 adapter 边界消失，导致 UI 与后续 resource action 读取到 0。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `contracts.ts`、`pythonInterop.ts`、`renderModel.ts`、Python runtime、UI 或测试。
+- 修复方向：
+  - 扩展 `RuleSnapshot.player` 与 `RenderModel.player`，明确承载 `secondaryResources?: Record<string, number>`，必要时兼容 direct `evidence/rage/command/verdict/seal`。
+  - 在 `normalizePythonSnapshot()` 中从 `secondary_resources` / `secondaryResources` 和 direct secondary fields 归一化出同一 map，并保留 numeric clamp 策略。
+  - 增加回归：`normalizePythonSnapshot()` 输入 `secondary_resources` 后必须保留 `secondaryResources.evidence`；`PythonProcessAdapter` 的 `load_snapshot` 回传不得丢；render model/helper 能读出对应职业资源。
+  - 修复后复跑 `npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`、`npm run test:runtime-v2:ts --silent`、`npm run check:content-bundle --silent`、Python unittest。
+- 下一轮建议：
+  - 第 174 轮展示 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001`：给出 content bundle、RuleSnapshot/RenderModel、Python raw load_snapshot、PythonProcessAdapter integrated probe、focused tests 绿灯但缺覆盖、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 174 - RuntimeV2 Python Secondary Resource Normalize Dropped Exhibit - 2026-05-21
+
+- 循环模式：第 174 轮，按交替节奏展示第 173 轮发现的 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001`。
+- 展示 bug：
+  - **RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001**：RuntimeV2 content bundle 已保留五名角色的 `secondary_resource`，旧 UI/action 层也读取和写入 `secondaryResources` / direct secondary fields；但 Python adapter 边界的 `normalizePythonSnapshot()` 只白名单基础 player 字段。Python raw runtime 能保留 `secondary_resources` 和 direct `evidence`，经过 TS normalize / `PythonProcessAdapter` 回传后这些字段被丢弃，`RenderModel.player` 也没有承载面。
+- Fresh 源码定位：
+  - `src\content\data\characters.json:3` / `:8`、`:50` / `:55`、`:98` / `:103`、`:285` / `:290`、`:334` / `:339`：`informant`、`brute`、`tactician`、`penitent_judge`、`void_sanctioner` 分别声明 `secondaryResource` 为 `evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `src\runtimeV2\contracts.ts:22` 与 `src\runtimeV2\content\buildContentBundle.ts:62`：RuntimeV2 bundle 契约和 projection 都保留 `secondary_resource`。
+  - `src\runtimeV2\contracts.ts:167-188`：`RuleSnapshot.player` 只定义基础资源、deck、relic/potion 与 `relicStates`，没有 `secondaryResources` 或五个 direct secondary fields。
+  - `src\runtimeV2\contracts.ts:364-372` 与 `src\runtimeV2\renderModel.ts:325-338`：`RenderModel.player` 只投影基础 player 字段和计数，没有 secondary resource 承载面。
+  - `src\runtimeV2\pythonInterop.ts:103-145`：`normalizePythonSnapshot()` 转换 snake_case 后，在构造 normalized `player` 时只复制基础字段和 `relicStates`，丢弃 `secondaryResources`、`evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:78-80`、`:91-99` 与 `src\content\narrative\pythonRuntime.ts:79-81`、`:92-99`：包侧和内嵌 Python runtime 的 `load_snapshot` / `load()` 使用 deepcopy，raw Python 层可保留未知 player 字段；丢失点在 TS normalization。
+  - `src\core\actions\v2\SpecialActions.ts:92-124`：route resource action 对 secondary resources 读取 `state.player.secondaryResources?.[resource] ?? state.player[resource]`，并写回 direct field 与 `secondaryResources` map。
+  - `src\ui\views\combat\CombatHUD.tsx:66-83` 与 `src\ui\views\combat\combatViewModel.ts:77-92`：HUD/helper 会读取五类 secondary resources 并显示对应职业资源。
+  - `tests\unit\pythonInterop.test.ts:6-59`：现有 Python normalize tests 只覆盖 active event outcome 与 generatedAt fallback。
+  - `tests\unit\runtimeV2ContentBundle.test.ts:51-60` 与 `tests\unit\combatViewModel.test.ts:22-54`：现有测试分别覆盖 bundle 声明和 UI helper 显示，但没有覆盖 Python adapter normalize 保存 secondary resource。
+- Fresh 复现/验证证据：
+  - 第 174 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - TypeScript content bundle probe：
+    - `informant -> evidence`、`brute -> rage`、`tactician -> command`、`penitent_judge -> verdict`、`void_sanctioner -> seal`，五者 `starting_deck_size=10`。
+  - Raw Python package `load_snapshot` probe：
+    - 输入 `player.secondary_resources={"evidence":3}` 与 `player.evidence=4`。
+    - 输出 `raw_python_player_keys` 包含 `secondary_resources` 和 `evidence`。
+    - 输出 `raw_secondary_resources={"evidence":3}`、`raw_evidence=4`。
+  - `normalizePythonSnapshot()` + `createRenderModel()` direct probe：
+    - 输入同样包含 `secondary_resources.evidence=3` 和 direct `evidence=4`。
+    - 输出 `normalizedPlayerKeys=["characterId","corruption","deck","devotion","gold","hp","intel","maxHp","potionIds","relicIds","relicStates"]`。
+    - 输出 `normalizedSecondaryResources=null`、`normalizedEvidence=null`。
+    - Render model 输出 `renderSecondaryResources=null`、`renderEvidence=null`，`renderPlayerKeys` 也只有基础字段与计数。
+  - Real `PythonProcessAdapter` integrated probe：
+    - 通过 `adapter.dispatch({ type: "load_snapshot", snapshot })` 发送包含 `secondaryResources.evidence=3` 和 `evidence=4` 的 TS snapshot。
+    - adapter 成功返回，但 `loadedPlayerKeys` 只有基础字段，`loadedSecondaryResources=null`、`loadedEvidence=null`、`metaAdapter="python-process"`。
+  - Fresh tests / gates：
+    - `npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`8` tests pass。
+    - `npm run check:content-bundle --silent`：exit `0`，`7/7 passed`，其中包含 `Secondary resources in characters`。
+    - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+    - `$env:PYTHONPATH="python_runtime/src"; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`8` tests OK。
+- 复现路径：
+  - 构造 RuntimeV2 snapshot，`player.characterId="informant"`，并带 `secondaryResources.evidence=3` 或 Python snake_case `secondary_resources.evidence=3`。
+  - Python raw runtime `load_snapshot` 可以保留该字段。
+  - 通过 `normalizePythonSnapshot()` 或 `PythonProcessAdapter.dispatch(load_snapshot)` 接收该快照。
+  - 实际结果：normalized `RuleSnapshot.player` 丢掉 `secondaryResources` 和 direct `evidence`，render model 也没有对应字段。
+  - 预期结果：Python/runtimeV2 边界应保留 secondary resource map 或 direct fields，至少能让 `CombatHUD` / `getCharacterResourceSnapshot()` 读取五名角色的 secondary resource 状态。
+- 优先级：
+  - P2。影响五名带路线 secondary resource 的角色；Python/runtimeV2 接管 combat/save/load_snapshot 后，`evidence/rage/command/verdict/seal` 状态会在 adapter 边界消失，UI 与后续 resource action 读取会退化为 0。
+- 是否已修：
+  - 未修。第 174 轮 fresh `normalizePythonSnapshot()` probe 和 `PythonProcessAdapter` integrated probe 均仍输出 `secondaryResources=null` / `evidence=null`；本轮没有修改 runtime/contracts/UI/tests。
+- 修复验收标准：
+  - `RuleSnapshot.player` 与 `RenderModel.player` 明确承载 `secondaryResources?: Record<string, number>`，必要时兼容 direct `evidence/rage/command/verdict/seal`。
+  - `normalizePythonSnapshot()` 从 `secondary_resources` / `secondaryResources` 和 direct secondary fields 归一化出同一 map，并保留数字钳制策略。
+  - 增加回归：`normalizePythonSnapshot()` 输入 `secondary_resources` 后保留 `secondaryResources.evidence`；`PythonProcessAdapter` 的 `load_snapshot` 回传不丢；render model/helper 能读出对应职业资源。
+  - 修复后复跑 `npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/combatViewModel.test.ts tests/unit/runtimeV2ContentBundle.test.ts`、`npm run test:runtime-v2:ts --silent`、`npm run check:content-bundle --silent`、Python unittest。
+- 下一轮建议：
+  - 第 175 轮回到找 bug；优先继续 under-covered runtimeV2 combat command parity、Python WASM snapshot/resource projection、desktop packaging smoke 原子性或 content schema 对 snapshot projection 的静态 gate，避免继续重复 secondary-resource normalize 展示。
+
+## DeckRogue Bug Loop Cycle 175 - Content Schema Character Field Validation Gap Finding - 2026-05-21
+
+- 循环模式：第 175 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 174 轮报告尾部，上一轮展示的是 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001`。
+  - 已查重 `project-development-report.md` 中 `CONTENT-SCHEMA-CHARACTER`、`CHARACTER-FIELDS`、`startingDeck`、`malformed character`、`checkCharacters` 等关键词；未发现角色字段 schema/gate 漏检的独立登记。
+- 新发现：
+  - **CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001**：当前 content schema / authoring gate 没有验证 `characters.json` 的核心数值和 deck 字段。`check:content-bundle` 只检查 8 个必需角色 ID、portrait 文件存在和五个固定 secondary resource 字符串；`check:content-authoring` 只读取 cards/enemies/relics。RuntimeV2 content bundle projection 又会把坏类型静默降级：`maxHp="oops"` / `maxEnergy="NaN"` 变成 `1`，`startingDeck="not-an-array"` 被展开成 12 个单字符 starter deck 项，最终可进入 Python/runtimeV2 内容包。
+- 文件/行号：
+  - `src\runtimeV2\content\buildContentBundle.ts:21-28`：`CharacterEntry` 声明了 `maxHp/maxEnergy/startingDeck`，但这是 TS 类型断言面，JSON authoring 输入不会在运行时受保护。
+  - `src\runtimeV2\content\buildContentBundle.ts:54-62`：角色 projection 使用 `Number(entry.maxHp) || 1`、`Number(entry.maxEnergy) || 1` 和 `[...(entry.startingDeck || [])]`；坏数值会退化为 `1`，字符串 starter deck 会按字符展开。
+  - `scripts\validation\contentBundleCheck.ts:59-63`：`checkCharacters()` 只确认必需角色 ID 存在。
+  - `scripts\validation\contentBundleCheck.ts:95-108`：`checkSecondaryResources()` 只确认五个固定 secondary resource 字符串匹配。
+  - `scripts\validation\check_content_authoring.ts:212-215`：authoring checker 只加载 `cards.json`、`enemies.json`、`relics.json`，没有读取 `characters.json`。
+  - `src\content\narrative\contentSchema.ts:295`、`:319`、`:348`、`:365`、`:385`、`:404`：现有导出 validators 覆盖 cards/enemies/potions/relics/card modifiers/story events，但没有 `validateCharactersData()`。
+  - `tests\unit\runtimeV2ContentBundle.test.ts:39-53`：只断言真实 source 的 informant 字段被照搬，没有 malformed fixture。
+  - `tests\unit\gothicExpansionContent.test.ts:109-124`：只验证当前 8 名真实角色的叙事、deck 长度和资源 hook，没有覆盖 schema gate 对坏类型的拒绝。
+- Fresh 复现/验证证据：
+  - Real gates 仍通过：
+    - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+    - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `0/0`，Pass rate `100%`。
+    - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/gothicExpansionContent.test.ts`：exit `0`，`6` tests pass。
+  - 隔离 temp fixture probe：
+    - 在 `%TEMP%` 下构造最小内容树，`characters.json` 保留 8 个必需 ID 和 expected secondary resources，但把 `informant.maxHp="oops"`、`informant.maxEnergy="NaN"`、`informant.startingDeck="not-an-array"`。
+    - 用仓库本地 `node_modules\.bin\tsx.cmd`、仓库 `tsconfig.json` 和仓库 `scripts\validation\contentBundleCheck.ts` 运行。
+    - 输出仍为 `Character definitions (8 chars)` pass、`Secondary resources in characters` pass、`Summary: 7/7 passed`、`checker_exit=0`。
+    - temp fixture 目录已在验证后删除，未改动真实 `src\content\data\characters.json`。
+  - Projection inline probe：
+    - 输入 `maxHp:"oops"`、`maxEnergy:"NaN"`、`startingDeck:"not-an-array"`。
+    - 输出 `projected.max_hp=1`、`projected.max_energy=1`。
+    - 输出 `projected.starting_deck=["n","o","t","-","a","n","-","a","r","r","a","y"]`，`startingDeckLength=12`。
+- 复现路径：
+  - 在隔离内容树或未来 authoring 改动中，让某个必需角色保持正确 `id` / `secondaryResource`，但把 `maxHp`、`maxEnergy` 或 `startingDeck` 写成错误类型。
+  - 运行 `scripts\validation\contentBundleCheck.ts` 或当前 `check:content-bundle` 逻辑。
+  - 实际结果：bundle checker 通过；RuntimeV2 projection 会把坏字段静默转成 `1 HP / 1 energy / 逐字符 starter deck`。
+  - 预期结果：characters authoring schema 应在进入 RuntimeV2/Python content bundle 前 fail fast，至少拒绝非有限数值 `maxHp/maxEnergy` 和非数组 `startingDeck/extendedPool`。
+- 结论：
+  - 这是 content schema / authoring gate 对角色数据的覆盖缺口，和第 173/174 轮的 Python adapter secondary resource 丢失不同；本轮问题发生在 authoring 输入到 RuntimeV2 content bundle 的前置验证层。
+  - 当前真实数据与相关单测全绿，只能说明现有 8 名角色当前未触发坏输入；不能证明未来角色 authoring 变更会被 gate 拦住。
+- 优先级：
+  - P2。触发条件是未来角色数据 authoring 错误，但一旦发生，会把可游玩角色投影成低血低能量或非法 starter deck，并直接影响 RuntimeV2/Python 启动内容。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `contentSchema.ts`、`check_content_authoring.ts`、`contentBundleCheck.ts`、`buildContentBundle.ts` 或测试。
+- 修复方向：
+  - 在 `contentSchema.ts` 增加 `validateCharactersData()`，校验 `id`、`maxHp/maxEnergy` 有限正数、`startingDeck/extendedPool` 为 string array、`specialResource/secondaryResource` 为可选 string。
+  - 让 `check_content_authoring.ts` 或独立 content schema gate 读取并验证 `src\content\data\characters.json`。
+  - 在 `contentBundleCheck.ts` 的 `checkCharacters()` 中至少复用角色 validator，避免只检查 ID。
+  - 在 `runtimeV2ContentBundle.test.ts` 增加 malformed character fixture/regression，确认坏 `maxHp/maxEnergy/startingDeck` 会被 gate 拒绝，而不是在 projection 中静默退化。
+- 下一轮建议：
+  - 第 176 轮展示 `CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001`：给出源码定位、隔离 fixture 7/7 复现、projection 退化输出、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 176 - Content Schema Character Field Validation Gap Exhibit - 2026-05-21
+
+- 循环模式：第 176 轮，按交替节奏展示第 175 轮发现的 `CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001`。
+- 展示 bug：
+  - **CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001**：`characters.json` 的核心角色字段没有进入 content schema / authoring gate。当前 `check:content-bundle` 只确认 8 个角色 ID、portrait 和固定 secondary resource 字符串；`check:content-authoring` 只验证 cards/enemies/relics。RuntimeV2 bundle projection 对坏角色字段又采用宽松 fallback：非数字 `maxHp/maxEnergy` 被变成 `1`，字符串 `startingDeck` 被展开成逐字符 deck，因此 malformed character authoring 可以通过门禁进入 Python/runtimeV2 内容包。
+- Fresh 源码定位：
+  - `src\runtimeV2\content\buildContentBundle.ts:21-28`：`CharacterEntry` 声明 `maxHp/maxEnergy/startingDeck`，但 JSON 输入靠类型断言使用，没有运行时校验。
+  - `src\runtimeV2\content\buildContentBundle.ts:56-59`：`Number(entry.maxHp) || 1`、`Number(entry.maxEnergy) || 1` 和 `[...(entry.startingDeck || [])]` 会把坏数值降级为 `1`，把字符串 deck 按字符展开。
+  - `scripts\validation\contentBundleCheck.ts:59-63`：`checkCharacters()` 只检查必需角色 ID 是否存在。
+  - `scripts\validation\contentBundleCheck.ts:95-108`：`checkSecondaryResources()` 只检查五个固定 `secondaryResource` 是否匹配。
+  - `scripts\validation\check_content_authoring.ts:213-219`：authoring checker 只读取 `cards.json`、`enemies.json`、`relics.json`，没有读取 `characters.json`。
+  - `src\content\narrative\contentSchema.ts:295`、`:319`、`:348`、`:365`、`:385`、`:404`：导出的 validators 覆盖 cards/enemies/potions/relics/card modifiers/story events，但没有角色数据 validator。
+  - `tests\unit\runtimeV2ContentBundle.test.ts:47-53`：现有 bundle test 只对真实 `informant` source 做相等断言，没有 malformed fixture。
+  - `tests\unit\gothicExpansionContent.test.ts:120-124`：现有角色内容测试只确认当前真实 starter deck 长度和卡牌引用，没有覆盖 schema gate 拒绝坏类型。
+- Fresh 复现/验证证据：
+  - 第 176 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加报告。
+  - Real gates 仍通过：
+    - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+    - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `0/0`，Pass rate `100%`。
+    - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/gothicExpansionContent.test.ts`：exit `0`，`6` tests pass。
+  - 隔离 malformed fixture：
+    - 在 `%TEMP%` 下构造最小内容树，保留 8 个必需角色 ID、expected secondary resources 和 portrait placeholder。
+    - 将 `informant.maxHp` 改为 `"oops"`，`informant.maxEnergy` 改为 `"NaN"`，`informant.startingDeck` 改为 `"not-an-array"`。
+    - 用仓库本地 `node_modules\.bin\tsx.cmd` 运行仓库 `scripts\validation\contentBundleCheck.ts`。
+    - 输出仍为 `Character definitions (8 chars)` pass、`Secondary resources in characters` pass、`Summary: 7/7 passed`、`checker_exit=0`。
+    - temp fixture 已在验证后删除，真实 `src\content\data\characters.json` 未改动。
+  - Projection inline probe：
+    - 同样输入坏字段后，projection 输出 `max_hp=1`、`max_energy=1`。
+    - `starting_deck` 输出为 `["n","o","t","-","a","n","-","a","r","r","a","y"]`，`startingDeckLength=12`。
+- 复现路径：
+  - 在未来角色 authoring 中保持合法 `id` 和 expected `secondaryResource`，但让 `maxHp/maxEnergy` 为非数字字符串或让 `startingDeck` 不是数组。
+  - 运行当前 `check:content-bundle` / `contentBundleCheck.ts`。
+  - 实际结果：门禁通过；RuntimeV2 projection 静默生成 `1 HP / 1 energy / 逐字符 starter deck`。
+  - 预期结果：角色 authoring schema 应在进入 RuntimeV2/Python content bundle 前 fail fast。
+- 优先级：
+  - P2。当前真实数据未触发，但该 gate 是角色 authoring 到 RuntimeV2/Python 的前置防线；一旦未来改坏角色字段，可直接生成低血低能量或非法 starter deck 的可游玩角色。
+- 是否已修：
+  - 未修。第 176 轮 fresh malformed fixture 仍 `7/7 passed`，projection 仍输出 `max_hp=1` / `max_energy=1` / 逐字符 deck；本轮没有修改 schema、checker、bundle projection 或测试。
+- 修复验收标准：
+  - `contentSchema.ts` 增加 `validateCharactersData()`，校验角色 `id`、`maxHp/maxEnergy`、`startingDeck/extendedPool`、`specialResource/secondaryResource`。
+  - `check_content_authoring.ts` 或 content bundle gate 实际读取并验证 `src\content\data\characters.json`。
+  - `contentBundleCheck.ts` 的 `checkCharacters()` 不再只查 ID，至少复用角色 validator。
+  - 新增 malformed character regression：坏 `maxHp/maxEnergy/startingDeck` 必须让 gate 失败；修复后复跑 `npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/gothicExpansionContent.test.ts`。
+- 下一轮建议：
+  - 第 177 轮回到找 bug；优先继续 UI/rendering 的 runtimeV2 surface 接线、desktop packaging artifact/report 原子性、Python WASM loader/resource 边界，或 AI intent chain 的 normalization/fallback 覆盖，避免继续重复 character schema gate。
+
+## DeckRogue Bug Loop Cycle 177 - RuntimeV2 Terminal Summary Uses Legacy State Finding - 2026-05-22
+
+- 循环模式：第 177 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 176 轮报告尾部，上一轮展示的是 `CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001`。
+  - 已查重 `project-development-report.md` 中 `TERMINAL-SUMMARY`、`terminalSummary`、`computeRunSummary(engine.state)`、`Victory renderModel`、`GameOver renderModel` 等关键词；未发现 runtimeV2-only terminal summary 的独立登记。
+- 新发现：
+  - **UI-RUNTIMEV2-TERMINAL-SUMMARY-USES-LEGACY-STATE-001**：`AppShell` 的 active screen 已优先采用 `renderModel.screen`，所以 runtimeV2/Python snapshot 可以把 UI 带到 `Victory` 或 `GameOver`。但同一代码块的终局结算仍固定调用 `computeRunSummary(engine.state)`，而 `computeRunSummary()` 又用 `state.screen === "Victory"` 判断胜利、死因和 boss victory warp echoes。当 runtimeV2 renderModel 已进入终局而 legacy `engine.state.screen` 尚未同步时，UI 会渲染终局页，却用 stale legacy screen 算出 `isVictory=false`、`causeOfDeath="Unknown"`，并漏掉胜利 warp echoes。
+- 文件/行号：
+  - `src\ui\views\AppShell.tsx:562-564`：`activeScreen` 使用 `renderModel?.screen ?? engine.state.screen`，但 `terminalSummary` 仍调用 `computeRunSummary(engine.state)`。
+  - `src\ui\views\AppShell.tsx:575-579`：终局叙事依赖 `terminalSummary.isVictory`，因此 stale summary 会让 Victory branch 取不到胜利叙事。
+  - `src\ui\views\AppShell.tsx:1059` 与 `:1158`：`GameOver` / `Victory` 渲染分支由 `activeScreen` 决定，已经可能来自 renderModel。
+  - `src\core\events\runSummarySystem.ts:25-29`：死因完全由 legacy `state.screen` / combat / hp 推导，非终局 stale state 会回落为 `Unknown`。
+  - `src\core\events\runSummarySystem.ts:37` 与 `:66-68`：`isVictory` 只看 `state.screen === "Victory"`，boss victory warp echoes 只在该布尔为真时追加。
+  - `src\runtimeV2\renderModel.ts:278-290` 与 `:323`：runtimeV2 render model 已明确支持 `Victory` / `GameOver` screen 和 room kind。
+  - `tests\unit\appShellUiContracts.test.ts:16-38`：现有 AppShell contract 只测试 screen resolver 保留 `GameOver` / `Victory`，没有测试 renderModel-only terminal screen 的 summary 来源。
+- Fresh 复现/验证证据：
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`184` tests pass。
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`39` tests，`38` pass，`1` skip。
+  - Inline terminal-summary probe：
+    - 构造 `renderModelScreen="Victory"`，同时保持 legacy `engine.state.screen="Map"`。
+    - 当前 AppShell 逻辑等价的 stale summary 输出：`isVictory=false`、`causeOfDeath="Unknown"`、`earnedWarpEchoes=2`。
+    - 若 summary 使用终局 screen 计算，输出应为：`isVictory=true`、`causeOfDeath="Victory"`、`earnedWarpEchoes=6`。
+- 复现路径：
+  - 让 runtimeV2/Python adapter 发出 `snapshot.lifecycle.screen="Victory"` 或 `"GameOver"`，并让 AppShell 收到该 render model。
+  - 在 legacy `engine.state.screen` 尚未同步到相同终局 screen 的窗口内渲染 AppShell。
+  - 实际结果：UI 进入 Victory/GameOver 分支，但结算摘要、死因、胜利奖励和叙事仍从 stale legacy `engine.state` 计算。
+  - 预期结果：终局 UI 的 screen、summary、叙事和奖励应来自同一权威状态；若 active screen 来自 renderModel，summary 至少应按该 terminal screen 投影，或 runtime host 必须先同步 legacy terminal state 再渲染。
+- 结论：
+  - 这是 UI/rendering 与 runtimeV2 render model 接线缺口，和第 105-116 轮的 Reward/Shop/Event/selector choices 不同；本轮问题发生在终局屏 summary/奖励结算层。
+  - 现有 AppShell、runtimeV2Host、legacy render bridge 和 supplemental 单测全绿，只说明 screen resolver 与 render model host 可用，没有覆盖 renderModel-only terminal screen 的 summary 一致性。
+- 优先级：
+  - P2。终局页是玩家结算和 meta currency 展示入口；runtimeV2/Python 接管终局 screen 后，stale legacy summary 会错误展示死因、胜利状态和 warp echoes，可能误导玩家并污染结算录入前的 UI 反馈。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `AppShell.tsx`、`runSummarySystem.ts`、runtimeV2 terminal contract 或测试。
+- 修复方向：
+  - 给 AppShell 提供 terminal summary projection：当 `activeScreen` 来自 renderModel 的 `Victory` / `GameOver` 时，用同一 terminal screen 计算 summary，或从 runtimeV2 snapshot/renderModel 直接携带 terminal summary。
+  - 避免 Victory branch 使用 `terminalSummary.isVictory=false` 的混合状态；summary、narrative、currency preview 与 active screen 必须同源。
+  - 增加回归：renderModel screen 为 `Victory` 且 legacy `engine.state.screen` 仍为非终局时，Victory UI 的 summary 应显示 `isVictory=true` / `causeOfDeath="Victory"`，并包含 boss victory warp echoes；GameOver 同理应显示非胜利死因而不是 stale `Unknown`。
+- 下一轮建议：
+  - 第 178 轮展示 `UI-RUNTIMEV2-TERMINAL-SUMMARY-USES-LEGACY-STATE-001`：给出 AppShell/runSummary/renderModel 行号、inline stale summary 对照、focused tests 绿灯但缺覆盖、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 178 - RuntimeV2 Terminal Summary Uses Legacy State Exhibit - 2026-05-22
+
+- 循环模式：第 178 轮，按交替节奏展示第 177 轮发现的 `UI-RUNTIMEV2-TERMINAL-SUMMARY-USES-LEGACY-STATE-001`。
+- 展示 bug：
+  - **UI-RUNTIMEV2-TERMINAL-SUMMARY-USES-LEGACY-STATE-001**：`AppShell` 的 active screen 可以优先采用 `renderModel.screen`，所以 runtimeV2/Python snapshot 可以把 UI 带到 `Victory` 或 `GameOver`；但终局摘要仍固定调用 `computeRunSummary(engine.state)`。当 renderModel 已进入终局而 legacy `engine.state.screen` 仍是 `Map` 等非终局 screen 时，UI 会渲染 Victory/GameOver 分支，却用 stale legacy state 算出错误的胜利状态、死因和 warp echoes。
+- Fresh 源码定位：
+  - `src\ui\views\AppShell.tsx:562-564`：`activeScreen` 来自 `renderModel?.screen ?? engine.state.screen`，但 `terminalSummary` 仍只用 `computeRunSummary(engine.state)`。
+  - `src\ui\views\AppShell.tsx:575-579`：终局叙事依赖 `terminalSummary.isVictory`，stale summary 会让 Victory 分支拿不到胜利叙事。
+  - `src\ui\views\AppShell.tsx:1059-1129`：`GameOver` 分支由 `activeScreen` 决定，却展示 `terminalSummary.causeOfDeath`、`earnedWarpEchoes` 等 legacy summary 字段。
+  - `src\ui\views\AppShell.tsx:1158-1207`：`Victory` 分支也由 `activeScreen` 决定，并展示同一个 `terminalSummary` 的层数、deck、requisition、warp echoes 和 run id。
+  - `src\core\events\runSummarySystem.ts:25-29`：死因只从 legacy `state.screen` / combat / hp 推导，非终局 stale state 会回落为 `Unknown`。
+  - `src\core\events\runSummarySystem.ts:37`、`:66-68`：`isVictory` 只看 `state.screen === "Victory"`，boss victory warp echoes 只在该布尔为真时追加。
+  - `src\runtimeV2\renderModel.ts:278-290`、`:323`：runtimeV2 render model 已明确支持 `Victory` / `GameOver` screen 和 terminal room kind。
+  - `tests\unit\appShellUiContracts.test.ts:16-38`：现有 AppShell contract 只断言 screen resolver 保留 `GameOver` / `Victory`，没有覆盖 renderModel-only terminal screen 的 summary 来源。
+- Fresh 复现/验证证据：
+  - 第 178 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，输出 `[check_ui_runtime_boundaries] OK`。
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`39` tests，`38` pass，`1` skip。
+  - Inline terminal-summary probe：构造 `renderModelScreen="Victory"`，同时保持 legacy `engine.state.screen="Map"`。
+  - 当前 AppShell 等价路径的 stale summary 输出：`isVictory=false`、`causeOfDeath="Unknown"`、`earnedWarpEchoes=2`。
+  - 若 summary 按同一 terminal screen 投影，输出应为：`isVictory=true`、`causeOfDeath="Victory"`、`earnedWarpEchoes=6`。
+- 复现路径：
+  - 让 runtimeV2/Python adapter 发出 `snapshot.lifecycle.screen="Victory"` 或 `"GameOver"`，并让 AppShell 收到该 render model。
+  - 在 legacy `engine.state.screen` 尚未同步到同一终局 screen 的窗口内渲染 AppShell。
+  - 实际结果：UI 进入 Victory/GameOver 分支，但终局摘要、死因、胜利奖励和叙事仍从 stale legacy `engine.state` 计算。
+  - 预期结果：终局 UI 的 screen、summary、叙事和奖励应来自同一权威状态；若 active screen 来自 renderModel，summary 至少应按该 terminal screen 投影，或 runtime host 必须先同步 legacy terminal state 再渲染。
+- 优先级：
+  - P2。终局页是玩家结算和 meta currency 展示入口；runtimeV2/Python 接管终局 screen 后，stale legacy summary 会错误展示死因、胜利状态和 warp echoes，可能误导玩家并污染结算录入前的 UI 反馈。
+- 是否已修：
+  - 未修。本轮没有修改 `AppShell.tsx`、`runSummarySystem.ts`、runtimeV2 terminal contract 或测试；fresh inline probe 仍复现 `renderModelScreen="Victory"` / legacy `Map` 时的 stale summary。
+- 修复验收标准：
+  - AppShell 终局 summary 与 `activeScreen` 同源：当 `activeScreen` 来自 renderModel 的 `Victory` / `GameOver` 时，summary 使用同一 terminal screen 投影，或 runtimeV2 snapshot/renderModel 直接携带 terminal summary。
+  - Victory branch 不能再展示 `terminalSummary.isVictory=false` 的混合状态；currency preview、death/victory narrative、run history check 与 active terminal screen 保持一致。
+  - 新增回归：renderModel screen 为 `Victory` 且 legacy `engine.state.screen` 仍为非终局时，Victory UI summary 显示 `isVictory=true` / `causeOfDeath="Victory"` 并包含 boss victory warp echoes；GameOver 同理不能回落到 stale `Unknown`。
+  - 修复后复跑 `npm run check:ui-runtime-boundaries --silent`、`npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`，必要时补跑 `npm run test:supplemental-units --silent`。
+- 下一轮建议：
+  - 第 179 轮回到找 bug；优先继续 under-covered UI/rendering 的 runtimeV2 terminal/room projection、Python WASM snapshot/resource 边界、desktop packaging artifact 原子性，或 AI intent chain normalization/fallback 覆盖，避免继续重复 terminal summary 展示。
+
+## DeckRogue Bug Loop Cycle 179 - Ascension Intent Aggro Bias No-Op Finding - 2026-05-22
+
+- 循环模式：第 179 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 178 轮报告尾部，上一轮展示的是 `UI-RUNTIMEV2-TERMINAL-SUMMARY-USES-LEGACY-STATE-001`。
+  - 已查重 `project-development-report.md` 中 `ascensionIntentAggroBias`、`intentAggroBias`、`difficultyModifier`、`adjustThreatForDifficulty` 等关键词；未发现 Ascension intent aggro bias 无效的独立登记。
+- 新发现：
+  - **AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001**：Meta ascension 配置把 `intentAggroBias` 注入 `state.metaRuntime.ascensionIntentAggroBias`，`selectEnemyIntentForCombat()` 也把该值传给 `IntentSelector.selectIntent()` 的 `difficultyModifier` 参数；但同一次调用已经显式传入了 `situation`。`IntentSelector` 只有在 `situation` 为空时才使用 `difficultyModifier` 调整 threat/opportunity，因此当前统一 AI 入口下 `ascensionIntentAggroBias` 是 no-op。另一个旧 `src/core/combat/CombatManager.ts` 也读取了 `aggroBias` 但没有把它传入 selector。
+- 文件/行号：
+  - `src\core\persistence\metaInjection.ts:144-148`：Ascension level 会写入 `ascensionEnemyHpMultiplier`、`ascensionEnemyDamageMultiplier`、`ascensionEliteUpgradeChance` 与 `ascensionIntentAggroBias`。
+  - `src\content\data\metaBalance.json:139-229`：Ascension 配置定义 `intentAggroBias` 从 `0.0` 递增到 `0.22`，说明这是可配置 difficulty surface。
+  - `src\core\ai\selectEnemyIntent.ts:399-402`：统一 AI 入口总是构造并传入 `situation = deriveSituationFromPerception(...)`。
+  - `src\core\ai\selectEnemyIntent.ts:406-418`：同一调用把 `Math.max(0, Number(state.metaRuntime?.ascensionIntentAggroBias || 0))` 作为最后一个 `difficultyModifier` 参数传入。
+  - `src\core\ai\intentSelector.ts:148-152`：`adjustedSituation` 使用 `situation || (difficultyModifier !== undefined ? ...)`，只要 facade 传了 `situation`，`difficultyModifier` 分支就不会执行。
+  - `src\core\ai\intentSelector.ts:702-730`：`adjustThreatForDifficulty()` / `adjustOpportunityForDifficulty()` 是 `difficultyModifier` 的唯一消费点，但当前 facade 路径无法到达。
+  - `src\core\combat\CombatManager.ts:212-221`：另一个 combat manager 读取 `aggroBias` 后未使用，直接调用 `intentSelector.selectIntent(...)`。
+  - `tests\unit\enemyIntentFacade.test.ts:168-172`：测试 fixture 设置了 `ascensionIntentAggroBias: 0.5`，但现有测试没有断言该字段会改变意图分布或选中结果。
+- Fresh 复现/验证证据：
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests 全部 pass。
+  - Inline selector probe：
+    - 构造同一个 snake_case `intent_policy` 敌人，rolls 为 `[0,0.2,0.49,0.5,0.8,0.99]`。
+    - 分别设置 `ascensionIntentAggroBias=0`、真实配置上限级别附近的 `0.22`、以及极端值 `999`。
+    - 输出完全一致：`bias0=["Attack","Attack","Guard","Guard","Guard","Guard"]`、`bias022=["Attack","Attack","Guard","Guard","Guard","Guard"]`、`bias999=["Attack","Attack","Guard","Guard","Guard","Guard"]`。
+  - 源码引用刷新：
+    - `Select-String` 确认 `metaInjection.ts` 写入 `ascensionIntentAggroBias`，`selectEnemyIntent.ts` 传入该值，`intentSelector.ts` 只在缺少 `situation` 时消费 `difficultyModifier`。
+    - `Select-String` 同时确认旧 `src\core\combat\CombatManager.ts` 中 `const aggroBias = ...` 之后没有参与 `intentSelector.selectIntent()` 调用。
+- 复现路径：
+  - 开启任意带 `intentAggroBias > 0` 的 Ascension level，或直接构造 `GameState.metaRuntime.ascensionIntentAggroBias`。
+  - 通过当前默认 combat AI 路径调用 `selectEnemyIntentForCombat()`。
+  - 实际结果：该值被传入 `difficultyModifier`，但由于 `situation` 已存在，selector 永远不会执行 difficulty adjustment 分支；输出与 bias 为 `0` 相同。
+  - 预期结果：Ascension `intentAggroBias` 应以明确语义影响意图选择，例如增加 aggressive intent 权重、提高 threat interpretation、或在 `deriveSituationFromPerception()` 阶段应用；若不再使用，应从 meta config/report 中删除，避免假 difficulty surface。
+- 结论：
+  - 这是 AI intent chain 的 meta difficulty 接线 bug，和第 159/160 轮 camelCase `intentPolicy` fallback、 第 167/168 轮 zero-weight RNG 边界不同。
+  - 现有 AI facade/profile tests 全绿，只说明基础 policy、profile、anti-stall 与 perception 工作；没有覆盖 Ascension intent aggro bias 的行为差异。
+- 优先级：
+  - P2。它不会直接崩溃，但会让高 Ascension 的 AI aggressiveness 配置失效；玩家看到敌人 HP/伤害/地图权重等 Ascension 改动生效，却不会得到配置声称的 intent aggression 增量。
+- 是否已修：
+  - 未修。本轮只找 bug 并记录证据，没有修改 `selectEnemyIntent.ts`、`intentSelector.ts`、`metaInjection.ts`、旧 combat manager 或测试。
+- 修复方向：
+  - 明确 `ascensionIntentAggroBias` 的语义：若它是 additive bias，应在 `selectEnemyIntentForCombat()` 的 `deriveSituationFromPerception()` 后直接提高 `suggestedIntentBias` 或 aggressive policy 权重。
+  - 若要继续复用 `difficultyModifier`，则 `IntentSelector.selectIntent()` 应在传入 `situation` 时也应用 difficulty/aggro adjustment，而不是被 `situation || ...` 短路。
+  - 清理旧 `src\core\combat\CombatManager.ts` 中未使用的 `aggroBias`，或接入同一个统一 helper，避免两个 combat manager 对 Ascension AI 语义分叉。
+  - 增加回归：同一敌人/同一 roll 下，`ascensionIntentAggroBias=0.22` 或更高测试值应比 `0` 更偏向 aggressive/attack 类 intent；同时断言 facade 路径而不是直接测试底层 selector。
+- 下一轮建议：
+  - 第 180 轮展示 `AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001`：给出 metaInjection/metaBalance/selectEnemyIntent/intentSelector/旧 CombatManager 行号、inline no-op probe、focused AI tests 绿灯但缺覆盖、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 180 - Ascension Intent Aggro Bias No-Op Exhibit - 2026-05-22
+
+- 循环模式：第 180 轮，按交替节奏展示第 179 轮发现的 `AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001`。
+- 展示 bug：
+  - **AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001**：Ascension 配置中的 `intentAggroBias` 会被注入到 `state.metaRuntime.ascensionIntentAggroBias`，并传给 `IntentSelector.selectIntent()` 的 `difficultyModifier` 参数；但当前统一 AI facade 同时已经传入 `situation`，而 `IntentSelector` 用 `situation || (...)` 短路了 difficulty adjustment 分支。因此当前默认 AI intent path 下，Ascension intent aggression 配置实际不改变意图选择。
+- Fresh 源码定位：
+  - `src\core\persistence\metaInjection.ts:144-148`：Ascension 运行时字段写入 `ascensionEnemyHpMultiplier`、`ascensionEnemyDamageMultiplier`、`ascensionEliteUpgradeChance` 与 `ascensionIntentAggroBias`。
+  - `src\content\data\metaBalance.json:139-229`：`intentAggroBias` 从 `0.0` 递增到 `0.22`，是明确配置出的 difficulty surface。
+  - `src\core\ai\selectEnemyIntent.ts:399-402`：`selectEnemyIntentForCombat()` 总是构造 `situation = deriveSituationFromPerception(...)`。
+  - `src\core\ai\selectEnemyIntent.ts:406-418`：同一次 `intentSelector.selectIntent(...)` 调用仍把 `ascensionIntentAggroBias` 作为最后一个 `difficultyModifier` 参数传入。
+  - `src\core\ai\intentSelector.ts:148-152`：`adjustedSituation` 使用 `situation || (difficultyModifier !== undefined ? ...)`；只要 facade 传入 `situation`，`difficultyModifier` 就不会被消费。
+  - `src\core\ai\intentSelector.ts:702` 与 `:717`：`adjustThreatForDifficulty()` / `adjustOpportunityForDifficulty()` 是该参数的目标消费点，但当前 facade 路径到不了。
+  - `src\core\combat\CombatManager.ts:213`：旧 combat manager 也读取 `ascensionIntentAggroBias` 为 `aggroBias`，但后续 `intentSelector.selectIntent()` 调用没有传入或使用它。
+  - `tests\unit\enemyIntentFacade.test.ts:168-172`：fixture 设置 `ascensionIntentAggroBias: 0.5`，但现有测试只验证其它 AI 行为，没有断言该字段会改变 intent 分布。
+- Fresh 复现/验证证据：
+  - 第 180 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`17` tests，`17` pass。
+  - Inline selector probe：
+    - 构造同一个 snake_case `intent_policy` 敌人，rolls 为 `[0,0.2,0.49,0.5,0.8,0.99]`。
+    - 分别设置 `ascensionIntentAggroBias=0`、真实配置上限附近的 `0.22`、极端值 `999`。
+    - 输出完全一致：`bias0=["Attack","Attack","Guard","Guard","Guard","Guard"]`、`bias022=["Attack","Attack","Guard","Guard","Guard","Guard"]`、`bias999=["Attack","Attack","Guard","Guard","Guard","Guard"]`。
+  - Fresh `Select-String` 源码证据：
+    - 确认 `metaInjection.ts` 写入 `ascensionIntentAggroBias`。
+    - 确认 `selectEnemyIntent.ts` 把该值传给 `difficultyModifier`。
+    - 确认 `intentSelector.ts` 只在缺少 `situation` 时消费 `difficultyModifier`。
+    - 确认旧 `src\core\combat\CombatManager.ts` 中 `const aggroBias = ...` 之后没有参与 selector 调用。
+- 复现路径：
+  - 开启带 `intentAggroBias > 0` 的 Ascension level，或直接构造 `GameState.metaRuntime.ascensionIntentAggroBias`。
+  - 调用默认 combat AI 路径 `selectEnemyIntentForCombat()`。
+  - 实际结果：无论 bias 为 `0`、`0.22` 还是极端 `999`，同一 roll 序列输出都不变。
+  - 预期结果：Ascension `intentAggroBias` 应以明确语义改变意图选择，例如提高 aggressive/attack intent 权重、改变 threat/opportunity 解读，或明确从配置中移除避免假 difficulty surface。
+- 优先级：
+  - P2。该问题不会直接崩溃，但会让高 Ascension 的 AI aggressiveness 配置失效；玩家能看到 HP、伤害、地图权重等其它 Ascension 改动，却不会得到配置声明的 intent aggression 增量。
+- 是否已修：
+  - 未修。本轮没有修改 `selectEnemyIntent.ts`、`intentSelector.ts`、`metaInjection.ts`、旧 combat manager 或测试；fresh inline probe 仍证明该参数 no-op。
+- 修复验收标准：
+  - 明确 `ascensionIntentAggroBias` 的语义，并在 facade 路径实际应用：例如在 `deriveSituationFromPerception()` 后调整 `suggestedIntentBias`，或在 policy weight 阶段提高 aggressive/attack intent。
+  - 如果继续复用 `difficultyModifier`，`IntentSelector.selectIntent()` 必须在 `situation` 已传入时也应用 difficulty/aggro adjustment，不能被 `situation || ...` 短路。
+  - 清理或接入旧 `src\core\combat\CombatManager.ts` 中未使用的 `aggroBias`，避免两个 combat manager 对 Ascension AI 语义分叉。
+  - 增加回归：同一敌人/同一 roll 下，`ascensionIntentAggroBias=0.22` 或更高测试值应比 `0` 更偏向 aggressive/attack 类 intent；测试必须走 `selectEnemyIntentForCombat()` facade。
+  - 修复后复跑 `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`，并补充针对 Ascension intent bias 的 focused regression。
+- 下一轮建议：
+  - 第 181 轮回到找 bug；优先继续 under-covered content schema 对 meta/AI 配置的静态 gate、runtimeV2/Python intent parity、desktop release gate 未覆盖面，或 UI/rendering 的 runtimeV2 projection，但避免重复 Ascension aggro bias no-op。
+
+## DeckRogue Bug Loop Cycle 181 - Python Secondary Resource Initialization Missing Finding - 2026-05-22
+
+- 循环模式：第 181 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short`：分支工作树仍有大量既有修改；本轮只追加本报告段，不修改业务源码。
+  - 已读取第 180 轮报告尾部，上一轮展示的是 `AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001`。
+  - 已查重 `secondary_resource`、`secondaryResources`、`special_resource`、`select_character` 等报告关键词；第 171/172 轮是 special resource 初始化缺失，第 173/174 轮是 TS normalize 丢掉已有 secondary resource，本轮问题发生在 Python raw snapshot 生成端，未发现同名登记。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001**：RuntimeV2 content bundle 已把五名角色的 `secondary_resource` 传给 Python core，旧 action/UI 层也能读取和写入 `secondaryResources` / direct resource 字段；但 Python `RuleRuntime._apply_select_character()` 在选角后只创建基础 player 字段，没有依据角色声明初始化 `secondary_resources` map 或 `evidence/rage/command/verdict/seal` direct 字段。结果是 Python/runtimeV2 从选角开始就没有五名 secondary-resource 职业的资源状态，后续 UI/helper 和 route resource action 只能读到 0 或空值。
+- 文件/行号：
+  - `src\content\data\characters.json:3` / `:8`、`:50` / `:55`、`:98` / `:103`、`:285` / `:290`、`:334` / `:339`：`informant`、`brute`、`tactician`、`penitent_judge`、`void_sanctioner` 分别声明 `secondaryResource` 为 `evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `src\runtimeV2\content\buildContentBundle.ts:54-62`：RuntimeV2 bundle projection 把 `secondaryResource` 写成 Python bundle 的 `secondary_resource`。
+  - `src\runtimeV2\contracts.ts:14-22`：`ContentBundleCharacter` 契约声明了 `secondary_resource`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:102-122`：`_apply_select_character()` 只写入 `character_id/hp/max_hp/gold/intel/devotion/corruption/deck/relic_ids/potion_ids/relic_states`，没有读取或写入 `secondary_resource`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1757-1769`：初始 `player` snapshot 也只包含基础字段，没有 secondary resource 承载面。
+  - `src\core\actions\v2\SpecialActions.ts:92-100`、`:118-127`：route resource action 会从 `player.secondaryResources?.[resource] ?? player[resource]` 读取，并写回 direct 字段与 `secondaryResources` map。
+  - `src\ui\views\combat\CombatHUD.tsx:66-83` 与 `src\ui\views\combat\combatViewModel.ts:77-92`：HUD/helper 明确显示五类 secondary resources。
+  - `python_runtime\tests\test_runtime.py:38-47`：Python select-character 测试只断言进入 Map、deck/map/replay，未断言 secondary resource 初始化。
+  - `tests\unit\runtimeV2ContentBundle.test.ts:47-60`、`tests\unit\combatViewModel.test.ts:22-56`、`tests\unit\pythonInterop.test.ts:6-60`：现有 TS 测试分别覆盖 bundle 投影、UI helper 显示和 unrelated normalize 行为，没有覆盖 Python core 选角后生成 secondary resource 状态。
+- Fresh 复现/验证证据：
+  - Python raw runtime probe：构造最小 content bundle，五名角色分别声明 `secondary_resource=evidence/rage/command/verdict/seal`，逐个调用 `boot(...).dispatch({"type":"select_character","character_id":...})`。
+  - Probe 输出五名角色的 `player_keys` 都只有 `["character_id","corruption","deck","devotion","gold","hp","intel","max_hp","potion_ids","relic_ids","relic_states"]`；`secondary_resources=null`、`secondaryResources=null`、对应 direct resource 值也全部为 `null`。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/combatViewModel.test.ts tests/unit/pythonInterop.test.ts`：exit `0`，`8` tests，`8` pass。
+  - `npx tsx --test tests/unit/specialActionBehavior.test.ts`：exit `0`，`38` tests，`38` pass。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest python_runtime.tests.test_runtime`：exit `0`，`2` tests，`OK`。
+- 复现路径：
+  - 使用当前 RuntimeV2 content bundle 或等价最小 bundle，让角色声明 `secondary_resource`。
+  - 调用 Python rules-core 的 `select_character`，例如 `informant/evidence`。
+  - 实际结果：Python raw snapshot 的 `player` 没有 `secondary_resources` map，也没有 direct `evidence` 字段。
+  - 预期结果：Python runtime 应在选角时依据 `secondary_resource` 初始化一个可序列化资源承载面，例如 `secondary_resources: {"evidence": 0}`，并与 TS normalize/render model/UI helper 的读取面保持一致。
+- 结论：
+  - 这是 RuntimeV2/Python 生成端初始化 bug，和第 173/174 轮的 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001` 不同：旧问题是假设 Python 已经返回资源字段但 TS adapter 丢弃；本轮证明 Python raw snapshot 在选角后根本没有生成这些字段。
+  - 现有 bundle、UI helper、special action 和 Python select-character 测试全绿，只说明各自局部可用，没有覆盖 content bundle -> Python core -> player snapshot 的 secondary resource 初始化闭环。
+- 优先级：
+  - P2。影响五名 secondary-resource 角色的 Python/runtimeV2 起始状态；当 Python core 接管选角/战斗后，职业资源从开局就没有承载面，UI 与后续 route resource action 会退化为空值或 0，且该缺口会叠加第 173/174 轮的 normalize 承载问题。
+- 是否已修：
+  - 未修。本轮没有修改 `python_runtime\src\deckrogue_rules_core\runtime.py`、RuntimeV2 contracts/normalize/render model、UI 或测试；fresh raw Python probe 仍输出所有 secondary resource 字段为空。
+- 修复方向：
+  - 在 Python `RuleRuntime._apply_select_character()` 中读取所选角色的 `secondary_resource`，初始化统一 `secondary_resources` map，建议初始值为 `0`，并决定是否兼容 direct fields。
+  - 扩展 `RuleSnapshot.player` / `RenderModel.player` / `normalizePythonSnapshot()`，让 Python raw snapshot 的 `secondary_resources` 能保留到 UI helper 与 action 层。
+  - 新增回归：五名 secondary-resource 角色经 Python `select_character` 后，raw snapshot 和 normalized snapshot 都包含对应 resource key；`CombatHUD` / `getCharacterResourceSnapshot()` 能读出初始值。
+  - 修复后复跑 Python unit、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/combatViewModel.test.ts tests/unit/pythonInterop.test.ts tests/unit/specialActionBehavior.test.ts`，并补充新的 Python/runtimeV2 secondary resource 初始化回归。
+- 下一轮建议：
+  - 第 182 轮展示 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001`：给出 Python raw probe、content bundle/contract/UI/action 行号、与第 173/174 轮 normalize bug 的边界、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 182 - Python Secondary Resource Initialization Missing Exhibit - 2026-05-22
+
+- 循环模式：第 182 轮，按交替节奏展示第 181 轮发现的 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001`。
+- 展示 bug：
+  - **RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001**：RuntimeV2 content bundle 已把五名角色的 `secondary_resource` 传给 Python core，旧 action/UI 层也能读取和写入 `secondaryResources` / direct resource 字段；但 Python `RuleRuntime._apply_select_character()` 选角后只创建基础 player 字段，没有依据角色声明初始化 `secondary_resources` map，也没有写入 `evidence/rage/command/verdict/seal` direct 字段。Python/runtimeV2 因此从选角开始就没有五名 secondary-resource 职业的资源状态。
+- Fresh 源码定位：
+  - `src\content\data\characters.json:3-8`、`:50-55`、`:98-103`、`:285-290`、`:334-339`：`informant`、`brute`、`tactician`、`penitent_judge`、`void_sanctioner` 分别声明 `secondaryResource` 为 `evidence`、`rage`、`command`、`verdict`、`seal`。
+  - `src\runtimeV2\content\buildContentBundle.ts:54-62`：RuntimeV2 projection 将角色 `secondaryResource` 写入 Python content bundle 的 `secondary_resource`。
+  - `src\runtimeV2\contracts.ts:14-22`：`ContentBundleCharacter` 契约已经声明 `secondary_resource`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:102-122`：`_apply_select_character()` 查到角色后只写入 `character_id/hp/max_hp/gold/intel/devotion/corruption/deck/relic_ids/potion_ids/relic_states`，没有读取 `character["secondary_resource"]`。
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:1757-1769`：初始 player snapshot 同样只有基础字段，没有 secondary resource 承载面。
+  - `src\core\actions\v2\SpecialActions.ts:92-100`、`:118-127`：route resource action 对 secondary resource 的读取/写入依赖 `player.secondaryResources` 或 direct resource 字段。
+  - `src\ui\views\combat\CombatHUD.tsx:66-83` 与 `src\ui\views\combat\combatViewModel.ts:77-92`：HUD/helper 会读取并显示五类 secondary resources。
+  - `python_runtime\tests\test_runtime.py:38-47`：Python select-character 单测只断言进入 Map、deck/map/replay，没有检查 secondary resource 初始化。
+- Fresh 复现/验证证据：
+  - 第 182 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - Python raw runtime probe：构造最小 content bundle，五名角色分别声明 `secondary_resource=evidence/rage/command/verdict/seal`，逐个调用 `boot(...).dispatch({"type":"select_character","character_id":...})`。
+  - Probe 输出五名角色的 `keys` 都只有 `["character_id","corruption","deck","devotion","gold","hp","intel","max_hp","potion_ids","relic_ids","relic_states"]`；`secondary_resources=null`、`secondaryResources=null`、对应 direct resource 全部为 `null`。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/combatViewModel.test.ts tests/unit/pythonInterop.test.ts`：exit `0`，`8` tests，`8` pass。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest python_runtime.tests.test_runtime`：exit `0`，`2` tests，`OK`。
+- 复现路径：
+  - 使用当前 RuntimeV2 content bundle 或等价最小 bundle，让角色声明 `secondary_resource`。
+  - 调用 Python rules-core 的 `select_character`，例如 `informant/evidence`。
+  - 实际结果：Python raw snapshot 的 `player` 没有 `secondary_resources` map，也没有 direct `evidence` 字段。
+  - 预期结果：Python runtime 应在选角时依据 `secondary_resource` 初始化一个可序列化资源承载面，例如 `secondary_resources: {"evidence": 0}`，并与 TS normalize/render model/UI helper 的读取面保持一致。
+- 优先级：
+  - P2。它影响五名 secondary-resource 角色的 Python/runtimeV2 起始状态；Python core 接管选角/战斗后，职业资源从开局就没有承载面，UI 与后续 route resource action 会退化为空值或 0。
+- 是否已修：
+  - 未修。fresh raw Python probe 仍输出所有 secondary resource 字段为空；本轮没有修改 `python_runtime\src\deckrogue_rules_core\runtime.py`、RuntimeV2 contracts/normalize/render model、UI 或测试。
+- 与旧问题边界：
+  - 第 171/172 轮的 `RUNTIMEV2-PYTHON-SPECIAL-RESOURCE-SNAPSHOT-DROPPED-001` 聚焦三名 `special_resource` 职业的 `timeLayer/thread/concoction`。
+  - 第 173/174 轮的 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-NORMALIZE-DROPPED-001` 假设 Python 已返回 `secondary_resources`，但 TS normalize 丢弃。
+  - 本轮证明 Python raw snapshot 在 `select_character` 后根本没有生成 five secondary resource fields，是生成端初始化缺口。
+- 修复验收标准：
+  - Python `RuleRuntime._apply_select_character()` 读取所选角色的 `secondary_resource` 并初始化统一 `secondary_resources` map，建议初始值为 `0`。
+  - `RuleSnapshot.player` / `RenderModel.player` / `normalizePythonSnapshot()` 保留该 map 到 UI helper 和 action 层。
+  - 新增回归：五名 secondary-resource 角色经 Python `select_character` 后，raw snapshot 和 normalized snapshot 都包含对应 resource key；`CombatHUD` / `getCharacterResourceSnapshot()` 能读出初始值。
+  - 修复后复跑 Python unit、`npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts tests/unit/combatViewModel.test.ts tests/unit/pythonInterop.test.ts tests/unit/specialActionBehavior.test.ts`，并补充新的 Python/runtimeV2 secondary resource 初始化回归。
+- 下一轮建议：
+  - 第 183 轮回到找 bug；优先继续 Python WASM embedded runtime 与 process runtime 的 resource parity、runtimeV2 render model 对 player resource 的承载、content schema 对角色资源字段的门禁，或 desktop packaging artifact 原子性，避免重复 secondary-resource 初始化/normalize 家族。
+
+## DeckRogue Bug Loop Cycle 183 - RuntimeV2 Flow Smoke Script Missing Finding - 2026-05-22
+
+- 循环模式：第 183 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：工作树仍有大量既有修改；本轮只追加本报告段，不修改业务源码。
+  - 已读取第 182 轮报告尾部，上一轮展示的是 `RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001`。
+  - 已排重：Python WASM embedded runtime drift 已在第 121/122 轮记录；content schema 角色字段 gate 已在第 175/176 轮记录；desktop smoke 并发隔离已在第 163/164 轮记录。本轮不重复这些旧红灯。
+- 新发现：
+  - **RUNTIMEV2-FLOW-SMOKE-SCRIPT-MISSING-001**：当前 Windows-local AGENTS 契约把 `npm run test:runtime-v2-flow-smoke -- --renderer=dom` 和 `--renderer=pixi` 列为 Runtime/UI 相关标准验证命令，但 `package.json` 没有 `test:runtime-v2-flow-smoke` 脚本，源码树也没有对应 runtime-v2 flow smoke harness。结果是任何按本仓库本地契约执行 RuntimeV2 DOM/Pixi flow smoke 的自动化、人工验收或 heartbeat 都会直接 `Missing script`，无法覆盖 RuntimeV2 render/flow 路径。
+- 文件/行号：
+  - `E:\deckrogue\AGENTS.md:95-102`：本地契约在 Runtime/UI verification 中要求运行 `test:runtime-v2-flow-smoke -- --renderer=dom` 与 `--renderer=pixi`。
+  - `package.json:72-80`：已存在 reward/terminal/shop/event/rest/upgrade/remove-card/boss flow smoke 脚本。
+  - `package.json:84`：已存在 `test:runtime-v2:ts` unit/parity 脚本。
+  - `package.json:86`：已存在 `test:supplemental-units` 脚本。
+  - `package.json` 全脚本表中没有 `test:runtime-v2-flow-smoke`。
+  - `rg --files scripts tests src | rg "runtime.*flow|flow.*runtime|runtime-v2-flow|pixi|dom"` 只返回 RNG 文件，没有对应 RuntimeV2 flow smoke harness。
+- Fresh 复现/验证证据：
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `0/0`，Pass rate `100%`；说明本轮不是内容 authoring 红灯。
+  - `npm run check:content-contract-layer --silent`：exit `0`，输出 `[check_content_contract_layer] OK`。
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`：exit `1`，输出 `npm error Missing script: "test:runtime-v2-flow-smoke"`，并建议 reward/terminal/shop flow smoke。
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`：exit `1`，同样输出 `Missing script: "test:runtime-v2-flow-smoke"`。
+  - `Select-String package.json` 只找到 `test:ui-smoke`、具体房间 flow smoke、`test:runtime-v2:ts` 和 `test:supplemental-units`；没有统一 RuntimeV2 flow smoke。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 中按 `E:\deckrogue\AGENTS.md` 的 Runtime/UI verification 命令执行：
+    - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`
+    - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`
+  - 实际结果：两个命令都在 npm 脚本解析阶段失败，完全没有进入 DOM/Pixi flow smoke。
+  - 预期结果：本地契约列出的标准验证命令应存在并执行真实 harness；如果 Pixi/runtime UI 已被删除，则 AGENTS 契约和自动化目标应同步移除/替换该命令，不能保留一个必失败的验证入口。
+- 优先级：
+  - P2。它不破坏游戏运行，但会破坏 RuntimeV2/UI 验证闭环：自动化若按契约执行会稳定失败，若跳过该命令又会失去 DOM/Pixi render/flow 覆盖声明。
+- 是否已修：
+  - 未修。本轮没有修改 `E:\deckrogue\AGENTS.md`、`package.json`、scripts 或测试；fresh npm 命令仍证明脚本缺失。
+- 修复验收标准：
+  - 二选一明确决策：如果 RuntimeV2 DOM/Pixi flow smoke 仍是目标，则新增 `test:runtime-v2-flow-smoke` 脚本和真实 harness，支持 `--renderer=dom` / `--renderer=pixi`，并纳入 gate；如果 Pixi/runtime UI 已被删除，则更新 `E:\deckrogue\AGENTS.md` 与自动化提示，把该命令替换成当前真实存在的 RuntimeV2/flow smoke 组合。
+  - 修复后必须实际运行并读输出：`npm run test:runtime-v2-flow-smoke -- --renderer=dom`；若保留 Pixi 目标，也运行 `--renderer=pixi`。若移除 Pixi 目标，则运行替代命令并确认 AGENTS 不再引用缺失脚本。
+  - 增加一个轻量脚本一致性检查，至少验证 AGENTS 中列出的 npm scripts 在 `package.json` 中存在，避免本地契约和实际工具链再次漂移。
+- 下一轮建议：
+  - 第 184 轮展示 `RUNTIMEV2-FLOW-SMOKE-SCRIPT-MISSING-001`：给出 AGENTS/package 行号、两个 fresh Missing script 输出、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 184 - RuntimeV2 Flow Smoke Script Missing Exhibit - 2026-05-22
+
+- 循环模式：第 184 轮，按交替节奏展示第 183 轮发现的 `RUNTIMEV2-FLOW-SMOKE-SCRIPT-MISSING-001`。
+- 展示 bug：
+  - **RUNTIMEV2-FLOW-SMOKE-SCRIPT-MISSING-001**：Windows-local AGENTS 契约把 `npm run test:runtime-v2-flow-smoke -- --renderer=dom` 和 `--renderer=pixi` 列为 Runtime/UI 相关标准验证命令，但当前 `package.json` 没有 `test:runtime-v2-flow-smoke` 脚本。任何按本地契约执行 RuntimeV2 DOM/Pixi flow smoke 的自动化或人工验收都会在 npm 脚本解析阶段失败，无法进入真实 RuntimeV2 render/flow harness。
+- Fresh 定位：
+  - `E:\deckrogue\AGENTS.md:95-102`：Runtime/UI verification 明确列出 `npm run test:runtime-v2-flow-smoke -- --renderer=dom`、`npm run test:runtime-v2-flow-smoke -- --renderer=pixi` 和 `npm run test:ui-smoke`。
+  - `package.json:72-80`：存在 reward/terminal/shop/event/boss/rest/upgrade/remove-card 等具体 flow smoke 脚本。
+  - `package.json:84`：存在 `test:runtime-v2:ts` unit/parity 脚本。
+  - `package.json:86`：存在 `test:supplemental-units` 脚本。
+  - `Select-String package.json -Pattern 'runtime-v2-flow-smoke|runtime-v2:ts|flow-smoke|ui-smoke'`：只找到 `test:ui-smoke`、具体房间 flow smoke、`test:runtime-v2:ts`；没有 `test:runtime-v2-flow-smoke`。
+- Fresh 复现/验证证据：
+  - `git status --short --branch`：活跃分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`：exit `1`；输出 `npm error Missing script: "test:runtime-v2-flow-smoke"`，并建议 `test:reward-flow-smoke`、`test:terminal-flow-smoke`、`test:shop-flow-smoke`。
+  - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`：exit `1`；输出同样为 `npm error Missing script: "test:runtime-v2-flow-smoke"`，并建议同一组已有 flow smoke 脚本。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 执行 `E:\deckrogue\AGENTS.md` 列出的 Runtime/UI verification 命令：
+    - `npm run test:runtime-v2-flow-smoke -- --renderer=dom`
+    - `npm run test:runtime-v2-flow-smoke -- --renderer=pixi`
+  - 实际结果：两个命令都在 npm 脚本解析阶段失败，没有进入 DOM/Pixi flow smoke。
+  - 预期结果：本地契约列出的标准验证命令应存在并执行真实 harness；如果 RuntimeV2 DOM/Pixi flow smoke 已被废弃，则 AGENTS 与自动化提示应同步改成现有验证命令。
+- 优先级：
+  - P2。它不直接破坏游戏运行，但破坏 RuntimeV2/UI 验证闭环；自动化按契约执行会稳定失败，跳过该命令又会留下 DOM/Pixi render/flow 覆盖空洞。
+- 是否已修：
+  - 未修。本轮 fresh DOM/Pixi 两个命令仍均为 exit `1` / `Missing script`；未修改 `E:\deckrogue\AGENTS.md`、`package.json`、scripts 或测试。
+- 修复验收标准：
+  - 若 RuntimeV2 DOM/Pixi flow smoke 仍是目标：新增 `test:runtime-v2-flow-smoke` 脚本和真实 harness，支持 `--renderer=dom` / `--renderer=pixi`，并实际运行两条命令读取输出。
+  - 若 Pixi/runtime flow smoke 目标已废弃：更新 `E:\deckrogue\AGENTS.md` 与自动化提示，替换成当前真实存在的 RuntimeV2/flow smoke 组合，并确认 AGENTS 不再引用缺失脚本。
+  - 增加轻量脚本一致性检查，至少验证 AGENTS 中列出的 npm scripts 在 `package.json` 中存在，防止本地契约与实际工具链再次漂移。
+- 下一轮建议：
+  - 第 185 轮回到找新 bug；优先检查 under-covered UI/rendering、runtimeV2 render model、AI intent chain、desktop packaging artifact 原子性或 Python WASM adaptation，并避开已登记的 WASM embedded drift、character schema gate、desktop smoke 并发隔离和本轮缺失脚本问题。
+
+## DeckRogue Bug Loop Cycle 185 - Desktop Win Dist Prebuild Clean Nonatomic Finding - 2026-05-22
+
+- 循环模式：第 185 轮，按交替节奏回到真实源码/静态证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：活跃分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段，不修改业务源码。
+  - 已读取第 184 轮报告尾部，上一轮展示的是 `RUNTIMEV2-FLOW-SMOKE-SCRIPT-MISSING-001`。
+  - 已确认 git root 为 `E:/deckrogue/deckrogue-mainline-merge`。
+  - 已查重 `dist:win`、`win-dist`、`RELEASE_DIR`、`atomic`、`原子`、`desktop packaging` 等报告关键词：历史已有第 33/34 轮 `RELEASE-DESKTOP-001`，聚焦 release readiness 不检查真实 installer；第 163/164 轮聚焦 desktop smoke 并发隔离。本轮问题发生在 `dist:win` 脚本自身：先清空 canonical release 目录再开始构建，没有临时输出目录与原子替换。
+- 新发现：
+  - **DESKTOP-WIN-DIST-PREBUILD-CLEAN-NONATOMIC-001**：`npm run dist:win` 的 `scripts\desktop\dist_win.ts` 在执行 renderer/desktop build 和 electron-builder 前先 `cleanDir(RELEASE_DIR)`，且 electron-builder 直接输出到 canonical `release\win`。如果后续 `npm run build:desktop`、staging copy、electron-builder 或 exe 校验失败，旧的可发布 Windows installer 已经被删除；catch 分支只把当前 cleaned/partial `release\win` 写进 `win-dist.json`，没有回滚上一版 installer，也没有把新产物先写入临时目录后原子替换。
+- Fresh 源码定位：
+  - `scripts\desktop\dist_win.ts:13-15`：定义 canonical `RELEASE_DIR = release\win` 与 staging 目录。
+  - `scripts\desktop\dist_win.ts:48-54`：`cleanDir()` 会对目标目录执行 `rmSync(resolved, { recursive: true, force: true })`，然后重新创建空目录。
+  - `scripts\desktop\dist_win.ts:108-117`：`main()` 一进入 try 就 `cleanDir(RELEASE_DIR)`，随后才运行 `npm run build:desktop --silent` 和 `prepareStagingApp()`。
+  - `scripts\desktop\dist_win.ts:119-128`：electron-builder 的 `directories.output` 直接指向 `RELEASE_DIR`，没有临时 release 输出目录。
+  - `scripts\desktop\dist_win.ts:156-170`：成功后才从 `RELEASE_DIR` 收集 artifacts 并写 pass report。
+  - `scripts\desktop\dist_win.ts:171-180`：失败时同样从已清空或半成品的 `RELEASE_DIR` 收集 artifacts 并写 fail report；没有恢复旧 artifacts。
+- Fresh 只读验证证据：
+  - 静态顺序探针读取 `scripts\desktop\dist_win.ts` 输出：
+    - `cleanBeforeBuild=True`
+    - `directOutput=True`
+    - `tempRelease=False`
+    - `failureCollectsCleanedDir=True`
+  - `Get-ChildItem release\win -File` 显示当前存在 `DeckRogue-0.0.0-x64.exe`、`.blockmap`、`builder-debug.yml`；exe 大小 `598933164` bytes，LastWriteTime `2026/5/20 10:08:02`。
+  - `Get-FileHash release\win\DeckRogue-0.0.0-x64.exe`：SHA256 `C87D6752FE7A5CCAA5214B0C46BC3318F12D060A18B614490CE2869117AAFBEF`。
+  - `reports\desktop\win-dist.json:3-27` 当前记录 `overallStatus: "pass"`、artifact paths 在 `release\win`、evidence 包含 `"release directory cleaned"` 与 `"exe artifacts produced: 1"`，证明当前发布产物就是 canonical 目录内容。
+  - `rg -n "dist_win|dist:win|win-dist|release\\win|electron-builder|cleanDir\(RELEASE_DIR\)|renameSync|atomic" tests scripts src package.json project-development-report.md -S` 没有返回任何 `tests\...` 条目覆盖 `dist_win` 的失败回滚或原子发布行为。
+- 复现路径：
+  - 在有上一版 `release\win\DeckRogue-0.0.0-x64.exe` 的工作树中运行 `npm run dist:win`。
+  - 在 `cleanDir(RELEASE_DIR)` 之后、electron-builder 成功产出 exe 之前制造任意失败，例如临时移走 `electron\main.mjs`、破坏 `npm run build:desktop`、或让 electron-builder 失败。
+  - 实际结果：旧 installer 已在脚本开头被删除；失败报告只反映 cleaned/partial release 目录，不能恢复上一版可发布 artifacts。
+  - 预期结果：新 Windows 包应先构建到 per-run 临时 release 目录；只有 build、artifact 校验、hash/report 都成功后，才用原子替换或保留上一版 release 目录。失败时上一版可发布 installer 应保持可用，并在 fail report 中明确 `previousArtifactsPreserved: true`。
+- 优先级：
+  - P2。它不直接影响玩家运行时，但会让一次失败打包破坏最后一份本地 Windows 发布产物，影响桌面分发与回滚可靠性；在自动化 heartbeat 或发布脚本中尤其容易把稳定 artifact 变成空目录/半成品。
+- 是否已修：
+  - 未修。本轮只读源码和 artifact；`dist_win.ts` 仍然先清空 `RELEASE_DIR`，没有临时 release 输出目录、原子替换、旧 artifact manifest 或失败回滚。
+- 与旧问题边界：
+  - 第 33/34 轮 `RELEASE-DESKTOP-001`：release readiness 不检查 `win-dist.json` / installer freshness，属于发布门禁假阴性。
+  - 第 163/164 轮 desktop smoke 并发隔离：production smoke / build 对 `dist`、reports、user data、screenshots 的并发污染。
+  - 本轮是 `dist:win` 包装脚本自身的发布目录写入策略：失败前先删除旧 installer，属于 artifact 原子性与回滚缺口。
+- 修复验收标准：
+  - 将 electron-builder 输出改到 per-run 临时目录，例如 `release\win-tmp\<run-id>`；成功校验 exe、blockmap、report hash 后，再替换 canonical `release\win`。
+  - 替换前生成上一版 artifact manifest；失败时保留 canonical `release\win` 不变，并在 `win-dist.json` 写入失败原因和 previous artifact 保留状态。
+  - 新增最小回归或脚本级 dry-run/failure injection：模拟 build/electron-builder 失败后，断言旧 `release\win\DeckRogue-0.0.0-x64.exe` 仍存在且 SHA256 不变。
+  - 修复后运行并读取：失败注入测试、`npm run dist:win` 成功路径、`Get-FileHash release\win\DeckRogue-0.0.0-x64.exe`、`reports\desktop\win-dist.json`。
+- 下一轮建议：
+  - 第 186 轮展示 `DESKTOP-WIN-DIST-PREBUILD-CLEAN-NONATOMIC-001`：给出 `dist_win.ts` 行号、静态顺序探针、当前 release artifact/hash、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 186 - Desktop Win Dist Prebuild Clean Nonatomic Exhibit - 2026-05-22
+
+- 循环模式：第 186 轮，按交替节奏展示第 185 轮发现的 `DESKTOP-WIN-DIST-PREBUILD-CLEAN-NONATOMIC-001`。
+- 展示 bug：
+  - **DESKTOP-WIN-DIST-PREBUILD-CLEAN-NONATOMIC-001**：`npm run dist:win` 的 Windows packaging 脚本在构建和 electron-builder 成功前先删除 canonical `release\win`，随后把 electron-builder 输出直接写回同一目录。任何中途失败都会先损坏上一版可发布 installer，再写入一个 fail report；脚本没有 per-run 临时 release 目录、原子替换或旧 artifact 回滚。
+- Fresh 源码定位：
+  - `scripts\desktop\dist_win.ts:13-15`：定义 `REPORT_PATH`、canonical `RELEASE_DIR = release\win` 和 staging 目录。
+  - `scripts\desktop\dist_win.ts:48-54`：`cleanDir()` 对目标目录执行 `rmSync(resolved, { recursive: true, force: true })`，再创建空目录。
+  - `scripts\desktop\dist_win.ts:105-117`：`main()` 进入 try 后第一个发布目录动作是 `cleanDir(RELEASE_DIR)`，之后才运行 `npm run build:desktop --silent` 和 `prepareStagingApp()`。
+  - `scripts\desktop\dist_win.ts:119-128`：electron-builder 的 `directories.output` 直接指向 `RELEASE_DIR`，没有 `release\win-tmp` 或 run-id 输出目录。
+  - `scripts\desktop\dist_win.ts:156-170`：成功路径才从 `RELEASE_DIR` 收集 artifacts 并写 pass report。
+  - `scripts\desktop\dist_win.ts:171-180`：失败路径也从同一个已清空或半成品 `RELEASE_DIR` 收集 artifacts 并写 fail report，没有恢复旧 installer。
+- Fresh 复现/验证证据：
+  - 第 186 轮预检 `git status --short --branch`：活跃分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 第 186 轮确认 git root：`E:/deckrogue/deckrogue-mainline-merge`。
+  - 静态顺序探针重新读取 `scripts\desktop\dist_win.ts` 输出：
+    - `cleanBeforeBuild=True`
+    - `directOutput=True`
+    - `tempRelease=False`
+    - `failureCollectsCleanedDir=True`
+  - `Get-ChildItem release\win -File`：当前 canonical release 目录内有 `DeckRogue-0.0.0-x64.exe`、`.blockmap`、`builder-debug.yml`；exe 大小 `598933164` bytes，LastWriteTime `2026/5/20 10:08:02`。
+  - `Get-FileHash release\win\DeckRogue-0.0.0-x64.exe`：SHA256 `C87D6752FE7A5CCAA5214B0C46BC3318F12D060A18B614490CE2869117AAFBEF`。该 hash 代表当前上一版 artifact；按现有脚本，一次失败 dist 会先删除它。
+  - `reports\desktop\win-dist.json:3-27`：当前报告为 `overallStatus: "pass"`，artifact paths 均在 `release\win`，evidence 包含 `"release directory cleaned"` 与 `"exe artifacts produced: 1"`。
+  - `rg -n "dist_win|dist:win|win-dist|release\\win|electron-builder|cleanDir\(RELEASE_DIR\)|renameSync|atomic" tests scripts src package.json project-development-report.md -S`：没有返回任何 `tests\...` 条目覆盖 `dist_win` 失败回滚或原子发布行为。
+- 复现路径：
+  - 保留现有 `release\win\DeckRogue-0.0.0-x64.exe`。
+  - 运行 `npm run dist:win`，并在 `cleanDir(RELEASE_DIR)` 之后、electron-builder 成功产出 exe 之前触发失败，例如破坏 `npm run build:desktop`、临时移走 `electron\main.mjs` 或让 electron-builder 失败。
+  - 实际结果：旧 exe 已经被脚本开头删除；失败报告只能描述清空后的 release 目录或半成品目录，不能恢复上一版可发布 artifacts。
+  - 预期结果：新包应先输出到 per-run 临时目录；只有 build、artifact 校验、hash/report 都成功后，才替换 canonical `release\win`。失败时旧 exe 和 hash 应保持不变。
+- 优先级：
+  - P2。它不直接造成玩家运行时崩溃，但会让一次失败打包破坏最后一份本地 Windows 发布产物，影响桌面分发和回滚可靠性。
+- 是否已修：
+  - 未修。fresh 源码顺序探针仍为 `cleanBeforeBuild=True`、`directOutput=True`、`tempRelease=False`、`failureCollectsCleanedDir=True`；本轮未修改 `scripts\desktop\dist_win.ts` 或发布产物。
+- 与旧问题边界：
+  - 第 33/34 轮 `RELEASE-DESKTOP-001` 是 release readiness 不检查 `win-dist.json` / installer freshness。
+  - 第 163/164 轮 desktop smoke 并发隔离是 production smoke/build 对 `dist`、reports、user data 和 screenshots 的并发污染。
+  - 本轮展示的是 `dist:win` 脚本自身的 canonical release 写入策略：失败前先删旧 installer，缺少 artifact 原子替换和回滚。
+- 修复验收标准：
+  - electron-builder 输出到 per-run 临时目录，例如 `release\win-tmp\<run-id>`；成功校验 exe、blockmap、hash 和 report 后，再替换 canonical `release\win`。
+  - 替换前生成上一版 artifact manifest；失败时保留 `release\win` 不变，并在 `win-dist.json` 写入失败原因与 `previousArtifactsPreserved: true`。
+  - 增加脚本级 dry-run/failure injection 或最小回归：模拟 build/electron-builder 失败后，断言旧 `release\win\DeckRogue-0.0.0-x64.exe` 仍存在且 SHA256 不变。
+  - 修复后实际运行并读取：失败注入测试、成功路径 `npm run dist:win`、`Get-FileHash release\win\DeckRogue-0.0.0-x64.exe`、`reports\desktop\win-dist.json`。
+- 下一轮建议：
+  - 第 187 轮回到找新 bug；优先继续 under-covered UI/rendering、runtimeV2 render model、AI intent chain、content schema 或 Python WASM adaptation，避免重复本轮 `dist:win` 非原子发布目录问题。
+
+## DeckRogue Bug Loop Cycle 187 - Content Contract Characters Raw Imports Ungated Finding - 2026-05-22
+
+- 循环模式：第 187 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：活跃分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段，不修改业务源码。
+  - 已读取第 186 轮报告尾部，上一轮展示的是 `DESKTOP-WIN-DIST-PREBUILD-CLEAN-NONATOMIC-001`。
+  - 已确认 git root 为 `E:/deckrogue/deckrogue-mainline-merge`。
+  - 已排重：Reward/Shop/Event/Map/Combat/Upgrade/RemoveCard/Enchant/RelicUpgrade 的 runtimeV2 renderModel ignored 系列均已在第 103-126 轮记录；`CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001` 已在第 175/176 轮记录。本轮问题不是角色字段 validator 缺失本身，而是 content contract raw-import gate 根本没有把 `characters.json` 纳入受保护 gameplay data 列表。
+- 新发现：
+  - **CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001**：`check_content_contract_layer.ts` 试图禁止未授权模块直接导入 gameplay raw JSON，但 `GAMEPLAY_DATA_IMPORTS` 只列出 cards/enemies/relics/potions/numericConfig/cardEnchantments，没有 `@/content/data/characters.json`。因此 `src/core`、`src/ui`、validation 和 tests 中 21 个文件可直接读取未校验角色 JSON，`npm run check:content-contract-layer --silent` 仍返回 OK。角色数据已经被 runtimeV2/Python、legacy selectCharacter、UI unlock/smoke 和 balance scripts 共同消费；该门禁缺口会绕过后续 `validateCharactersData()` 或 approved adapter 的收敛路径，让第 175/176 轮的角色字段校验修复难以真正变成边界保护。
+- 文件/行号：
+  - `scripts\validation\check_content_contract_layer.ts:19-25`：`GAMEPLAY_DATA_IMPORTS` 列出 cards/enemies/relics/potions/numericConfig/cardEnchantments，但缺少 `@/content/data/characters.json`。
+  - `scripts\validation\check_content_contract_layer.ts:27-35`：allowed raw importer 白名单只针对已受保护集合生效；由于 characters 不在受保护集合，白名单不会约束角色 raw imports。
+  - `scripts\validation\check_content_contract_layer.ts:81-87`：违规判定仅在 `GAMEPLAY_DATA_IMPORTS.has(spec)` 时触发，所以角色 JSON import 永远不会进入 violation 分支。
+  - `src\core\events\RunFlowManager.ts:43-46`：legacy run flow 直接导入并断言 `characters.json` 为 `CharacterDef[]`。
+  - `src\core\events\RunFlowManager.ts:131-142`：`selectCharacterLegacy()` 直接用 raw `charDef.maxHp/maxEnergy/startingDeck` 初始化玩家状态和 starter deck。
+  - `src\core\events\gameEngine.ts:40`、`:57`、`:762-766`：runtime delegation projection 回 legacy state 时也直接查 raw `charactersData` 并写 `maxEnergy/energy`。
+  - `src\ui\content\characters.ts:10-12`：UI character catalog 直接 re-export raw `characters.json`。
+  - `scripts\validation\contentBundleCheck.ts:59-63`、`:95-108`：content bundle check 自己读取 raw `characters.json`，但只检查必需 ID 和固定 secondary resource，不复用 content schema。
+  - `src\content\narrative\contentSchema.ts:295`、`:319`、`:348`、`:365`、`:404`：当前 schema validators 覆盖 cards/enemies/potions/relics/story events，没有角色 validator；这与第 175/176 轮旧问题相接，但本轮确认 contract-layer 也无法把 raw imports 收束到未来 validator。
+- Fresh 复现/验证证据：
+  - `npm run check:content-contract-layer --silent`：exit `0`，输出 `[check_content_contract_layer] OK`。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`，Enemies `58/58`，Relics `0/0`，Pass rate `100%`；该 gate 仍不覆盖 characters。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip；现有 runtimeV2 测试不阻止 raw character imports 扩散。
+  - Inline static probe 扫描 `src/scripts/tests`：
+    - `charactersListedInGameplayImports=false`
+    - `directImportCount=21`
+    - direct imports 包括 `src/core/events/gameEngine.ts`、`src/core/events/RunFlowManager.ts`、`src/ui/content/characters.ts`、`scripts/validation/flow_smoke_helpers.ts`、`scripts/validation/contentBundleCheck.ts`、`scripts/validation/deepReachabilityCheck.ts`、`tests/unit/runtimeV2ContentBundle.test.ts` 等。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行 `npm run check:content-contract-layer --silent`。
+  - 同时用 `rg -n "@/content/data/characters\.json|content/data/characters\.json" src scripts tests -S` 统计直接导入。
+  - 实际结果：contract-layer 输出 OK，但 21 个文件直接读取 `characters.json`，其中核心 run flow 和 UI catalog 不经过 approved content adapter。
+  - 预期结果：角色 JSON 应与 cards/enemies/relics/potions 一样进入 gameplay raw data import gate；未授权 direct import 应 fail，并引导到 `numericSystem`/content service/runtime content bundle 或专门角色 schema adapter。
+- 优先级：
+  - P2。它不是单次运行崩溃，但会让角色内容边界继续发散。角色数据决定 HP/energy/starter deck/职业资源/UI unlock，是 runtimeV2/Python 与 legacy state 的共同输入；如果 raw imports 继续散落，第 175/176 轮要求新增的角色 validator 即使实现，也可能只保护部分入口。
+- 是否已修：
+  - 未修。本轮只追加报告；`check_content_contract_layer.ts` 仍未列出 `@/content/data/characters.json`，fresh static probe 仍显示 21 个 direct imports。
+- 与旧问题边界：
+  - 第 175/176 轮 `CONTENT-SCHEMA-CHARACTER-FIELDS-NOT-VALIDATED-001` 关注 `characters.json` 字段没有 validator，坏 `maxHp/maxEnergy/startingDeck` 可通过 gate。
+  - 本轮关注 import-boundary gate：即使后续补了 validator，`check_content_contract_layer.ts` 仍不会阻止核心/UI/脚本直接读取 raw `characters.json`，导致修复无法成为统一边界。
+- 修复验收标准：
+  - 将 `@/content/data/characters.json` 加入 `GAMEPLAY_DATA_IMPORTS`。
+  - 为角色 raw imports 建立明确白名单：例如 `src/content/narrative/charactersDataEntry.ts`、`src/runtimeV2/content/buildContentBundle.ts`、`src/runtimeV2/content/contentService.ts` 和少量专门测试；核心 runtime/UI/validation flow smoke 应改走角色内容 adapter 或经过 schema guard 的导出。
+  - 增加 `validateCharactersData()` 并让 approved adapter 调用；至少校验 `id/maxHp/maxEnergy/startingDeck/extendedPool/specialResource/secondaryResource`。
+  - 修复后运行并读取：`npm run check:content-contract-layer --silent`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`、`npm run test:runtime-v2:ts --silent`；并用 static probe 确认 direct imports 只剩白名单文件。
+- 下一轮建议：
+  - 第 188 轮展示 `CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001`：给出 contract-layer 行号、direct import 计数、fresh OK 输出、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 188 - Content Contract Characters Raw Imports Ungated Exhibit - 2026-05-22
+
+- 循环模式：第 188 轮，按交替节奏展示第 187 轮发现的 `CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001`。
+- 展示 bug：
+  - **CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001**：`check_content_contract_layer.ts` 负责拦截未授权 gameplay raw JSON import，但受保护列表没有 `@/content/data/characters.json`。结果是核心 runtime、UI、validation 和 tests 中 21 个文件可以直接读取未校验角色 JSON，`npm run check:content-contract-layer --silent` 仍显示 OK。角色数据决定 HP、energy、starter deck、职业资源、UI unlock 和 runtimeV2/Python legacy projection；该缺口会让后续角色 schema guard 无法成为统一边界。
+- Fresh 源码定位：
+  - `scripts\validation\check_content_contract_layer.ts:19-25`：`GAMEPLAY_DATA_IMPORTS` 只包含 cards/enemies/relics/potions/numericConfig/cardEnchantments，没有 characters。
+  - `scripts\validation\check_content_contract_layer.ts:27`：`ALLOWED_RAW_GAMEPLAY_IMPORTERS` 白名单只约束已进入 `GAMEPLAY_DATA_IMPORTS` 的 raw imports。
+  - `scripts\validation\check_content_contract_layer.ts:81`：违规条件是 `GAMEPLAY_DATA_IMPORTS.has(spec)`；characters 不在集合内，所以不会进入 violation 分支。
+  - `src\core\events\RunFlowManager.ts:43`、`:46`、`:131-142`：legacy select-character 直接导入 `characters.json`，并用 raw `maxHp/maxEnergy/startingDeck` 初始化玩家状态。
+  - `src\core\events\gameEngine.ts:40`、`:57`、`:762-766`：runtime delegation snapshot 回写 legacy state 时也直接查 raw `charactersData` 并写入 `maxEnergy/energy`。
+  - `src\ui\content\characters.ts:10-12`：UI character catalog 直接 re-export raw `characters.json`。
+  - `scripts\validation\contentBundleCheck.ts:60`、`:96`：content bundle check 自行读取 raw characters，但只检查必需 ID 和固定 secondary resource。
+- Fresh 复现/验证证据：
+  - 第 188 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - `npm run check:content-contract-layer --silent`：exit `0`，输出 `[check_content_contract_layer] OK`。
+  - Fresh static probe：
+    - `charactersListedInGameplayImports=false`
+    - `directImportCount=21`
+    - direct imports 包括 `src/core/events/gameEngine.ts`、`src/core/events/RunFlowManager.ts`、`src/runtimeV2/content/buildContentBundle.ts`、`src/runtimeV2/content/contentService.ts`、`src/ui/content/characters.ts`、`scripts/validation/contentBundleCheck.ts`、`scripts/validation/flow_smoke_helpers.ts`、`tests/unit/runtimeV2ContentBundle.test.ts` 等。
+  - `rg -n "GAMEPLAY_DATA_IMPORTS|@/content/data/(cards|enemies|relics|potions|numericConfig|cardEnchantments|characters)\.json|GAMEPLAY_DATA_IMPORTS\.has|ALLOWED_RAW_GAMEPLAY_IMPORTERS" scripts/validation/check_content_contract_layer.ts`：只列出 cards/enemies/relics/potions/numericConfig/cardEnchantments，未列出 characters。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 执行 `npm run check:content-contract-layer --silent`。
+  - 执行静态导入扫描：`rg -n "@/content/data/characters\.json|content/data/characters\.json" src scripts tests -S`。
+  - 实际结果：contract-layer 通过，但角色 raw JSON 直接导入仍散落在核心 runtime、UI、validation 和 tests。
+  - 预期结果：`characters.json` 应与其它 gameplay raw data 一样受 import-boundary gate 保护；未授权 import 应失败，并引导到 schema-guarded adapter。
+- 优先级：
+  - P2。该问题不会立刻让游戏崩溃，但角色内容是 runtimeV2/Python 与 legacy engine 的共同输入面；如果 raw imports 继续绕过 schema adapter，角色字段 validator 修复只能覆盖局部入口。
+- 是否已修：
+  - 未修。Fresh probe 仍输出 `charactersListedInGameplayImports=false` 与 `directImportCount=21`；`check_content_contract_layer.ts` 仍未纳入 characters raw data。
+- 修复验收标准：
+  - 将 `@/content/data/characters.json` 加入 `GAMEPLAY_DATA_IMPORTS`。
+  - 建立明确白名单：只允许 schema-guarded character adapter、runtimeV2 content bundle/service 和少量专门测试直接读取 raw characters。
+  - 补 `validateCharactersData()` 并让 approved adapter 调用；至少校验 `id/maxHp/maxEnergy/startingDeck/extendedPool/specialResource/secondaryResource`。
+  - 核心 runtime/UI/flow smoke 改走 approved adapter，不再直接 import raw `characters.json`。
+  - 修复后实际运行并读取：`npm run check:content-contract-layer --silent`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`、`npm run test:runtime-v2:ts --silent`；static probe 确认 direct imports 只剩白名单。
+- 下一轮建议：
+  - 第 189 轮回到找 bug；优先继续 content schema 对 potions/events/card modifiers 的未覆盖 runtime 字段、AI intent chain fallback/normalization、desktop packaging smoke 原子性，或 Python WASM resource/loader 边界，避免重复 characters raw-import gate。
+
+## DeckRogue Bug Loop Cycle 189 - Card Modifier Schema Effect Whitelist Missing Finding - 2026-05-22
+
+- 循环模式：第 189 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：活跃 repo 为 `E:/deckrogue/deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 188 轮报告尾部，上一轮展示的是 `CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001`。
+  - 已排重：第 53/54 轮已登记 `check:content-authoring` 没有覆盖 events/potions/cardModifiers；第 55/56 与第 73/74 轮已登记 potion dispatcher/schema 断链；第 187/188 轮是 characters raw import gate。本轮聚焦更窄的 runtime schema guard：`validateCardModifiersData()` 本身没有限制 modifier `effect.type` 或 `professionResource.resource`。
+- 新发现：
+  - **CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001**：`validateCardModifiersData()` 只要求 card modifier `effect` 是对象、`effect.type` 是字符串、`effect.amount` 是 finite number；它不校验 `effect.type` 是否属于 runtime 支持的 `damage/block/cost/draw/professionResource`，也不在 `professionResource` 时要求 `resource` 字段。结果是 malformed card enchantment/affliction 可以通过 runtime schema guard，再被 `deriveRunCardInstance()` 当作真实附魔消费：未知 effect type 静默无效果且卡面尾部显示空 `附魔：`，缺 resource 的 professionResource 显示 `附魔：+2 undefined`。
+- 文件/行号：
+  - `src\content\narrative\contentSchema.ts:385-400`：`validateCardModifiersData()` 验证 `id/name/scope/description/effect`，但只在 `:396-397` 检查 `effect.type` string 与 `effect.amount` number，没有 effect type 白名单，也没有 `professionResource.resource` 校验。
+  - `src\core\types\actions.ts:225-230`：类型层声明 `CardModifierEffect` 只允许 `damage/block/cost/draw/professionResource`，且 `professionResource` 必须带 `resource`；runtime schema 没有执行这个 contract。
+  - `src\core\combat\runCardInstance.ts:44-59`：runtime 只对 `damage/block/draw/professionResource` 改写 actions；未知 type 不会报错，只会不产生效果。
+  - `src\core\combat\runCardInstance.ts:65-71`：`modifierSummary()` 没有 default 分支；未知 type 返回 `undefined`，缺 resource 的 professionResource 会生成 `+N undefined` 文案。
+  - `src\core\combat\runCardInstance.ts:83-94`：`deriveRunCardInstance()` 会把这些 modifier 写入派生卡牌和卡面文本。
+  - `scripts\validation\check_content_authoring.ts:213-215`：content-authoring 当前只加载 cards/enemies/relics，不加载 `cardEnchantments.json`，因此也不会补上这条字段级保护。
+- Fresh 复现/验证证据：
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`；bundle gate 不覆盖 malformed card modifier effect shape。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `0/0`、Pass rate `100%`；该 gate 仍不加载 cardEnchantments。
+  - `npx tsx --test tests/unit/runCardInstance.test.ts tests/unit/enchantmentFlow.test.ts`：exit `0`，`10/10` pass；现有 modifier/enchant tests 只覆盖 happy path `damage/block/cost`。
+  - Inline `npx tsx -` probe 调用 `validateCardModifiersData()` 传入两条 malformed modifier：
+    - `{ effect: { type: "bogus", amount: 99 } }`
+    - `{ effect: { type: "professionResource", amount: 2 } }` 缺少 `resource`
+  - Probe 输出：
+    - `currentCardModifierCount=7`
+    - `currentTypes=["block","cost","damage","draw"]`
+    - `validationAcceptedMalformed=true`
+    - `malformedAcceptedCount=2`
+    - `unknownEffectType="bogus"`
+    - `unknownBaseDamage=5`
+    - `unknownDerivedDamage=5`
+    - `unknownTextTail="附魔："`
+    - `professionResourceHasResource=false`
+    - `professionResourceTextTail="附魔：+2 undefined"`
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行上述 inline `npx tsx -` probe，或在任意 schema 测试中直接调用 `validateCardModifiersData([{ id, name, scope:"persistent", description, effect:{ type:"bogus", amount:99 }}])`。
+  - 实际结果：validator 接受 malformed modifier；runtime 派生卡牌没有应用未知效果，且 UI 文案可出现空 `附魔：` 或 `undefined` resource。
+  - 预期结果：schema guard 应拒绝未知 `effect.type`；`professionResource` 必须要求 `resource` 属于 `intel/timeLayer/thread/concoction/evidence/rage/command/verdict/seal`，并且 runtime 支持范围与 schema 白名单一致。
+- 优先级：
+  - P2。当前生产 `cardEnchantments.json` 的 7 条数据只使用 `block/cost/damage/draw`，所以不是现有内容立即崩溃；但 card modifiers 是 Rest/Shop/Event 附魔和敌人咒蚀的共同内容面，一旦新增 profession resource 或拼错 effect type，发布前 schema 会放行，运行时会静默无效或显示错误文案。
+- 是否已修：
+  - 未修。本轮只追加报告；`contentSchema.ts` 仍只检查 `effect.type` 为 string 和 `effect.amount` 为 number，fresh malformed probe 仍通过。
+- 与旧问题边界：
+  - 第 53/54 轮 `CONTENT-AUTHORING-COVERAGE-001` 是 authoring report 没有纳入 events/potions/cardModifiers 的覆盖缺口。
+  - 本轮是 runtime schema validator 本身的 contract 缺口：即使 future content-authoring 加载了 card modifiers，如果复用当前 `validateCardModifiersData()`，仍会接受未知 effect type 与缺 resource 的 professionResource。
+- 修复验收标准：
+  - 在 `validateCardModifiersData()` 中显式白名单 `damage/block/cost/draw/professionResource`。
+  - `professionResource` 必须校验 `resource` 为已支持资源；非 professionResource 不应允许多余但误导性的 `resource` 字段，或至少报告 warning。
+  - 为未知 effect type、缺 resource、非法 resource、合法现有 7 条 modifier 增加单测。
+  - 修复后运行并读取：`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`、`npx tsx --test tests/unit/runCardInstance.test.ts tests/unit/enchantmentFlow.test.ts`，以及新的 malformed schema red/green test。
+- 下一轮建议：
+  - 第 190 轮展示 `CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001`：给出 schema/runtime 行号、malformed probe 输出、现有 checks 全绿但缺覆盖、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 190 - Card Modifier Schema Effect Whitelist Missing Exhibit - 2026-05-22
+
+- 循环模式：第 190 轮，按交替节奏展示第 189 轮发现的 `CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001`。
+- 展示 bug：
+  - **CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001**：`validateCardModifiersData()` 对 card enchantment / affliction 的 `effect` 只验证对象、字符串 type 和数值 amount，没有执行 `CardModifierEffect` 的 runtime contract。未知 `effect.type` 或缺 `resource` 的 `professionResource` 可通过 schema guard，随后 `deriveRunCardInstance()` 会把它们写成真实附魔；未知 type 静默无效果且卡面尾部出现空 `附魔：`，缺 resource 会显示 `附魔：+2 undefined`。
+- Fresh 源码定位：
+  - `src\content\narrative\contentSchema.ts:385`：`validateCardModifiersData()` 是 card modifier runtime schema 入口。
+  - `src\content\narrative\contentSchema.ts:396-397`：当前只检查 `entry.effect.type` 是 string、`entry.effect.amount` 是 finite number；没有 `damage/block/cost/draw/professionResource` 白名单。
+  - `src\core\types\actions.ts:225-230`：类型 contract 声明 `CardModifierEffect` 的合法 union，且 `professionResource` 必须带 `resource`。
+  - `src\core\combat\runCardInstance.ts:44-59`：runtime 只处理 `damage/block/draw/professionResource` 的 action 改写；未知 type 没有 default error。
+  - `src\core\combat\runCardInstance.ts:65-71`：`modifierSummary()` 只覆盖已知 type；未知 type 返回空文本，缺 resource 输出 `undefined`。
+  - `scripts\validation\check_content_authoring.ts:213-215`：content-authoring 仍只加载 cards/enemies/relics，不加载 `cardEnchantments.json`，无法兜底该字段级校验。
+- Fresh 复现/验证证据：
+  - 第 190 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `0/0`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/runCardInstance.test.ts tests/unit/enchantmentFlow.test.ts`：exit `0`，`10/10` pass。
+  - Fresh malformed probe：
+    - `currentCardModifierCount=7`
+    - `currentTypes=["block","cost","damage","draw"]`
+    - `validationAcceptedMalformed=true`
+    - `malformedAcceptedCount=2`
+    - `unknownBaseDamage=5`
+    - `unknownDerivedDamage=5`
+    - `unknownTextTail="附魔："`
+    - `professionResourceHasResource=false`
+    - `professionResourceTextTail="附魔：+2 undefined"`
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 调用 `validateCardModifiersData()`，输入 `{ effect: { type: "bogus", amount: 99 } }` 或 `{ effect: { type: "professionResource", amount: 2 } }`。
+  - 再把返回的 modifier 传给 `applyPersistentEnchantmentToInstance(createRunCardInstance(strike, ...), modifier)`。
+  - 实际结果：validator 接受 malformed modifier；未知 type 不改变 `strike` 伤害，卡面文本尾部为 `附魔：`；缺 resource 的 professionResource 文案为 `附魔：+2 undefined`。
+  - 预期结果：schema guard 应拒绝未知 `effect.type`，并在 `professionResource` 时要求合法资源名。
+- 优先级：
+  - P2。当前生产 7 条 `cardEnchantments.json` 只使用 `block/cost/damage/draw`，所以不是立即崩溃；但 modifier 是 Rest/Shop/Event 附魔和敌人咒蚀共用内容面，未来新增或拼写错误会绕过发布前 schema，进入静默无效或错误 UI 文案。
+- 是否已修：
+  - 未修。Fresh source scan 仍显示 `contentSchema.ts:396-397` 只有 string/number 校验；fresh malformed probe 仍显示 `validationAcceptedMalformed=true`。
+- 与旧问题边界：
+  - 第 53/54 轮 `CONTENT-AUTHORING-COVERAGE-001` 是 authoring report 没有纳入 cardModifiers。
+  - 第 189/190 轮是 runtime schema guard 自身未执行 `CardModifierEffect` union contract；即使 authoring 后续加载 cardModifiers，复用当前 validator 仍会放行 malformed effect。
+- 修复验收标准：
+  - `validateCardModifiersData()` 显式拒绝非 `damage/block/cost/draw/professionResource` 的 effect type。
+  - `professionResource` 校验 `resource` 为 `intel/timeLayer/thread/concoction/evidence/rage/command/verdict/seal`。
+  - 新增 malformed schema 单测：未知 type、缺 resource、非法 resource 必须 throw；现有 7 条合法 modifier 仍通过。
+  - 修复后实际运行并读取：`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`、`npx tsx --test tests/unit/runCardInstance.test.ts tests/unit/enchantmentFlow.test.ts` 和新增 schema test。
+- 下一轮建议：
+  - 第 191 轮回到找新 bug；优先查 runtimeV2/Python 的 card modifier/enchant projection、desktop packaging failure recovery 的未覆盖细节，或 AI intent chain 中尚未登记的 persistence/parity 边界，避免重复本 schema whitelist 问题。
+
+## DeckRogue Bug Loop Cycle 191 - Python Enchanted Card Id Star Unnormalized Finding - 2026-05-22
+
+- 循环模式：第 191 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：活跃 repo 为 `E:/deckrogue/deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 189/190 轮报告尾部，上一轮展示的是 `CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001`。
+  - 已排重：第 113/114 轮 `UI-RUNTIMEV2-ENCHANTVIEW-IGNORES-RENDERMODEL-CHOICES-001` 关注 UI EnchantView 不消费 renderModel choices；本轮关注 renderModel choices 自身对 Python 附魔卡牌 id 的内容 lookup 退化。
+- 新发现：
+  - **RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001**：Python rules-core 和 TS 镜像在 `apply_enchantment` 后把 deck entry 写成 `card_id*`，但 `src/runtimeV2/renderModel.ts` 的 `deriveDeckSurfaceChoices()` 只剥离升级标记 `+`，没有剥离附魔标记 `*`。因此 runtimeV2/Python 快照进入 Upgrade、RemoveCard、Enchant 这类牌库选择面时，已附魔卡牌会用 `contentService.getCard("strike*")` 查询内容，查询失败后退化为 raw label `strike*` 且没有 description。稳定 parity 层会剥离 `*` 计数，可能掩盖这个 renderModel/UI 内容退化。
+- 文件/行号：
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:674-695`：`_apply_apply_enchantment()` 校验选择器和金币后，在 deck entry 不以 `*` 结尾时写入 `deck[index] = f"{deck[index]}*"`。
+  - `src\content\narrative\pythonRuntime.ts:490-511`：TS 镜像逻辑同样在附魔后把 deck entry 拼接为 `*` 形式。
+  - `src\runtimeV2\renderModel.ts:70-79`：`deriveDeckSurfaceChoices()` 只用 `cardId.endsWith('+') ? cardId.slice(0, -1) : cardId` 规范化卡牌 id；label 也只为 `+` 加展示后缀，未处理 `*`。
+  - `src\runtimeV2\renderModel.ts:227-254`：Upgrade、RemoveCard、Enchant 三个 screen 都复用 `deriveDeckSurfaceChoices()`，所以退化会扩散到多个牌库选择面。
+  - `src\runtimeV2\parity.ts:56-60`：stable parity 的 `sortValueCounts()` 会剥离 `*`，因此 parity 绿色不能证明 renderModel 已正确展示附魔卡牌内容。
+- Fresh 复现/验证证据：
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"; Remove-Item Env:\PYTHONPATH`：exit `0`，`Ran 8 tests`，`OK`。
+  - Inline `npx tsx -` probe 构造 Enchant 快照，`player.deck=['strike','strike+','strike*']`，调用 `createRenderModel(snapshot)` 后输出：
+    - `roomKind="enchant"`。
+    - choice 0：`id="0:strike"`，`label="打击"`，`hasDescription=true`，`descriptionPrefix="造成 5 点伤害"`。
+    - choice 1：`id="1:strike+"`，`label="打击 +"`，`hasDescription=true`，`descriptionPrefix="造成 5 点伤害"`。
+    - choice 2：`id="2:strike*"`，`label="strike*"`，`hasDescription=false`，`descriptionPrefix=null`。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 构造任意 `RuleSnapshot`，令 `lifecycle.screen='Enchant'` 或 `Upgrade` / `RemoveCard`，并令 `snapshot.player.deck` 包含 `strike*`。
+  - 调用 `createRenderModel(snapshot)` 并读取 `model.room.choices`。
+  - 实际结果：`strike*` 无法映射到 `strike` 的 content data，label 退化为 raw `strike*`，description 丢失。
+  - 预期结果：renderModel 应把 `*` 与 `+` 都规范回 base card id 查询内容，并保留可理解的附魔展示标记；或 RuleSnapshot 应以结构化字段表达附魔状态，而不是把 `*` 拼到 card id 中。
+- 优先级：
+  - P2。该问题不阻塞现有 runtimeV2/Python 测试全绿，但会直接影响已附魔卡牌在 Upgrade、RemoveCard、Enchant 选择面的可读性和描述信息。玩家可能无法确认已附魔卡牌的真实名称和效果，后续 UI 即使完全消费 renderModel choices 也会收到退化数据。
+- 是否已修：
+  - 未修。本轮只追加报告；`renderModel.ts:70-79` 仍只剥离 `+`，fresh probe 仍显示 `strike*` 没有 description。
+- 与旧问题边界：
+  - 第 113/114 轮是 UI 层 `EnchantView` 忽略 renderModel choices，导致 renderModel 给出的选择项无法进入实际视图。
+  - 第 191 轮是 renderModel 数据层缺陷：即使 UI 开始使用 choices，`strike*` 仍会因为未规范化而缺失名称与描述。
+- 修复验收标准：
+  - 为 deck entry 提供统一规范化 helper，同时处理 `+` 和 `*`，并能稳定组合显示升级与附魔状态。
+  - `deriveDeckSurfaceChoices()` 使用 base id 查询 `contentService.getCard()`；`strike*` 应显示本地化卡名并保留 description。
+  - 增加 renderModel 单测覆盖 `strike`、`strike+`、`strike*`，以及可选的 `strike+*` / `strike*+` 边界。
+  - 修复后实际运行并读取：`npm run test:runtime-v2:ts --silent`、Python unittest，以及新增 renderModel choice 单测；如果触及 UI，再补对应 UI smoke。
+- 下一轮建议：
+  - 第 192 轮展示 `RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001`：给出 Python/TS 附魔写入 `*` 的行号、renderModel 只剥离 `+` 的行号、probe 输出、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 192 - Python Enchanted Card Id Star Unnormalized Exhibit - 2026-05-22
+
+- 循环模式：第 192 轮，按交替节奏展示第 191 轮发现的 `RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001`。
+- 展示 bug：
+  - **RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001**：Python rules-core 和 TS 镜像在 `apply_enchantment` 成功后把 deck entry 写成 `card_id*`，但 runtimeV2 renderModel 的 deck surface choice builder 只剥离升级标记 `+`。因此 `strike*` 这类已附魔卡牌在 Upgrade、RemoveCard、Enchant 选择面无法通过 `contentService.getCard()` 找回基础卡牌内容，最终显示 raw label `strike*` 且 description 丢失。
+- Fresh 源码定位：
+  - `python_runtime\src\deckrogue_rules_core\runtime.py:674-695`：`_apply_apply_enchantment()` 验证选择器、金币和当前 deck entry 后，在不以 `*` 结尾时执行 `deck[index] = f"{deck[index]}*"`。
+  - `src\content\narrative\pythonRuntime.ts:490-511`：TS 镜像 runtime 同样在附魔后追加 `*`。
+  - `src\runtimeV2\renderModel.ts:70-79`：`deriveDeckSurfaceChoices()` 只处理 `cardId.endsWith('+')`；`normalizedCardId` 不剥离 `*`，label 也只给 `+` 增加展示后缀。
+  - `src\runtimeV2\renderModel.ts:227-254`：Upgrade、RemoveCard、Enchant 三个 screen 都使用 `deriveDeckSurfaceChoices()`，所以退化会影响多个牌库选择界面。
+  - `src\runtimeV2\parity.ts:56-60`：stable parity 会把结尾 `*` 剥离后计数，说明 parity green 可能覆盖不到 renderModel 内容退化。
+- Fresh 复现/验证证据：
+  - 第 192 轮预检 `git status --short --branch`：分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - Fresh source read 仍显示 `renderModel.ts:70-79` 只剥离 `+`，未剥离 `*`。
+  - Fresh inline `npx tsx -` probe 构造 Enchant 快照，`player.deck=['strike','strike+','strike*']`，调用 `createRenderModel(snapshot)` 输出：
+    - `roomKind="enchant"`。
+    - choice 0：`id="0:strike"`，`label="打击"`，`hasDescription=true`，`descriptionPrefix="造成 5 点伤害"`。
+    - choice 1：`id="1:strike+"`，`label="打击 +"`，`hasDescription=true`，`descriptionPrefix="造成 5 点伤害"`。
+    - choice 2：`id="2:strike*"`，`label="strike*"`，`hasDescription=false`，`descriptionPrefix=null`。
+  - 第 191 轮还跑过更宽的 fresh checks：`npm run test:runtime-v2:ts --silent` 为 `107` tests、`106` pass、`1` skip；Windows Python unittest 为 `Ran 8 tests`、`OK`。这些 checks 绿色但没有覆盖该 renderModel `*` 展示边界。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 构造 `RuleSnapshot`，令 `lifecycle.screen='Enchant'`、`player.deck` 包含 `strike*`，并补齐 `createRenderModel()` 读取的 player/map 字段。
+  - 执行 `createRenderModel(snapshot)`，读取 `model.room.choices`。
+  - 实际结果：`strike*` choice 的 label 是 raw `strike*`，`description` 为空。
+  - 预期结果：已附魔牌应先规范为基础 id `strike` 查询内容，再在展示层保留可读附魔标记；或 snapshot contract 应结构化表达附魔状态，避免把 `*` 拼入 card id。
+- 优先级：
+  - P2。该问题不会让当前测试失败，但会影响已附魔卡牌在牌库选择面的可读性和效果确认；后续 UI 即使修复为消费 renderModel choices，也会收到退化数据。
+- 是否已修：
+  - 未修。Fresh source read 与 fresh probe 均确认 `renderModel.ts` 仍未规范化 `*`，`strike*` 仍无 description。
+- 修复验收标准：
+  - 提供统一 deck entry 解析/规范化 helper，明确处理 `+`、`*` 以及组合标记。
+  - `deriveDeckSurfaceChoices()` 使用基础 card id 查 content service，并在 label 中保留升级/附魔展示状态。
+  - 增加 renderModel 单测覆盖 `strike`、`strike+`、`strike*`，建议再覆盖 `strike+*` 或 `strike*+`。
+  - 修复后运行并读取：`npm run test:runtime-v2:ts --silent`、Windows Python unittest、以及新增 renderModel 单测；若 UI 也调整，则补 `npm run test:ui-smoke` 或对应 UI contract 测试。
+- 下一轮建议：
+  - 第 193 轮回到找新 bug；优先继续 runtimeV2/Python card-entry normalization 周边、AI intent chain 持久化/回放边界、desktop packaging failure recovery，或 Python WASM loader/resource 适配，避免重复本 `*` 展示退化问题。
+
+## DeckRogue Bug Loop Cycle 193 - Story Event Choose-One-Of-Three Auto-Resolves Finding - 2026-05-22
+
+- 循环模式：第 193 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取当前 `git status --short --branch`：活跃 repo 为 `E:/deckrogue/deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改；本轮只追加本报告段。
+  - 已读取第 191/192 轮报告尾部，上一轮展示的是 `RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001`。
+  - 已排重：`npm run check:enemy-ai-boundaries --silent` 仍复现旧 `AI-BOUNDARY-DEEP-IMPORT-001` / `AI-BOUNDARY-DEEP-IMPORT-LEAK-001`，本轮不重复；potions dispatcher / content-authoring 覆盖缺口也已在第 53-56、73/74 轮记录。
+- 新发现：
+  - **CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001**：4 个真实 story event 选项在文案或 gains 中承诺 `Choose 1 of 3` / `三选一` 遗物或卡牌，但 `EventManager.resolveGenericStoryEventChoice()` 没有创建任何三选一 reward/choice surface。它只通过关键词自动调用 `grantRandomRelic()` 或 `grantRouteBiasedCard()`，随后立即清空 `activeEvent` 并返回 Map。玩家看到“3 选 1”承诺，实际得到一个随机遗物或随机路线牌，不能查看候选或选择。
+- 文件/行号：
+  - `src\content\narrative\storyEvents.ts:259-264`：`servo_reliquary_open` 文案 `三选一新遗物`，`gains=["Choose 1 of 3 relics"]`。
+  - `src\content\narrative\storyEvents.ts:495-500`：`abbot_confession_interrogate` 文案 `三选一新共享牌，失去 12 生命`，`gains=["Choose 1 of 3 shared cards"]`。
+  - `src\content\narrative\storyEvents.ts:525-530`：`terminal_silence_connect` 文案 `三选一章节稀有牌，加入 1 诅咒`，`gains=["Choose 1 of 3 chapter rare cards"]`。
+  - `src\content\narrative\storyEvents.ts:800-804`：`rotted_operatory_steal` 文案 `三选一共享卡`，`gains=["Choose 1 of 3 shared cards"]`。
+  - `src\core\events\EventManager.ts:490-493`：非专门 case 的 story event option 进入 `resolveGenericStoryEventChoice(option)`。
+  - `src\core\events\EventManager.ts:564-568`：文本含 `relic` / `遗物` 时直接 `grantRandomRelic(...)`，没有构建候选列表。
+  - `src\core\events\EventManager.ts:579-581`：文本含 `card` / `牌` 且不是移除时直接 `grantRouteBiasedCard()`，没有构建卡牌选择 surface。
+  - `src\core\events\EventManager.ts:600-607`：generic resolver 写入 `genericResolved` 后立刻 `state.activeEvent = null` 并 `leaveCurrentRoomToMap()`。
+  - `src\content\narrative\contentSchema.ts:404-425`：`validateStoryEventsData()` 只验证 option `id/text/description/gains/costs` 的基本类型，不识别 `Choose 1 of 3` 这类需要专门 runtime surface 的语义。
+- Fresh 复现/验证证据：
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，`OK (14 variants checked)`。
+  - `npm run check:enemy-first3-exposure --silent`：exit `0`，`OK (slime_small_glass, goblin_trapper, barrier_redeemer)`。
+  - `npm run check:system-assertions --silent`：exit `0`，`probes: 5/5`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`107` tests，`106` pass，`1` skip。
+  - `npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/roomResolutionInference.test.ts`：exit `0`，`8/8` pass。
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`，Enemies `58/58`，Relics `0/0`，Pass rate `100%`。
+  - Inline story-event inventory probe 输出 `count=4`，列出 `servo_reliquary_open`、`abbot_confession_interrogate`、`terminal_silence_connect`、`rotted_operatory_steal` 四个 `Choose 1 of 3` 选项。
+  - Inline GameEngine probe：
+    - `servo_reliquary_open` 前 `deckCount=10/relicCount=0/rewardCards=0`；结算后 `screen="Map"`、`relicCount=1`、`rewardCards=0`、`activeEvent=null`、`relicIds=["wiretap_rosary"]`。
+    - `abbot_confession_interrogate` 前 `deckCount=10/relicCount=0/rewardCards=0`；结算后 `screen="Map"`、`deckCount=11`、`rewardCards=0`、`activeEvent=null`、`lastDeckCard="warp_tap"`。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 创建 `new GameEngine(193, null, { enableRuntimeDelegation: false })`，选择任意角色。
+  - 手动设置 `engine.state.screen='Event'` 与 `engine.state.activeEvent={ id:'servo_reliquary', data:{} }`，调用 `engine.resolveEventChoice('servo_reliquary_open')`。
+  - 实际结果：直接获得 1 个随机遗物并返回 Map，没有 3 个候选遗物、没有 reward/choice screen。
+  - 对 `abbot_confession_interrogate` 类卡牌选项同理：直接加入 1 张随机路线牌，`rewardCards` 仍为 0，事件结束。
+  - 预期结果：`Choose 1 of 3 relics/cards` 应进入明确的三选一候选 surface，玩家选择后再结算；如果当前系统只支持随机奖励，文案和 schema 应禁止 `Choose 1 of 3` 承诺。
+- 优先级：
+  - P2。它影响现有 4 个真实事件选项的玩家可见承诺与实际结算；虽然不会崩溃，但会让事件风险/奖励判断失真，尤其是高价值遗物或章节稀有牌选择。
+- 是否已修：
+  - 未修。本轮只追加报告；fresh GameEngine probe 仍显示 `Choose 1 of 3` 选项自动结算为随机单项奖励并立即回 Map。
+- 与旧问题边界：
+  - 第 53/54 轮 `CONTENT-AUTHORING-COVERAGE-001` 是 content-authoring 没有覆盖 events/potions/cardModifiers。
+  - 第 107/108 轮 `UI-RUNTIMEV2-EVENTVIEW-IGNORES-RENDERMODEL-ACTIVEEVENT-001` 是 runtimeV2 renderModel event choices 没接入 React EventView。
+  - 第 193 轮是当前 legacy EventManager 对真实 story event 选项的语义实现缺口；即使 UI 和 authoring 覆盖完整，generic resolver 仍会把 `Choose 1 of 3` 自动随机结算。
+- 修复验收标准：
+  - 为 story event 建立结构化 outcome，而不是从 gains/costs 文本猜行为；至少支持 `chooseRelic(count=3)`、`chooseCard(count=3, pool=shared/chapterRare)`。
+  - `resolveGenericStoryEventChoice()` 遇到三选一 outcome 时进入明确 reward/choice surface，并保持 `activeEvent` 或 roomSession 足以完成二段选择。
+  - 若短期不实现三选一，`validateStoryEventsData()` 或 authoring check 应禁止 `Choose 1 of 3` / `三选一` 文案进入 generic resolver。
+  - 增加回归：上述 4 个选项至少抽样两个，调用后应产生 3 个候选并等待玩家选择，不能直接加随机单项后返回 Map。
+  - 修复后实际运行并读取：`npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/roomResolutionInference.test.ts`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`，以及新增 story event choice surface 测试。
+- 下一轮建议：
+  - 第 194 轮展示 `CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001`：给出四个真实选项、EventManager 自动随机结算行号、GameEngine probe 输出、P2 未修状态和验收标准。
+
+## DeckRogue Bug Loop Cycle 194 - Story Event Choose-One-Of-Three Auto-Resolves Exhibit - 2026-05-22
+
+- 循环模式：第 194 轮，按交替节奏展示第 193 轮发现的 `CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001`。
+- 当前状态：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取报告尾部确认上一轮是第 193 轮 finding，本轮不重复找新 bug。
+- 展示 bug：
+  - **CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001**：4 个真实 story event option 在文案或 gains 中承诺 `Choose 1 of 3` / `三选一` 遗物或卡牌，但 legacy `EventManager.resolveGenericStoryEventChoice()` 没有生成三选一候选 surface。实际结算会按关键词直接发 1 个随机遗物或路线牌，然后清空事件并返回 Map。
+- Fresh 源码定位：
+  - `src\content\narrative\storyEvents.ts:259-264`：`servo_reliquary_open`，`description='三选一新遗物'`，`gains=["Choose 1 of 3 relics"]`。
+  - `src\content\narrative\storyEvents.ts:495-500`：`abbot_confession_interrogate`，`description='三选一新共享牌，失去 12 生命'`，`gains=["Choose 1 of 3 shared cards"]`。
+  - `src\content\narrative\storyEvents.ts:525-530`：`terminal_silence_connect`，`description='三选一章节稀有牌，加入 1 诅咒'`，`gains=["Choose 1 of 3 chapter rare cards"]`。
+  - `src\content\narrative\storyEvents.ts:800-804`：`rotted_operatory_steal`，`description='三选一共享卡'`，`gains=["Choose 1 of 3 shared cards"]`。
+  - `src\core\events\EventManager.ts:490-493`：story event option 未命中特化 case 时进入 `resolveGenericStoryEventChoice(option)`。
+  - `src\core\events\EventManager.ts:564-568`：文本含 relic / 遗物时直接调用 `grantRandomRelic(...)`，未构造 3 个候选。
+  - `src\core\events\EventManager.ts:579-581`：文本含 card / 牌且不是移除时直接调用 `grantRouteBiasedCard()`，未构造卡牌选择 surface。
+  - `src\core\events\EventManager.ts:600-607`：generic resolver 标记 `genericResolved` 后立刻 `state.activeEvent = null` 并 `leaveCurrentRoomToMap()`。
+  - `src\content\narrative\contentSchema.ts:404-425`：story event schema 只校验 option 字段基础类型，不识别 `Choose 1 of 3` 这类需要 runtime surface 的语义。
+- Fresh 复现/验证证据：
+  - Fresh source read 确认上述行仍存在，未看到结构化 `chooseRelic/chooseCard` outcome 或三选一候选构建。
+  - Fresh inline `npx tsx -` GameEngine probe 构造两个事件：
+    - `servo_reliquary_open`：before `screen="Event"`、`activeEventId="servo_reliquary"`、`deckCount=10`、`relicCount=0`、`rewardCards=0`；after `screen="Map"`、`activeEventId=null`、`deckCount=10`、`relicCount=1`、`rewardCards=0`、`relicIds=["wiretap_rosary"]`。
+    - `abbot_confession_interrogate`：before `screen="Event"`、`activeEventId="abbot_confession"`、`deckCount=10`、`relicCount=0`、`rewardCards=0`；after `screen="Map"`、`activeEventId=null`、`deckCount=11`、`relicCount=0`、`rewardCards=0`、`lastDeckCard="warp_tap"`。
+  - 结论：遗物与卡牌路径都没有等待玩家从 3 个候选中选择，且事件立即结束。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 创建 `new GameEngine(seed, null, { enableRuntimeDelegation: false })` 并 `selectCharacter('informant')`。
+  - 设置 `state.screen='Event'`、`state.activeEvent={ id:'servo_reliquary', data:{} }`，调用 `resolveEventChoice('servo_reliquary_open')`。
+  - 实际结果：直接获得 1 个随机遗物并回到 Map；没有 rewardCards、没有候选列表、`activeEvent` 被清空。
+  - 对 `abbot_confession_interrogate` 同理：直接加入 1 张随机路线牌，`rewardCards` 仍为 0。
+- 优先级：
+  - P2。它不会导致崩溃，但影响 4 个真实事件的玩家可见承诺与实际玩法一致性；三选一高价值奖励会被静默降级为随机单项奖励。
+- 是否已修：
+  - 未修。第 194 轮 fresh source read 和 GameEngine probe 均确认 generic resolver 仍自动随机结算并立即返回 Map。
+- 修复验收标准：
+  - 为 story event option 建立结构化 outcome，至少支持 `chooseRelic(count=3)` 与 `chooseCard(count=3, pool=shared/chapterRare)`。
+  - 三选一 outcome 必须进入明确 reward/choice surface，并保留足够状态完成二段选择。
+  - 若短期不实现三选一，authoring/schema 检查应拒绝 `Choose 1 of 3` / `三选一` 文案进入 generic resolver。
+  - 增加回归测试：上述 4 个选项至少抽样两个，调用后应产生 3 个候选并等待选择，不能直接加随机单项后返回 Map。
+  - 修复后运行并读取：`npx tsx --test tests/unit/eventManagerContract.test.ts tests/unit/roomResolutionInference.test.ts`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`，以及新增 story event choice surface 测试。
+- 下一轮建议：
+  - 第 195 轮回到找新 bug；优先检查 runtimeV2/Python card-entry normalization 周边、AI intent chain 持久化/回放边界、desktop packaging failure recovery，或 Python WASM loader/resource 适配，避免重复本 story event 三选一问题。
+
+## DeckRogue Bug Loop Cycle 195 - Desktop Smoke Close Failure Leaves Pass Report - 2026-05-22
+
+- 循环模式：第 195 轮，按交替节奏执行真实静态检查/源码审计找新 bug。
+- 当前状态：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取报告尾部确认第 194 轮已展示 `CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001`，本轮不重复该 story event 问题。
+  - 已用 `rg` 排重 `closeElectronApp`、`pass report`、`report.*close`、`desktop smoke.*close` 等关键词；历史有第 163/164 轮 desktop smoke 并发隔离问题，但未登记关闭失败后留下绿色报告的准出污染问题。
+- 新发现：
+  - **DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001**：`test:desktop-smoke` 在完成所有步骤且错误数组为空后，先把 `overallStatus="pass"` 写入 `reports\desktop\desktop-smoke.json`，再关闭 Electron。若 `closeElectronApp(app)` 在此后抛错，catch 会原样再次写入该 report 并以 exit 1 退出，但不会把 `overallStatus` 改成 `fail`，也不会记录 close failure。后续 `check_release_readiness.ts` 只读取 JSON 中的绿色状态、步骤和错误数组，可把这个失败 smoke 留下的报告当成 desktop smoke pass。
+- Fresh 源码定位：
+  - `scripts\validation\playwright_electron_smoke.ts:238-245`：根据 console/page/request 错误数组设置 `report.overallStatus`，并立即 `writeReport(report)`。
+  - `scripts\validation\playwright_electron_smoke.ts:246`：绿色报告写出后才调用 `await closeElectronApp(app)`。
+  - `scripts\validation\playwright_electron_smoke.ts:251-254`：catch 只 `writeReport(report)`、打印错误并 `process.exit(1)`；没有强制 `report.overallStatus='fail'`，也没有把 close error 加入 report。
+  - `scripts\validation\check_release_readiness.ts:229-247`：release readiness 只要求 `desktop-smoke.json` fresh、`overallStatus === "pass"`、`mode === "production"`、错误数组为空且 5 个步骤齐全；没有 smoke process exit code、cleanup failure 或 close failure 字段。
+- Fresh 静态探针证据：
+  - `npx tsx -` 只读探针读取 `playwright_electron_smoke.ts` 与 `check_release_readiness.ts`，输出：
+    - `passAssignmentLine=238`
+    - `closeCallLine=246`
+    - `catchWritesReport=true`
+    - `catchForcesFail=false`
+    - `releasePassLine=238`
+    - `releaseStepsLine=243`
+    - `syntheticCloseFailureWouldLeaveStatus="pass"`
+    - `releaseHealthyForPassReport=true`
+  - 结论：当 close 阶段失败发生在 smoke 主流程全绿之后，CLI 会失败退出，但落盘 report 仍保持 pass；release readiness 的 desktop smoke gate 会接受这类 pass report。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行 production `test:desktop-smoke`，让主流程覆盖 `launcher/tutorial/character_select/map/combat` 且错误数组为空。
+  - 在 `closeElectronApp(app)` 阶段触发失败，例如 Electron close/evaluate 抛出未被 `No dialog is showing` 分支吞掉的错误。
+  - 实际结果：脚本 exit 1，但 `reports\desktop\desktop-smoke.json` 仍可保留 `overallStatus="pass"` 与完整步骤；随后 release readiness 只按 JSON 内容判定该 smoke 为 green。
+  - 预期结果：任何 post-flow cleanup/close failure 都应使 report 变为 fail，记录失败阶段，并让 release readiness 拒绝该 artifact。
+- 优先级：
+  - P2。它不会直接影响游戏运行，但会污染 desktop 发布准出证据；维护者可能看到失败的 smoke 命令，同时准出报告仍把桌面 smoke artifact 解释为绿色。
+- 是否已修：
+  - 未修。本轮只登记；源码和静态探针仍显示 catch 不强制 fail，release readiness 也没有 close/exit 证据校验。
+- 与旧问题边界：
+  - 第 163/164 轮 `DESKTOP-SMOKE-PARALLEL-ISOLATION-001` 关注并发运行共享 `dist/`、user-data、截图和报告路径导致互相破坏。
+  - 本轮问题关注单次 smoke 在主流程通过后，Electron close/cleanup 失败导致 exit code 与落盘 report 状态不一致；即使完全串行运行也会发生。
+  - 第 185/186 轮 `DESKTOP-WIN-DIST-NONATOMIC-CLEAN-001` 关注 `dist:win` 清空 canonical release 目录后的非原子产物窗口；本轮只涉及 desktop smoke report 状态污染。
+- 修复验收标准：
+  - 将 `closeElectronApp(app)` 纳入报告状态计算，或在 close 失败 catch 中先设置 `report.overallStatus='fail'` 并追加 `cleanupErrors`/`closeErrors`。
+  - 成功报告应在 Electron 关闭成功后最终写入；失败路径必须覆盖所有后置清理阶段。
+  - `check_release_readiness.ts` 应拒绝缺少 cleanup/exit 成功证据的 desktop smoke report，或至少要求 `overallStatus="pass"` 与 `closeStatus="pass"`。
+  - 增加回归：模拟 close failure 后，脚本可 exit 1，但 report 必须为 fail 且 release readiness 不得把该 report 当作 desktop smoke pass。
+  - 修复后运行并读取：`npm run test:desktop-smoke -- --mode=production`、新增 close failure 单测/探针、`npm run check:release-readiness --silent`。
+- 下一轮建议：
+  - 第 196 轮展示 `DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001`：给出上述行号、静态探针输出、P2 未修状态、与并发隔离/非原子 dist:win 的边界，以及修复验收标准。
+
+## DeckRogue Bug Loop Cycle 196 - Desktop Smoke Close Failure Pass Report Exhibit - 2026-05-22
+
+- 循环模式：第 196 轮，按交替节奏展示第 195 轮发现的 `DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001`。
+- 当前状态：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取报告尾部确认上一轮是第 195 轮 finding，本轮不继续找新 bug。
+  - 已重新读取源码关键行，并运行 corrected line-based `npx tsx -` 静态探针；首次字符串探针因未定位到主流程 catch 已丢弃，不作为证据。
+- 展示 bug：
+  - **DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001**：`test:desktop-smoke` 主流程完成后先写出 `overallStatus="pass"` 的 `reports\desktop\desktop-smoke.json`，再关闭 Electron。若后续 `closeElectronApp(app)` 抛错，脚本会 exit 1，但主 catch 只是原样重写 report，不会把 `overallStatus` 改成 `fail`，也不记录 close/cleanup error。`check_release_readiness.ts` 随后只看 report JSON 的 pass 状态、production mode、错误数组和步骤覆盖，因此可能把一次失败的 desktop smoke artifact 判为绿色。
+- Fresh 源码定位：
+  - `scripts\validation\playwright_electron_smoke.ts:238-245`：完成 `combat` 步骤后，按错误数组设置 `report.overallStatus`，然后立即 `writeReport(report)`。
+  - `scripts\validation\playwright_electron_smoke.ts:246`：报告写出后才执行 `await closeElectronApp(app)`。
+  - `scripts\validation\playwright_electron_smoke.ts:251-254`：主 catch 只 `writeReport(report)`、打印错误并 `process.exit(1)`；没有设置 `report.overallStatus='fail'`，也没有添加 close/cleanup error 字段。
+  - `scripts\validation\check_release_readiness.ts:229-247`：release readiness 读取 `reports/desktop/desktop-smoke.json`，只要求 fresh、`overallStatus === "pass"`、`mode === "production"`、错误数组为空和 `launcher/tutorial/character_select/map/combat` 步骤齐全。
+- Fresh 验证证据：
+  - corrected line-based `npx tsx -` 探针输出：
+    - `writeReportBeforeCloseLine=245`
+    - `closeElectronAppLine=246`
+    - `mainCatchLine=251`
+    - `mainCatchWritesReport=true`
+    - `mainCatchForcesFail=false`
+    - `mainCatchRecordsCleanupError=false`
+    - `releaseRequiresOverallPassLine=238`
+    - `releaseRequiresCloseStatus=false`
+    - `releaseHealthyForSyntheticPassReport=true`
+  - Fresh source excerpt 同步确认 `playwright_electron_smoke.ts:245-246` 的写报告早于 close，`251-254` 的 catch 不改状态；`check_release_readiness.ts:237-245` 的 healthy 条件没有 close/cleanup 成功证据。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行 production `test:desktop-smoke`，主流程覆盖 `launcher/tutorial/character_select/map/combat` 且 console/page/request 错误数组为空。
+  - 让 `closeElectronApp(app)` 在第 246 行抛出未被内部吞掉的错误。
+  - 实际结果：CLI 进入主 catch 并 exit 1，但 report 仍可保留 `overallStatus="pass"`、完整步骤和空错误数组；release readiness 的 desktop smoke gate 可接受该 JSON。
+  - 预期结果：任何 close/cleanup 阶段失败都应让 report 变为 fail，并让 release readiness 拒绝该 artifact。
+- 优先级：
+  - P2。它不直接破坏游戏运行，但会让桌面准出证据与实际 smoke 命令 exit code 不一致，污染 release readiness 判断。
+- 是否已修：
+  - 未修。本轮只展示并刷新证据，没有修改 `playwright_electron_smoke.ts` 或 `check_release_readiness.ts`；fresh 探针仍显示主 catch 不强制 fail、release gate 不要求 close status。
+- 与旧问题边界：
+  - 第 163/164 轮 `DESKTOP-SMOKE-PARALLEL-ISOLATION-001` 关注并发 smoke 共享 `dist/`、user-data、截图和报告路径导致互相覆盖。
+  - 第 185/186 轮 `DESKTOP-WIN-DIST-NONATOMIC-CLEAN-001` 关注 `dist:win` 清空 canonical release 目录后的非原子发布窗口。
+  - 本轮问题是单次 smoke 的后置 close/cleanup 失败没有反映到 report 状态；串行运行也可出现。
+- 修复验收标准：
+  - `closeElectronApp(app)` 成功后再写最终 pass report，或将 close 状态纳入 `overallStatus` 计算。
+  - 主 catch 必须在写失败报告前设置 `report.overallStatus='fail'`，并记录 close/cleanup error，例如 `closeErrors` 或 `cleanupErrors`。
+  - `check_release_readiness.ts` 应要求 desktop smoke report 包含 close/cleanup 成功证据，或拒绝缺少该证据的新格式 report。
+  - 增加回归：模拟 close failure 时脚本可 exit 1，但 report 必须为 fail；release readiness 不得把该 report 判为 desktop smoke pass。
+  - 修复后运行并读取：`npm run test:desktop-smoke -- --mode=production`、新增 close failure 回归、`npm run check:release-readiness --silent`。
+- 下一轮建议：
+  - 第 197 轮回到找新 bug；优先检查 runtimeV2 content projection、Python WASM resource/loader、AI intent chain replay/persistence，或 UI smoke 对 renderModel choice surfaces 的覆盖缺口，避免重复本 desktop smoke report 状态问题。
+
+## DeckRogue Bug Loop Cycle 197 - Content Reachability Chapter Events False Pass Finding - 2026-05-22
+
+- 循环模式：第 197 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取第 196 轮报告尾部，上一轮展示的是 `DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001`。
+  - 已读取 `auto-test-web-app-v5` fast path：本轮采用“先跑现有检查，再用最小静态探针定位缺口”的轻量测试路径。
+  - 已排重：第 53/54 轮 `CONTENT-AUTHORING-COVERAGE-001` 是 content-authoring 没覆盖 storyEvents/potions/cardModifiers；第 77/78 轮 `RUNTIMEV2-PYTHON-EVENT-REWARD-PARITY-GAP-001` 是 Python runtime/event content bundle 与 reward parity 分叉；第 193/194 轮是 story event 三选一自动随机结算。本轮不重复这些旧问题。
+- 新发现：
+  - **CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001**：`npm run check:content-reachability` 的 “Chapter-specific events” 绿灯并不读取实际 story event 源 `STORY_EVENTS` / `storyEvents.ts`。它在 `analyzeChapterPools()` 中用 `mirror_events.json` 的条目数 `>= 14` 作为章节事件存在性的判据，因此只要 mirror flow 数据足够多，即使章节 story events 的楼层覆盖、source 导入或 `numericSystem.STORY_EVENTS` 发生回归，该 reachability gate 仍可输出 `hasChapterSpecificEvents=true`、`brokenEdges=[]`。
+- Fresh 源码定位：
+  - `scripts\validation\contentReachabilityCheck.ts:97-105`：`loadMirrorEventsFromData()` 只读取 `src/content/data/mirror_events.json` 并返回 mirror event id。
+  - `scripts\validation\contentReachabilityCheck.ts:144-160`：`analyzeChapterPools()` 调用 `loadMirrorEventsFromData()`，然后直接用 `mirrorEvents.length >= 14` 设置 `hasChapterSpecificEvents`。
+  - `scripts\validation\contentReachabilityCheck.ts:171-173`：只有 `hasChapterSpecificEvents` 为 false 时才写入 `no_chapter_specific_event_definitions`；由于判据来自 mirror events，真实 story event pool 不参与。
+  - `src\content\narrative\numericSystem.ts:335`：实际 runtime 使用的 validated story event 源是 `STORY_EVENTS = applyStoryEventOverrides(validateStoryEventsData(RAW_STORY_EVENTS, 'storyEvents.ts'))`。
+  - `src\core\events\EventManager.ts:101-162`：legacy event selection 使用 `STORY_EVENTS` 的 `floorMin/floorMax/weight/routeTags` 选择事件，而不是 `mirror_events.json`。
+  - `src\content\narrative\storyEvents.ts:249-252`、`:477-480`、`:858-861`：真实 story events 带有章节/楼层范围字段；这些字段才是 chapter event reachability 应检查的对象。
+- Fresh 命令与探针证据：
+  - `npm run check:content-reachability --silent`：exit `0`，输出 `Summary: 11/11 reachable`、`Total broken edges: 0`，并打印 `✅ Chapter-specific events`。
+  - `reports\content\reachability.json` 本轮刷新后记录：
+    - `chapterPools.hasChapterSpecificEvents=true`
+    - `chapterPools.brokenEdges=[]`
+    - `summary.brokenEdges=0`
+    - `summary.unreachableEvents=[]`
+  - 只读 `npx tsx -` 探针读取 checker、mirror events 和真实 story events，输出：
+    - `checkerUsesMirrorEventsInChapterGate=true`
+    - `checkerImportsStoryEvents=false`
+    - `mirrorEventsCount=14`
+    - `rawStoryEventsCount=37`
+    - `validatedStoryEventsCount=37`
+    - `chapterGateResultByCurrentChecker=true`
+    - `storyEventChapterBuckets={"chapter1":15,"chapter2":17,"chapter3":12}`
+  - 对照检查：
+    - `npm run check:asset-polish --silent`：exit `0`，`errors=0, warnings=0`。
+    - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+    - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+    - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/errorBoundaryContract.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`9/9` pass。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行 `npm run check:content-reachability --silent`。
+  - 观察它报告 `Chapter-specific events` 通过，并在 `reports\content\reachability.json` 写入 `hasChapterSpecificEvents=true`。
+  - 打开 `scripts\validation\contentReachabilityCheck.ts:144-160` 可见该 pass 来源只依赖 `mirror_events.json` 长度，不依赖 `numericSystem.STORY_EVENTS` 或 `storyEvents.ts` 的楼层分布。
+  - 预期结果：章节事件 reachability 应读取 validated `STORY_EVENTS`，检查每个章节/关键楼层范围有可选 story event，并在缺口时写入具体 broken edge。
+- 优先级：
+  - P2。它不直接造成运行时崩溃，但 `check:content-reachability` 是 doctor/release 前常用绿灯之一；当前绿灯会掩盖 story event chapter pool 或 floor range 回归，尤其是章节内容扩展后维护者可能误以为章节事件已被覆盖。
+- 是否已修：
+  - 未修。本轮只登记；fresh source read 和 probe 均确认 chapter event gate 仍以 mirror event count 为依据，未导入或检查 `STORY_EVENTS`。
+- 与旧问题边界：
+  - 第 53/54 轮 content-authoring 覆盖缺口关注另一个脚本 `check_content_authoring.ts` 没有加载 storyEvents/potions/cardModifiers。
+  - 第 77/78 轮 runtimeV2/Python event parity 关注 Python `_start_event()` 和 content bundle 缺少 events 导致 runtime 行为分叉。
+  - 第 193/194 轮关注真实 story event option 的三选一语义自动随机结算。
+  - 本轮问题专指 `check_content_reachability.ts` 的章节事件 reachability 断言取错数据源，导致 existing gate 绿灯不代表 story event chapter coverage 安全。
+- 修复验收标准：
+  - `analyzeChapterPools()` 应从 `numericSystem.STORY_EVENTS` 或经过 `validateStoryEventsData()` 的源读取事件，而不是用 `mirror_events.json` 条数替代。
+  - 检查应按章节/楼层段输出覆盖矩阵，例如 Chapter 1/2/3 至少各有 N 个 eligible story events，并能列出缺口楼层或缺口章节。
+  - `reports\content\reachability.json` 应在 `results` 或 `chapterPools` 中记录实际 story event ids/counts，而不是只记录 boolean。
+  - 增加回归：构造空/缺章节 story event 源时，`check:content-reachability` 必须 fail，即使 `mirror_events.json` 仍有 14 条。
+  - 修复后运行并读取：`npm run check:content-reachability --silent`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`，以及新增 content reachability 单测/探针。
+- 下一轮建议：
+  - 第 198 轮展示 `CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001`：给出 checker 取错数据源行号、fresh check 输出、探针字段、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 198 - Content Reachability Chapter Events False Pass Exhibit - 2026-05-22
+
+- 循环模式：第 198 轮，按交替节奏展示第 197 轮发现的 `CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001`。
+- 当前状态：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取报告尾部确认上一轮是第 197 轮 finding，本轮不继续找新 bug。
+  - 已重新运行 `npm run check:content-reachability --silent` 并读取输出；已重新读取 checker/runtime 源码和 corrected `npx tsx -` 探针输出。
+- 展示 bug：
+  - **CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001**：`check:content-reachability` 的 “Chapter-specific events” 绿灯取自 `mirror_events.json` 数量，而当前 legacy runtime 事件选择使用 validated `STORY_EVENTS`。这会让章节 story event 楼层覆盖、source 导入或 override 回归绕过 reachability gate；报告仍显示 `hasChapterSpecificEvents=true`、`brokenEdges=[]`。
+- Fresh 源码定位：
+  - `scripts\validation\contentReachabilityCheck.ts:97-105`：`loadMirrorEventsFromData()` 只读取 `src/content/data/mirror_events.json`。
+  - `scripts\validation\contentReachabilityCheck.ts:144-160`：`analyzeChapterPools()` 调用 `loadMirrorEventsFromData()`，并用 `mirrorEvents.length >= 14` 设置 `hasChapterSpecificEvents`。
+  - `scripts\validation\contentReachabilityCheck.ts:171-173`：只有该 boolean 为 false 时才写入 `no_chapter_specific_event_definitions`，真实 story event pool 未参与判断。
+  - `src\content\narrative\numericSystem.ts:335`：运行时 story event 源为 `STORY_EVENTS = applyStoryEventOverrides(validateStoryEventsData(RAW_STORY_EVENTS, 'storyEvents.ts'))`。
+  - `src\core\events\EventManager.ts:101-162`：legacy `startEvent()` 使用 `STORY_EVENTS` 的 `floorMin/floorMax/weight/routeTags` 选择事件。
+  - `src\content\narrative\storyEvents.ts:249-252`、`:477-480`、`:858-861`：真实 story events 明确包含 `floorMin/floorMax/weight`，这些字段应被章节 reachability 检查覆盖。
+- Fresh 复现/验证证据：
+  - `npm run check:content-reachability --silent`：exit `0`，输出 `Summary: 11/11 reachable`、`Total broken edges: 0`，并显示 `✅ Chapter-specific events`。
+  - 刷新的 `reports\content\reachability.json`：
+    - `timestamp="2026-05-22T01:26:07.041Z"`
+    - `hasChapterSpecificEvents=true`
+    - `chapterBrokenEdges=[]`
+    - `summaryBrokenEdges=0`
+    - `unreachableEvents=[]`
+    - `reachable=11`
+    - `total=11`
+  - corrected `npx tsx -` 探针输出：
+    - `checkerUsesMirrorEventsInChapterGate=true`
+    - `checkerImportsStoryEvents=false`
+    - `mirrorEventsCount=14`
+    - `rawStoryEventsCount=37`
+    - `validatedStoryEventsCount=37`
+    - `chapterGateResultByCurrentChecker=true`
+    - `storyEventChapterBuckets={"chapter1":15,"chapter2":17,"chapter3":12}`
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行 `npm run check:content-reachability --silent`。
+  - 查看终端输出和 `reports\content\reachability.json`，确认章节事件 reachability 为 pass。
+  - 打开 `scripts\validation\contentReachabilityCheck.ts:144-160`，可见该 pass 来源只依赖 `mirror_events.json` 长度，不读取 `numericSystem.STORY_EVENTS` 或 `storyEvents.ts` 的楼层分布。
+- 优先级：
+  - P2。该问题不直接崩溃，但 `check:content-reachability` 是 doctor/release 前常用内容绿灯；章节事件源回归时，维护者会看到误导性 reachability pass。
+- 是否已修：
+  - 未修。本轮未修改 `contentReachabilityCheck.ts` 或 content schema；fresh source read 和 probe 仍确认 chapter event gate 没有导入或检查 `STORY_EVENTS`。
+- 与旧问题边界：
+  - 第 53/54 轮 `CONTENT-AUTHORING-COVERAGE-001` 关注 `check_content_authoring.ts` 未加载 storyEvents/potions/cardModifiers。
+  - 第 77/78 轮 `RUNTIMEV2-PYTHON-EVENT-REWARD-PARITY-GAP-001` 关注 Python `_start_event()` 与 content bundle events 缺口导致 runtime 行为分叉。
+  - 第 193/194 轮 `CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001` 关注 story event option 语义自动随机结算。
+  - 本轮只指向 `check_content_reachability.ts` 章节事件 reachability 断言取错数据源。
+- 修复验收标准：
+  - `analyzeChapterPools()` 应读取 validated `STORY_EVENTS`，或显式调用 `validateStoryEventsData()` 后按章节/楼层计算覆盖。
+  - 报告应输出 Chapter 1/2/3 的 story event ids/counts 和缺口楼层，而不是只给 boolean。
+  - 回归测试应证明：即使 `mirror_events.json` 仍有 14 条，空 story event 源或缺章节 story event 源也会让 `check:content-reachability` fail。
+  - 修复后运行并读取：`npm run check:content-reachability --silent`、`npm run check:content-bundle --silent`、`npm run check:content-authoring --silent`，以及新增 content reachability 单测/探针。
+- 下一轮建议：
+  - 第 199 轮回到找新 bug；优先检查 runtimeV2/UI renderModel surface 与真实 React view 接线、Python WASM adapter resource/loader 剩余边界、AI intent persistence/replay，或 desktop packaging/report failure recovery，避免重复本 content reachability 数据源问题。
+
+## DeckRogue Bug Loop Cycle 199 - AI Combat Memory Production Writers Missing Finding - 2026-05-22
+
+- 循环模式：第 199 轮，按交替节奏回到真实构建/测试/静态检查/源码证据找新 bug。
+- 预检：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取第 198 轮报告尾部，上一轮展示的是 `CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001`。
+  - 已读取 `auto-test-web-app-v5` fast path：本轮采用“先跑现有检查，再用最小静态/动态探针定位缺口”的轻量测试路径。
+  - 已排重：第 117/143/144 与第 159/160 轮是 runtimeV2/legacy `intentPolicy` camelCase 丢失；第 167/168 轮是零权重 RNG 边界；第 179/180 轮是 ascension aggro bias no-op；第 129/130 与第 145/146 轮是 AI facade/deep import 边界。本轮不重复这些问题。
+- 新发现：
+  - **AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001**：`selectEnemyIntentForCombat()`、底层 `IntentSelector` fallback 和 boss phase adaptation 都读取全局 `combatMemory` 来推断玩家行为模式，但生产战斗路径没有任何 `combatMemory.recordAction()` 或 `recordHandState()` 调用。当前真实打牌、敌人行动和 `CardPlayed` 事件只更新战斗状态/vox log，不会把玩家出牌、伤害、格挡或敌人行动写入 AI memory；因此记忆驱动的意图权重、boss adaptation 和 `vulnerableToBurst` / `prefersAggression` 等 pattern 在真实运行里长期保持默认值。
+- Fresh 源码定位：
+  - `src\core\ai\combatMemory.ts:63`：`recordAction()` 是唯一正式写入玩家/敌人行为记录的入口。
+  - `src\core\ai\selectEnemyIntent.ts:403`：统一 combat AI 入口读取 `combatMemory.analyzePlayerPatterns()`，再叠加当前手牌感知。
+  - `src\core\ai\intentSelector.ts:165`：底层 selector 在未显式传入 patterns 时也 fallback 到 `combatMemory.analyzePlayerPatterns()`。
+  - `src\core\combat\BossPhaseManager.ts:282`：boss phase adaptation 读取 `combatMemory.getDetailedPlayerPatterns()`。
+  - `src\core\events\CombatManager.ts:690-756`：真实 `playCard()` 消耗能量、执行 actions、发布 `CardPlayed`，但没有调用 `combatMemory.recordAction()` 或 `recordHandState()`。
+  - `src\core\events\CombatManager.ts:1166-1218`：敌方行动执行、cooldown 和下一意图刷新也没有把敌人 intent/damage 写入 `combatMemory`。
+  - `src\core\events\gameEngine.ts:247-252`：`CardPlayed` listener 只写 combat vox log；没有把事件转成 memory record。
+  - `src\core\events\gameEngine.ts:323`、`:750`：当前生产代码只在 dispose / selectCharacter 时清空 `combatMemory`，没有对应生产写入。
+- Fresh 命令与探针证据：
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/combatDamagePipelineIntegration.test.ts`：exit `0`，`34/34` pass。现有覆盖证明 AI facade、敌人行动和 shared damage pipeline 绿色，但不覆盖生产 memory 写入。
+  - 只读 `npx tsx -` 静态/动态探针输出：
+    - `productionCombatMemoryWriters=[]`
+    - `recordActionRefs=[gameEngine clear only, enemyIntentFacade.test manual recordAction, scripts/test-ai-features manual recordAction]`
+    - `selectEnemyIntentUsesCombatMemory=true`
+    - `intentSelectorFallbackUsesCombatMemory=true`
+    - `bossPhaseReadsDetailedPatterns=true`
+    - `combatManagerPublishesCardPlayed=true`
+    - `gameEngineCardPlayedListenerRecordsMemory=false`
+    - 动态真实路径：`GameEngine(199199, enableRuntimeDelegation:false)` 选择角色、`startCombat('Combat')`、`playCard()` 后，`combatMemory.analyzePlayerPatterns()` 从 before 到 after 仍为 `aggressivePlaysInLastTurns=0`、`defensivePlaysInLastTurns=0`、`averageCardsPerTurn=0`、`averageDamageDealtPerTurn=0`、`averageBlockGainedPerTurn=0`。
+- 复现路径：
+  - 在 `E:\deckrogue\deckrogue-mainline-merge` 运行上述 AI/战斗单测，确认现有测试绿色。
+  - 搜索 `combatMemory.recordAction(` 与 `combatMemory.recordHandState(`，可见生产 `src/` 只有 clear/read，没有 writer；writer 只出现在测试和 `scripts/test-ai-features.ts` 手工演示里。
+  - 用真实 `GameEngine -> startCombat -> playCard` 路径打一张牌；打牌会发布 `CardPlayed`，但 `combatMemory.analyzePlayerPatterns()` 仍全为默认值。
+  - 预期结果：真实打牌、伤害、格挡和敌人 intent 执行应生成 bounded `CombatActionRecord`，至少在 `CardPlayed`/damage/block 结算后记录玩家行为，并在敌人行动后记录 enemy intent/damage，以供下一次 intent selection 和 boss adaptation 使用。
+- 优先级：
+  - P2。它不直接导致崩溃，但会让“学习玩家行为”的 AI intent chain 变成静态手牌感知 + 默认历史模式；boss adaptation 也拿不到真实历史特征，玩家会看到敌人 AI 不会随本局行为长期调整。
+- 是否已修：
+  - 未修。本轮只登记；fresh probe 仍显示生产 writer 列表为空，真实 `playCard()` 后 memory pattern 不变。
+- 与旧问题边界：
+  - 第 159/160 轮 `AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001` 关注敌人 intent policy 字段名兼容，影响能否读取 authored policy。
+  - 第 167/168 轮 `AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001` 关注全零权重 fallback / RNG 边界。
+  - 第 179/180 轮 `AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001` 关注 ascension bias 参数传入但被显式 situation 覆盖。
+  - 本轮只指向 combat memory 数据流断裂：AI 代码读取 memory，但真实战斗从未写入 memory。
+- 修复验收标准：
+  - 在 production combat path 中建立明确、单一的 AI memory 写入层，例如由 `CombatManager.playCard()` 汇总 cardPlayed / damageDealt / blockGained，敌人行动后汇总 enemy intent / damageDealt，并写入 `combatMemory.recordAction()`。
+  - 如果通过 `globalEventBus` 聚合，应避免重复监听和 dispose 泄漏，并保证 `selectCharacter()` / `dispose()` 的 clear 仍保留。
+  - 增加回归：真实 `GameEngine -> startCombat -> playCard` 后，`combatMemory.analyzePlayerPatterns().averageCardsPerTurn > 0`；造成伤害或格挡时对应 aggressive/defensive counters 变化。
+  - 增加 boss adaptation 回归：启用 boss adaptation 后，玩家连续攻击/防御能改变 `getDetailedPlayerPatterns()` 输入，而不是永远默认。
+  - 修复后运行并读取：`npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/combatDamagePipelineIntegration.test.ts`、新增 production memory 写入回归，以及 `npm run test:runtime-v2:ts --silent`。
+- 下一轮建议：
+  - 第 200 轮展示 `AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001`：给出生产 writer 为空、真实 playCard 后 memory 不变、AI selector/boss adaptation 读取 memory 的行号、P2 未修状态和修复验收标准。
+
+## DeckRogue Bug Loop Cycle 200 - AI Combat Memory Production Writers Missing Exhibit - 2026-05-22
+
+- 循环模式：第 200 轮，按交替节奏展示第 199 轮发现的 `AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001`。
+- 当前状态：
+  - 已读取 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树仍有大量既有修改和未跟踪文件；本轮只追加本报告段。
+  - 已读取报告尾部确认上一轮是第 199 轮 finding，本轮不继续找新 bug。
+  - 已读取 `auto-test-web-app-v5` fast path，本轮只复跑现有测试和最小静态/动态探针，不生成新测试或极端场景。
+- 展示 bug：
+  - **AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001**：AI intent 链和 boss adaptation 都把 `combatMemory` 当作玩家行为历史来源，但真实战斗路径没有生产 writer。打牌、伤害、格挡、敌人 intent 执行和 `CardPlayed` 事件不会调用 `combatMemory.recordAction()` / `recordHandState()`，因此 `selectEnemyIntentForCombat()` 和 boss phase adaptation 读取到的历史模式长期保持默认值。
+- Fresh 源码定位：
+  - `src\core\ai\combatMemory.ts:63`：`recordAction()` 是写入玩家/敌人行为记录的入口。
+  - `src\core\ai\combatMemory.ts:78`：`recordHandState()` 是写入手牌/能量上下文的入口。
+  - `src\core\ai\selectEnemyIntent.ts:403`：统一 AI 入口读取 `combatMemory.analyzePlayerPatterns()`。
+  - `src\core\ai\intentSelector.ts:165`：底层 selector fallback 也读取 `combatMemory.analyzePlayerPatterns()`。
+  - `src\core\combat\BossPhaseManager.ts:282`：boss adaptation 读取 `combatMemory.getDetailedPlayerPatterns()`。
+  - `src\core\events\CombatManager.ts:690-756`：真实 `playCard()` 执行卡牌并发布 `CardPlayed`，但没有 memory writer。
+  - `src\core\events\CombatManager.ts:1166-1218`：敌方行动、cooldown 和下一意图刷新没有写入 enemy intent / damage 历史。
+  - `src\core\events\gameEngine.ts:247-252`：`CardPlayed` listener 只写 vox log。
+  - `src\core\events\gameEngine.ts:323`、`:750`：生产代码只在 dispose / selectCharacter 时清空 `combatMemory`。
+- Fresh 复现/验证证据：
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/combatDamagePipelineIntegration.test.ts`：exit `0`，`34/34` pass。
+  - 只读 `npx tsx -` 探针输出：
+    - `productionCombatMemoryWriters=[]`
+    - `allCombatMemoryRefs=[src/core/events/gameEngine.ts clear only, tests/unit/enemyIntentFacade.test.ts manual recordAction, scripts/test-ai-features.ts manual recordAction]`
+    - `selectEnemyIntentUsesCombatMemory=true`
+    - `intentSelectorFallbackUsesCombatMemory=true`
+    - `bossPhaseReadsDetailedPatterns=true`
+    - `combatManagerPublishesCardPlayed=true`
+    - `gameEngineCardPlayedListenerRecordsMemory=false`
+    - `lines.combatManagerPlayCard=690`
+    - `lines.combatManagerPublishesCardPlayed=749`
+    - `lines.combatManagerExecuteEnemyTurn=1166`
+  - 动态真实路径探针：`GameEngine(200200, enableRuntimeDelegation:false)` 选择 `informant`、`startCombat('Combat')`、打出 `weak_point_analysis` 后，`combatMemory.analyzePlayerPatterns()` before/after 都保持：
+    - `aggressivePlaysInLastTurns=0`
+    - `defensivePlaysInLastTurns=0`
+    - `averageCardsPerTurn=0`
+    - `averageDamageDealtPerTurn=0`
+    - `averageBlockGainedPerTurn=0`
+    - `prefersAggression=false`
+    - `vulnerableToBurst=false`
+- 复现路径：
+  - 运行上述 AI/战斗单测，确认现有覆盖绿色。
+  - 搜索 `combatMemory.recordAction(` 与 `combatMemory.recordHandState(`，确认生产 `src/` 没有 writer。
+  - 用真实 `GameEngine -> selectCharacter -> startCombat -> playCard` 路径打一张牌。
+  - 实际结果：`CardPlayed` 事件存在，但 `combatMemory.analyzePlayerPatterns()` 不变。
+  - 预期结果：真实打牌、伤害、格挡和敌人行动应被汇总为 bounded `CombatActionRecord`，供下一次 intent selection 和 boss adaptation 使用。
+- 优先级：
+  - P2。不会直接崩溃，但会让“根据玩家行为调整”的 AI intent 和 boss adaptation 只剩当前手牌感知与默认历史模式，长期行为不会随本局出牌历史收敛。
+- 是否已修：
+  - 未修。本轮未修改 AI 或 CombatManager；fresh probe 仍显示生产 writer 列表为空，真实 playCard 后 memory pattern 不变。
+- 与旧问题边界：
+  - 第 159/160 轮 `AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001` 关注敌人 intent policy 字段兼容。
+  - 第 167/168 轮 `AI-INTENT-ZERO-WEIGHT-RNG-BOUNDARY-001` 关注全零权重 fallback / RNG 边界。
+  - 第 179/180 轮 `AI-ASCENSION-INTENT-AGGRO-BIAS-NOOP-001` 关注 ascension bias 参数被显式 situation 覆盖。
+  - 本轮只关注 combat memory 数据流断裂：AI 读取 memory，但真实战斗未写入 memory。
+- 修复验收标准：
+  - 在 `CombatManager.playCard()` 或一个集中聚合层记录玩家 cardPlayed / damageDealt / blockGained。
+  - 在敌人行动后记录 enemy intent / damageDealt，且不重复记录同一 action。
+  - 保留 `selectCharacter()` / `dispose()` 的 clear 生命周期，避免跨 run 污染。
+  - 增加回归：真实 `GameEngine -> startCombat -> playCard` 后，`averageCardsPerTurn > 0`；伤害或格挡牌能改变 aggressive/defensive counters。
+  - 增加 boss adaptation 回归：启用 boss adaptation 后，玩家连续攻击/防御会改变 `getDetailedPlayerPatterns()` 输入。
+  - 修复后运行并读取：`npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/combatDamagePipelineIntegration.test.ts`、新增 production memory writer 回归，以及 `npm run test:runtime-v2:ts --silent`。
+- 下一轮建议：
+  - 第 201 轮回到找新 bug；优先查 runtimeV2 replay/save metadata、content schema 未覆盖 runtime 字段、Python WASM loader/resource 余留边界，或 desktop packaging/report recovery，避免重复本 AI memory writer 缺口。
+
+## DeckRogue Fix Batch 001 - P1/P2 Runtime/UI/Content/Desktop/Python Closure - 2026-05-22
+
+- 模式切换：
+  - 用户明确要求停止只找 bug，启动修复轮次。本批从已登记且验收清晰的 P1/P2 项中挑低耦合修复：AI legacy camelCase `intentPolicy`、RestView runtimeV2 Rest capability gate、desktop smoke close report 污染、card modifier content schema guard、Python secondary resource 初始化。
+  - 预检 `git status --short --branch`：活跃 repo 仍为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树已有大量既有修改；本批只在相关文件增量修改，不回退无关改动。
+- 修复内容：
+  - **AI-LEGACY-CAMEL-INTENTPOLICY-FALLBACK-001：已修。**
+    - `src\core\ai\intentPolicy.ts:26-35` 新增 `resolveIntentPolicyList()`，统一读取 `intent_policy` 与 `intentPolicy`。
+    - `src\core\ai\intentSelector.ts:41-42`、`:131-132` 允许 `EnemyDefBase.intentPolicy`，selector 不再只看 snake_case。
+    - `src\core\ai\selectEnemyIntent.ts` 的 AI profile bias 也改用同一 policy resolver，避免 camelCase 敌人无法套用 profile。
+    - `src\runtimeV2\content\buildContentBundle.ts:36`、`:85-87` content bundle 同步消费 camelCase policy。
+    - `src\core\ai\index.ts` 导出 `intentPolicy` helper，减少新 helper 只存在 deep module 的边界风险。
+  - **UI-RUNTIMEV2-RESTVIEW-RELIC-UPGRADE-GATE-001 / RESTVIEW-POTION-MIX-GATE-001：入口 gate 已修。**
+    - `src\ui\views\RestView.tsx:32` 的 relic upgrade gate 改为优先 `roomSummary?.canRelicUpgrade`，legacy relic list 只作 fallback。
+    - `src\runtimeV2\renderModel.ts:145-172` Rest render model 现在从 `snapshot.player.potionIds` 输出 `canMix` 和 `room.potions`。
+    - `src\ui\views\RestView.tsx:35-56` 药剂选项和 mix gate 优先消费 `roomSummary.potions/canMix`，legacy `player.potions` 只作 fallback。
+    - `RestView` 的“蒸馏配方”快捷键从重复的 `data-keyboard-option="4"` 改为 `"6"`，同时补上静态唯一性回归。
+    - 剩余风险：按钮点击仍调用 legacy `engine.mixPotions(indexA,indexB)`；本批修复 UI capability/projection gate，runtimeV2 纯规则层 mix 命令仍可作为后续小项补齐。
+  - **DESKTOP-SMOKE-CLOSE-FAILURE-PASS-REPORT-001：已修。**
+    - `scripts\validation\playwright_electron_smoke.ts:32-33` report schema 新增 `closeStatus/closeError`。
+    - `scripts\validation\playwright_electron_smoke.ts:243-253` 先执行 close，再按 close 结果计算 `overallStatus`；close 失败会落盘 fail，不再留下绿色报告。
+    - `scripts\validation\check_release_readiness.ts:102-103`、`:241` release readiness 要求 `closeStatus === "pass"`。
+  - **CONTENT-SCHEMA-CARD-MODIFIER-EFFECT-WHITELIST-MISSING-001：已修。**
+    - `src\content\narrative\contentSchema.ts:15-27` 增加 card modifier effect/resource 白名单。
+    - `src\content\narrative\contentSchema.ts:179-190` 新增 `validateCardModifierEffect()`，拒绝未知 effect type、缺失/非法 profession resource，以及非 professionResource 上多余 resource。
+    - `src\content\narrative\contentSchema.ts:422` `validateCardModifiersData()` 改用完整 effect contract。
+    - `src\content\narrative\numericSystem.ts` 将 `validateCardModifiersData` 加入 `__numericSystemTesting`，让 schema 回归可直接锁定。
+  - **RUNTIMEV2-PYTHON-SECONDARY-RESOURCE-INITIALIZATION-MISSING-001：生成端与 normalize 承载已修。**
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:18-19` 定义 secondary/special resource 列表。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:113-124` `select_character` 后初始化 `secondary_resources`，并同步直接字段 `evidence/rage/command/verdict/seal`。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py:1772-1774` 初始 snapshot 同样带 resource 承载面。
+    - `src\runtimeV2\contracts.ts` 与 `src\runtimeV2\pythonInterop.ts:117-156` 保留 Python snake_case `secondary_resources` 到 TS `secondaryResources` 和直接字段。
+- 新增/更新回归：
+  - `tests\unit\enemyIntentFacade.test.ts`：新增 camelCase `intentPolicy` selector 回归。
+  - `tests\unit\runtimeV2ContentBundle.test.ts`：验证真实 camelCase enemy `coolant_hound` 被投影出 `intent_policy`。
+  - `tests\unit\runtimeV2LegacyRenderBridge.test.ts`：验证 RuntimeV2 Rest render model 输出 potion mix choices。
+  - `tests\unit\appShellUiContracts.test.ts`：锁定 RestView runtimeV2 gate 与 keyboard option 唯一性。
+  - `tests\unit\releaseAndTranslationGate.test.ts`：锁定 desktop smoke report 与 release readiness 都要求 clean close。
+  - `tests\unit\numericsDomain.test.ts`：锁定 card modifier effect whitelist。
+  - `python_runtime\tests\test_runtime.py`：锁定 Python select-character 后 secondary resource 初始化。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/enemyIntentFacade.test.ts tests/unit/appShellUiContracts.test.ts tests/unit/releaseAndTranslationGate.test.ts tests/unit/pythonInterop.test.ts`：exit `0`，`43/43` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`Ran 8 tests`，`OK`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`108` tests，`107` pass，`1` skip。
+  - `npm run check:content-authoring --silent`：exit `0`，`✅ Content authoring check passed`。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+  - `npm run check:import-boundaries --silent`：exit `0`，`[check_import_boundaries] OK`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+- 状态：
+  - 本批 5 个登记项进入已修/部分已修状态；Rest potion mix 的 UI/projection gate 已修，纯 runtimeV2 command bridge 仍作为后续风险。
+  - 下一批建议优先修：`AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001`，因为第 199/200 轮已给出生产 writer 缺失和明确验收，可用 focused regression 锁定真实 `GameEngine -> startCombat -> playCard` 后 memory pattern 更新。
+
+## DeckRogue Fix Batch 002 - AI Memory / RuntimeV2 / Story Event / Reachability / Dead Scan Closure - 2026-05-22
+
+- 模式切换：
+  - 用户要求停止只找 bug，继续进入修复轮次。本批承接第 191-200 轮已展示且验收清晰的 P1/P2 项，优先修真实运行数据流、runtimeV2 render bridge、story event 选择面、内容 reachability 假绿和 dead-file scan 根目录假绿。
+  - 预检 `git status --short --branch`：活跃 repo 为 `E:\deckrogue\deckrogue-mainline-merge`，分支 `mainline-upload-20260511`，工作树已有大量既有修改；本批只追加相关修复和回归，不回退无关改动。
+- 修复内容：
+  - **AI-COMBAT-MEMORY-NO-PRODUCTION-WRITERS-001：已修。**
+    - `src\core\events\CombatManager.ts` 在真实 `playCard()` 后写入 `combatMemory` 的 `cardPlayed`、伤害、格挡和手牌状态。
+    - 敌方真实回合执行后写入 enemy intent / damage 历史，保留 `selectCharacter()` / `dispose()` 的 clear 生命周期。
+    - 回归覆盖真实 `GameEngine -> startCombat -> playCard` 后 `averageCardsPerTurn` 更新，以及敌方回合后 enemy memory record 写入。
+  - **RUNTIMEV2-PYTHON-ENCHANTED-CARD-ID-STAR-UNNORMALIZED-001：已修。**
+    - `src\runtimeV2\renderModel.ts` 新增 card content id/display name 规范化，deck surface 与 reward lookup 同时处理 `+` 升级和 `*` 附魔后缀。
+    - 回归锁定 `calculated_strike*` 这类牌库选择面仍能找回基础卡内容与描述。
+  - **CONTENT-STORYEVENT-CHOOSE-ONE-OF-THREE-AUTORESOLVES-001：已修。**
+    - `src\core\events\EventManager.ts` 对 generic card draft 改为进入 `Reward` 三选一，不再直接随机入牌库。
+    - generic relic draft 保持在 `Event` 的 `generic_relic_choice` 阶段，由 `src\ui\views\EventView.tsx` 和 `src\runtimeV2\renderModel.ts` 暴露 3 个遗物选项，选择 `generic_relic:<id>` 后结算。
+  - **CONTENT-REACHABILITY-CHAPTER-EVENTS-MIRROR-FALSE-PASS-001：已修。**
+    - `scripts\validation\contentReachabilityCheck.ts` 的章节事件覆盖改为读取 validated `STORY_EVENTS`，并输出 `chapter1EventPool / chapter2EventPool / chapter3EventPool`。
+    - 去掉 mirror event 数量 `>= 14` 造成的假绿判据。
+  - **CI-DEAD-FILE-SCAN-SCRIPT-ROOT-001：已修。**
+    - `scripts\validation\dead_file_scan.ts` 将 `ROOT` 修为 `path.resolve(__dirname, '..', '..')`，`scan:dead -- --json` 现在扫描真实 repo 面。
+    - 注意：真实扫描会暴露既有 orphan source，`--ci` 仍应作为后续清理项处理；本批修复的是 `0/0` 假绿。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyVariantEnemyTurn.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/eventManagerContract.test.ts tests/unit/contentReachabilityCheck.test.ts tests/unit/validationScripts.test.ts tests/unit/pythonWasmAdapter.test.ts tests/unit/gothicExpansionContent.test.ts tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`67/67` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`108` tests，`107` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`191/191` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:content-reachability --silent`：exit `0`，`Summary: 11/11 reachable`，`Total broken edges: 0`。
+  - `npm run scan:dead -- --json`：exit `0`，真实扫描 `totalSourceFiles=219`、`publicAssets.totalFiles=728`、`scripts.totalFiles=105`；不再是旧的 `0/0` 假绿。
+
+## DeckRogue Fix Batch 003 - Remaining Clear P2 Gate Closures - 2026-05-22
+
+- 修复内容：
+  - **PWASM-DISPATCH-AUTOSTART-MISSING-001：已修。**
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts` 的 `dispatch()` 在无 snapshot 时先 `start()`，对齐 legacy oracle / Python process adapter 的自启动契约。
+    - `tests\unit\pythonWasmAdapter.test.ts` 新增 fake Pyodide 行为回归，确认 `dispatch_command(...)` 在 `init_runtime(...)` 之后执行。
+  - **UI-CODEX-ENEMY-FIELD-DRIFT-001：已修。**
+    - `src\ui\overlays\codexCatalog.ts` 统一读取 `intent_policy` / `intentPolicy` 与 `hp_range` / `minHp,maxHp`。
+    - `tests\unit\gothicExpansionContent.test.ts` 锁定真实 `coolant_hound` 显示 `生命值 42-45`、`3 种意图`，并生成 intent demo frames。
+  - **CONTENT-CONTRACT-CHARACTERS-RAW-IMPORTS-UNGATED-001：已修。**
+    - `src\content\narrative\contentSchema.ts` 增加 `validateCharactersData()`。
+    - `src\content\narrative\numericSystem.ts` 导出 validated `charactersData`。
+    - `src\core\events\gameEngine.ts`、`src\core\events\RunFlowManager.ts`、`src\ui\content\characters.ts`、`src\runtimeV2\content\buildContentBundle.ts`、`src\runtimeV2\content\contentService.ts` 改走 validated character surface。
+    - `scripts\validation\check_content_contract_layer.ts` 将 `@/content/data/characters.json` 纳入 raw gameplay import guard，并只保留显式授权 importer。
+  - **EXPERIENCE-POLISH-PARTIAL-UI-AUDIT-PASS-001：已修为正确失败。**
+    - `scripts\validation\check_experience_polish.ts` 要求 UI expansion report 含 `launcher/tutorial/character_select/map/combat/reward/shop/event/upgrade` 等关键 audits，并要求对应 smoke save slots 已加载。
+    - 当前旧报告只有 4 个 audits 时，`npm run check:experience-polish --silent` exit `1`，输出缺失 `map/combat/reward/shop/event/upgrade` 和 4 个 smoke slots；旧的半截报告假绿已关闭。
+  - **DESKTOP-SMOKE-PARALLEL-ISOLATION-001：已做低风险隔离修复。**
+    - `scripts\validation\playwright_electron_smoke.ts` 为 production smoke 增加 `desktop-smoke-production.lock`，串行化共享 `dist/` build/read 区间。
+    - Electron user data 和截图路径加 `runId`，避免并发进程互相清理或覆盖同名 artifacts。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts tests/unit/gothicExpansionContent.test.ts tests/unit/validationScripts.test.ts tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`25/25` pass。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - `npm run check:experience-polish --silent`：exit `1`，按预期拒绝旧半截 UI expansion report，并列出缺失 audits/slots。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:content-bundle --silent`：exit `0`，`Summary: 7/7 passed`。
+  - `npm run check:content-authoring --silent`：exit `0`，`Content authoring check passed`。
+  - `npm run check:ui-runtime-boundaries --silent`：exit `0`，`[check_ui_runtime_boundaries] OK`。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`Ran 8 tests`，`OK`。
+  - `npm run build --silent`：exit `0`，Vite `2265 modules transformed`，`built in 3.87s`。
+- 剩余风险：
+  - `PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001` 仍未声明已修。它需要内嵌 `PYTHON_RUNTIME_CODE` 与 `python_runtime/src/deckrogue_rules_core/runtime.py` 的生成/同步机制，不能用局部补丁假绿。
+  - `scan:dead -- --ci` 仍会因为真实 orphan source fail，这是旧债清理项；本批只修复 scanner 根目录假绿。
+  - `check:experience-polish` 现在会正确拦截旧半截 UI expansion report；要让该门禁转绿，需要重新跑完整 `test:ui-smoke:expansion` 产出 full audit report。
+
+## DeckRogue Fix Batch 004 - Python WASM Sync / UI Expansion Evidence Closure - 2026-05-22
+
+- 修复内容：
+  - **PYTHON-WASM-EMBEDDED-RUNTIME-DRIFT-001：已修。**
+    - `scripts\validation\sync_python_wasm_runtime.ts` 建立包侧 `python_runtime\src\deckrogue_rules_core\runtime.py` 到内嵌 `src\content\narrative\pythonRuntime.ts` 的生成与 `--check` 同步机制。
+    - `package.json` 新增 `sync:python-wasm-runtime` 与 `check:python-wasm-runtime-sync`，`test:runtime-v2:ts` 纳入 `tests\unit\pythonWasmRuntimeSync.test.ts`。
+    - `tests\unit\pythonWasmRuntimeSync.test.ts` 锁定 `PYTHON_RUNTIME_CODE` 与包侧 runtime 完全一致，并覆盖 secondary resources / SaveGameV2 wrapper 关键符号存在。
+  - **UI-SMOKE-FIXTURE-CHECKSUM-MISSING-001：已修。**
+    - 根因：`SaveManager.loadGame()` 已要求 slot checksum，但 Playwright smoke fixture payload 仍写空 checksum，导致 `UI Smoke Map` 点击“读取”后实际加载失败，完整 UI expansion 停在找不到 `button[data-node-id]`。
+    - `scripts\validation\flow_smoke_helpers.ts` 新增与 SaveManager 一致的 `calculateSaveChecksum()`，共享 `buildStoragePayload()` 会给每个 fixture slot 写入可加载 checksum。
+    - `scripts\validation\playwright_ui_smoke_expansion.ts` 的本地 expansion payload 同步写入 checksum，避免完整 UI expansion 使用自有 payload 时继续假失败。
+    - `tests\unit\flowSmokeHelpers.test.ts` 新增 payload checksum 回归，确保 fixture slot checksum 与序列化 save entry 匹配。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/flowSmokeHelpers.test.ts tests/unit/validationScripts.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:ui-smoke:expansion --silent`：exit `0`，Vite `http://127.0.0.1:53611/`，生成完整 `output\playwright\ui_smoke_expansion_report.json`。
+  - `output\playwright\ui_smoke_expansion_report.json`：`14` 个 audits，包括 `launcher/tutorial/launcher_tablet/character_select/map/combat/settings_theme/save_load/keybinds/reward/shop/event/upgrade/victory`；`slotsLoaded` 包括 `UI Smoke Map/Reward/Shop/Event/Upgrade/Victory`；console/page/request issues 均为 `0`。
+  - `npm run check:experience-polish --silent`：exit `0`，pass rate `100%`，`25 implemented / 0 partial / 0 missing`，UI audits `14`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`109` tests，`108` pass，`1` skip。
+  - `npm run build --silent`：exit `0`，Vite `2265 modules transformed`，`built in 4.05s`。
+- 状态：
+  - Python WASM embedded runtime drift 有生成/同步/测试 gate，不再依赖手工粘贴。
+  - `check:experience-polish` 已由完整 UI expansion 报告转绿，不再使用旧半截报告。
+  - 本批发现并修复的新增阻塞是 Playwright 存档 fixture checksum 缺失；同一修复覆盖共享 smoke helper 与 UI expansion 自有 payload。
