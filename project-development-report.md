@@ -7960,3 +7960,24 @@
 - 状态：
   - `review:ci` 仍通过，同时生成报告不再携带 0-drift / signed RNG 假 warning。
   - `scan:dead` 仍只剩脚本启发式 likely-unused 列表；source orphan gate 维持通过。
+
+## DeckRogue Fix Batch 007 - Dead Scan Script Import Heuristic Closure - 2026-05-22
+
+- 发现证据：
+  - 本轮先读上一批报告、`git status` 和 `scan:dead -- --json`。
+  - `scan:dead` source 面继续通过，但 scripts 面把 13 个脚本列为 likely-unused；其中 3 个是明确假阳性：
+    - `scripts\validation\fixtures\contentReachabilityConfig.ts` 被 `contentReachabilityCheck.ts` 与 `deepReachabilityCheck.ts` 以 extensionless relative import 引用。
+    - `scripts\validation\growthRouteScenario.ts` 被 reward/rest/shop/shop-event route checks 引用。
+    - `scripts\validation\runtime_v2_adapter_parity_utils.ts` 被 differential parity check 和 unit test 引用。
+- 修复内容：
+  - **DEAD-SCAN-SCRIPT-EXTENSIONLESS-IMPORT-FALSE-POSITIVE-001：已修。**
+    - `scripts\validation\dead_file_scan.ts` 抽出 import spec 解析，并新增 repo-file import resolver，支持 `.ts/.tsx/.js/.jsx/.cjs/.mjs/.json` 与 `index.*`。
+    - scripts report 现在会解析相对 `import/export/import()`，识别省略扩展名的脚本依赖。
+  - `tests\unit\validationScripts.test.ts` 增加静态回归，锁定 extensionless script import 解析逻辑。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`8/8` pass。
+  - `npm run scan:dead -- --json`：exit `0`，`referencedByRepo` 从 `26` 增至 `29`，上述 3 个脚本移出 `likelyUnused`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run scan:dead -- --ci`：exit `0`，source orphan 仍为 none，scripts likely-unused 剩余 10 个。
+- 状态：
+  - dead scan 脚本侧报告假阳性减少，剩余 likely-unused 脚本没有当前代码引用证据，后续可继续做删除/归档判断。

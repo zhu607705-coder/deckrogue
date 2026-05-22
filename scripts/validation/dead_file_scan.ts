@@ -83,6 +83,13 @@ const DYNAMIC_PUBLIC_PREFIXES = [
   '/assets/upgrade/',
 ];
 
+const IMPORT_SPEC_PATTERNS = [
+  /\bimport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
+  /\bimport\s*['"]([^'"]+)['"]/g,
+  /\bexport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
+  /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+];
+
 function toPosix(relPath: string): string {
   return relPath.split(path.sep).join('/');
 }
@@ -150,23 +157,49 @@ function resolveImport(fromFileAbs: string, spec: string): string | null {
   return null;
 }
 
-function extractSourceDeps(relPath: string, sourceText: string): string[] {
-  const abs = path.join(ROOT, relPath);
-  const deps = new Set<string>();
-  const patterns = [
-    /\bimport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
-    /\bimport\s*['"]([^'"]+)['"]/g,
-    /\bexport\s+[^'"]*?from\s*['"]([^'"]+)['"]/g,
-    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+function resolveRepoFileImport(fromFileAbs: string, spec: string): string | null {
+  if (!spec.startsWith('.')) return null;
+  const base = path.resolve(path.dirname(fromFileAbs), spec);
+  const candidates = [
+    base,
+    `${base}.ts`,
+    `${base}.tsx`,
+    `${base}.js`,
+    `${base}.jsx`,
+    `${base}.cjs`,
+    `${base}.mjs`,
+    `${base}.json`,
+    path.join(base, 'index.ts'),
+    path.join(base, 'index.tsx'),
+    path.join(base, 'index.js'),
+    path.join(base, 'index.jsx'),
   ];
-  for (const pattern of patterns) {
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return toPosix(path.relative(ROOT, candidate));
+    }
+  }
+  return null;
+}
+
+function extractImportSpecs(sourceText: string): string[] {
+  const specs = new Set<string>();
+  for (const pattern of IMPORT_SPEC_PATTERNS) {
     let m: RegExpExecArray | null;
     while ((m = pattern.exec(sourceText))) {
       const spec = m[1];
-      if (!spec) continue;
-      const resolved = resolveImport(abs, spec);
-      if (resolved) deps.add(resolved);
+      if (spec) specs.add(spec);
     }
+  }
+  return [...specs];
+}
+
+function extractSourceDeps(relPath: string, sourceText: string): string[] {
+  const abs = path.join(ROOT, relPath);
+  const deps = new Set<string>();
+  for (const spec of extractImportSpecs(sourceText)) {
+    const resolved = resolveImport(abs, spec);
+    if (resolved) deps.add(resolved);
   }
   return [...deps];
 }
@@ -304,6 +337,7 @@ function buildScriptsReport(corpus: Map<string, string>): DeadFileReport['script
   const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : {};
   const pkgScripts: Record<string, string> = pkg.scripts || {};
   const pkgScriptValues = Object.values(pkgScripts).join('\n');
+  const scriptFilesSet = new Set(scriptFiles);
 
   const documentedLegacy: string[] = [];
   const referencedByPackageJson: string[] = [];
@@ -325,7 +359,13 @@ function buildScriptsReport(corpus: Map<string, string>): DeadFileReport['script
     let repoRef = false;
     for (const [file, text] of corpus.entries()) {
       if (file === rel) continue;
-      if (text.includes(rel) || text.includes(base)) {
+      const importRef = extractImportSpecs(text).some((spec) => {
+        if (!spec.startsWith('.')) return false;
+        const fromAbs = path.join(ROOT, file);
+        const target = resolveRepoFileImport(fromAbs, spec);
+        return target === rel && scriptFilesSet.has(target);
+      });
+      if (importRef || text.includes(rel) || text.includes(base)) {
         repoRef = true;
         break;
       }

@@ -32,6 +32,15 @@ test('dead file scan includes test and tool source entrypoints', () => {
   assert.match(source, /'scripts\/'/);
 });
 
+test('dead file scan resolves extensionless script imports', () => {
+  const source = readFileSync('scripts/validation/dead_file_scan.ts', 'utf-8');
+
+  assert.match(source, /resolveRepoFileImport/);
+  assert.match(source, /\$\{base\}\.ts/);
+  assert.match(source, /extractImportSpecs/);
+  assert.match(source, /scriptFilesSet\.has\(target\)/);
+});
+
 test('numeric diagnostics keeps signed RNG and zero drift out of warning totals', () => {
   const source = readFileSync('scripts/analysis/numeric_diagnostics.ts', 'utf-8');
 
