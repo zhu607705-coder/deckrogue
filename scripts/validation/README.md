@@ -11,7 +11,10 @@
 - `check_import_boundaries.ts`
 - `check_deprecated_imports.ts`
 - `check_readme_consistency.ts`
+- `check_event_tradeoff_route_state.ts`
+- `check_midgame_route_sustain.ts`
 - `dead_file_scan.ts`
+- `run_python_runtime_tests.ts`
 - `review_ci.ts`
 - `repair_macos_native_modules.sh`
 
@@ -29,6 +32,9 @@ flowchart LR
 - `npm run check:import-boundaries`
 - `npm run check:deprecated-imports`
 - `npm run check:readme-consistency`
+- `npm run check:event-tradeoff-route-state`
+- `npm run check:midgame-route-sustain`
+- `npm run test:python-runtime`
 - `npm run scan:dead`
 - `npm run review:ci`
 - `npm run repair:macos-native`

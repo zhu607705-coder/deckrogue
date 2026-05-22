@@ -7981,3 +7981,36 @@
   - `npm run scan:dead -- --ci`：exit `0`，source orphan 仍为 none，scripts likely-unused 剩余 10 个。
 - 状态：
   - dead scan 脚本侧报告假阳性减少，剩余 likely-unused 脚本没有当前代码引用证据，后续可继续做删除/归档判断。
+
+## DeckRogue Fix Batch 008 - Dead Scan Script Debt Closure - 2026-05-22
+
+- 发现证据：
+  - 本轮先读 Batch 007 报告、`git status`、`git log -5`，并运行 `npm run scan:dead -- --json`。
+  - `scan:dead` source 与 public assets 均通过，但 scripts 面仍有 `10` 个 likely-unused：
+    - 4 个根层一次性内容 JSON mutator：`scripts\add_character_expansion_cards.py`、`scripts\add_character_expansion_events.py`、`scripts\add_character_expansion_relics.py`、`scripts\add_meta_achievements.py`。
+    - 3 个无 package/docs owner 的历史分析/资产工具：`scripts\analysis\balanceLayerAnalysis.ts`、`scripts\analysis\find_missing_artwork.ts`、`scripts\assets\generate_asset_polish_targets.py`。
+    - 3 个仍有维护价值但没有 package gate 的验证入口：`scripts\validation\check_event_tradeoff_route_state.ts`、`scripts\validation\check_midgame_route_sustain.ts`、`scripts\validation\run_python_runtime_tests.ts`。
+  - `rg` 只找到上述 10 个文件的自引用；`scripts\README.md` 约束脚本入口应同步 `package.json`。
+- 修复内容：
+  - **DEAD-SCAN-SCRIPT-DEBT-UNOWNED-TOOLS-001：已修。**
+    - 删除 7 个无外部引用、无 package/docs owner 的历史脚本，避免根层一次性 mutator 与旧报告工具继续污染维护面。
+  - **PYTHON-RUNTIME-TEST-GATE-UNWIRED-001：已修。**
+    - `package.json` 新增 `test:python-runtime`，复用 `scripts\validation\run_python_runtime_tests.ts` 的跨平台 `PYTHONPATH` wrapper。
+    - `scripts\validation\review_ci.ts` 新增 Python runtime unit test step。
+  - **ROUTE-STATE-VALIDATORS-UNWIRED-001：已修。**
+    - `package.json` 新增 `check:event-tradeoff-route-state` 与 `check:midgame-route-sustain`。
+    - `review:ci` 新增 Event Route State 与 Midgame Route Sustain 两个 gate。
+    - `scripts\validation\README.md` 同步新增门禁入口。
+  - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 3 个新增 gate、`review:ci` 纳入关系，以及 7 个 obsolete one-off script generators 维持删除状态。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`10/10` pass。
+  - `npm run test:python-runtime --silent`：exit `0`，Python unittest `8` tests，`OK`。
+  - `npm run check:event-tradeoff-route-state --silent`：exit `0`，`passCount: 6/6`。
+  - `npm run check:midgame-route-sustain --silent`：exit `0`，`sustainRate: 100.0% (48/48)`。
+  - `npm run review:ci --silent`：exit `0`，Type Check、Build、Damage Tests、Python Runtime Unit Tests、Numeric Diagnostics、Event Route State Check、Midgame Route Sustain Check、Dead File Scan 全部通过。
+  - `npm run check:readme-consistency --silent`：exit `0`，`[check_readme_consistency] OK`。
+  - `review:ci` 内的 `scan:dead -- --ci` 输出：`Scripts: total=99`、`Referenced by package.json: 70`、`Referenced elsewhere in repo: 29`、`Likely unused scripts (heuristic): none`。
+- 状态：
+  - 脚本层 likely-unused 由 `10` 降至 `0`。
+  - Python runtime 与路线状态两个维护面已从“可手工运行但未接入”转为 package/review gate。
+  - 剩余允许 source orphan 仍只有兼容 allowlist：`src\engine\engine.ts` 与 `src\engine\index.ts`。

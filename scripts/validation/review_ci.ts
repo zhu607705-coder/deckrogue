@@ -31,7 +31,10 @@ const steps: Step[] = [
   { name: 'Type Check', cmd: 'npm', args: ['run', 'lint'] },
   { name: 'Build', cmd: 'npm', args: ['run', 'build'] },
   { name: 'Damage Tests', cmd: 'npm', args: ['run', 'test:damage'] },
+  { name: 'Python Runtime Unit Tests', cmd: 'npm', args: ['run', 'test:python-runtime'] },
   { name: 'Numeric Diagnostics', cmd: 'npm', args: ['run', 'diag:numeric', '--', '--runs=1', '--floors=1', '--turns=3', '--class=informant'] },
+  { name: 'Event Route State Check', cmd: 'npm', args: ['run', 'check:event-tradeoff-route-state'] },
+  { name: 'Midgame Route Sustain Check', cmd: 'npm', args: ['run', 'check:midgame-route-sustain'] },
   { name: 'Dead File Scan (CI)', cmd: 'npm', args: ['run', 'scan:dead', '--', '--ci'] },
 ];
 

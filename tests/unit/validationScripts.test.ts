@@ -5,7 +5,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 test('dead file scan resolves the repository root above scripts/validation', () => {
   const source = readFileSync('scripts/validation/dead_file_scan.ts', 'utf-8');
@@ -73,4 +73,31 @@ test('desktop smoke isolates production runs', () => {
   assert.match(source, /desktop-smoke-production\.lock/);
   assert.match(source, /deckrogue-electron-smoke-user-data-\$\{runId\}/);
   assert.match(source, /desktop_\$\{runId\}_launcher\.png/);
+});
+
+test('script debt repair keeps route and Python runtime checks gated', () => {
+  const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
+  const reviewCi = readFileSync('scripts/validation/review_ci.ts', 'utf-8');
+
+  assert.equal(pkg.scripts['test:python-runtime'], 'tsx scripts/validation/run_python_runtime_tests.ts');
+  assert.equal(pkg.scripts['check:event-tradeoff-route-state'], 'tsx scripts/validation/check_event_tradeoff_route_state.ts');
+  assert.equal(pkg.scripts['check:midgame-route-sustain'], 'tsx scripts/validation/check_midgame_route_sustain.ts');
+
+  assert.match(reviewCi, /test:python-runtime/);
+  assert.match(reviewCi, /check:event-tradeoff-route-state/);
+  assert.match(reviewCi, /check:midgame-route-sustain/);
+});
+
+test('obsolete one-off script generators remain removed', () => {
+  for (const file of [
+    'scripts/add_character_expansion_cards.py',
+    'scripts/add_character_expansion_events.py',
+    'scripts/add_character_expansion_relics.py',
+    'scripts/add_meta_achievements.py',
+    'scripts/analysis/balanceLayerAnalysis.ts',
+    'scripts/analysis/find_missing_artwork.ts',
+    'scripts/assets/generate_asset_polish_targets.py',
+  ]) {
+    assert.equal(existsSync(file), false, `${file} should stay removed unless it is reintroduced with an npm/docs owner`);
+  }
 });
