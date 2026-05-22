@@ -8189,3 +8189,35 @@
 - 状态：
   - content authoring gate 不再吞掉 stringly numeric action schema drift 或未知卡牌 action type。
   - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 browser/Pyodide edge、Python WASM adaptation 或 UI/rendering evidence gate。
+
+## DeckRogue Fix Batch 015 - Python WASM Adapter Lifecycle Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 014 报告、`git status`、当前 HEAD 和 DeckRogue 记忆约束，确认工作树从 `a973dc4` 干净状态开始。
+  - `npm run check:python-wasm-runtime-sync --silent` exit `0`，`[sync_python_wasm_runtime] OK`；`npm run test:python-runtime --silent` exit `0`，`Ran 8 tests` / `OK`，说明本轮不重复 runtime source sync 问题。
+  - 源码审计 `src\runtimeV2\bridge\pythonWasmAdapter.ts` 发现：`dispose()` 只清空 `snapshot / pyodide / initPromise`，没有 disposed generation guard；`loadPyodide()` 在 `PYTHON_RUNTIME_CODE` 注入成功前就写 `this.pyodide`。
+  - 红灯复现：新增单测后，修复前 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts` exit `1`：
+    - `dispose prevents an in-flight start...` 失败为 `Missing expected rejection`，旧 `start()` 在 dispose 后仍能回写 snapshot。
+    - `retries Pyodide runtime injection...` 第二次 `start()` 抛 `init_runtime is not defined`，说明首次 runtime code 注入失败留下半初始化 Pyodide。
+- 修复内容：
+  - **PY-WASM-DISPOSE-START-REVIVE-001：已修。**
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts` 新增 `disposed` 与 `generation` lifecycle guard；`dispose()` 递增 generation，in-flight `start()` / `dispatch()` / Pyodide 初始化在 await 后检查 token，旧 promise 不再能复活 adapter snapshot。
+  - **PY-WASM-HALFBOOT-RETRY-001：已修。**
+    - `loadPyodide()` 改为使用局部 `pyodide`，只有 `PYTHON_RUNTIME_CODE` 注入成功后才赋给 `this.pyodide`。
+    - `ensurePyodide()` 在同 generation 的成功或失败后清空 `initPromise`，允许 half-boot failure 后同实例重新加载并重试 runtime code 注入。
+  - `tests\unit\pythonWasmAdapter.test.ts` 新增两个生命周期回归：dispose-during-start 不得恢复 snapshot；runtime code 首次注入失败后第二次 `start()` 必须重新执行 runtime 注入并成功。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/pythonWasmAdapter.test.ts` 修复前 exit `1`，`1/3` pass、`2` fail。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts`：exit `0`，`3/3` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`111` tests，`110` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 8 tests` / `OK`。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed，包含 Lint、Build、Desktop Build、Supplemental Unit Tests、Check Content Authoring、UI Smoke Expansion、全部 flow smoke、Desktop Smoke、Check Experience Polish、Check Release Readiness。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - Python WASM adapter 不再因 dispose race 或 runtime code half-boot failure 进入旧 promise 复活/不可恢复状态。
+  - release readiness 已刷新到全绿；下一轮可继续查 Pyodide script injection stale-node/timeout、desktop offline Pyodide packaging 或 UI/rendering evidence gate。

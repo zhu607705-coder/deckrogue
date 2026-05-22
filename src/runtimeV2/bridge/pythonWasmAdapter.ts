@@ -43,11 +43,15 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
   private pyodide: PyodideInterface | null = null;
   private snapshot: RuleSnapshot | null = null;
   private initPromise: Promise<void> | null = null;
+  private disposed = false;
+  private generation = 0;
 
   async start(options: EngineHostStartOptions = {}): Promise<RuleSnapshot> {
+    const generation = this.currentGeneration();
     if (!this.pyodide) {
-      await this.ensurePyodide();
+      await this.ensurePyodide(generation);
     }
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during start');
 
     if (!this.pyodide) {
       throw new Error('Failed to initialize Pyodide');
@@ -59,15 +63,18 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
     const result = await this.pyodide.runPythonAsync(
       `init_runtime(json.loads(__deckrogue_content_bundle_json), ${options.seed ?? 0})`
     );
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during start');
 
     this.snapshot = normalizePythonSnapshot(unwrapPythonSnapshotEnvelope(result.toJs()));
     return this.snapshot;
   }
 
   async dispatch(command: RuleCommand): Promise<RuleSnapshot> {
+    const generation = this.currentGeneration();
     if (!this.snapshot) {
       await this.start();
     }
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during dispatch');
 
     if (!this.pyodide) {
       throw new Error('Pyodide not initialized');
@@ -78,6 +85,7 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
     const result = await this.pyodide.runPythonAsync(
       `dispatch_command(json.loads(__deckrogue_command_json))`
     );
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during dispatch');
 
     this.snapshot = normalizePythonSnapshot(unwrapPythonSnapshotEnvelope(result.toJs()));
     return this.snapshot;
@@ -88,12 +96,28 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
   }
 
   dispose(): void {
+    this.disposed = true;
+    this.generation += 1;
     this.snapshot = null;
     this.pyodide = null;
     this.initPromise = null;
   }
 
-  private async ensurePyodide(): Promise<void> {
+  private currentGeneration(): number {
+    if (this.disposed) {
+      throw new Error('PythonWasmAdapter is disposed');
+    }
+    return this.generation;
+  }
+
+  private assertActiveGeneration(generation: number, message: string): void {
+    if (this.disposed || generation !== this.generation) {
+      throw new Error(message);
+    }
+  }
+
+  private async ensurePyodide(generation: number): Promise<void> {
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
     if (this.pyodide) {
       return;
     }
@@ -102,20 +126,30 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       return this.initPromise;
     }
 
-    this.initPromise = this.loadPyodide();
-    await this.initPromise;
+    this.initPromise = this.loadPyodide(generation);
+    try {
+      await this.initPromise;
+    } finally {
+      if (generation === this.generation) {
+        this.initPromise = null;
+      }
+    }
   }
 
-  private async loadPyodide(): Promise<void> {
+  private async loadPyodide(generation: number): Promise<void> {
     const loadPyodide = await this.resolveLoadPyodide();
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
 
     if (!loadPyodide) {
       throw new Error('Could not load Pyodide');
     }
 
-    this.pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+    const pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
 
-    await this.pyodide.runPythonAsync(PYTHON_RUNTIME_CODE);
+    await pyodide.runPythonAsync(PYTHON_RUNTIME_CODE);
+    this.assertActiveGeneration(generation, 'PythonWasmAdapter was disposed during Pyodide initialization');
+    this.pyodide = pyodide;
   }
 
   private async resolveLoadPyodide(): Promise<((config: { indexURL: string }) => Promise<PyodideInterface>) | undefined> {

@@ -90,3 +90,79 @@ test('PythonWasmAdapter dispatch auto-starts before running commands', async () 
     (globalThis as any).window = previousWindow;
   }
 });
+
+test('PythonWasmAdapter dispose prevents an in-flight start from restoring a snapshot', async () => {
+  const calls: string[] = [];
+  const previousWindow = (globalThis as any).window;
+  let resolveLoader: ((pyodide: any) => void) | null = null;
+  const loadPromise = new Promise<any>((resolve) => {
+    resolveLoader = resolve;
+  });
+  (globalThis as any).window = {
+    loadPyodide: () => loadPromise,
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    const startPromise = adapter.start({ seed: 7 });
+    await Promise.resolve();
+    adapter.dispose();
+
+    assert.ok(resolveLoader);
+    resolveLoader({
+      globals: { set(): void {} },
+      runPythonAsync: async (code: string) => {
+        calls.push(code);
+        return {
+          toJs: () => ({ snapshot: makePythonSnapshot('CharacterSelect') }),
+        };
+      },
+    });
+
+    await assert.rejects(startPromise, /disposed/i);
+    assert.equal(adapter.getSnapshot(), null);
+    assert.equal(calls.some((code) => code.trimStart().startsWith('init_runtime(')), false);
+  } finally {
+    (globalThis as any).window = previousWindow;
+  }
+});
+
+test('PythonWasmAdapter retries Pyodide runtime injection after a half-boot failure', async () => {
+  const previousWindow = (globalThis as any).window;
+  const calls: string[] = [];
+  let loadCount = 0;
+  (globalThis as any).window = {
+    loadPyodide: async () => {
+      loadCount += 1;
+      const currentLoad = loadCount;
+      return {
+        globals: { set(): void {} },
+        runPythonAsync: async (code: string) => {
+          calls.push(`${currentLoad}:${code.trimStart().startsWith('init_runtime(') ? 'init' : 'runtime'}`);
+          if (currentLoad === 1 && !code.trimStart().startsWith('init_runtime(')) {
+            throw new Error('runtime code injection failed');
+          }
+          if (currentLoad === 1 && code.trimStart().startsWith('init_runtime(')) {
+            throw new Error('init_runtime is not defined');
+          }
+          return {
+            toJs: () => ({ snapshot: makePythonSnapshot('CharacterSelect') }),
+          };
+        },
+      };
+    },
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    await assert.rejects(adapter.start({ seed: 11 }), /runtime code injection failed/);
+
+    const snapshot = await adapter.start({ seed: 11 });
+
+    assert.equal(snapshot.lifecycle.screen, 'CharacterSelect');
+    assert.equal(loadCount, 2);
+    assert.deepEqual(calls, ['1:runtime', '2:runtime', '2:init']);
+  } finally {
+    (globalThis as any).window = previousWindow;
+  }
+});
