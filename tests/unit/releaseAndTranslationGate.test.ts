@@ -9,9 +9,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 
+import { checkDesktopArtifacts } from '../../scripts/validation/check_release_readiness.ts';
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
 
 const DESKTOP_SMOKE_SOURCE = readFileSync(resolve('scripts/validation/playwright_electron_smoke.ts'), 'utf-8');
@@ -40,4 +42,57 @@ test('desktop smoke reports and release readiness require clean Electron close',
   assert.match(DESKTOP_SMOKE_SOURCE, /report\.closeStatus\s*=\s*'fail'/);
   assert.match(DESKTOP_SMOKE_SOURCE, /report\.closeStatus\s*===\s*'pass'/);
   assert.match(RELEASE_READINESS_SOURCE, /smokeReport\?\.closeStatus\s*===\s*'pass'/);
+});
+
+test('release readiness rejects desktop smoke reports with missing screenshot evidence', () => {
+  const previousCwd = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-desktop-evidence-'));
+  const desktopReportsDir = join(fixtureRoot, 'reports', 'desktop');
+  const distDir = join(fixtureRoot, 'dist');
+  const electronDir = join(fixtureRoot, 'electron');
+  const rendererIndexPath = join(distDir, 'index.html');
+  const electronMainPath = join(electronDir, 'main.mjs');
+  const preloadPath = join(electronDir, 'preload.cjs');
+
+  try {
+    mkdirSync(desktopReportsDir, { recursive: true });
+    mkdirSync(distDir, { recursive: true });
+    mkdirSync(electronDir, { recursive: true });
+    writeFileSync(rendererIndexPath, '<!doctype html>');
+    writeFileSync(electronMainPath, 'export {};');
+    writeFileSync(preloadPath, 'module.exports = {};');
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-build.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        overallStatus: 'pass',
+        rendererIndexPath,
+        electronMainPath,
+        preloadPath,
+      }),
+    );
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-smoke.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        mode: 'production',
+        overallStatus: 'pass',
+        closeStatus: 'pass',
+        screenshots: [join(fixtureRoot, 'output', 'playwright', 'missing.png')],
+        steps: ['launcher', 'tutorial', 'character_select', 'map', 'combat'],
+        consoleErrors: [],
+        pageErrors: [],
+        failedRequests: [],
+      }),
+    );
+
+    process.chdir(fixtureRoot);
+    const smokeCheck = checkDesktopArtifacts(0).find((check) => check.id === 'desktop_smoke_report');
+
+    assert.equal(smokeCheck?.status, 'fail');
+    assert.match(smokeCheck?.evidence || '', /screenshot/i);
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });

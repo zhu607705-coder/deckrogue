@@ -8249,3 +8249,30 @@
 - 状态：
   - Python WASM adapter 不再因 stale Pyodide loader script 永久 pending。
   - release readiness 已刷新到全绿；下一轮可继续查 desktop offline Pyodide packaging、UI/rendering evidence gate 或 runtimeV2 browser edge。
+
+## DeckRogue Fix Batch 017 - Desktop Smoke Screenshot Evidence Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 016 报告、`git status`、当前 HEAD 和最近提交，确认工作树从 `0aa0bda` 干净状态开始。
+  - 先运行非重复探针，审计 `scripts\validation\check_release_readiness.ts` 与 `scripts\validation\playwright_electron_smoke.ts`，发现 release readiness 只检查 desktop smoke 的 `overallStatus`、`closeStatus`、production mode、错误数组和步骤覆盖，没有检查 `screenshots` 指向的证据文件是否存在或新鲜。
+  - 红灯复现：备份 `reports\desktop\desktop-smoke.json` 后临时写入一个有效 JSON：`overallStatus=pass`、`closeStatus=pass`、required steps 全部存在，但 `screenshots` 指向不存在的 PNG；修复前 `npm run check:release-readiness --silent` 仍 exit `0`，输出 `pass=41 warn=0 fail=0`。
+- 修复内容：
+  - **DESKTOP-SMOKE-MISSING-SCREENSHOT-EVIDENCE-PASS-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 导出 `checkDesktopArtifacts()` 供 focused unit test 直接验证桌面报告契约。
+    - desktop smoke readiness 现在要求截图数组至少覆盖 required steps 数量，且每个截图路径必须是非空 string、文件存在，并且相对当前 workspace freshness baseline 是 fresh。
+    - 失败证据文案补充 `lacks fresh screenshot evidence`，避免将缺失截图误归类为普通步骤/关闭问题。
+  - `tests\unit\releaseAndTranslationGate.test.ts` 新增临时 workspace 回归，构造“全绿但截图缺失”的 desktop smoke report，并锁定 `desktop_smoke_report` 必须 fail 且 evidence 提到 screenshot。
+- Fresh 验证输出：
+  - 红灯复现 1：新增测试首次运行因 `checkDesktopArtifacts` 未导出失败。
+  - 红灯复现 2：仅导出 helper 后，`npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增用例失败为 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`3/3` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`194/194` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed；包含 Desktop Smoke 并重新生成 5 张 desktop screenshot 证据。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - 真实 desktop smoke screenshot 证据检查：`reports\desktop\desktop-smoke.json` 中 5 个截图路径均存在且非空。
+- 状态：
+  - release readiness 不再接受缺失桌面截图证据的 desktop smoke report。
+  - release readiness 已刷新到全绿；下一轮可继续查 UI/rendering evidence gate、desktop offline Pyodide packaging 或 runtimeV2 browser edge。

@@ -95,6 +95,7 @@ type DesktopSmokeReport = {
   overallStatus?: string;
   closeStatus?: string;
   closeError?: string;
+  screenshots?: unknown[];
   steps?: string[];
   consoleErrors?: unknown[];
   pageErrors?: unknown[];
@@ -205,7 +206,7 @@ function checkBuildArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   return results;
 }
 
-function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
+export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   const checks: ReleaseCheck[] = [];
   const buildReportPath = resolve('reports/desktop/desktop-build.json');
   if (!existsSync(buildReportPath)) {
@@ -230,6 +231,16 @@ function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
     const fresh = isArtifactFresh(smokeReportPath, freshnessBaseline);
     const expectedSteps = ['launcher', 'tutorial', 'character_select', 'map', 'combat'];
     const stepsCovered = expectedSteps.every((step) => smokeReport?.steps?.includes(step));
+    const screenshots = Array.isArray(smokeReport?.screenshots) ? smokeReport.screenshots : [];
+    const screenshotsFresh =
+      screenshots.length >= expectedSteps.length &&
+      screenshots.every((screenshot) => {
+        if (typeof screenshot !== 'string' || screenshot.trim().length === 0) {
+          return false;
+        }
+        const screenshotPath = resolve(screenshot);
+        return existsSync(screenshotPath) && isArtifactFresh(screenshotPath, freshnessBaseline);
+      });
     const healthy =
       smokeReport?.overallStatus === 'pass' &&
       smokeReport?.closeStatus === 'pass' &&
@@ -237,10 +248,11 @@ function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[] {
       (smokeReport.consoleErrors?.length || 0) === 0 &&
       (smokeReport.pageErrors?.length || 0) === 0 &&
       (smokeReport.failedRequests?.length || 0) === 0 &&
-      stepsCovered;
+      stepsCovered &&
+      screenshotsFresh;
     checks.push(healthy && fresh
-      ? { id: 'desktop_smoke_report', status: 'pass', evidence: 'desktop smoke report is green, closed cleanly, production-mode, and fresh' }
-      : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, did not close cleanly, is not production-mode, or misses required flow steps' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
+      ? { id: 'desktop_smoke_report', status: 'pass', evidence: 'desktop smoke report is green, closed cleanly, production-mode, includes screenshot evidence, and is fresh' }
+      : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, did not close cleanly, is not production-mode, misses required flow steps, or lacks fresh screenshot evidence' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
   }
 
   return checks;
