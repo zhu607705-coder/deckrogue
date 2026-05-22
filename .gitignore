@@ -12,6 +12,7 @@ coverage/
 .playwright-cli/
 .trae/
 .claude/
+.kiro/
 __pycache__/
 *.pyc
 
