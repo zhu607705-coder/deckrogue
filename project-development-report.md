@@ -8221,3 +8221,31 @@
 - 状态：
   - Python WASM adapter 不再因 dispose race 或 runtime code half-boot failure 进入旧 promise 复活/不可恢复状态。
   - release readiness 已刷新到全绿；下一轮可继续查 Pyodide script injection stale-node/timeout、desktop offline Pyodide packaging 或 UI/rendering evidence gate。
+
+## DeckRogue Fix Batch 016 - Python WASM Stale Loader Script Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮接续 Batch 015，先读 `git status`、当前 HEAD、最近提交、代码差异和最近报告条目，确认工作树仅有 Python WASM adapter 与其单测改动。
+  - 源码审计 `src\runtimeV2\bridge\pythonWasmAdapter.ts` 发现：`injectPyodideScript()` 遇到已有 `script[data-pyodide-loader="true"]` 时只挂 `load/error` listener；如果旧 script 已经完成、失败或是无状态残留节点，新的 `start()` 会永久等待。
+  - 红灯复现：新增单测 `PythonWasmAdapter replaces stale Pyodide loader scripts instead of waiting forever`，mock `document.querySelector()` 返回不会再触发事件的旧 loader script；修复前 `adapter.start()` 通过 `Promise.race(..., 25ms)` 得到 `pending`，断言 `stale loader script should not leave start pending` 失败。
+- 修复内容：
+  - **PY-WASM-STALE-LOADER-SCRIPT-PENDING-001：已修。**
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts` 新增 Pyodide loader 状态标记，只有 `loading` 状态的既有 script 才会继续等待。
+    - 无状态、`loaded` 或 `error` 的旧 loader script 会被移除并重新注入，避免 stale DOM 节点把 Python WASM 启动挂死。
+    - 新增 `appendPyodideScript()`，统一设置 `data-pyodide-loader`、`data-pyodide-loader-state`，并在 `load/error` 后记录终态。
+  - `tests\unit\pythonWasmAdapter.test.ts` 新增 stale loader regression，锁定旧 script 必须被移除、替换 script 必须完成 load，且 runtime 初始化继续执行。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts` 中新增用例失败，actual 为 `pending`。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts`：exit `0`，`4/4` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`112` tests，`111` pass，`1` skip。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 8 tests` / `OK`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - Python WASM adapter 不再因 stale Pyodide loader script 永久 pending。
+  - release readiness 已刷新到全绿；下一轮可继续查 desktop offline Pyodide packaging、UI/rendering evidence gate 或 runtimeV2 browser edge。

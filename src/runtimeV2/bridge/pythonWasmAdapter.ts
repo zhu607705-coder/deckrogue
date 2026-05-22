@@ -36,6 +36,8 @@ declare global {
 const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/';
 const PYODIDE_SCRIPT_URL = `${PYODIDE_INDEX_URL}pyodide.js`;
 const PYODIDE_SCRIPT_REFERRER_POLICY = 'no-referrer';
+const PYODIDE_LOADER_STATE_KEY = 'pyodideLoaderState';
+const PYODIDE_LOADER_STATE_LOADING = 'loading';
 export { normalizePythonSnapshot, unwrapPythonSnapshotEnvelope } from '@/runtimeV2/pythonInterop';
 
 export class PythonWasmAdapter implements RuleRuntimeAdapter {
@@ -171,6 +173,11 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       if (window.loadPyodide) {
         return;
       }
+      if (existingScript.dataset[PYODIDE_LOADER_STATE_KEY] !== PYODIDE_LOADER_STATE_LOADING) {
+        existingScript.remove();
+        await this.appendPyodideScript();
+        return;
+      }
       await new Promise<void>((resolve, reject) => {
         existingScript.addEventListener('load', () => resolve(), { once: true });
         existingScript.addEventListener('error', () => reject(new Error('Failed to load Pyodide loader script')), { once: true });
@@ -178,6 +185,10 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       return;
     }
 
+    await this.appendPyodideScript();
+  }
+
+  private async appendPyodideScript(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
       script.src = PYODIDE_SCRIPT_URL;
@@ -185,8 +196,15 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       script.crossOrigin = 'anonymous';
       script.referrerPolicy = PYODIDE_SCRIPT_REFERRER_POLICY;
       script.dataset.pyodideLoader = 'true';
-      script.addEventListener('load', () => resolve(), { once: true });
-      script.addEventListener('error', () => reject(new Error('Failed to load Pyodide loader script')), { once: true });
+      script.dataset[PYODIDE_LOADER_STATE_KEY] = PYODIDE_LOADER_STATE_LOADING;
+      script.addEventListener('load', () => {
+        script.dataset[PYODIDE_LOADER_STATE_KEY] = 'loaded';
+        resolve();
+      }, { once: true });
+      script.addEventListener('error', () => {
+        script.dataset[PYODIDE_LOADER_STATE_KEY] = 'error';
+        reject(new Error('Failed to load Pyodide loader script'));
+      }, { once: true });
       document.head.appendChild(script);
     });
   }

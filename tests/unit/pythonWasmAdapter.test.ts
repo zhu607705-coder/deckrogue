@@ -166,3 +166,68 @@ test('PythonWasmAdapter retries Pyodide runtime injection after a half-boot fail
     (globalThis as any).window = previousWindow;
   }
 });
+
+test('PythonWasmAdapter replaces stale Pyodide loader scripts instead of waiting forever', async () => {
+  const previousWindow = (globalThis as any).window;
+  const previousDocument = (globalThis as any).document;
+  let staleRemoved = false;
+  let appendedScript: any = null;
+  const calls: string[] = [];
+  const staleScript = {
+    dataset: { pyodideLoader: 'true' },
+    addEventListener(): void {},
+    remove(): void {
+      staleRemoved = true;
+    },
+  };
+
+  (globalThis as any).window = {};
+  (globalThis as any).document = {
+    querySelector: () => staleScript,
+    createElement: () => {
+      const listeners = new Map<string, () => void>();
+      appendedScript = {
+        dataset: {},
+        addEventListener(type: string, listener: () => void): void {
+          listeners.set(type, listener);
+        },
+        dispatch(type: string): void {
+          listeners.get(type)?.();
+        },
+      };
+      return appendedScript;
+    },
+    head: {
+      appendChild(script: any): void {
+        (globalThis as any).window.loadPyodide = async () => ({
+          globals: { set(): void {} },
+          runPythonAsync: async (code: string) => {
+            calls.push(code);
+            return {
+              toJs: () => ({ snapshot: makePythonSnapshot('CharacterSelect') }),
+            };
+          },
+        });
+        queueMicrotask(() => script.dispatch('load'));
+      },
+    },
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    const result = await Promise.race([
+      adapter.start({ seed: 3 }),
+      new Promise<'pending'>((resolve) => setTimeout(() => resolve('pending'), 25)),
+    ]);
+
+    assert.notEqual(result, 'pending', 'stale loader script should not leave start pending');
+    assert.equal(staleRemoved, true);
+    assert.ok(appendedScript);
+    assert.equal(appendedScript.dataset.pyodideLoader, 'true');
+    assert.equal((result as any).lifecycle.screen, 'CharacterSelect');
+    assert.ok(calls.some((code) => code.trimStart().startsWith('init_runtime(')));
+  } finally {
+    (globalThis as any).window = previousWindow;
+    (globalThis as any).document = previousDocument;
+  }
+});
