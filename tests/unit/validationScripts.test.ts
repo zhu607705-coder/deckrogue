@@ -59,11 +59,18 @@ test('content contract layer guards character raw data imports', () => {
 
 test('experience polish requires complete UI expansion evidence', () => {
   const source = readFileSync('scripts/validation/check_experience_polish.ts', 'utf-8');
+  const contractSource = readFileSync('scripts/validation/uiSmokeExpansionContract.ts', 'utf-8');
+  const smokeSource = readFileSync('scripts/validation/playwright_ui_smoke_expansion.ts', 'utf-8');
 
   for (const label of ['combat', 'reward', 'shop', 'event', 'upgrade']) {
-    assert.match(source, new RegExp(`['"]${label}['"]`));
+    assert.match(contractSource, new RegExp(`['"]${label}['"]`));
   }
   assert.match(source, /validateUiSmokeExpansionReport/);
+  assert.match(contractSource, /generatedAt is stale for current workspace state/);
+  assert.match(contractSource, /ui smoke expansion did not complete/);
+  assert.match(contractSource, /screenshot is stale for current workspace state/);
+  assert.match(smokeSource, /generatedAt:\s*new Date\(\)\.toISOString\(\)/);
+  assert.match(smokeSource, /completed\s*=\s*true/);
   assert.match(source, /process\.exit\(1\)/);
 });
 

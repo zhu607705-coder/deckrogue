@@ -35,6 +35,9 @@ interface ViewAudit {
 }
 
 interface SmokeReport {
+  generatedAt: string;
+  completed: boolean;
+  failedStep: string | null;
   baseUrl: string;
   consoleErrors: string[];
   pageErrors: string[];
@@ -425,6 +428,8 @@ async function main() {
   const audits: ViewAudit[] = [];
   const slotsLoaded: string[] = [];
   let tutorialChecked = false;
+  let completed = false;
+  let failedStep: string | null = null;
 
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -550,8 +555,15 @@ async function main() {
     slotsLoaded.push('UI Smoke Victory');
     await page.getByText(/行动归档( \/ Victory)?/).waitFor({ timeout: 10_000 });
     audits.push(await auditView(page, 'victory', 'expansion_victory.png', ['button', 'img']));
+    completed = true;
+  } catch (error) {
+    failedStep = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     const report: SmokeReport = {
+      generatedAt: new Date().toISOString(),
+      completed,
+      failedStep,
       baseUrl: options.url,
       consoleErrors,
       pageErrors,

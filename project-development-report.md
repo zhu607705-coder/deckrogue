@@ -8014,3 +8014,38 @@
   - 脚本层 likely-unused 由 `10` 降至 `0`。
   - Python runtime 与路线状态两个维护面已从“可手工运行但未接入”转为 package/review gate。
   - 剩余允许 source orphan 仍只有兼容 allowlist：`src\engine\engine.ts` 与 `src\engine\index.ts`。
+
+## DeckRogue Fix Batch 009 - UI Smoke Expansion Freshness Gate Closure - 2026-05-22
+
+- 发现证据：
+  - 本轮先读 Batch 008 报告、`git status`、最近 `output\` / `reports\` 时间戳。
+  - `output\playwright\ui_smoke_expansion_report.json` 的 `LastWriteTimeUtc` 为 `2026-05-10T14:50:23Z`，但 `npm run check:experience-polish --silent` 仍 exit `0` 并打印 `✅ Experience polish check passed`。
+  - 旧 UI expansion report 没有 `generatedAt`、`completed` 或失败步骤字段；`check_experience_polish.ts` 与 `check_release_readiness.ts` 各自只检查一部分 error/audit 字段，无法统一拒绝旧证据、半截证据或过期截图。
+- 修复内容：
+  - **EXPERIENCE-POLISH-STALE-UI-REPORT-PASS-001：已修。**
+    - 新增 `scripts\validation\uiSmokeExpansionContract.ts`，统一校验 required audit labels、required save slots、`tutorialChecked`、console/page/request/audit issues、`completed === true`、`generatedAt`、report mtime 和 required screenshot freshness。
+    - `scripts\validation\check_experience_polish.ts` 改为复用该 contract，不再接受 5 月 10 日旧 UI expansion report。
+  - **RELEASE-UI-SMOKE-EXPANSION-CONTRACT-DRIFT-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 的 `ui_smoke_expansion_report` 子项复用同一 contract，避免 release 与 experience 两个 gate 对 UI evidence 的口径漂移。
+  - **UI-SMOKE-EXPANSION-MISSING-COMPLETION-META-001：已修。**
+    - `scripts\validation\playwright_ui_smoke_expansion.ts` 产出 `generatedAt`、`completed`、`failedStep`；主流程完整跑到 victory 才标记 `completed=true`，失败时仍写出可诊断的半截 report 但 gate 会拒绝。
+  - `tests\unit\uiSmokeExpansionContract.test.ts` 新增 freshness/completeness 回归，并把它纳入 `test:supplemental-units`。
+  - `tests\unit\validationScripts.test.ts` 静态锁定 experience gate 使用统一 contract、Playwright report 写 completion metadata。
+- Fresh 验证输出：
+  - 修复前复现：`npm run check:experience-polish --silent` 在旧 `2026-05-10` UI report 上 exit `0`。
+  - 修复后旧报告验证：`npm run check:experience-polish --silent` exit `1`，输出 `ui smoke expansion did not complete; missing or invalid generatedAt; ui_smoke_expansion_report.json is stale...; ... screenshot is stale...`。
+  - `npm run test:ui-smoke:expansion --silent`：exit `0`，Vite `http://127.0.0.1:57270/`，刷新完整 UI expansion evidence。
+  - fresh `output\playwright\ui_smoke_expansion_report.json`：`generatedAt=2026-05-22T15:43:39.677Z`、`completed=true`、`failedStep=null`、`audits=14`、console/page/request issues 均为 `0`。
+  - `npm run check:experience-polish --silent`：exit `0`，pass rate `100%`，`25 implemented / 0 partial / 0 missing`，UI audits `14`。
+  - `npx tsx --test tests/unit/uiSmokeExpansionContract.test.ts tests/unit/validationScripts.test.ts`：exit `0`，`12/12` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`193/193` pass。
+  - `npm run scan:dead -- --ci`：exit `0`，scripts `likely-unused: none`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run review:ci --silent`：exit `0`，Type Check、Build、Damage Tests、Python Runtime Unit Tests、Numeric Diagnostics、Event Route State Check、Midgame Route Sustain Check、Dead File Scan 全部通过。
+  - `npm run check:readme-consistency --silent`：exit `0`。
+  - `npm run check:release-readiness --silent`：exit `1`，整体因既有 stale `dist/desktop/doctor/security/flow` artifacts 失败；已读 `reports\release\release-readiness.json`，其中 `ui_smoke_expansion_report` 子项为 `pass`，evidence 为 clean and fresh。
+- 状态：
+  - UI expansion evidence gate 现在能拒绝旧报告、半截报告和旧截图。
+  - Experience polish 与 release readiness 对 UI expansion evidence 使用同一 contract，降低后续 gate 漂移风险。
+  - 本批未刷新 desktop smoke、doctor/security、单项 flow smoke 报告；这些仍是 release readiness 的独立 stale artifact 后续目标。

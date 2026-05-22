@@ -12,6 +12,12 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
+import {
+  UI_SMOKE_EXPANSION_REPORT_PATH,
+  type UiSmokeAudit,
+  type UiSmokeExpansionReport,
+  validateUiSmokeExpansionReport,
+} from './uiSmokeExpansionContract';
 
 const REPORT_DIR = 'reports/content';
 const REPORT_PATH = `${REPORT_DIR}/experience-polish.json`;
@@ -48,40 +54,6 @@ interface ExperienceReport {
   };
 }
 
-interface UiSmokeAudit {
-  label: string;
-  brokenImages?: string[];
-  layoutIssues?: string[];
-}
-
-interface UiSmokeExpansionReport {
-  consoleErrors?: string[];
-  pageErrors?: string[];
-  failedRequests?: string[];
-  audits?: UiSmokeAudit[];
-  slotsLoaded?: string[];
-  tutorialChecked?: boolean;
-}
-
-const REQUIRED_UI_AUDIT_LABELS = [
-  'launcher',
-  'tutorial',
-  'character_select',
-  'map',
-  'combat',
-  'reward',
-  'shop',
-  'event',
-  'upgrade',
-];
-
-const REQUIRED_UI_SMOKE_SLOTS = [
-  'UI Smoke Reward',
-  'UI Smoke Shop',
-  'UI Smoke Event',
-  'UI Smoke Upgrade',
-];
-
 function log(msg: string) {
   console.log(`[experience-polish] ${msg}`);
 }
@@ -107,7 +79,7 @@ function checkFileContains(filepath: string, patterns: string[]): { found: strin
 }
 
 function loadUiSmokeExpansionReport(): UiSmokeExpansionReport | null {
-  const reportPath = resolve('output/playwright/ui_smoke_expansion_report.json');
+  const reportPath = UI_SMOKE_EXPANSION_REPORT_PATH;
   if (!existsSync(reportPath)) {
     return null;
   }
@@ -123,28 +95,6 @@ function hasCleanAudit(report: UiSmokeExpansionReport | null, label: string): bo
   const audit = report?.audits?.find((item) => item.label === label);
   if (!audit) return false;
   return (audit.brokenImages?.length || 0) === 0 && (audit.layoutIssues?.length || 0) === 0;
-}
-
-function validateUiSmokeExpansionReport(report: UiSmokeExpansionReport | null): string[] {
-  if (!report) return ['missing ui_smoke_expansion_report.json'];
-  const failures: string[] = [];
-  const auditLabels = new Set((report.audits || []).map((audit) => audit.label));
-  for (const label of REQUIRED_UI_AUDIT_LABELS) {
-    if (!auditLabels.has(label)) failures.push(`missing audit: ${label}`);
-  }
-  const slotsLoaded = new Set(report.slotsLoaded || []);
-  for (const slot of REQUIRED_UI_SMOKE_SLOTS) {
-    if (!slotsLoaded.has(slot)) failures.push(`missing loaded slot: ${slot}`);
-  }
-  if (report.tutorialChecked !== true) failures.push('tutorial was not checked');
-  if ((report.consoleErrors || []).length > 0) failures.push(`consoleErrors=${report.consoleErrors?.length ?? 0}`);
-  if ((report.pageErrors || []).length > 0) failures.push(`pageErrors=${report.pageErrors?.length ?? 0}`);
-  if ((report.failedRequests || []).length > 0) failures.push(`failedRequests=${report.failedRequests?.length ?? 0}`);
-  for (const audit of report.audits || []) {
-    if ((audit.brokenImages || []).length > 0) failures.push(`${audit.label}: brokenImages=${audit.brokenImages?.length ?? 0}`);
-    if ((audit.layoutIssues || []).length > 0) failures.push(`${audit.label}: layoutIssues=${audit.layoutIssues?.length ?? 0}`);
-  }
-  return failures;
 }
 
 function checkCombatExperience(uiReport: UiSmokeExpansionReport | null): ExperienceReport['combat'] {

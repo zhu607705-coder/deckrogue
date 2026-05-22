@@ -13,6 +13,10 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { pathToFileURL } from 'url';
+import {
+  type UiSmokeExpansionReport,
+  validateUiSmokeExpansionReport,
+} from './uiSmokeExpansionContract';
 
 const REPORT_DIR = 'reports/release';
 const REPORT_PATH = `${REPORT_DIR}/release-readiness.json`;
@@ -72,16 +76,6 @@ type SecurityReport = {
     overallStatus?: string;
     riskLevel?: string;
   };
-};
-
-type UiSmokeExpansionReport = {
-  consoleErrors?: unknown[];
-  pageErrors?: unknown[];
-  failedRequests?: unknown[];
-  audits?: Array<{
-    brokenImages?: unknown[];
-    layoutIssues?: unknown[];
-  }>;
 };
 
 type GenericFlowReport = Record<string, unknown> & {
@@ -343,24 +337,13 @@ function checkDoctorAndSecurityArtifacts(): ReleaseCheck[] {
     checks.push({ id: 'ui_smoke_expansion_report', status: 'fail', evidence: 'output/playwright/ui_smoke_expansion_report.json missing' });
   } else {
     const uiSmokeReport = readJsonFile<UiSmokeExpansionReport>(latestUiExpansion);
-    const consoleErrors = uiSmokeReport?.consoleErrors?.length ?? Number.NaN;
-    const pageErrors = uiSmokeReport?.pageErrors?.length ?? Number.NaN;
-    const failedRequests = uiSmokeReport?.failedRequests?.length ?? Number.NaN;
-    const auditFailures = (uiSmokeReport?.audits || []).some((audit) =>
-      (audit.brokenImages?.length || 0) > 0 || (audit.layoutIssues?.length || 0) > 0
-    );
-    const cleanReport =
-      Number.isFinite(consoleErrors) &&
-      Number.isFinite(pageErrors) &&
-      Number.isFinite(failedRequests) &&
-      consoleErrors === 0 &&
-      pageErrors === 0 &&
-      failedRequests === 0 &&
-      !auditFailures;
-    const fresh = isArtifactFresh(latestUiExpansion, freshnessBaseline);
-    checks.push(cleanReport && fresh
+    const failures = validateUiSmokeExpansionReport(uiSmokeReport, {
+      reportPath: latestUiExpansion,
+      freshnessBaseline,
+    });
+    checks.push(failures.length === 0
       ? { id: 'ui_smoke_expansion_report', status: 'pass', evidence: `ui smoke expansion report is clean and fresh: ${latestUiExpansion}` }
-      : { id: 'ui_smoke_expansion_report', status: 'fail', evidence: fresh ? `ui smoke expansion report contains errors: ${latestUiExpansion}` : `ui smoke expansion report is stale for current workspace state: ${latestUiExpansion}` });
+      : { id: 'ui_smoke_expansion_report', status: 'fail', evidence: `ui smoke expansion report failed contract: ${failures.join('; ')}` });
   }
 
   return checks;
