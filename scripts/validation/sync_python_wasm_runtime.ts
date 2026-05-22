@@ -29,6 +29,10 @@ function buildGeneratedModule(runtimeSource: string): string {
 export const PYTHON_RUNTIME_CODE = ${JSON.stringify(runtimeSource)};\n`;
 }
 
+function normalizeRuntimeSource(runtimeSource: string): string {
+  return runtimeSource.replace(/\r\n?/g, '\n');
+}
+
 function assertRuntimeSourceLooksComplete(runtimeSource: string): void {
   const requiredSnippets = [
     'class RuleRuntime',
@@ -50,12 +54,14 @@ function main(): void {
     throw new Error(`Missing Python runtime source: ${SOURCE_PATH}`);
   }
 
-  const runtimeSource = readFileSync(SOURCE_PATH, 'utf-8');
+  const runtimeSource = normalizeRuntimeSource(readFileSync(SOURCE_PATH, 'utf-8'));
   assertRuntimeSourceLooksComplete(runtimeSource);
   const generated = buildGeneratedModule(runtimeSource);
 
   if (checkOnly) {
-    const current = existsSync(TARGET_PATH) ? readFileSync(TARGET_PATH, 'utf-8') : '';
+    const current = existsSync(TARGET_PATH)
+      ? normalizeRuntimeSource(readFileSync(TARGET_PATH, 'utf-8'))
+      : '';
     if (current !== generated) {
       console.error('[sync_python_wasm_runtime] Embedded runtime is out of sync.');
       console.error(`  Source: ${normalizePathForComment(SOURCE_PATH)}`);

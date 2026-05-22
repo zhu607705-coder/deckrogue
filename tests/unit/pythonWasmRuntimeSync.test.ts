@@ -9,8 +9,12 @@ import { readFileSync } from 'node:fs';
 
 import { PYTHON_RUNTIME_CODE } from '@/content/narrative/pythonRuntime';
 
+function normalizeSource(source: string): string {
+  return source.replace(/\r\n?/g, '\n');
+}
+
 test('embedded Python WASM runtime matches the package runtime source', () => {
-  const source = readFileSync('python_runtime/src/deckrogue_rules_core/runtime.py', 'utf-8');
+  const source = normalizeSource(readFileSync('python_runtime/src/deckrogue_rules_core/runtime.py', 'utf-8'));
 
   assert.equal(PYTHON_RUNTIME_CODE, source);
   assert.match(PYTHON_RUNTIME_CODE, /SECONDARY_RESOURCES/);

@@ -11,8 +11,12 @@ import { resolve } from 'node:path';
 import { resolveActiveScreen } from '@/ui/views/AppShell';
 import type { ScreenId } from '@/ui/components/ViewBackgroundLayer';
 
-const APP_SHELL_SOURCE = readFileSync(resolve('src/ui/views/AppShell.tsx'), 'utf-8');
-const REST_VIEW_SOURCE = readFileSync(resolve('src/ui/views/RestView.tsx'), 'utf-8');
+function readSource(filePath: string): string {
+  return readFileSync(resolve(filePath), 'utf-8').replace(/\r\n?/g, '\n');
+}
+
+const APP_SHELL_SOURCE = readSource('src/ui/views/AppShell.tsx');
+const REST_VIEW_SOURCE = readSource('src/ui/views/RestView.tsx');
 
 test('AppShell active screen resolver preserves every renderable screen', () => {
   const screens: ScreenId[] = [

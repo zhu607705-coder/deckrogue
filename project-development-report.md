@@ -7892,3 +7892,26 @@
   - Python WASM embedded runtime drift 有生成/同步/测试 gate，不再依赖手工粘贴。
   - `check:experience-polish` 已由完整 UI expansion 报告转绿，不再使用旧半截报告。
   - 本批发现并修复的新增阻塞是 Playwright 存档 fixture checksum 缺失；同一修复覆盖共享 smoke helper 与 UI expansion 自有 payload。
+
+## DeckRogue Main Merge Closure - Windows Checkout Sync Stability - 2026-05-22
+
+- 合并内容：
+  - 本地 `E:\deckrogue\deckrogue` 的 `main` 已从 `1dc1e78` 快进到已推送主线，并继续提交合并后清理项。
+  - 合并前将旧的未跟踪根目录 `.gitignore` 备份到 `E:\deckrogue\merge-backups\deckrogue-local-main-20260522-merge\.gitignore`，避免覆盖本地痕迹。
+  - `.gitignore` 补充 `.kiro/`，让隐藏 Kiro spec 草稿与 `.claude/`、`.trae/`、`.omx/` 一样保持 local-only，不污染主线状态。
+- 新增修复：
+  - **PYTHON-WASM-SYNC-CRLF-CHECKOUT-DRIFT-001：已修。**
+    - `scripts\validation\sync_python_wasm_runtime.ts` 在读取 Python runtime source 和已有 generated target 时统一 `CRLF/CR` 到 `LF`，避免 Windows checkout 下 `check:python-wasm-runtime-sync` 误报 out-of-sync。
+    - 重新生成 `src\content\narrative\pythonRuntime.ts`，把内嵌 `PYTHON_RUNTIME_CODE` 从 `\r\n` 规范为 `\n`。
+    - `tests\unit\pythonWasmRuntimeSync.test.ts` 对包侧 runtime source 做同样 LF 归一化，锁住跨平台一致性。
+  - **SOURCE-TEXT-CONTRACT-CRLF-ASSERTION-001：已修。**
+    - `tests\unit\appShellUiContracts.test.ts` 读取源码断言前统一换行，避免 Windows CRLF 让 `showRestartCombatConfirm` 结构检查假失败。
+- Fresh 验证输出：
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`109` tests，`108` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`191/191` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+- 状态：
+  - 本地 `main` 跟踪 `origin/main`，工作树干净。
+  - 远端 `refs/heads/main` 通过 GitHub API 验证到最新合并提交。
