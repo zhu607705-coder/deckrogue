@@ -15,6 +15,7 @@ import type {
   RenderModelRewardCard,
 } from '@/runtimeV2/contracts';
 import {
+  getCardEnchantmentDefById,
   getEventChoiceCommitTags,
   getEventChoiceRouteRole,
   getRouteTaxonomy,
@@ -81,16 +82,32 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
     }
     return !!(contentService.getRelic(relicId) as { corrupted?: boolean } | undefined)?.corrupted;
   };
-  const deriveDeckSurfaceChoices = () => snapshot.player.deck.map((cardId, index) => {
+  const deriveDeckSurfaceChoices = (
+    includeCard?: (entry: { cardId: string; normalizedCardId: string; cardData: ReturnType<typeof contentService.getCard> }) => boolean,
+  ) => snapshot.player.deck.flatMap((cardId, index) => {
     const normalizedCardId = normalizeCardContentId(cardId);
     const cardData = contentService.getCard(normalizedCardId);
-    return {
+    if (includeCard && !includeCard({ cardId, normalizedCardId, cardData })) {
+      return [];
+    }
+    return [{
       id: `${index}:${cardId}`,
       label: cardData?.name ? formatCardDisplayName(cardId, cardData.name) : cardId.replace(/_/g, ' '),
       description: cardData?.text,
       disabled: false,
-    };
+    }];
   });
+  const isUpgradeTarget = ({ cardId, cardData }: { cardId: string; cardData: ReturnType<typeof contentService.getCard> }) =>
+    !!cardData?.upgrade && !cardId.includes('+');
+  const isEnchantTarget = ({ cardId, cardData }: { cardId: string; cardData: ReturnType<typeof contentService.getCard> }) => {
+    if (!cardData || cardId.includes('*')) return false;
+    if (cardData.type !== 'Attack' && cardData.type !== 'Skill') return false;
+    const enchantment = snapshot.surfaceContext?.enchantContext?.enchantmentId
+      ? getCardEnchantmentDefById(snapshot.surfaceContext.enchantContext.enchantmentId) as { applicableTo?: Array<'Attack' | 'Skill'> } | undefined
+      : undefined;
+    const applicableTo = enchantment?.applicableTo;
+    return !applicableTo?.length || applicableTo.includes(cardData.type);
+  };
 
   if (snapshot.reward) {
     return {
@@ -269,7 +286,7 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       kind: 'upgrade',
       title: '牌库强化',
       body: '选择一张牌完成强化，或取消返回上一层。',
-      choices: deriveDeckSurfaceChoices(),
+      choices: deriveDeckSurfaceChoices(isUpgradeTarget),
     };
   }
 
@@ -291,7 +308,7 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       kind: 'enchant',
       title: snapshot.surfaceContext?.enchantContext?.title ?? '附魔',
       body: snapshot.surfaceContext?.enchantContext?.description ?? '选择一张牌施加永久附魔。',
-      choices: deriveDeckSurfaceChoices(),
+      choices: deriveDeckSurfaceChoices(isEnchantTarget),
     };
   }
 

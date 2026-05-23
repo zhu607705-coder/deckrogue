@@ -249,14 +249,14 @@ test('createRenderModel exposes runtime-v2 rest potion mix choices', () => {
   assert.deepEqual(renderModel.room?.potions?.map((potion) => potion.id), ['healing_potion', 'block_potion']);
 });
 
-test('createRenderModel resolves enchanted card ids when building deck surface choices', () => {
+test('createRenderModel resolves enchanted card ids when building remove-card surface choices', () => {
   const snapshot: RuleSnapshot = {
     schemaVersion: 2,
     engineVersion: 'test',
     seed: 1,
     lifecycle: {
-      screen: 'Enchant',
-      phase: 'event',
+      screen: 'RemoveCard',
+      phase: 'remove_card',
       pendingNodeResolution: true,
     },
     player: {
@@ -288,12 +288,109 @@ test('createRenderModel resolves enchanted card ids when building deck surface c
   };
 
   const renderModel = createRenderModel(snapshot);
-  const choice = renderModel.room?.kind === 'enchant' ? renderModel.room.choices[0] : null;
+  const choice = renderModel.room?.kind === 'remove_card' ? renderModel.room.choices[0] : null;
 
   assert.ok(choice);
   assert.equal(choice.id, '0:calculated_strike*');
   assert.equal(choice.label, '计算打击 *');
   assert.equal(choice.description, '造成 7 点伤害。若你有 1 点情报，则消耗 1 点并额外造成 7 点伤害。');
+});
+
+test('createRenderModel only exposes valid upgrade card choices', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Upgrade',
+      phase: 'upgrade',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 40,
+      maxHp: 70,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: ['calculated_strike+', 'defend', 'time_bomb'],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.room?.kind, 'upgrade');
+  assert.deepEqual(renderModel.room.choices?.map((choice) => choice.id), ['1:defend']);
+});
+
+test('createRenderModel only exposes enchant-applicable unenchanted card choices', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Enchant',
+      phase: 'enchant',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 40,
+      maxHp: 70,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: ['defend', 'calculated_strike', 'calculated_strike*', 'stasis_field'],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    surfaceContext: {
+      enchantContext: {
+        source: 'Rest',
+        enchantmentId: 'blood_rune',
+        title: '营火刻印',
+        description: '从一张攻击牌上刻下稳定的永久附魔。',
+        returnScreen: 'Rest',
+      },
+    },
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.room?.kind, 'enchant');
+  assert.deepEqual(renderModel.room.choices?.map((choice) => choice.id), ['1:calculated_strike']);
 });
 
 test('createLegacyRenderModel includes reward room summary for legacy reward screens', () => {

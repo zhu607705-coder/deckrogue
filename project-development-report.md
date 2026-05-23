@@ -8860,3 +8860,34 @@
 - 状态：
   - 嵌套升级/附魔/遗物升级 surface 现在能显示 runtimeV2/Python choices，同时不会在 legacy 实体存在但不可操作时制造假按钮。
   - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 Python WASM surface parity 或 content schema 的下一处可修 bug。
+
+## DeckRogue Fix Batch 040 - Runtime Deck Surface Choice Filtering - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 039 报告，确认从已推送 `6282259` 的干净主线继续，避免重复上一轮 nested surface UI 验证。
+  - 非重复检查转向 runtimeV2 / Python WASM render projection：`src\runtimeV2\renderModel.ts` 的 `deriveDeckSurfaceChoices()` 被 `Upgrade`、`Enchant`、`RemoveCard` 共用，实际会把整副 `snapshot.player.deck` 都投影为可点击 choice。
+  - 红灯复现：新增两条 renderModel 回归后，修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，`10/12` pass、2 fail：
+    - Upgrade choices 实际为 `0:calculated_strike+`、`1:defend`、`2:time_bomb`，预期只保留可升级未升级的 `1:defend`。
+    - Blood Rune enchant choices 实际为 `0:defend`、`1:calculated_strike`、`2:calculated_strike*`、`3:stasis_field`，预期只保留未附魔且适用的 Attack `1:calculated_strike`。
+- 修复内容：
+  - **RUNTIMEV2-DECK-SURFACE-CHOICE-FILTER-001：已修。**
+    - `src\runtimeV2\renderModel.ts` 为 deck surface choice 派生增加可选 predicate。
+    - Upgrade surface 只投影有 `upgrade` 且 id 未含 `+` 的牌。
+    - Enchant surface 只投影未含 `*`、类型为 `Attack`/`Skill` 且满足当前 `enchantContext.enchantmentId.applicableTo` 的牌。
+    - RemoveCard surface 仍保留全 deck 投影，并把原有已附魔牌显示名解析测试迁移到 remove-card surface，避免与新过滤语义冲突。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 新增 Upgrade/Enchant surface-specific choice 过滤回归。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，新增两例失败，显示上述无效 choice 被暴露。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`12/12` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`122/122` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`215/215` pass。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent`：exit `0`，`18/18` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `npm run test:upgrade-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`reachedUpgrade=true`、`appliedUpgrade=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run test:shop-flow-smoke --silent`：exit `0`；报告 `reachedShop=true`、`reachedEnchant=true`、`returnedToShop=true`、`returnedToMap=true`，无 console/page errors。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - runtimeV2/Python renderModel 的 Upgrade/Enchant choices 已与核心可操作目标一致，不再向 runtime-only UI 暴露已升级、无升级、已附魔、不适用类型或 Power 牌。
+  - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 content schema 或 desktop packaging 的下一处可修 bug。
