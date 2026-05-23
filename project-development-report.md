@@ -8891,3 +8891,17 @@
 - 状态：
   - runtimeV2/Python renderModel 的 Upgrade/Enchant choices 已与核心可操作目标一致，不再向 runtime-only UI 暴露已升级、无升级、已附魔、不适用类型或 Power 牌。
   - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 content schema 或 desktop packaging 的下一处可修 bug。
+
+### Batch 040 Post-Commit Gate - 2026-05-23
+
+- 提交与远端：
+  - 本地修复提交：`3b8f3a5` (`Filter runtime deck choices by surface validity`)。
+  - `git push origin main`：exit `0`，远端 `main` 从 `6282259` 更新到 `3b8f3a5`。
+  - `git ls-remote origin refs/heads/main`：确认远端 SHA 为 `3b8f3a50665a85ee5ec295fad2e79971dbcba5de`。
+- Post-commit gate：
+  - 已读取 `reports\doctor\report.json`：`gitHead=3b8f3a50`、`gitDirty=false`、`overallStatus=pass`、`52/52` stages passed、`failed=0`、`skipped=0`。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`，报告写入 `reports\release\release-readiness.json`。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`12/12` pass，复核 Batch 040 focused regression。
+- 状态：
+  - Batch 040 已完成修复、验证并同步远端主线。
+  - 下一轮继续追 content schema、desktop packaging 或 Python WASM adaptation 的下一处可复现 P1/P2 缺陷。
