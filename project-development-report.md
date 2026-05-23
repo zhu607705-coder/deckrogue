@@ -8606,3 +8606,23 @@
   - 仓库侧已具备可重复的 GitHub transport 自检和 Windows SSH-over-443 配置文档。
   - 本机持久 SSH credential/config 仍未改动；若要让 `npm run check:github-transport` 绿，需要按 `docs\environment\github-ssh-over-443.md` 生成/注册 key、写入 `$env:USERPROFILE\.ssh\config`，并切换 `origin`。
   - 下一步可在用户明确允许机器级凭据改动后执行实际 SSH key 配置；否则继续 runtimeV2/UI/rendering 修复轮。
+
+## DeckRogue Fix Batch 030 - Post-Commit Release Evidence Refresh - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 029 报告，确认从 `34b169d` 干净状态继续。
+  - 非重复检查转向 generated-report gates：`npm run check:release-readiness --silent` 在 Batch 029 提交后 exit `1`，`pass=25 warn=0 fail=16`。
+  - 失败项全部是当前 HEAD 下生成证据陈旧：`dist_index`、`dist_assets`、`desktop_build_report`、`desktop_smoke_report`、`doctor_report`、`security_report`、`ui_smoke_expansion_report` 和 9 条 flow smoke reports。
+  - 同轮真实检查显示 runtime/UI 本身可运行：`npm run test:runtime-v2:ts --silent` exit `0`、`115/115` pass；`npm run test:ui-smoke --silent` exit `0`。
+- 修复内容：
+  - **POST-COMMIT-RELEASE-EVIDENCE-STALE-001：已修。**
+    - 运行 `npm run doctor:game:full --silent` 刷新 build、desktop build/smoke、supplemental/runtimeV2/Python runtime、content/schema、安全、UI expansion、flow smoke、desktop smoke 和 release readiness 证据。
+    - 本轮没有源码补丁；修复目标是让生成报告重新绑定当前 clean HEAD，避免 release readiness 继续拒绝旧证据。
+- Fresh 验证输出：
+  - `npm run doctor:game:full --silent`：exit `0`，`47/47` stages passed，`failed=0`。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - `reports\doctor\report.json` 摘要：`gitHead=34b169d3`、`gitDirty=false`、`overallStatus=pass`、`failed=0`。
+  - `reports\release\release-readiness.json` 摘要：`overallStatus=pass`、`failed=0`。
+- 状态：
+  - 当前 HEAD 的 release evidence 已恢复为 green。
+  - 下一步继续转向 under-covered UI/rendering 或 content schema 源码审计，避免连续做纯 generated-report 刷新。
