@@ -8962,3 +8962,28 @@
 - 状态：
   - Content authoring gate 现在会真实校验 106 条遗物，不再把 BOM 解析失败伪装成空数据集通过。
   - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 desktop packaging 或 AI intent chain 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 043 - Windows GitHub SSH-over-443 Transport Repair - 2026-05-24
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交、Batch 040-042 报告和记忆中的 DeckRogue transport 经验，确认从已同步 `c2d3840` 的干净主线继续。
+  - 常规 `git push origin main` 与 `git fetch origin main` 在本机 HTTPS Git transport 上复现 `Recv failure: Connection was reset`。
+  - `ssh -T -p 443 git@ssh.github.com` 可达但返回 `Permission denied (publickey)`，`$env:USERPROFILE\.ssh` 仅有 `known_hosts`。
+  - 红灯复现：`npm run check:github-transport --silent` exit `1`，5 项失败：`origin_remote` 仍是 HTTPS、`ssh_host` 未映射到 `ssh.github.com`、`ssh_port` 为 22、`ssh_user` 为本机用户、`ssh_identity` 不存在。
+- 修复内容：
+  - **WINDOWS-GITHUB-SSH-OVER-443-SETUP-001：已修。**
+    - 生成专用本机 key：`$env:USERPROFILE\.ssh\id_ed25519_github`。
+    - 新增 `$env:USERPROFILE\.ssh\config` 的 `Host github.com` 映射：`HostName ssh.github.com`、`User git`、`Port 443`、`IdentityFile ~/.ssh/id_ed25519_github`、`IdentitiesOnly yes`。
+    - 账户级 `gh ssh-key add` 因 token 缺少 `admin:public_key` 被 GitHub 拒绝后，改用更窄的 repo-scoped writable deploy key 注册到 `zhu607705-coder/deckrogue`。
+    - `origin` 改为 canonical SSH remote：`git@github.com:zhu607705-coder/deckrogue.git`。
+    - `docs\environment\github-ssh-over-443.md` 补充 deploy-key fallback 命令，避免后续重复卡在账户级 key scope。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npm run check:github-transport --silent` exit `1`，5 fail。
+  - `npm run check:github-transport --silent`：exit `0`，`origin_remote`、`ssh_host`、`ssh_port`、`ssh_user`、`ssh_identity`、`setup_docs` 全部 PASS。
+  - `ssh -T git@github.com`：exit `1`，但输出 `Hi zhu607705-coder/deckrogue! You've successfully authenticated, but GitHub does not provide shell access.`，符合 GitHub deploy key 成功认证形态。
+  - `git ls-remote origin HEAD`：exit `0`，返回 `c2d384039cbc45cc61a33ab698f1b4d94951353e HEAD`。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - 下一步提交和 SSH push 后，再刷新本段 post-commit 证据。
+- 状态：
+  - Windows checkout 已从 HTTPS reset 风险切换到 SSH-over-443 路径。
+  - 下一步用 SSH 远端读写验证后继续追 desktop packaging 或 AI intent chain 的下一处可复现缺陷。

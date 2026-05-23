@@ -20,6 +20,15 @@ If GitHub CLI is logged in as `zhu607705-coder`, register the public key:
 gh ssh-key add "$env:USERPROFILE\.ssh\id_ed25519_github.pub" --title "Windows DeckRogue SSH key"
 ```
 
+If GitHub CLI reports that the token needs `admin:public_key`, register the same public key as a repo-scoped writable deploy key instead:
+
+```powershell
+$pub = Get-Content -LiteralPath "$env:USERPROFILE\.ssh\id_ed25519_github.pub" -Raw
+gh api repos/zhu607705-coder/deckrogue/keys -X POST -f title='Windows DeckRogue SSH-over-443 key' -f key="$pub" -F read_only=false
+```
+
+This narrower fallback is sufficient for this checkout and avoids requiring account-wide SSH key administration.
+
 ## 3. Route GitHub SSH Through Port 443
 
 Add this stanza to `$env:USERPROFILE\.ssh\config`:
