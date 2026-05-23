@@ -314,7 +314,7 @@ test('release readiness rejects doctor reports generated for a stale git state',
   }
 });
 
-test('release readiness requires doctor reports to include the runtime V2 TypeScript stage', () => {
+test('release readiness requires doctor reports to include runtime V2 and Python runtime stages', () => {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-doctor-runtime-v2-'));
   const doctorReportPath = join(fixtureRoot, 'reports', 'doctor', 'report.json');
 
@@ -328,7 +328,7 @@ test('release readiness requires doctor reports to include the runtime V2 TypeSc
         gitDirty: false,
         stages: [
           { name: 'Lint', status: 'pass', duration: 1 },
-          { name: 'Supplemental Unit Tests', status: 'pass', duration: 1 },
+          { name: 'Runtime V2 TypeScript Tests', status: 'pass', duration: 1 },
         ],
         summary: {
           total: 2,
@@ -345,7 +345,8 @@ test('release readiness requires doctor reports to include the runtime V2 TypeSc
     });
 
     assert.equal(check.status, 'fail');
-    assert.match(check.evidence, /Runtime V2 TypeScript Tests/);
+    assert.match(check.evidence, /Check Python WASM Runtime Sync/);
+    assert.match(check.evidence, /Python Runtime Unit Tests/);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }

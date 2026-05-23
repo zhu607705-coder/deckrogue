@@ -95,6 +95,15 @@ test('game doctor prunes old logs before release readiness growth checks', () =>
   assert.match(source, /const prunedLogs = pruneDoctorLogs\(\)/);
 });
 
+test('game doctor keeps Python WASM runtime sync and package tests gated', () => {
+  const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+
+  assert.match(source, /Check Python WASM Runtime Sync/);
+  assert.match(source, /npm run check:python-wasm-runtime-sync/);
+  assert.match(source, /Python Runtime Unit Tests/);
+  assert.match(source, /npm run test:python-runtime/);
+});
+
 test('real UI round stress treats missing or invalid scenario reports as failures', () => {
   const source = readFileSync('scripts/validation/playwright_real_ui_30_rounds.ts', 'utf-8');
 

@@ -24,7 +24,11 @@ const REPORT_DIR = 'reports/release';
 const REPORT_PATH = `${REPORT_DIR}/release-readiness.json`;
 const DEFAULT_REPORT_MAX_FILES = 2000;
 const DEFAULT_REPORT_MAX_BYTES = 50 * 1024 * 1024;
-const REQUIRED_DOCTOR_STAGE_NAMES = ['Runtime V2 TypeScript Tests'];
+const REQUIRED_DOCTOR_STAGE_NAMES = [
+  'Runtime V2 TypeScript Tests',
+  'Check Python WASM Runtime Sync',
+  'Python Runtime Unit Tests',
+];
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 

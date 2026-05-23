@@ -8530,3 +8530,31 @@
   - release readiness 不再接受 fresh desktop report 包着 stale Pyodide runtime assets 的发布状态。
   - desktop Pyodide staging 会刷新 copied asset mtimes，避免真实 package asset mtime 漂移把正确 build 错判为旧构建。
   - 下一步提交后必须按新 HEAD 重新跑 doctor/release readiness，让 doctor report 的 `gitHead` 绑定提交后的状态。
+
+## DeckRogue Fix Batch 027 - Python Runtime Doctor Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 026 报告，确认从 `aac0f18` 干净状态继续。
+  - 非重复检查转向 Python WASM adaptation / embedded runtime sync：读取 `scripts\validation\sync_python_wasm_runtime.ts`、`tests\unit\pythonWasmRuntimeSync.test.ts`、`scripts\doctor\gameDoctor.ts`、`scripts\validation\check_release_readiness.ts`。
+  - 基线命令显示 `npm run check:python-wasm-runtime-sync --silent` exit `0`，`npm run test:python-runtime --silent` exit `0`、`Ran 8 tests` / `OK`，但 `npm run check:release-readiness --silent` 仍可 `pass=41 warn=0 fail=0`。
+  - 当前 doctor report 只列出 `Runtime V2 TypeScript Tests`，没有独立的 `Check Python WASM Runtime Sync` 或 `Python Runtime Unit Tests`；这意味着 release readiness 可接受未执行 Python package unittest 的 doctor 证据。
+- 修复内容：
+  - **PYTHON-RUNTIME-DOCTOR-GATE-BYPASS-001：已修。**
+    - `scripts\doctor\gameDoctor.ts` 将 `npm run check:python-wasm-runtime-sync` 和 `npm run test:python-runtime` 纳入 full doctor，阶段名分别为 `Check Python WASM Runtime Sync`、`Python Runtime Unit Tests`。
+    - `scripts\validation\check_release_readiness.ts` 的 required doctor stages 现在要求 Runtime V2 TS、Python WASM sync、Python runtime unittest 三条均通过。
+  - `tests\unit\releaseAndTranslationGate.test.ts` 把 doctor required-stage 回归扩展到 Python runtime stages，缺失时必须失败并列出缺失阶段。
+  - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 game doctor 不再漏掉 Python WASM sync 和 package unittest。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增用例失败为 `'pass' !== 'fail'`。
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例失败为缺少 `/Check Python WASM Runtime Sync/`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`8/8` pass。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`16/16` pass。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 8 tests` / `OK`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因是脚本/测试变更触发 build、desktop、doctor、安全、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`47/47` stages passed，新增 `Check Python WASM Runtime Sync` 与 `Python Runtime Unit Tests` 均为 pass。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`；doctor report 摘要为 `gitHead=aac0f185`、`gitDirty=True`、`total=47`、`passed=47`、`failed=0`。
+- 状态：
+  - release readiness 不再接受缺少 Python WASM sync 或 Python package unittest 的 doctor report。
+  - full doctor 现在显式覆盖 embedded runtime 同步检查和包侧 Python runtime 单元测试；下一步提交后仍需按新 HEAD 重新跑 doctor/release readiness。
