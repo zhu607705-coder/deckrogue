@@ -25,6 +25,10 @@ import {
 
 type FixtureState = {
   screen: string;
+  player?: {
+    deck?: unknown[];
+    relics?: string[];
+  };
   pendingNodeResolution?: boolean;
   roomResolutionToken?: string | null;
   roomResolutionKind?: string | null;
@@ -84,6 +88,14 @@ test('terminal flow smoke fixtures clear stale room state before serialization',
     assert.equal(state.roomResolutionToken ?? null, null, `${fixture.slotId} should not serialize a room token`);
     assert.equal(state.roomResolutionKind ?? null, null, `${fixture.slotId} should not serialize a room kind`);
   }
+});
+
+test('remove-card flow fixture does not rely on a corrupted relic to expose card removal', () => {
+  const state = getFixtureState(createRemoveCardFixture());
+
+  assert.equal(state.screen, 'Rest');
+  assert.ok((state.player?.deck?.length ?? 0) > 0, 'remove-card fixture should have cards to remove');
+  assert.deepEqual(state.player?.relics ?? [], [], 'rest card removal should not be gated by corrupted relic inventory');
 });
 
 test('flow smoke storage payload writes loadable save checksums', () => {

@@ -8778,3 +8778,31 @@
 - 状态：
   - runtimeV2 RemoveCard render contract 现在与 paid shop removal 实际扣费来源一致，legacy bridge 和 Python-style snapshots 都能显示自定义商店移除费用。
   - 下一步提交后按新 HEAD 刷新 full doctor 和 release readiness，再继续追 UI/rendering 或 Python WASM adaptation 的下一处可修 bug。
+
+## DeckRogue Fix Batch 037 - Rest Remove-Card UI Gate - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 036 报告，确认从已推送 `af68bce` 干净状态继续。
+  - 非重复检查转向 UI/rendering：`RestView` 的第 4 个休整服务按钮文案是“驱散”，并按 `player.relics.some(... corrupted)` 禁用；但点击实际调用 `engine.restDisperse()`，核心实现会进入 `RemoveCard` surface。
+  - `RunFlowManager.enterCardRemoval()` 与 runtimeV2 `legacyOracleAdapter` 均支持从 `Rest` 发起 `remove_card`；当前 UI 把卡牌移除错误绑到腐化遗物库存，导致普通休整点无法进入移除卡牌。
+  - `playwright_remove_card_flow_smoke.ts` 之前用 `createRemoveCardFixture()` 预塞 `mark_of_entropy` 腐化遗物并点击“驱散”，掩盖了真实入口 gating 问题。
+  - 红灯复现：新增 `RestView uses runtime-v2 rest capability gates before legacy fallback` 断言后，修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts` exit `1`，失败为缺少 `const canRemove = roomSummary?.canRemove ?? player.deck.length > 0`。
+- 修复内容：
+  - **REST-REMOVE-CARD-UI-RELIC-GATE-001：已修。**
+    - `src\ui\views\RestView.tsx` 将第 4 个休整服务改为“移除卡牌”，用 `roomSummary?.canRemove` 优先、legacy deck fallback 作为可用性 gate，并移除腐化遗物库存依赖。
+    - `scripts\validation\flow_smoke_helpers.ts` 的 remove-card fixture 不再注入腐化遗物，确保 smoke 覆盖普通休整移除路径。
+    - `scripts\validation\playwright_remove_card_flow_smoke.ts` 改为点击“移除卡牌/焚毁”入口。
+    - `tests\unit\appShellUiContracts.test.ts` 和 `tests\unit\flowSmokeHelpers.test.ts` 锁定 RestView gate、文案和 fixture 不再依赖腐化遗物。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts` exit `1`，新增断言失败为 `card removal gate should trust renderModel room capability before legacy deck fallback`。
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/flowSmokeHelpers.test.ts`：exit `0`，`8/8` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:remove-card-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`reachedRemoveCard=true`、`removedCard=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run test:supplemental-units --silent`：exit `0`，`204/204` pass。
+  - `npm run test:rest-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`healed=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - 休整点移除卡牌现在按 runtimeV2/legacy render capability 暴露，不再要求玩家拥有腐化遗物。
+  - 下一步提交后按新 HEAD 刷新 full doctor 和 release readiness，再继续追 RemoveCardView runtimeV2 choices 或 Python WASM surface parity 的下一处可修问题。

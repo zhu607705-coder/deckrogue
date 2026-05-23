@@ -71,7 +71,7 @@ async function main() {
     await loadSlotFromLauncher(page, 'Remove Card Flow Smoke');
     await page.getByText('篝火据点').waitFor({ timeout: 10_000 });
     reachedRest = true;
-    await page.getByRole('button', { name: /驱散/ }).click();
+    await page.getByRole('button', { name: /移除卡牌|焚毁/ }).click();
     await page.getByText('焚毁记忆印痕').waitFor({ timeout: 10_000 });
     reachedRemoveCard = true;
     const start = screenshotPath(outputDir, 'remove-start.png');

@@ -13,8 +13,8 @@
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
 import type { RenderModel } from '@/runtimeV2';
-import { Flame, Heart, Hammer, FlaskConical, Sparkles, Skull, Gem } from 'lucide-react';
-import { potionsData, relicsData } from '@/content/narrative/numericSystem';
+import { Flame, Heart, Hammer, FlaskConical, Sparkles, Trash2, Gem } from 'lucide-react';
+import { potionsData } from '@/content/narrative/numericSystem';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
@@ -30,6 +30,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
   const canHeal = roomSummary?.canHeal ?? (player.hp < player.maxHp);
   const canUpgrade = roomSummary?.canUpgrade ?? player.deck.some(c => !c.isUpgraded && c.upgrade);
   const canEnchant = roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!(c as any).persistentEnchantments || (c as any).persistentEnchantments.length === 0));
+  const canRemove = roomSummary?.canRemove ?? player.deck.length > 0;
   const canUpgradeRelic = roomSummary?.canRelicUpgrade ?? RELIC_UPGRADE_CONFIGS.some(config => player.relics.includes(config.relicId));
   const [mixA, setMixA] = useState<number>(0);
   const [mixB, setMixB] = useState<number>(1);
@@ -93,7 +94,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
             {restRouteAdvice.primaryAction === 'upgrade' ? '锻造' :
               restRouteAdvice.primaryAction === 'enchant' ? '刻写附魔' :
               restRouteAdvice.primaryAction === 'relic_upgrade' ? '遗物升级' :
-              restRouteAdvice.primaryAction === 'heal' ? '休整' : '驱散'}
+              restRouteAdvice.primaryAction === 'heal' ? '休整' : '移除卡牌'}
           </span>
           · {hintFor(restRouteAdvice.primaryAction)?.reason}
         </div>
@@ -161,27 +162,18 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
 
         <button
           onClick={() => engine.restDisperse()}
-          disabled={!player.relics.some((r: string) => {
-            const relic = (relicsData as any[]).find((rel: any) => rel.id === r);
-            return relic?.corrupted;
-          })}
+          disabled={!canRemove}
           className={`w-48 h-48 rounded-2xl border-2 flex flex-col items-center justify-center gap-4 transition-all backdrop-blur-sm
-            ${player.relics.some((r: string) => {
-              const relic = (relicsData as any[]).find((rel: any) => rel.id === r);
-              return relic?.corrupted;
-            })
+            ${canRemove
               ? 'bg-slate-900/80 border-purple-500 hover:bg-slate-800/80 hover:scale-105 cursor-pointer'
               : 'bg-slate-900/80 border-slate-700 opacity-50 cursor-not-allowed'}
           `}
           data-keyboard-option="4"
           data-keyboard-focus="true"
         >
-          <Skull size={48} className={player.relics.some((r: string) => {
-            const relic = (relicsData as any[]).find((rel: any) => rel.id === r);
-            return relic?.corrupted;
-          }) ? "text-purple-400" : "text-slate-500"} />
-          <div className="text-xl font-bold">驱散</div>
-          <div className="text-sm text-slate-400">随机移除一个腐化遗物</div>
+          <Trash2 size={48} className={canRemove ? "text-purple-400" : "text-slate-500"} />
+          <div className="text-xl font-bold">移除卡牌</div>
+          <div className="text-sm text-slate-400">焚毁一张记忆印痕</div>
         </button>
 
         <button
