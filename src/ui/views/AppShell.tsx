@@ -1032,17 +1032,17 @@ function AppContent() {
         )}
         {activeScreen === 'Upgrade' && (
           <Suspense fallback={<ScreenLoadingFallback label="Upgrade" />}>
-            <UpgradeView engine={engine} />
+            <UpgradeView engine={engine} renderModel={renderModel} />
           </Suspense>
         )}
         {activeScreen === 'RelicUpgrade' && (
           <Suspense fallback={<ScreenLoadingFallback label="RelicUpgrade" />}>
-            <RelicUpgradeView engine={engine} />
+            <RelicUpgradeView engine={engine} renderModel={renderModel} />
           </Suspense>
         )}
         {activeScreen === 'Enchant' && (
           <Suspense fallback={<ScreenLoadingFallback label="Enchant" />}>
-            <EnchantView engine={engine} />
+            <EnchantView engine={engine} renderModel={renderModel} />
           </Suspense>
         )}
         {activeScreen === 'RemoveCard' && (

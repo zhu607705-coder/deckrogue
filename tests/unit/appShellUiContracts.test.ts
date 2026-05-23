@@ -113,3 +113,13 @@ test('AppShell passes runtime-v2 render model into RemoveCardView', () => {
     'RemoveCardView must receive renderModel so runtime-v2 remove-card choices are visible'
   );
 });
+
+test('AppShell passes runtime-v2 render model into nested deck and relic surfaces', () => {
+  for (const viewName of ['UpgradeView', 'EnchantView', 'RelicUpgradeView']) {
+    assert.match(
+      APP_SHELL_SOURCE,
+      new RegExp(`<${viewName}\\s+engine=\\{engine\\}\\s+renderModel=\\{renderModel\\}\\s*/>`),
+      `${viewName} must receive renderModel so runtime-v2 room choices are visible`
+    );
+  }
+});

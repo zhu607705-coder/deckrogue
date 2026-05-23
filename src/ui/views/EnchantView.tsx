@@ -10,11 +10,13 @@
  */
 import React from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { CardView } from '@/ui/views/CardView';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { getCardEnchantmentDefById, getKnownRouteTagsForCharacter, getPreferredRouteTagFromState, sortCardsByRouteAffinity } from '@/content/narrative/numericSystem';
 import { ErrorBoundary } from '@/ui/components/ErrorBoundary';
 import type { RunCardInstance } from '@/core';
+import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
 
 interface WorldLoreType {
@@ -25,8 +27,9 @@ interface WorldLoreType {
 
 const WORLD_LORE = uiWorldLore as WorldLoreType;
 
-export function EnchantView({ engine }: { engine: GameEngine }) {
+export function EnchantView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const context = engine.state.enchantContext;
+  const roomSummary = renderModel?.room?.kind === 'enchant' ? renderModel.room : null;
   const enchantment = context?.enchantmentId ? getCardEnchantmentDefById(context.enchantmentId) : null;
   const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
   const preferredRouteTag = getPreferredRouteTagFromState(engine.state.player.deck, routeTagsForCharacter, engine.state.routeState ?? null);
@@ -42,6 +45,8 @@ export function EnchantView({ engine }: { engine: GameEngine }) {
 
     return true;
   }), preferredRouteTag);
+  const runtimeChoices = roomSummary?.choices ?? [];
+  const shouldUseRuntimeChoices = runtimeChoices.length > 0 && engine.state.player.deck.length === 0;
   const backgroundSrc = VIEW_BACKGROUNDS.upgrade.desktop;
 
   return (
@@ -55,7 +60,7 @@ export function EnchantView({ engine }: { engine: GameEngine }) {
           {context?.title || '选择一张牌接受附魔'}
         </h1>
         <div className="max-w-3xl text-center text-sm leading-6 text-amber-100/80 mb-4 px-4">
-          {context?.description || WORLD_LORE?.viewAtmosphere?.Upgrade}
+          {context?.description || roomSummary?.body || WORLD_LORE?.viewAtmosphere?.Upgrade}
         </div>
         {typeof context?.price === 'number' && (
           <div className="mb-6 rounded-full border border-amber-500/40 bg-amber-950/20 px-4 py-1 text-sm text-amber-100">
@@ -64,7 +69,16 @@ export function EnchantView({ engine }: { engine: GameEngine }) {
         )}
 
         <div className="flex flex-wrap justify-center gap-6 mb-12 max-w-6xl">
-          {enchantableCards.map((card, index) => {
+          {shouldUseRuntimeChoices ? runtimeChoices.map((choice, index) => (
+            <RuntimeSurfaceChoiceCard
+              key={choice.id}
+              choice={choice}
+              index={index}
+              tone="enchant"
+              actionLabel="附魔"
+              onSelect={(choiceId) => engine.applyEnchantment(choiceId)}
+            />
+          )) : enchantableCards.map((card, index) => {
           const preview = engine.getEnchantPreview(card.instanceId!);
           const baseCost = (card as any).runtimeBase?.cost ?? card.cost;
           const costChanged = preview ? preview.cost !== baseCost : false;
@@ -94,7 +108,7 @@ export function EnchantView({ engine }: { engine: GameEngine }) {
             </div>
           );
         })}
-          {enchantableCards.length === 0 && (
+          {!shouldUseRuntimeChoices && enchantableCards.length === 0 && (
             <div className="text-slate-500 text-xl">当前没有可接受附魔的攻击或技能牌。</div>
           )}
         </div>

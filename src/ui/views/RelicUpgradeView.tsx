@@ -10,6 +10,7 @@
  */
 import React, { useState } from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import {
   getPreferredRouteTagFromState,
   getKnownRouteTagsForCharacter,
@@ -22,6 +23,7 @@ import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundIma
 import { Coins, ArrowUp, Star, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
+import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
 
 interface RelicUpgradeCardProps {
@@ -202,9 +204,10 @@ function UpgradeSuccessAnimation({ relicName }: { relicName: string }) {
   );
 }
 
-export function RelicUpgradeView({ engine }: { engine: GameEngine }) {
+export function RelicUpgradeView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const WORLD_LORE = uiWorldLore as any;
   const player = engine.state.player;
+  const roomSummary = renderModel?.room?.kind === 'relic_upgrade' ? renderModel.room : null;
   const playerGold = player.gold;
   const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
   const preferredRouteTag = getPreferredRouteTagFromState(
@@ -219,6 +222,8 @@ export function RelicUpgradeView({ engine }: { engine: GameEngine }) {
     .map(config => config.relicId),
     preferredRouteTag,
   );
+  const runtimeChoices = roomSummary?.choices ?? [];
+  const shouldUseRuntimeChoices = runtimeChoices.length > 0 && player.relics.length === 0;
 
   const [showSuccess, setShowSuccess] = useState<string | null>(null);
 
@@ -245,7 +250,7 @@ export function RelicUpgradeView({ engine }: { engine: GameEngine }) {
 
       <h1 className="text-4xl font-serif text-amber-400 mb-4 drop-shadow-lg">遗物升级</h1>
       <div className="max-w-3xl text-center text-sm leading-6 text-amber-100/80 mb-8 px-4">
-        {WORLD_LORE?.viewAtmosphere?.Rest}
+        {roomSummary?.body || WORLD_LORE?.viewAtmosphere?.Rest}
       </div>
 
       <div className="text-center mb-8">
@@ -254,7 +259,16 @@ export function RelicUpgradeView({ engine }: { engine: GameEngine }) {
       </div>
       
       <div className="flex flex-wrap justify-center gap-6 mb-12 max-w-5xl">
-        <AnimatePresence mode="popLayout">
+        {shouldUseRuntimeChoices ? runtimeChoices.map((choice, index) => (
+          <RuntimeSurfaceChoiceCard
+            key={choice.id}
+            choice={choice}
+            index={index}
+            tone="relic"
+            actionLabel="升级"
+            onSelect={(choiceId) => engine.upgradeRelic(choiceId)}
+          />
+        )) : <AnimatePresence mode="popLayout">
           {upgradableRelics.map((relicId) => (
             <RelicUpgradeCard
               key={relicId}
@@ -264,9 +278,9 @@ export function RelicUpgradeView({ engine }: { engine: GameEngine }) {
               preferredRouteTag={preferredRouteTag}
             />
           ))}
-        </AnimatePresence>
+        </AnimatePresence>}
         
-        {upgradableRelics.length === 0 && (
+        {!shouldUseRuntimeChoices && upgradableRelics.length === 0 && (
           <div className="text-slate-500 text-xl py-12">
             <p>当前没有可升级的遗物</p>
             <p className="text-sm mt-2">击败异端获取更多遗物后再来吧</p>

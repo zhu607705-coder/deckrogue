@@ -8832,3 +8832,31 @@
 - 状态：
   - RemoveCard UI 现在能消费 runtimeV2/Python remove-card choices，同时保留 legacy instance-id 移除路径。
   - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 Enchant/Upgrade/RelicUpgrade 的同类 renderModel choices surface 或 Python WASM surface parity。
+
+## DeckRogue Fix Batch 039 - Nested Surface Runtime Choices Review - 2026-05-23
+
+- 发现证据：
+  - 本轮先处理 Codex App 本地恢复/任务创建问题：`state_5.sqlite` 中线程 `019e4dcf-3fc7-7b71-9283-2f77affa32f8` 的 `rollout_path` 使用 `\\?\C:\...` 扩展路径，而自动化恢复请求使用普通 `C:\...` 路径，触发 stale path 比较失败；已备份到 `C:\Users\123\.codex\backups\conversation-task-fix-20260523-144707` 并规范化该路径。
+  - 任务创建链路用临时 heartbeat `task-creation-smoke-test` 做 create/view/delete 烟测，文件和 `codex-dev.db` 记录创建成功，删除后目录不存在且 DB 计数为 `0`。
+  - 代码 review 转向 Batch 038 后续 surface parity：`UpgradeView`、`EnchantView`、`RelicUpgradeView` 已接入 runtimeV2 `renderModel.room.choices`，但初始 fallback 条件是“可操作 legacy 目标为空”。
+  - 这会在 legacy deck/relic inventory 存在但没有可升级、可附魔、可升级遗物时，把 runtime choices 当作可操作按钮显示，遮蔽真实空状态；点击路径会把 `index:cardId` 或非可升级 relic id 传给 legacy API，形成用户可见误导。
+- 修复内容：
+  - **UI-RUNTIMEV2-NESTED-SURFACE-FALLBACK-GATE-001：已修。**
+    - `src\ui\views\UpgradeView.tsx` 仅在 legacy deck 完全为空时使用 runtime-only upgrade choices；有 deck 但无可强化卡时显示真实空状态。
+    - `src\ui\views\EnchantView.tsx` 仅在 legacy deck 完全为空时使用 runtime-only enchant choices；有牌但无可附魔目标时显示真实空状态。
+    - `src\ui\views\RelicUpgradeView.tsx` 仅在 legacy relic inventory 完全为空时使用 runtime-only relic choices；有遗物但不可升级时显示真实空状态。
+    - `tests\unit\surfaceChoiceViewsRenderModel.test.tsx` 新增三条回归，分别锁定有 legacy 实体但无可操作目标时不渲染 runtime choice。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/surfaceChoiceViewsRenderModel.test.tsx`：exit `0`，`7/7` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`215/215` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`120/120` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `npm run test:upgrade-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`reachedUpgrade=true`、`appliedUpgrade=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run test:shop-flow-smoke --silent`：exit `0`；报告 `reachedShop=true`、`reachedEnchant=true`、`returnedToShop=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run test:rest-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`healed=true`、`returnedToMap=true`，无 console/page errors。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - 嵌套升级/附魔/遗物升级 surface 现在能显示 runtimeV2/Python choices，同时不会在 legacy 实体存在但不可操作时制造假按钮。
+  - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 Python WASM surface parity 或 content schema 的下一处可修 bug。

@@ -10,12 +10,14 @@
  */
 import React from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { CardView } from '@/ui/views/CardView';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { ArrowUp, Zap, Coins, Target } from 'lucide-react';
 import { ErrorBoundary } from '@/ui/components/ErrorBoundary';
 import type { RunCardInstance } from '@/core';
 import { getKnownRouteTagsForCharacter, getPreferredRouteTagFromState, sortCardsByRouteAffinity } from '@/content/narrative/numericSystem';
+import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
 
 interface UpgradeDiff {
@@ -133,15 +135,18 @@ function UpgradeCardPreview({ card, onUpgrade }: { card: any; onUpgrade: () => v
   );
 }
 
-export function UpgradeView({ engine }: { engine: GameEngine }) {
+export function UpgradeView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const WORLD_LORE = uiWorldLore as any;
   const deck = engine.state.player.deck;
+  const roomSummary = renderModel?.room?.kind === 'upgrade' ? renderModel.room : null;
   const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
   const preferredRouteTag = getPreferredRouteTagFromState(deck, routeTagsForCharacter, engine.state.routeState ?? null);
   const upgradableCards = sortCardsByRouteAffinity(
     deck.filter(c => !c.isUpgraded && c.upgrade),
     preferredRouteTag,
   );
+  const runtimeChoices = roomSummary?.choices ?? [];
+  const shouldUseRuntimeChoices = runtimeChoices.length > 0 && deck.length === 0;
   const backgroundSrc = VIEW_BACKGROUNDS.upgrade.desktop;
 
   return (
@@ -157,14 +162,23 @@ export function UpgradeView({ engine }: { engine: GameEngine }) {
       </div>
 
       <div className="flex flex-wrap justify-center gap-6 mb-12 max-w-5xl">
-        {upgradableCards.map((card, index) => (
+        {shouldUseRuntimeChoices ? runtimeChoices.map((choice, index) => (
+          <RuntimeSurfaceChoiceCard
+            key={choice.id}
+            choice={choice}
+            index={index}
+            tone="upgrade"
+            actionLabel="强化"
+            onSelect={(choiceId) => engine.upgradeCard(choiceId)}
+          />
+        )) : upgradableCards.map((card, index) => (
           <UpgradeCardPreview
             key={card.instanceId}
             card={card}
             onUpgrade={() => engine.upgradeCard(card.instanceId!)}
           />
         ))}
-        {upgradableCards.length === 0 && (
+        {!shouldUseRuntimeChoices && upgradableCards.length === 0 && (
           <div className="text-slate-500 text-xl">记忆印痕库中没有可强化的卡牌。</div>
         )}
       </div>
