@@ -41,7 +41,13 @@ function cloneSurfaceContext(surfaceContext: GameState['surfaceContext']): RuleS
 }
 
 function deriveLegacyShopSnapshot(state: GameState): RuleSnapshot['shop'] {
-  if (state.screen !== 'Shop') return null;
+  const isShopSurface =
+    state.screen === 'Shop' ||
+    (
+      state.screen === 'RemoveCard' &&
+      (state.upgradeReturnScreen === 'Shop' || state.surfaceContext?.upgradeReturnScreen === 'Shop')
+    );
+  if (!isShopSurface) return null;
   const adjustShopPrice = (basePrice: number) => {
     let multiplier = 1;
     if (state.player.relics.includes('lantern')) multiplier *= 0.95;

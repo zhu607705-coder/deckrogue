@@ -274,13 +274,14 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   }
 
   if (screen === 'RemoveCard') {
+    const cardRemovalCost = snapshot.surfaceContext?.isEventFreeCardRemovalMode ? 0 : snapshot.shop?.cardRemovalCost ?? 75;
     return {
       kind: 'remove_card',
       title: snapshot.surfaceContext?.isEventFreeCardRemovalMode ? '事件献祭' : '移除卡牌',
       body: snapshot.surfaceContext?.isEventFreeCardRemovalMode
         ? '当前移除来自事件效果，不会消耗金币。'
         : '选择一张牌移除，或取消返回上一层。',
-      cardRemovalCost: snapshot.surfaceContext?.isEventFreeCardRemovalMode ? 0 : 75,
+      cardRemovalCost,
       choices: deriveDeckSurfaceChoices(),
     };
   }

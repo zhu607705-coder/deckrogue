@@ -50,6 +50,85 @@ test('createLegacyRenderModel includes shop room summary for legacy shop screens
   }
 });
 
+test('createRenderModel preserves a custom shop removal cost while selecting a paid shop removal', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'RemoveCard',
+      phase: 'remove_card',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 40,
+      maxHp: 70,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: ['calculated_strike'],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: 'shop-1',
+      nodes: [],
+    },
+    shop: {
+      cards: [],
+      relics: [],
+      potions: [],
+      cardRemovalCost: 125,
+    },
+    surfaceContext: {
+      upgradeReturnScreen: 'Shop',
+    },
+    roomSession: {
+      token: 'test-shop-remove',
+      nodeId: 'shop-1',
+      ownerKind: 'shop',
+      resolverKind: 'shop',
+      surfaceStack: ['shop', 'remove_card'],
+      status: 'active',
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.room?.kind, 'remove_card');
+  assert.equal(renderModel.room?.cardRemovalCost, 125);
+});
+
+test('createLegacyRenderModel preserves a custom shop removal cost on the remove-card surface', () => {
+  const engine = new GameEngine(12345, null);
+  try {
+    engine.selectCharacter('informant');
+    engine.enterShop();
+    engine.state.cardRemovalCost = 125;
+    engine.enterCardRemoval();
+
+    const renderModel = createLegacyRenderModel(engine);
+
+    assert.equal(renderModel.screen, 'RemoveCard');
+    assert.equal(renderModel.room?.kind, 'remove_card');
+    assert.equal(renderModel.room?.cardRemovalCost, 125);
+  } finally {
+    engine.dispose();
+  }
+});
+
 test('createLegacyRenderModel preserves the selected character across the legacy post-selection transition', () => {
   const engine = new GameEngine(12345, null);
   try {

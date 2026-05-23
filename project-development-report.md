@@ -8753,3 +8753,28 @@
 - 状态：
   - Python package runtime 与 embedded WASM runtime 对 route signal 零强度的解释已对齐。
   - 下一步需跑 full doctor 和 release readiness；提交后仍需按新 HEAD 再刷新 generated reports。
+
+## DeckRogue Fix Batch 036 - RemoveCard Shop Removal Cost Render Projection - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 035 报告，确认从已推送 `c5a1953` 干净状态继续。
+  - 非重复检查转向 UI/rendering + runtimeV2 surface projection：Shop room 已使用 `snapshot.shop.cardRemovalCost`，但 `RemoveCard` render room 固定 `75`。
+  - legacy normalizer 只在 `screen === 'Shop'` 时保留 shop payload；从 Shop 进入 `RemoveCard` 后，runtimeV2 render consumer 无法看到自定义 shop removal cost。
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，新增两个用例均失败为 actual `75`、expected `125`。
+- 修复内容：
+  - **RUNTIMEV2-REMOVE-CARD-SHOP-COST-PROJECTION-001：已修。**
+    - `src\runtimeV2\renderModel.ts` 的 `RemoveCard` 分支在非事件免费移除时读取 `snapshot.shop?.cardRemovalCost ?? 75`，事件免费模式仍投影为 `0`。
+    - `src\runtimeV2\normalizeLegacyGameState.ts` 在 Shop 嵌套 `RemoveCard` surface 中保留 legacy shop snapshot，避免 bridge 丢失 `cardRemovalCost`。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 新增 direct snapshot 与 legacy bridge 双回归，锁定自定义 `125` 费用在 remove-card surface 上不再回落到 `75`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，`8/10` pass，2 fail，失败均为 `75 !== 125`。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`10/10` pass。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/runtimeV2Host.test.ts`：exit `0`，`41/41` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`120/120` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - runtimeV2 RemoveCard render contract 现在与 paid shop removal 实际扣费来源一致，legacy bridge 和 Python-style snapshots 都能显示自定义商店移除费用。
+  - 下一步提交后按新 HEAD 刷新 full doctor 和 release readiness，再继续追 UI/rendering 或 Python WASM adaptation 的下一处可修 bug。
