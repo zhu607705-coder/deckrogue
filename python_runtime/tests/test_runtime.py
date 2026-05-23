@@ -62,6 +62,24 @@ class RuleRuntimeTests(unittest.TestCase):
         self.assertEqual(loaded["player"]["deck"], selected["player"]["deck"])
         self.assertEqual(loaded["map"]["nodes"], selected["map"]["nodes"])
 
+    def test_zero_route_signal_strength_remains_zero_when_deriving_route_state(self):
+        bundle = build_content_bundle()
+        bundle["characters"][0]["starting_deck"] = ["zero_signal"]
+        bundle["cards"] = [
+            {
+                "id": "zero_signal",
+                "character": "informant",
+                "route_tags": ["informant:evidence"],
+                "route_signal_strength": 0,
+            }
+        ]
+        runtime = boot(bundle, seed=12345)
+
+        selected = runtime.dispatch({"type": "select_character", "character_id": "informant"})["snapshot"]
+
+        self.assertEqual(selected["route_state"]["primary_tag"], "informant:evidence")
+        self.assertEqual(selected["route_state"]["confidence"], 54)
+
 
 if __name__ == "__main__":
     unittest.main()

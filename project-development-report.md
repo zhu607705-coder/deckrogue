@@ -8729,3 +8729,27 @@
 - 状态：
   - AI intent chain 现在保留作者显式配置的 zero multiplier，不会把 suppress 规则静默变成中性规则。
   - 下一步提交前需跑 TypeScript、supplemental、lint/build 和 diff 检查；提交后仍需按新 HEAD 刷新 full doctor 与 release readiness。
+
+## DeckRogue Fix Batch 035 - Python Route Signal Zero Strength Parity - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 034 报告，确认从已推送 `8208d43` 干净状态继续。
+  - 非重复检查先覆盖 content/UI/runtime 周边：`check:content-contract-layer`、`check:deep-reachability`、`check:combat-orchestration-layer`、`check:event-tradeoff-route-state`、`check:experience-polish`、`test:map-responsive-smoke`、`test:boss-phase-flow-smoke`、`test:scenarios`、`check:enemy-variant-behavior`、`test:boss-terminal-flow-smoke` 均为绿灯。
+  - 源码审计转向 Python WASM adaptation：`python_runtime\src\deckrogue_rules_core\runtime.py` 的 `_card_route_signal()` 使用 `int(card.get("route_signal_strength") or 1)`，会把 content bundle 明确表达的 `route_signal_strength: 0` 改写成 `1`。
+  - 红灯复现：新增 `test_zero_route_signal_strength_remains_zero_when_deriving_route_state` 后，修复前 `py -m unittest python_runtime.tests.test_runtime.RuleRuntimeTests.test_zero_route_signal_strength_remains_zero_when_deriving_route_state` exit `1`，`route_state.confidence` actual `58`、expected `54`。
+- 修复内容：
+  - **PYTHON-ROUTE-SIGNAL-ZERO-STRENGTH-001：已修。**
+    - `python_runtime\src\deckrogue_rules_core\runtime.py` 改为只在字段缺失或无法转换时默认 `1`，显式 `0` 保留为 `0`。
+    - `python_runtime\tests\test_runtime.py` 增加零强度 route signal 回归，锁定 Python route state 推导不再用 truthy fallback 放大作者配置。
+    - 运行 `npm run sync:python-wasm-runtime --silent`，同步更新 embedded `src\content\narrative\pythonRuntime.ts`。
+- Fresh 验证输出：
+  - `py -m unittest python_runtime.tests.test_runtime`：exit `0`，`Ran 3 tests` / `OK`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，OK。
+  - `npx tsx --test tests/unit/pythonWasmRuntimeSync.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`2/2` pass。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 9 tests` / `OK`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`118/118` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Python package runtime 与 embedded WASM runtime 对 route signal 零强度的解释已对齐。
+  - 下一步需跑 full doctor 和 release readiness；提交后仍需按新 HEAD 再刷新 generated reports。

@@ -267,9 +267,13 @@ class RuleRuntime:
         route_tags = [str(tag) for tag in card.get("route_tags", []) if tag]
         if not route_tags:
             return None
+        try:
+            route_signal_strength = int(card.get("route_signal_strength", 1))
+        except (TypeError, ValueError):
+            route_signal_strength = 1
         return {
             "route_tags": route_tags,
-            "route_signal_strength": int(card.get("route_signal_strength") or 1),
+            "route_signal_strength": route_signal_strength,
         }
 
     def _known_route_tags_for_character(self, character_id: str | None) -> list[str]:
