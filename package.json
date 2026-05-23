@@ -48,6 +48,7 @@
     "sync:python-wasm-runtime": "tsx scripts/validation/sync_python_wasm_runtime.ts",
     "check:python-wasm-runtime-sync": "tsx scripts/validation/sync_python_wasm_runtime.ts --check",
     "test:python-runtime": "tsx scripts/validation/run_python_runtime_tests.ts",
+    "check:runtime-v2-adapter-differential-parity": "tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts",
     "check:growth-route-formation": "tsx scripts/validation/check_growth_route_formation.ts",
     "check:event-tradeoff-route-state": "tsx scripts/validation/check_event_tradeoff_route_state.ts",
     "check:midgame-route-sustain": "tsx scripts/validation/check_midgame_route_sustain.ts",

@@ -494,7 +494,7 @@ class RuleRuntime:
             "ruined_reactor": {1: 180, 2: 250},
             "martyrs_censer": {1: 150, 2: 220},
             "thorns_armor": {1: 130, 2: 190},
-            "chaos_sanctum_relic": {1: 200, 2: 280},
+            "entropy_sanctum_relic": {1: 200, 2: 280},
         }
         return int(upgrade_costs.get(relic_id, {}).get(current_level, 0))
 
@@ -590,7 +590,17 @@ class RuleRuntime:
         self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - price
         self._snapshot["player"]["deck"].append(card_id)
         shop["cards"] = [entry for entry in offers if str(entry.get("id")) != card_id]
-        self._record_route_commit("shop", 12)
+
+        character_id = str(self._snapshot["player"].get("character_id") or "")
+        selected_card = next(
+            (entry for entry in self._content_bundle.get("cards", []) if str(entry.get("id")) == card_id),
+            None,
+        )
+        signal = self._card_route_signal(card_id) if selected_card and str(selected_card.get("character")) == character_id else None
+        known_tags = self._known_route_tags_for_character(character_id)
+        commit_tag = next((tag for tag in (signal or {}).get("route_tags", []) if tag in known_tags), None)
+        if commit_tag:
+            self._record_route_commit("shop", 12, commit_tag)
 
     def _apply_buy_shop_relic(self, relic_id: str) -> None:
         if self._snapshot["lifecycle"]["phase"] != "shop":

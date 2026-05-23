@@ -26,6 +26,7 @@ const DEFAULT_REPORT_MAX_FILES = 2000;
 const DEFAULT_REPORT_MAX_BYTES = 50 * 1024 * 1024;
 const REQUIRED_DOCTOR_STAGE_NAMES = [
   'Runtime V2 TypeScript Tests',
+  'Runtime V2 Adapter Differential Parity',
   'Check Python WASM Runtime Sync',
   'Python Runtime Unit Tests',
 ];

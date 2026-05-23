@@ -8649,3 +8649,35 @@
 - 状态：
   - 低 maxHp 休整治疗在 legacy engine、runtime delegate、runtimeV2 render model 和 RestView fallback 间已统一为非零治疗。
   - 下一步提交后需要按新 HEAD 刷新 doctor/release readiness 生成证据，再继续追 UI/rendering 或 content schema 的下一处可修 bug。
+
+## DeckRogue Fix Batch 032 - Runtime V2 Adapter Differential Parity Gate - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、`git diff --stat`、最近 Batch 031 报告和 DeckRogue 推送记忆，确认从已推送 `05d81ac` 后的未提交修复继续。
+  - 非重复检查转向 runtimeV2 / Python process adapter parity：`npx tsx scripts/validation/check_route_state_save_load_parity.ts` exit `0`，`15/15`；`npx tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts` exit `1`，`15/18`。
+  - 红灯失败项：
+    - `adapter_shared_shop_card_purchase`：`buy_shop_card:routeState.recentCommits`。
+    - `adapter_shared_shop_card_then_remove_cancel`：shop card route commit 差异延续到 remove/cancel。
+    - `adapter_synthetic_rest_relic_upgrade_confirm`：`upgrade_relic:player.gold`，legacy `799`，candidate `999`。
+- 根因：
+  - **RUNTIMEV2-PYTHON-ADAPTER-PARITY-DRIFT-001：已修。**
+    - 包侧 Python runtime 的 `_apply_buy_shop_card()` 无条件 `_record_route_commit("shop", 12)`，会用当前 route primary tag 记录 commit；TS legacy 只有购买卡自身有 route tag 且属于当前角色时才记录 route commit。
+    - 包侧 Python runtime 的 `_get_relic_upgrade_cost()` 仍使用旧 relic id `chaos_sanctum_relic`，真实内容 id 已是 `entropy_sanctum_relic`，导致 Python candidate 升级不扣 200 gold。
+    - `check_runtime_v2_adapter_differential_parity.ts` 是有效 parity 门禁，但未注册为 npm script、doctor stage 和 release readiness required stage，红灯容易被发布流程漏过。
+- 修复内容：
+  - `python_runtime\src\deckrogue_rules_core\runtime.py` 将 relic upgrade cost key 改为 `entropy_sanctum_relic`，并让 shop card purchase 只在 card route tag 属于当前角色 known tags 时记录明确 commit tag。
+  - 运行 `npm run sync:python-wasm-runtime --silent`，同步更新 embedded `src\content\narrative\pythonRuntime.ts`。
+  - 新增 `npm run check:runtime-v2-adapter-differential-parity`，并把 `Runtime V2 Adapter Differential Parity` 纳入 full doctor 和 release readiness required doctor stages。
+  - `tests\unit\pythonWasmRuntimeSync.test.ts` 锁定 embedded runtime 含新 relic id 且不再含旧 id；`tests\unit\validationScripts.test.ts` 锁定 npm script、doctor stage、release readiness stage。
+- Fresh 验证输出：
+  - `npm run sync:python-wasm-runtime --silent`：exit `0`，写入 `src/content/narrative/pythonRuntime.ts`。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent`：exit `0`，`18/18` pass。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，OK。
+  - `npx tsx --test tests/unit/pythonWasmRuntimeSync.test.ts tests/unit/validationScripts.test.ts tests/unit/runtimeV2AdapterParityUtils.test.ts`：exit `0`，`22/22` pass。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 8 tests` / `OK`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`118/118` pass。
+  - `git diff --check`：exit `0`。
+- 状态：
+  - runtimeV2 adapter differential parity 现在不再隐藏红灯，Python process candidate 与 TS legacy 的 shop card route commit 和 entropy relic upgrade cost 已对齐。
+  - 下一步提交后必须按新 HEAD 重新跑 full doctor 和 release readiness，使新增 doctor stage 与生成报告绑定当前提交。

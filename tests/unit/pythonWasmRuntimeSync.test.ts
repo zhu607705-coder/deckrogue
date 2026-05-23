@@ -20,4 +20,6 @@ test('embedded Python WASM runtime matches the package runtime source', () => {
   assert.match(PYTHON_RUNTIME_CODE, /SECONDARY_RESOURCES/);
   assert.match(PYTHON_RUNTIME_CODE, /def create_save_game_v2/);
   assert.match(PYTHON_RUNTIME_CODE, /def restore_snapshot_from_save_game/);
+  assert.match(PYTHON_RUNTIME_CODE, /"entropy_sanctum_relic": \{1: 200, 2: 280\}/);
+  assert.doesNotMatch(PYTHON_RUNTIME_CODE, /"chaos_sanctum_relic": \{1: 200, 2: 280\}/);
 });

@@ -97,11 +97,20 @@ test('game doctor prunes old logs before release readiness growth checks', () =>
 
 test('game doctor keeps Python WASM runtime sync and package tests gated', () => {
   const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+  const releaseReadiness = readFileSync('scripts/validation/check_release_readiness.ts', 'utf-8');
+  const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
 
+  assert.equal(
+    pkg.scripts['check:runtime-v2-adapter-differential-parity'],
+    'tsx scripts/validation/check_runtime_v2_adapter_differential_parity.ts',
+  );
+  assert.match(source, /Runtime V2 Adapter Differential Parity/);
+  assert.match(source, /npm run check:runtime-v2-adapter-differential-parity/);
   assert.match(source, /Check Python WASM Runtime Sync/);
   assert.match(source, /npm run check:python-wasm-runtime-sync/);
   assert.match(source, /Python Runtime Unit Tests/);
   assert.match(source, /npm run test:python-runtime/);
+  assert.match(releaseReadiness, /Runtime V2 Adapter Differential Parity/);
 });
 
 test('real UI round stress treats missing or invalid scenario reports as failures', () => {

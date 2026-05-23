@@ -12,6 +12,7 @@
 - `check_deprecated_imports.ts`
 - `check_readme_consistency.ts`
 - `check_github_transport.ts`
+- `check_runtime_v2_adapter_differential_parity.ts`
 - `check_event_tradeoff_route_state.ts`
 - `check_midgame_route_sustain.ts`
 - `dead_file_scan.ts`
@@ -34,6 +35,7 @@ flowchart LR
 - `npm run check:deprecated-imports`
 - `npm run check:readme-consistency`
 - `npm run check:github-transport`
+- `npm run check:runtime-v2-adapter-differential-parity`
 - `npm run check:event-tradeoff-route-state`
 - `npm run check:midgame-route-sustain`
 - `npm run test:python-runtime`
