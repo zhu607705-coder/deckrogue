@@ -8418,3 +8418,34 @@
 - 状态：
   - AI intent chain 不再把显式 0 权重或 anti-stall suppressed intent 复活成可选项。
   - release readiness 已刷新到全绿；下一轮可继续查 content schema 深层 guard、runtimeV2 skipped browser edge 或 Windows checkout/report gate。
+
+## DeckRogue Fix Batch 023 - Content Schema Nested Action Guard Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、HEAD、最近提交与 Batch 022 报告，确认从 `add5d5b` 干净状态继续。
+  - 非重复检查转向 content schema 深层 guard，读取 `src\content\narrative\contentSchema.ts`、`numericSystem.ts`、`check_content_authoring.ts` 与 `tests\unit\numericsDomain.test.ts`。
+  - 根因：运行时 content schema 的 `validateActionSpecArray()` 只检查顶层 action 对象和 `type`，不会递归检查 `actions/effects/trueActions/falseActions/effect/ifTrue/ifFalse`。
+  - 红灯命令证据：
+    - 最小 `validateCardsData()` 复现输出 `ACCEPTED_BAD_NESTED_ACTION`，说明 `trueActions: [{ type: '' }]` 被接受。
+    - 最小 `validateEnemiesData()` 复现输出 `ACCEPTED_BAD_NESTED_ENEMY_ACTION`，说明 `moves.Attack[0].ifTrue.type=''` 被接受。
+    - 新增回归后，修复前 `npx tsx --test tests/unit/numericsDomain.test.ts` exit `1`，`14` tests 中 `13` pass、`1` fail，失败为 `Missing expected exception`。
+- 修复内容：
+  - **CONTENT-SCHEMA-NESTED-ACTION-BYPASS-001：已修。**
+    - `src\content\narrative\contentSchema.ts` 新增递归 `validateActionSpec()`，对嵌套 action list 与 action object 字段统一执行 `assertPlainObject()` 与 `assertString(type)`。
+    - `validateActionSpecArray()` 现在调用递归 action spec guard，覆盖 cards、card upgrade actions、enemy moves 的嵌套动作结构。
+  - `tests\unit\numericsDomain.test.ts` 新增 `content entity schema rejects invalid nested action specs before runtime use`，锁定 cards 与 enemies 两条入口都必须拒绝坏嵌套 action。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/numericsDomain.test.ts` 修复前 exit `1`，新增用例失败为 `Missing expected exception`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts`：exit `0`，`14/14` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，cards `354/354`、enemies `58/58`、pass rate `100%`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，`[check_content_contract_layer] OK`。
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7` passed。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`200/200` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - content schema 不再接受卡牌或敌人 move 中的坏嵌套 action spec，numericConfig override 后的运行时入口会更早失败。
+  - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 skipped browser edge、Windows checkout/report gate 或更深层 generated-report 证据。

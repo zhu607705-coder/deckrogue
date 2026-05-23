@@ -126,6 +126,42 @@ test('content entity schema rejects numeric field typos before runtime use', () 
   );
 });
 
+test('content entity schema rejects invalid nested action specs before runtime use', () => {
+  const validateCardsData = (__numericSystemTesting as any).validateCardsData as (value: unknown) => unknown;
+  const validateEnemiesData = (__numericSystemTesting as any).validateEnemiesData as (value: unknown) => unknown;
+
+  assert.throws(
+    () => validateCardsData([
+      {
+        id: 'bad_nested_card',
+        name: 'Bad Nested Card',
+        rarity: 'Common',
+        cost: 1,
+        type: 'Attack',
+        targeting: 'Enemy',
+        tags: [],
+        text: 'Bad nested action fixture.',
+        actions: [{ type: 'ConditionalDamage', trueActions: [{ type: '' }] }],
+      },
+    ]),
+    /trueActions/
+  );
+
+  assert.throws(
+    () => validateEnemiesData([
+      {
+        id: 'bad_nested_enemy',
+        name: 'Bad Nested Enemy',
+        hp_range: [5, 10],
+        intent_policy: [{ intent: 'Attack', weight: 1 }],
+        moves: { Attack: [{ type: 'ConditionalDamage', ifTrue: { type: '' } }] },
+        keywords: [],
+      },
+    ]),
+    /ifTrue/
+  );
+});
+
 test('card modifier schema rejects unsupported effect contracts', () => {
   const validateCardModifiersData = (__numericSystemTesting as any).validateCardModifiersData as (value: unknown) => unknown;
   const base = {

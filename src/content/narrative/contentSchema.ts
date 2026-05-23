@@ -25,6 +25,8 @@ const CARD_MODIFIER_RESOURCE_TYPES = new Set([
   'verdict',
   'seal',
 ]);
+const ACTION_ARRAY_FIELDS = ['actions', 'effects', 'trueActions', 'falseActions'] as const;
+const ACTION_OBJECT_FIELDS = ['effect', 'ifTrue', 'ifFalse'] as const;
 
 export interface NumericConfig {
   version: number;
@@ -168,13 +170,29 @@ function assertFiniteNumberTuple(value: unknown, path: string): void {
   assertFiniteNumber(value[1], `${path}[1]`);
 }
 
+function validateActionSpec(value: unknown, path: string): void {
+  assertPlainObject(value, path);
+  assertString(value.type, `${path}.type`);
+
+  for (const field of ACTION_ARRAY_FIELDS) {
+    if (value[field] === undefined) continue;
+    assertArray(value[field], `${path}.${field}`);
+    value[field].forEach((entry, index) => validateActionSpec(entry, `${path}.${field}[${index}]`));
+  }
+
+  for (const field of ACTION_OBJECT_FIELDS) {
+    if (value[field] === undefined) continue;
+    if (Array.isArray(value[field])) {
+      value[field].forEach((entry, index) => validateActionSpec(entry, `${path}.${field}[${index}]`));
+      continue;
+    }
+    validateActionSpec(value[field], `${path}.${field}`);
+  }
+}
+
 function validateActionSpecArray(value: unknown, path: string): void {
   assertArray(value, path);
-  value.forEach((entry, index) => {
-    const actionPath = `${path}[${index}]`;
-    assertPlainObject(entry, actionPath);
-    assertString(entry.type, `${actionPath}.type`);
-  });
+  value.forEach((entry, index) => validateActionSpec(entry, `${path}[${index}]`));
 }
 
 function validateCardModifierEffect(value: unknown, path: string): void {
