@@ -321,6 +321,25 @@ export function buildRuntimeV2AdapterParityScenarioCatalog(): AdapterParityScena
       ],
     },
     {
+      scenario: 'adapter_shared_rest_remove_confirm',
+      seed: 73,
+      kind: 'synthetic',
+      label: 'rest_entry',
+      snapshot: restEntrySnapshot,
+      followupSteps: [
+        {
+          label: 'enter_remove_card',
+          legacyCommand: { type: 'remove_card' },
+          candidateCommand: { type: 'remove_card' },
+        },
+        {
+          label: 'remove_rest_card',
+          legacyCommand: (snapshot) => ({ type: 'remove_card', cardInstanceId: stableToken(snapshot, 0) }),
+          candidateCommand: (snapshot) => ({ type: 'remove_card', cardInstanceId: stableToken(snapshot, 0) }),
+        },
+      ],
+    },
+    {
       scenario: 'adapter_shared_rest_enchant_confirm',
       seed: 73,
       kind: 'synthetic',

@@ -80,6 +80,43 @@ class RuleRuntimeTests(unittest.TestCase):
         self.assertEqual(selected["route_state"]["primary_tag"], "informant:evidence")
         self.assertEqual(selected["route_state"]["confidence"], 54)
 
+    def test_rest_remove_card_confirmation_resolves_room_to_map(self):
+        runtime = boot(build_content_bundle(), seed=12345)
+        selected = runtime.dispatch({"type": "select_character", "character_id": "informant"})["snapshot"]
+        selected["lifecycle"] = {
+            "screen": "Rest",
+            "phase": "rest",
+            "pending_node_resolution": True,
+        }
+        selected["map"]["current_node_id"] = "rest-1"
+        selected["map"]["nodes"] = [
+            {"id": "rest-1", "type": "Rest", "x": 0.2, "y": 0, "revealed": True, "next": ["combat-2"]},
+            {"id": "combat-2", "type": "Combat", "x": 0.2, "y": 1, "revealed": True, "next": []},
+        ]
+        selected["room_session"] = {
+            "token": "rest-session",
+            "node_id": "rest-1",
+            "owner_kind": "rest",
+            "resolver_kind": "rest",
+            "surface_stack": ["rest"],
+            "status": "active",
+        }
+        selected["surface_context"] = None
+        runtime.load(selected)
+
+        entered = runtime.dispatch({"type": "remove_card"})["snapshot"]
+        self.assertEqual(entered["lifecycle"]["screen"], "RemoveCard")
+        self.assertEqual(entered["surface_context"]["upgrade_return_screen"], "Rest")
+        self.assertEqual(entered["surface_context"]["campfire_choice_locked"], False)
+
+        removed = runtime.dispatch({"type": "remove_card", "card_instance_id": "0:strike"})["snapshot"]
+        self.assertEqual(removed["lifecycle"]["screen"], "Map")
+        self.assertEqual(removed["lifecycle"]["phase"], "map")
+        self.assertEqual(removed["lifecycle"]["pending_node_resolution"], False)
+        self.assertIsNone(removed["surface_context"])
+        self.assertIsNone(removed["room_session"])
+        self.assertEqual(len(removed["player"]["deck"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

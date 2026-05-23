@@ -843,7 +843,7 @@ class RuleRuntime:
             if phase in {"rest", "shop"}:
                 surface_context["upgrade_return_screen"] = "Shop" if phase == "shop" else "Rest"
                 if phase == "rest":
-                    surface_context["campfire_choice_locked"] = True
+                    surface_context["campfire_choice_locked"] = False
             if phase == "event":
                 surface_context["is_event_free_card_removal_mode"] = True
             self._snapshot["surface_context"] = surface_context
@@ -882,6 +882,8 @@ class RuleRuntime:
         surface_context["is_event_free_card_removal_mode"] = False
         if return_screen == "Rest":
             surface_context["campfire_choice_locked"] = False
+            surface_context.pop("upgrade_return_screen", None)
+            return_screen = "Map"
         if return_screen == "Map":
             surface_context.pop("upgrade_return_screen", None)
         self._snapshot["lifecycle"] = {

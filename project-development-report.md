@@ -8905,3 +8905,34 @@
 - 状态：
   - Batch 040 已完成修复、验证并同步远端主线。
   - 下一轮继续追 content schema、desktop packaging 或 Python WASM adaptation 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 041 - Python Rest Remove-Card Room Resolution - 2026-05-24
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 040 报告，确认从已推送 `5cb7b6b` 干净主线继续。
+  - 针对早前“Python WASM rest test 1 skip”追查：当前 `npm run test:runtime-v2:ts --silent` 已显示 `122/122` pass、`skipped=0`，静态搜索也未发现 `test.skip`/`it.skip`。该 skip 已不是当前活跃测试跳过项。
+  - 继续审计 runtimeV2/Python WASM rest 覆盖面发现 adapter parity catalog 覆盖 Rest heal、upgrade cancel、enchant confirm、relic upgrade confirm，但缺少 Rest remove-card confirm。
+  - 红灯复现：新增 `adapter_shared_rest_remove_confirm` 后，`npm run check:runtime-v2-adapter-differential-parity --silent` exit `1`，`passCount: 18/19`；失败字段包括 `remove_rest_card:lifecycle.screen` legacy=`Map`、candidate=`Rest`，以及 phase、pendingNodeResolution、surfaceContext、roomSession 漂移。
+- 修复内容：
+  - **PYTHON-REST-REMOVE-CARD-ROOM-RESOLUTION-001：已修。**
+    - `python_runtime\src\deckrogue_rules_core\runtime.py` 的 Rest `remove_card` surface entry 与 legacy oracle 对齐，不再把 `campfire_choice_locked` 投影为 `True`。
+    - Rest remove-card 确认后现在完成房间并回到 `Map`，清理 `upgrade_return_screen`、`surface_context` 和 `room_session`，不再停留在 `Rest`。
+    - `python_runtime\tests\test_runtime.py` 新增 `test_rest_remove_card_confirmation_resolves_room_to_map`，锁定 Python rules-core 直接语义。
+    - `scripts\validation\runtime_v2_adapter_parity_cases.ts` 新增 Rest remove-card confirm parity 场景，覆盖 Python process adapter 与 legacy oracle 的稳定字段一致性。
+    - 运行 `npm run sync:python-wasm-runtime --silent`，同步更新 embedded `src\content\narrative\pythonRuntime.ts`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npm run check:runtime-v2-adapter-differential-parity --silent` exit `1`，`passCount: 18/19`。
+  - `$env:PYTHONPATH='python_runtime/src'; py -m unittest python_runtime.tests.test_runtime.RuleRuntimeTests.test_rest_remove_card_confirmation_resolves_room_to_map`：exit `0`，`Ran 1 test` / `OK`。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent`：exit `0`，`passCount: 19/19`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，OK。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 10 tests` / `OK`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`122/122` pass、`skipped=0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `npm run test:remove-card-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`reachedRemoveCard=true`、`removedCard=true`、`returnedToMap=true`，无 console/page errors。
+  - `npm run test:rest-flow-smoke --silent`：exit `0`；报告 `reachedRest=true`、`healed=true`、`returnedToMap=true`，无 console/page errors。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Python process / embedded WASM runtime 的 Rest remove-card 确认语义已与 legacy/UI 一致。
+  - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 content schema 或 desktop packaging 的下一处可复现 P1/P2 缺陷。
