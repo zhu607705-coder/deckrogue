@@ -949,35 +949,112 @@ test('load_snapshot preserves follow-up map nodes after legacy reward return', a
   restoredHost.dispose();
 });
 
-test.skip('python wasm rest command heals and returns to map with follow-up nodes intact', async () => {
+test('python wasm rest command heals and returns to map with follow-up nodes intact', async () => {
+  const previousWindow = (globalThis as any).window;
+  const globals = new Map<string, unknown>();
+  const dispatchedCommands: string[] = [];
+  const mapNodes = [
+    { id: 'rest-1', type: 'Rest', x: 0.2, y: 0, revealed: true, next: ['combat-2', 'event-2'] },
+    { id: 'combat-2', type: 'Combat', x: 0.1, y: 1, revealed: false, next: [] },
+    { id: 'event-2', type: 'Event', x: 0.3, y: 1, revealed: false, next: [] },
+  ];
+  const makeSnapshot = (screen: string, hp = 30): RuleSnapshot => createStubSnapshot({
+    lifecycle: {
+      screen,
+      phase: screen === 'Rest' ? 'rest' : screen === 'CharacterSelect' ? 'character_select' : 'map',
+      pendingNodeResolution: screen === 'Rest',
+    },
+    player: {
+      ...createStubSnapshot().player,
+      hp,
+      maxHp: 70,
+    },
+    map: {
+      currentNodeId: screen === 'CharacterSelect' ? null : screen === 'Map' && hp > 30 ? 'rest-1' : null,
+      nodes: screen === 'CharacterSelect'
+        ? []
+        : mapNodes.map((node) => ({
+          ...node,
+          revealed: node.y === 0 || screen === 'Rest' || hp > 30,
+        })),
+    },
+    roomSession: screen === 'Rest'
+      ? {
+        token: 'rest-session',
+        nodeId: 'rest-1',
+        ownerKind: 'rest',
+        resolverKind: 'rest',
+        surfaceStack: ['rest'],
+        status: 'active',
+      }
+      : null,
+  });
+
+  (globalThis as any).window = {
+    loadPyodide: async () => ({
+      globals: {
+        set(name: string, value: unknown): void {
+          globals.set(name, value);
+        },
+      },
+      runPythonAsync: async (code: string) => {
+        if (code.trimStart().startsWith('init_runtime(')) {
+          return { toJs: () => ({ snapshot: makeSnapshot('CharacterSelect') }) };
+        }
+
+        if (code.trimStart().startsWith('dispatch_command(')) {
+          const rawCommand = globals.get('__deckrogue_command_json');
+          const command = JSON.parse(String(rawCommand)) as { type: string };
+          dispatchedCommands.push(command.type);
+          if (command.type === 'select_character') {
+            return { toJs: () => ({ snapshot: makeSnapshot('Map') }) };
+          }
+          if (command.type === 'enter_node') {
+            return { toJs: () => ({ snapshot: makeSnapshot('Rest') }) };
+          }
+          if (command.type === 'rest') {
+            return { toJs: () => ({ snapshot: makeSnapshot('Map', 51) }) };
+          }
+          return { toJs: () => ({ snapshot: makeSnapshot('Map') }) };
+        }
+
+        return { toJs: () => ({}) };
+      },
+    }),
+  };
+
   const host = createEngineHost(createPythonWasmAdapter());
-  let selectedRestNodeId: string | null = null;
+  try {
+    let selectedRestNodeId: string | null = null;
 
-  for (let seed = 1; seed <= 40; seed += 1) {
-    await host.start({ seed });
-    await host.dispatch({ type: 'select_character', characterId: 'informant' });
-    const renderModel = host.getRenderModel();
-    const candidate = renderModel?.map.nodes.find(
-      (node) => node.type === 'Rest' && renderModel.map.availableNodeIds.includes(node.id)
-    );
-    if (candidate) {
-      selectedRestNodeId = candidate.id;
-      break;
+    for (let seed = 1; seed <= 40; seed += 1) {
+      await host.start({ seed });
+      await host.dispatch({ type: 'select_character', characterId: 'informant' });
+      const renderModel = host.getRenderModel();
+      const candidate = renderModel?.map.nodes.find(
+        (node) => node.type === 'Rest' && renderModel.map.availableNodeIds.includes(node.id)
+      );
+      if (candidate) {
+        selectedRestNodeId = candidate.id;
+        break;
+      }
     }
+
+    assert.ok(selectedRestNodeId, 'expected at least one seed with an available first-floor rest node');
+
+    await host.dispatch({ type: 'enter_node', nodeId: selectedRestNodeId });
+    const hpBeforeRest = host.getSnapshot()?.player.hp ?? 0;
+    await host.dispatch({ type: 'rest' });
+
+    const renderModel = host.getRenderModel();
+    const snapshot = host.getSnapshot();
+    assert.deepEqual(dispatchedCommands, ['select_character', 'enter_node', 'rest']);
+    assert.equal(renderModel?.screen, 'Map');
+    assert.equal(snapshot?.lifecycle.phase, 'map');
+    assert.ok((snapshot?.player.hp ?? 0) >= hpBeforeRest);
+    assert.ok((renderModel?.map.availableNodeIds.length ?? 0) > 0, 'rest return should still expose follow-up map nodes');
+  } finally {
+    host.dispose();
+    (globalThis as any).window = previousWindow;
   }
-
-  assert.ok(selectedRestNodeId, 'expected at least one seed with an available first-floor rest node');
-
-  await host.dispatch({ type: 'enter_node', nodeId: selectedRestNodeId });
-  const hpBeforeRest = host.getSnapshot()?.player.hp ?? 0;
-  await host.dispatch({ type: 'rest' });
-
-  const renderModel = host.getRenderModel();
-  const snapshot = host.getSnapshot();
-  assert.equal(renderModel?.screen, 'Map');
-  assert.equal(snapshot?.lifecycle.phase, 'map');
-  assert.ok((snapshot?.player.hp ?? 0) >= hpBeforeRest);
-  assert.ok((renderModel?.map.availableNodeIds.length ?? 0) > 0, 'rest return should still expose follow-up map nodes');
-
-  host.dispose();
 });

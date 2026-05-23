@@ -8479,3 +8479,25 @@
 - 状态：
   - release readiness 不再接受旧提交或旧 dirty 状态生成的 doctor 报告。
   - full doctor 现在显式执行 runtimeV2 TypeScript suite；后续提交后必须重新跑 doctor/report gate，让 doctor report 的 git state 对齐新 HEAD。
+
+## DeckRogue Fix Batch 025 - Python WASM Rest Skip Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、HEAD、最近提交、`project-development-report.md` 最近批次，以及 `tests\unit\runtimeV2Host.test.ts` 的现状，确认工作树只剩这一个未提交修改。
+  - 源码审计定位到 `tests\unit\runtimeV2Host.test.ts:952` 的唯一 Python WASM Rest 场景仍是 `test.skip(...)`；这条被跳过的用例正是用户点名要继续处理的 runtimeV2 / Python WASM rest 回归。
+  - 这类 skip 不是环境不可控的硬约束：仓库已经有可复用的 `PythonWasmAdapter` fake / mock 模式，能够在 Node 侧注入 `window.loadPyodide` 并模拟 `dispatch_command(...)` 的 Pyodide 交互。
+  - 红灯复现：修复前该用例保持 skip，`npm run test:runtime-v2:ts --silent` 只能给出 `114` tests、`113` pass、`1` skip，说明 runtimeV2 TS 套件仍留下一个未执行的 Python WASM rest 缺口。
+- 修复内容：
+  - **PYTHON-WASM-REST-SKIP-001：已修。**
+    - `tests\unit\runtimeV2Host.test.ts` 将 `python wasm rest command heals and returns to map with follow-up nodes intact` 从 `test.skip` 改为可执行回归。
+    - 新测试用 `window.loadPyodide` fake + `globals.set()` + `runPythonAsync()` 直接模拟 `init_runtime(...)` 与 `dispatch_command(...)`，不再依赖真实浏览器 Pyodide 环境。
+    - 回归覆盖了 `select_character -> enter_node -> rest` 三步命令链、HP 回升、`screen='Map'`、`lifecycle.phase='map'`、以及 rest 返回后 follow-up map nodes 仍可见。
+    - 这是测试补强，不改生产代码；目标是把 runtimeV2/Python WASM 的 rest 场景从“跳过”转成“可执行、可回归、可重复”。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts`：exit `0`，`31/31` pass，`0` fail，`0` skip。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`114` tests，`114` pass，`0` skip。
+  - `reports\doctor\report.json` 当前仍显示 `gitHead=bf293512`、`gitDirty=true`，与当前工作树状态一致；下一步若继续提交，需要重新跑 doctor/release readiness 以刷新 HEAD 绑定。
+- 状态：
+  - runtimeV2 Python WASM rest 路径不再依赖永久 skip。
+  - runtimeV2 TS 套件已从 `1 skip` 回到 `0 skip`，该用例现在可稳定执行并作为回归门禁。
+  - 下一轮可继续查 release readiness freshness、Windows checkout stability，或把当前修复整理进提交 / 推送流程。
