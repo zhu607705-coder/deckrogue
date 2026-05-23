@@ -397,11 +397,17 @@ test('github transport diagnostics are documented and gated for Windows SSH over
   const scriptSource = readFileSync('scripts/validation/check_github_transport.ts', 'utf-8');
   const docsSource = readFileSync('docs/environment/github-ssh-over-443.md', 'utf-8');
   const validationReadme = readFileSync('scripts/validation/README.md', 'utf-8');
+  const doctorSource = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+  const releaseReadiness = readFileSync('scripts/validation/check_release_readiness.ts', 'utf-8');
 
   assert.equal(pkg.scripts['check:github-transport'], 'tsx scripts/validation/check_github_transport.ts');
   assert.match(scriptSource, /git\s+remote\s+get-url\s+origin/);
   assert.match(scriptSource, /ssh\.github\.com/);
   assert.match(scriptSource, /git@github\.com:zhu607705-coder\/deckrogue\.git/);
+  assert.match(doctorSource, /Check GitHub Transport/);
+  assert.match(doctorSource, /check:github-transport/);
+  assert.match(releaseReadiness, /github_transport/);
+  assert.match(releaseReadiness, /check:github-transport/);
   assert.match(docsSource, /ssh-keygen -t ed25519/);
   assert.match(docsSource, /gh ssh-key add/);
   assert.match(docsSource, /HostName ssh\.github\.com/);

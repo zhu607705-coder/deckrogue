@@ -25,6 +25,7 @@ const REPORT_PATH = `${REPORT_DIR}/release-readiness.json`;
 const DEFAULT_REPORT_MAX_FILES = 2000;
 const DEFAULT_REPORT_MAX_BYTES = 50 * 1024 * 1024;
 const REQUIRED_DOCTOR_STAGE_NAMES = [
+  'Check GitHub Transport',
   'Runtime V2 TypeScript Tests',
   'Runtime V2 Adapter Differential Parity',
   'Check Python WASM Runtime Sync',
@@ -378,6 +379,30 @@ function checkSaveAndSettingsContracts(): ReleaseCheck[] {
   return results;
 }
 
+function checkGithubTransport(): ReleaseCheck {
+  try {
+    const output = execSync('npm run check:github-transport --silent', {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 5 * 1024 * 1024,
+    });
+    const passCount = (output.match(/\[check_github_transport\] PASS /g) || []).length;
+    return {
+      id: 'github_transport',
+      status: 'pass',
+      evidence: `GitHub SSH-over-443 transport check passed (${passCount} checks)`
+    };
+  } catch (error: any) {
+    const output = `${error.stdout || ''}\n${error.stderr || ''}`.trim();
+    const tail = output.split(/\r?\n/).slice(-3).join('; ');
+    return {
+      id: 'github_transport',
+      status: 'fail',
+      evidence: tail || 'GitHub SSH-over-443 transport check failed; run npm run check:github-transport'
+    };
+  }
+}
+
 function checkArtifactWeight(): ReleaseCheck {
   const reportsDir = resolve('reports');
   if (!existsSync(reportsDir)) {
@@ -708,6 +733,7 @@ export function main() {
     ...checkBuildArtifacts(freshnessBaseline),
     ...checkDesktopArtifacts(freshnessBaseline),
     ...checkSaveAndSettingsContracts(),
+    checkGithubTransport(),
     ...checkEnemyVariantReadiness(),
     ...checkDoctorAndSecurityArtifacts(),
     ...checkCanonicalFlowArtifacts(freshnessBaseline),

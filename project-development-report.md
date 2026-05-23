@@ -8991,3 +8991,23 @@
 - 状态：
   - Windows checkout 已从 HTTPS reset 风险切换到可读写的 SSH-over-443 路径。
   - 下一轮继续追 desktop packaging 或 AI intent chain 的下一处可复现缺陷。
+
+## DeckRogue Fix Batch 044 - Release Gate Covers GitHub Transport - 2026-05-24
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交、Batch 041-043 报告和 DeckRogue 记忆中的 transport 经验，确认从已推送 `13ae2b1` 干净主线继续。
+  - 非重复检查转向 generated-report gates：`check:github-transport` 已在 Batch 043 修为绿色，但 `scripts\doctor\gameDoctor.ts` 未运行该 stage，`scripts\validation\check_release_readiness.ts` 也未把 transport 纳入 release readiness。
+  - 红灯复现：在 `tests\unit\validationScripts.test.ts` 中增强“github transport diagnostics are documented and gated”断言后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，失败于 `/Check GitHub Transport/`，证明所谓 gated 只覆盖脚本/文档，未覆盖 full doctor / release readiness。
+- 修复内容：
+  - **RELEASE-GATE-GITHUB-TRANSPORT-COVERAGE-001：已修。**
+    - `scripts\doctor\gameDoctor.ts` 新增 `Check GitHub Transport` stage，执行 `npm run check:github-transport`。
+    - `scripts\validation\check_release_readiness.ts` 新增 `github_transport` check，直接运行 `npm run check:github-transport --silent`，并把 `Check GitHub Transport` 加入 required doctor stages。
+    - `tests\unit\validationScripts.test.ts` 锁定 doctor 和 release readiness 必须包含 transport gate。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，`github transport diagnostics are documented and gated for Windows SSH over 443` 失败。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`19/19` pass。
+  - `npm run check:github-transport --silent`：exit `0`，6/6 PASS。
+  - 修复后直接运行 `npm run check:release-readiness --silent` exit `1`，失败项为当前改动导致的 dist、desktop、doctor、security、UI/flow smoke 报告 stale；这是新 gate 变更后的预期 post-edit stale 状态，提交后需刷新 full doctor。
+- 状态：
+  - GitHub transport 已进入 full doctor 与 release readiness 的生成报告链路，不再只靠手动单独脚本发现。
+  - 下一步提交后刷新 `doctor:game:full` 和 `check:release-readiness`，再继续追 desktop packaging 或 AI intent chain。

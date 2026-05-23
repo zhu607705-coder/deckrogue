@@ -263,6 +263,7 @@ async function main(): Promise<void> {
     { name: 'Check UI Runtime Boundaries', command: 'npm run check:ui-runtime-boundaries 2>&1' },
     { name: 'Check Keyword Registry', command: 'npm run check:keyword-registry 2>&1' },
     { name: 'Check Content Authoring', command: 'npm run check:content-authoring 2>&1' },
+    { name: 'Check GitHub Transport', command: 'npm run check:github-transport 2>&1' },
     { name: 'Vulnerability Scanner Tests', command: 'npm run test:vulnerability-scan 2>&1' },
     { name: 'Check Vulnerability Scan', command: 'npm run check:vulnerability-scan 2>&1' },
     { name: 'Report Code Health', command: 'npm run report:code-health 2>&1' },
