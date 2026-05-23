@@ -2,8 +2,8 @@
 
 > **重要声明**: Runtime V2 是 DeckRogue 的规则内核实现，但 **不是产品入口**。
 > - **正式产品入口**: 原 UI (`src/App.tsx`)，默认启动
-> - **Runtime V2 用途**: 仅用于 debug、parity 测试、规则验证、实验性功能
-> - **入口方式**: `?runtimeV2=1` 或 `?unified=1` 显式进入
+> - **Runtime V2 用途**: 规则合约、parity 测试、Python/Pyodide adapter 验证、迁移辅助
+> - **当前入口状态**: 仓库当前不发布独立 runtime-v2 URL/React shell；如重新引入，必须同时补回真实入口文件、smoke 脚本和本文件契约。
 
 ## Core Commands
 - `start_run`
@@ -121,26 +121,22 @@
 - The Python scaffold supports `start_run`, `select_character`, `enter_node`, `leave_room`, `complete_combat`, `take_reward`, `skip_reward`, `snapshot`, and `load`.
 - Both TypeScript and Python runtime layers now expose minimal save/replay helpers so Phase 2 can verify deterministic command logs before the WASM bridge is wired.
 - A baseline parity harness now exists for Phase 3. It intentionally compares only stable, already-agreed fields until Python map generation and combat semantics are brought into alignment with the legacy oracle.
-- `UnifiedAppShell` now treats "新引擎" as a true `python-wasm` runtime instead of wrapping the legacy oracle. The unified shell's runtime-v2 path boots `PythonWasmAdapter -> EngineHost -> RuntimeV2Adapter`, uses the project's real character ids from `src/content/data/characters.json`, and renders runtime-v2 screens from `RenderModel` without requiring a legacy `GameEngine` instance.
-- The unified launcher now exposes engine switching even before a run exists, so `?unified=1` can cold-boot into runtime-v2 character select and map flow. Browser coverage for this path lives in `scripts/validation/playwright_unified_runtime_v2_smoke.ts`.
+- The current product shell is the legacy `AppShell` path. Runtime V2 remains available as an imported contract/adapter surface through `src/runtimeV2/index.ts`, not as an advertised URL route.
+- Runtime V2 browser and desktop bridge coverage is currently unit/static driven: `npm run test:runtime-v2:ts`, `npm run check:python-wasm-runtime-sync`, and `npm run test:python-runtime`.
 - The Python combat baseline now mirrors two legacy random sources: the map generator still uses a separate run-generator RNG, while combat/reward parity uses the same runtime RNG start state as the legacy `GameEngine` (`rngState = 0`).
 - `LegacyOracleAdapter.complete_combat` is currently a headless parity/testing bridge that delegates to the legacy engine's internal combat-victory handler; it exists to unblock parity work before the new runtime owns combat resolution end-to-end.
 - `PythonProcessAdapter` is a Node-only parity/testing host that drives the live Python rules-core over a JSONL subprocess protocol. It is not the final WASM bridge.
 - `PythonProcessAdapter` now defaults to native Python map generation. `map.prebuilt_nodes` remains available as an explicit parity fallback path via `usePrebuiltMapNodes: true`.
 - `scripts/analysis/runtime_v2_parity_report.ts` is now the baseline multi-seed Phase 3 report. It writes `output/runtime_v2/parity_report.json`, supports `--require-perfect`, and currently shows, on the fresh 10-seed sample, that `map_full_bridge`, `map_native_metadata`, `map_native_topology`, and `combat_reward_stable` are all green.
-- `npm run accept:runtime-v2-parity` is the current Phase 3 acceptance gate. It runs the parity report over 30 seeds and fails fast if any scenario is not fully green.
+- The current Phase 3 acceptance evidence is split across `npm run test:runtime-v2:ts`, `npm run check:python-wasm-runtime-sync`, and `npm run test:python-runtime`. Do not document a separate parity npm script unless it exists in `package.json`.
 - `RenderModel` is no longer a placeholder contract only. It now carries derived player/map/combat/reward data such as `deckCount`, `healthRatio`, `revealedNodeIds`, `availableNodeIds`, `enemyCount`, and `offerCount`.
 - `AppShell` now uses `RenderModel` for top-level shell concerns (`screen` routing, keyboard context, and background-layer selection) while the concrete legacy page views still receive `engine` props. This is the current Phase 4 bridge state.
 - `MapView` is the first non-combat leaf view to consume `RenderModel.map` data (`currentNodeId`, `currentFloor`, `availableNodeIds`) while keeping legacy `engine` methods for interaction. This is the current per-screen migration pattern.
 - `RewardView` and `RestView` now also read render-projected summary fields for view gating (`offerCount`, `hp/maxHp`, `healAmount`) while leaving concrete button actions on the compatibility `engine` path.
 - `ShopView` now reads render-projected player summary fields (`gold`, `deckCount`, `potionCount`) for affordability and service gating, while pricing and purchase actions still stay on the compatibility `engine` path.
 - `ShopView`, `RestView`, and `RewardView` now prefer `renderModel.room` for room-specific gating and stock/offer summaries when that projection is available.
-- `src/runtimeV2/react/RuntimeV2App` is the debug/parity entry. `src/main.tsx` now resolves to legacy (original UI) by default with `?runtimeV2=1` or `?unified=1` as explicit alternate routes.
-- The independent runtime-v2 shell now starts from an explicit launcher state instead of auto-booting the host. It exposes `seed` input, `Start New Run`, and `New Run/Reset Host` controls through the React entry itself.
-- The launcher seed is now persisted under `deckrogue:runtime-v2:seed`, so reopening the independent entry preserves the last explicit run seed instead of always regenerating from `Date.now()`.
-- The launcher also accepts `?seed=<number>` on the runtime-v2 URL. Query-param seeds override persisted launcher state, which makes parity bugs and UI flows reproducible from a shareable URL.
-- The independent runtime-v2 shell currently supports the minimal playable loop `Launcher -> CharacterSelect -> Map -> Combat -> Reward -> Map`, plus generic room handling for `Event` and room-return actions.
+- No independent runtime-v2 React shell is currently present in `src/runtimeV2`. Runtime V2 loop coverage is exercised through adapters, parity utilities, and legacy shell projection tests.
 - `createRenderModel()` now preserves `currentNode.next` as a fallback source for `availableNodeIds` when successor reveal flags have not advanced yet; this keeps post-reward map progression playable in the independent shell.
-- `PythonWasmAdapter` now aligns its CDN `indexURL` with the installed `pyodide@0.29.3` package and unwraps `{ snapshot, events }` dispatch envelopes correctly; the default browser path can now advance from launcher into character select and map without falling back to the legacy adapter.
-- `scripts/validation/playwright_runtime_v2_entry_smoke.ts` is the current product-switch smoke for default runtime-v2 startup plus explicit `?legacy=1` fallback boot.
+- `PythonWasmAdapter` aligns its loader URL with the installed `pyodide@0.29.3` package, unwraps `{ snapshot, events }` dispatch envelopes correctly, and uses bundled `dist/pyodide` assets under the desktop `deckrogue://app` protocol.
+- Runtime V2 contract docs are guarded by `tests/unit/runtimeV2ContractDocs.test.ts`, which rejects missing file or npm-script references in this document and `docs/contracts/acceptance-v2.md`.
 - `compat.legacySaveData` is migration-only and must be removed once Python-WASM reaches save/load parity.

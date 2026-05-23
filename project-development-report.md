@@ -8360,3 +8360,33 @@
 - 状态：
   - Desktop production 下 Python WASM 不再只依赖外部 CDN 加载 Pyodide；desktop build 与 release readiness 都有本地 Pyodide runtime 资产契约。
   - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 explicit entry/doc drift、AI intent chain 或 content schema 深层契约。
+
+## DeckRogue Fix Batch 021 - Runtime V2 Contract Doc Drift Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读 Batch 020 报告、`git status`、当前 HEAD 和最近提交，确认工作树从 `a1078e3` 干净状态开始。
+  - 源码/文档审计发现 `docs\contracts\runtime-v2.md` 与 `docs\contracts\acceptance-v2.md` 仍声称存在独立 `RuntimeV2App`、`?runtimeV2=1` / `?unified=1` URL 入口、Pixi scene surface、`playwright_runtime_v2_entry_smoke.ts`、`playwright_unified_runtime_v2_smoke.ts`、`test:runtime-v2:py`、`accept:runtime-v2-parity`。
+  - 真实仓库证据相反：`src\runtimeV2` 下没有 `react` / `pixi` / `scenes` 入口目录；`scripts\validation` 里没有 runtime-v2 Playwright smoke 脚本；`package.json` 只保留 `test:runtime-v2:ts`、`check:python-wasm-runtime-sync`、`test:python-runtime` 等当前验证面。
+  - 红灯复现：新增 `tests\unit\runtimeV2ContractDocs.test.ts` 后，修复前 `npx tsx --test tests/unit/runtimeV2ContractDocs.test.ts` exit `1`，列出 6 个缺失引用：两个 Playwright smoke 脚本、`src/runtimeV2/react/RuntimeV2App`、`accept:runtime-v2-parity`、`test:runtime-v2:py`。
+- 修复内容：
+  - **RUNTIME-V2-CONTRACT-DOC-DRIFT-001：已修。**
+    - `docs\contracts\runtime-v2.md` 改为当前事实：Runtime V2 是规则合约、adapter、parity/迁移辅助 surface；当前不发布独立 runtime-v2 URL/React shell；如重新引入，必须同时补真实入口、smoke 脚本和契约。
+    - `docs\contracts\acceptance-v2.md` 改为当前事实：唯一产品入口是 legacy/original UI；Runtime V2 当前通过 contracts、adapters、parity helpers、legacy-shell projection tests 覆盖；验收命令只列存在于 `package.json` 的脚本。
+  - **RUNTIME-V2-CONTRACT-DOC-LIVE-REF-GATE-001：已修。**
+    - 新增 `tests\unit\runtimeV2ContractDocs.test.ts`，扫描 runtimeV2 contract docs 中 backtick 路径和 `npm run ...` 引用，拒绝缺失文件或不存在 npm script。
+    - `package.json` 将该测试纳入 `test:runtime-v2:ts` 和 `test:supplemental-units`，让 runtimeV2 suite 与 doctor supplemental lane 都能拦截后续文档漂移。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/runtimeV2ContractDocs.test.ts` 修复前 exit `1`，actual 包含 6 个 missing path/script。
+  - `npx tsx --test tests/unit/runtimeV2ContractDocs.test.ts`：exit `0`，`1/1` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`114` tests，`113` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`199/199` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因是 `package.json` / docs 改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 8 tests` / `OK`。
+- 状态：
+  - Runtime V2 contract docs 不再宣传当前仓库不存在的 URL 入口、React/Pixi shell 或 npm smoke 脚本。
+  - 新增 live-reference gate 会在 runtimeV2 suite 和 supplemental/doctor lane 中拦住后续 contract doc 漂移；下一轮可继续查 AI intent chain、content schema 深层契约或 Windows checkout stability。
