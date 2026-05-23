@@ -15,6 +15,7 @@ import { metricsTracker } from '@/core/events/metricsTracker';
 import { unlockManyCodexEntries } from '@/core/persistence/codexStore';
 import { globalEventBus } from '@/core/events/eventBus';
 import { RuntimeEventType } from '@/core/events/eventContract';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import {
   createRoomSessionForNode,
   setRoomSession,
@@ -454,7 +455,7 @@ export class RunFlowManager {
   restHeal(): void {
     const state = this.deps.getState();
     if (state.screen !== 'Rest' || state.campfireChoiceLocked) return;
-    const healAmount = Math.floor(state.player.maxHp * 0.3);
+    const healAmount = calculateRestHealAmount(state.player.maxHp);
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + healAmount);
     state.campfireChoiceLocked = true;
     this.deps.appendVoxLog(`生命体征修复：+${healAmount}。`);

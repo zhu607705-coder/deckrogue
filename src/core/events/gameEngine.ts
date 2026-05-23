@@ -52,6 +52,7 @@ import { EventManager } from '@/core/events/EventManager';
 import { RunFlowManager } from '@/core/events/RunFlowManager';
 import { CombatManager, type CombatManagerDeps } from '@/core/events/CombatManager';
 import { MusicDispatcher } from '@/core/events/MusicDispatcher';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { runPhaseToScreen } from '@/core/events/runStateMachine';
 
 import { projectRuleSnapshotToLegacyState, type LegacyStateProjection } from '@/runtimeV2/legacyStateProjector';
@@ -935,7 +936,7 @@ export class GameEngine {
         this.recordDelegationFallback(error);
       }
     }
-    const healAmount = Math.floor(this.state.player.maxHp * 0.3);
+    const healAmount = calculateRestHealAmount(this.state.player.maxHp);
     this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
     this.leaveCurrentRoomToMap();
   }

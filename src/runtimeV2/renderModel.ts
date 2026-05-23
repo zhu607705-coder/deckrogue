@@ -21,6 +21,7 @@ import {
   getStoryEventDef,
   relicsData,
 } from '@/content/narrative/numericSystem';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { getContentService } from '@/runtimeV2/content/contentService';
 
 function normalizeCardContentId(cardId: string): string {
@@ -155,7 +156,7 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   }
 
   if (screen === 'Rest') {
-    const healAmount = Math.floor(snapshot.player.maxHp * 0.3);
+    const healAmount = calculateRestHealAmount(snapshot.player.maxHp);
     const restPotions = snapshot.player.potionIds.map((potionId) => {
       const potionData = contentService.getPotion(potionId);
       return {

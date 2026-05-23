@@ -84,6 +84,11 @@ test('RestView uses runtime-v2 rest capability gates before legacy fallback', ()
     /roomSummary\?\.canMix\s*\?\?\s*\(player\.potions\.length\s*>=\s*2\)/,
     'mix gate should trust renderModel room capability before legacy potion inventory'
   );
+  assert.match(
+    REST_VIEW_SOURCE,
+    /roomSummary\?\.healAmount\s*\?\?\s*calculateRestHealAmount\(player\.maxHp\)/,
+    'legacy fallback heal label should share the runtime rest-heal floor'
+  );
   const options = Array.from(REST_VIEW_SOURCE.matchAll(/data-keyboard-option="(\d+)"/g), (match) => match[1]);
   assert.equal(options.filter((value) => value === '4').length, 1);
   assert.equal(new Set(options).size, options.length);

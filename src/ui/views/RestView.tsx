@@ -18,6 +18,7 @@ import { potionsData, relicsData } from '@/content/narrative/numericSystem';
 import { BackgroundImage, VIEW_BACKGROUNDS } from '@/ui/components/BackgroundImage';
 import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { uiWorldLore } from '@/ui/content/worldLore';
 import { buildRestRouteAdvice, type RestActionId } from '@/ui/views/restRouteAdvisor';
 
@@ -25,7 +26,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
   const WORLD_LORE = uiWorldLore as any;
   const player = engine.state.player;
   const roomSummary = renderModel?.room?.kind === 'rest' ? renderModel.room : null;
-  const healAmount = roomSummary?.healAmount ?? Math.floor(player.maxHp * 0.3);
+  const healAmount = roomSummary?.healAmount ?? calculateRestHealAmount(player.maxHp);
   const canHeal = roomSummary?.canHeal ?? (player.hp < player.maxHp);
   const canUpgrade = roomSummary?.canUpgrade ?? player.deck.some(c => !c.isUpgraded && c.upgrade);
   const canEnchant = roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!(c as any).persistentEnchantments || (c as any).persistentEnchantments.length === 0));

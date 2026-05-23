@@ -9,6 +9,7 @@
  */
 import type { GameEngine } from '@/core/events/gameEngine';
 import { getPotionDefById, getRelicDefById } from '@/content/narrative/numericSystem';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 
 import type { RenderModel } from '@/runtimeV2/contracts';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
@@ -73,7 +74,7 @@ export function createLegacyRenderModel(engine: GameEngine): RenderModel {
       ...base,
       room: {
         kind: 'rest',
-        healAmount: Math.floor(player.maxHp * 0.3),
+        healAmount: calculateRestHealAmount(player.maxHp),
         canHeal: player.hp < player.maxHp,
         canUpgrade: player.deck.some((card) => !card.isUpgraded && card.upgrade),
         canMix: player.potions.length >= 2,

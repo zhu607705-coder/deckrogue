@@ -9,6 +9,7 @@
  * - 提供委托诊断和回退机制
  */
 import { runGenerator } from '@/core/events/runGenerator';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { screenToRunPhase } from '@/core/events/runStateMachine';
 import type { RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
@@ -369,7 +370,7 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
       throw new Error(`Delegated rest is not supported from phase: ${this.snapshot.lifecycle.phase}`);
     }
 
-    const healAmount = Math.floor(this.snapshot.player.maxHp * 0.3);
+    const healAmount = calculateRestHealAmount(this.snapshot.player.maxHp);
     this.snapshot = {
       ...this.snapshot,
       player: {

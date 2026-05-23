@@ -11,6 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { GameEngine } from '@/core/events/gameEngine';
+import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { createLegacyRenderModel, createRenderModel, type RuleSnapshot } from '@/runtimeV2';
 
 test('createLegacyRenderModel projects a legacy engine into the runtime v2 render contract', () => {
@@ -74,10 +75,54 @@ test('createLegacyRenderModel includes rest room summary for legacy rest screens
 
     assert.equal(renderModel.room?.kind, 'rest');
     assert.equal(renderModel.room?.canHeal, true);
-    assert.equal(renderModel.room?.healAmount, Math.floor(engine.state.player.maxHp * 0.3));
+    assert.equal(renderModel.room?.healAmount, calculateRestHealAmount(engine.state.player.maxHp));
   } finally {
     engine.dispose();
   }
+});
+
+test('createRenderModel reports a nonzero rest heal amount for low max HP snapshots', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Rest',
+      phase: 'rest',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 1,
+      maxHp: 3,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: [],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.room?.kind, 'rest');
+  assert.equal(renderModel.room?.healAmount, 1);
 });
 
 test('createRenderModel exposes runtime-v2 rest potion mix choices', () => {

@@ -448,6 +448,21 @@ test('GameEngine.restHeal mirrors the rest command into the delegate before leav
   engine.dispose();
 });
 
+test('GameEngine.restHeal restores at least one HP for low max HP rest states', () => {
+  const engine = new GameEngine(12345, null);
+  engine.selectCharacter('informant');
+  engine.state.currentNodeId = 'floor_1_node_0';
+  engine.state.pendingNodeResolution = true;
+  engine.state.screen = 'Rest';
+  engine.state.player.hp = 1;
+  engine.state.player.maxHp = 3;
+
+  engine.restHeal();
+
+  assert.equal(engine.state.player.hp, 2);
+  engine.dispose();
+});
+
 test('GameEngine.resolveEventChoice mirrors event choices into the delegate while preserving legacy event effects', () => {
   const delegate = new FakeRuntimeDelegate();
   const engine = new GameEngine(12345, null, { runtimeDelegate: delegate });

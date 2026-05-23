@@ -8626,3 +8626,26 @@
 - 状态：
   - 当前 HEAD 的 release evidence 已恢复为 green。
   - 下一步继续转向 under-covered UI/rendering 或 content schema 源码审计，避免连续做纯 generated-report 刷新。
+
+## DeckRogue Fix Batch 031 - Rest Heal Low MaxHP Floor - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、`git diff --stat`、Batch 030 报告尾部和 DeckRogue 推送记忆，确认从已推送 `a8853fd` 后的未提交修复继续。
+  - 问题定级为 P2：当 `maxHp < 4` 时，TypeScript legacy/runtime/render surfaces 使用 `Math.floor(maxHp * 0.3)` 会得到 `0`，导致休整治疗数值和 UI 文案可显示或执行 `+0`；包侧 Python runtime 已使用 `max(1, int(max_hp * 0.3))`。
+  - 前序红灯复现证据：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeDelegationRoomExit.test.ts` exit `1`，新增低 maxHp 用例分别观察到 legacy/runtime 治疗只到 `1` 或 render healAmount 为 `0`。
+- 修复内容：
+  - **REST-HEAL-ZERO-LOW-MAXHP-001：已修。**
+    - 新增 `src\core\events\restHealing.ts`，集中定义 `calculateRestHealAmount(maxHp)`：非法或非正 `maxHp` 返回 `0`，有效正 `maxHp` 返回 `Math.max(1, Math.floor(maxHp * 0.3))`。
+    - `src\core\events\gameEngine.ts`、`src\core\events\RunFlowManager.ts`、`src\core\events\runtimeDelegation.ts`、`src\runtimeV2\renderModel.ts`、`src\runtimeV2\legacyRenderBridge.ts`、`src\ui\views\RestView.tsx` 统一使用共享 helper。
+    - 新增或更新低 maxHp 回归覆盖：`tests\unit\gameEngineRuntimeDelegation.test.ts`、`tests\unit\runtimeDelegationRoomExit.test.ts`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts`、`tests\unit\appShellUiContracts.test.ts`。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeDelegationRoomExit.test.ts`：exit `0`，`35/35` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`118/118` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`203/203` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded。
+  - `git diff --check`：exit `0`。
+- 状态：
+  - 低 maxHp 休整治疗在 legacy engine、runtime delegate、runtimeV2 render model 和 RestView fallback 间已统一为非零治疗。
+  - 下一步提交后需要按新 HEAD 刷新 doctor/release readiness 生成证据，再继续追 UI/rendering 或 content schema 的下一处可修 bug。

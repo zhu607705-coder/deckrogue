@@ -152,3 +152,41 @@ test('SyncBootAndMapRuntimeDelegate.leaveRoom clears stale roomSession when retu
   assert.equal(snapshot.lifecycle.pendingNodeResolution, false);
   assert.equal(snapshot.roomSession, null);
 });
+
+test('SyncBootAndMapRuntimeDelegate.rest restores at least one HP for low max HP snapshots', () => {
+  const delegate = new SyncBootAndMapRuntimeDelegate();
+  delegate.start(1);
+  delegate.loadSnapshot(
+    makeSnapshot({
+      lifecycle: {
+        screen: 'Rest',
+        phase: 'rest',
+        pendingNodeResolution: true,
+      },
+      player: {
+        characterId: 'informant',
+        hp: 1,
+        maxHp: 3,
+        gold: 99,
+        intel: 0,
+        devotion: 0,
+        corruption: 0,
+        deck: ['precision_strike'],
+        relicIds: [],
+        potionIds: [],
+      },
+      roomSession: {
+        token: 'room_token',
+        nodeId: 'floor_1_node_0',
+        ownerKind: 'rest',
+        resolverKind: 'rest',
+        surfaceStack: ['rest'],
+        status: 'active',
+      },
+    }),
+  );
+
+  const snapshot = delegate.rest();
+
+  assert.equal(snapshot.player.hp, 2);
+});
