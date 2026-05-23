@@ -8983,7 +8983,11 @@
   - `ssh -T git@github.com`：exit `1`，但输出 `Hi zhu607705-coder/deckrogue! You've successfully authenticated, but GitHub does not provide shell access.`，符合 GitHub deploy key 成功认证形态。
   - `git ls-remote origin HEAD`：exit `0`，返回 `c2d384039cbc45cc61a33ab698f1b4d94951353e HEAD`。
   - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
-  - 下一步提交和 SSH push 后，再刷新本段 post-commit 证据。
+  - 修复提交：`b4c11c5` (`Document the narrower SSH transport recovery`)。
+  - `git push origin main`：exit `0`，SSH-over-443 remote 从 `c2d3840` 更新到 `b4c11c5`。
+  - push 后 `npm run check:github-transport --silent`：exit `0`，6/6 PASS。
+  - push 后 `git ls-remote origin refs/heads/main`：exit `0`，远端 `main` 为 `b4c11c5bde3e4772c15ab3fa75c8c3f7c9fa41fd`。
+  - push 后 `git status --short --branch`：`## main...origin/main`。
 - 状态：
-  - Windows checkout 已从 HTTPS reset 风险切换到 SSH-over-443 路径。
-  - 下一步用 SSH 远端读写验证后继续追 desktop packaging 或 AI intent chain 的下一处可复现缺陷。
+  - Windows checkout 已从 HTTPS reset 风险切换到可读写的 SSH-over-443 路径。
+  - 下一轮继续追 desktop packaging 或 AI intent chain 的下一处可复现缺陷。
