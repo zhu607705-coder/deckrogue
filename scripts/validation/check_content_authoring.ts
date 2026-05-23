@@ -171,7 +171,8 @@ const ACTION_NUMERIC_OBJECT_FIELDS = ['condition', 'scaling', 'trigger'] as cons
 
 function loadJsonFile(filepath: string): any {
   try {
-    const content = readFileSync(filepath, 'utf-8');
+    const rawContent = readFileSync(filepath, 'utf-8');
+    const content = rawContent.charCodeAt(0) === 0xfeff ? rawContent.slice(1) : rawContent;
     return JSON.parse(content);
   } catch {
     return null;

@@ -305,6 +305,43 @@ test('content authoring gate rejects invalid card action schema', () => {
   }
 });
 
+test('content authoring gate parses UTF-8 BOM relic data instead of silently skipping relics', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-relic-bom-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, 'cards.json'), JSON.stringify([]));
+    writeFileSync(join(dataDir, 'enemies.json'), JSON.stringify([]));
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      `\ufeff${JSON.stringify([
+        {
+          id: 'bom_relic',
+          name: 'BOM Relic',
+          description: 'Relic data with a UTF-8 BOM should still be validated.',
+        },
+      ])}`,
+      'utf-8',
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected BOM relic data to pass, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Relics: 1\/1 valid/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test('script debt repair keeps route and Python runtime checks gated', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
   const reviewCi = readFileSync('scripts/validation/review_ci.ts', 'utf-8');

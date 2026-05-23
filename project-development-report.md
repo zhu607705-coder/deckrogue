@@ -8936,3 +8936,29 @@
 - 状态：
   - Python process / embedded WASM runtime 的 Rest remove-card 确认语义已与 legacy/UI 一致。
   - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 content schema 或 desktop packaging 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 042 - Content Authoring BOM Relic Coverage - 2026-05-24
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 041 报告，确认从已推送 `a6ab475` 干净主线继续。
+  - 非重复检查转向 content schema / generated-report gates：`npm run check:content-authoring --silent` exit `0`，但输出 `Relics: 0/0 valid`。
+  - 源码和本地文件证据显示 `src\content\data\relics.json` 实际是含 106 条遗物的数组；PowerShell JSON 解析显示 `array count=106`。
+  - 红灯复现：Node/tsx 直接 `JSON.parse(readFileSync('src/content/data/relics.json','utf8'))` 失败为 `SyntaxError: Unexpected token '﻿'`，说明 relics JSON 带 UTF-8 BOM；`check_content_authoring.ts` 的 `loadJsonFile()` 吞掉解析异常并回退成 `[]`，导致 106 条遗物完全绕过 authoring gate。
+- 修复内容：
+  - **CONTENT-AUTHORING-RELIC-BOM-SKIP-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 在 `JSON.parse` 前剥离 UTF-8 BOM，使带 BOM 的合法 JSON 文件仍进入校验。
+    - `tests\unit\validationScripts.test.ts` 新增 BOM relic fixture 回归，要求脚本输出 `Relics: 1/1 valid`，防止再次静默跳过 relic 数据。
+- Fresh 验证输出：
+  - 红灯复现：修复前 Node/tsx 解析 `relics.json` exit `1`，`Unexpected token '﻿'`；`npm run check:content-authoring --silent` 假绿输出 `Relics: 0/0 valid`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`19/19` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，`Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 106/106 valid`、`Pass rate: 100%`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，OK。
+  - `npm run check:content-bundle --silent`：exit `0`，`7/7` passed。
+  - `npm run test:supplemental-units --silent`：exit `0`，`215/215` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Content authoring gate 现在会真实校验 106 条遗物，不再把 BOM 解析失败伪装成空数据集通过。
+  - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 desktop packaging 或 AI intent chain 的下一处可复现 P1/P2 缺陷。
