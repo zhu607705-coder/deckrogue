@@ -8449,3 +8449,33 @@
 - 状态：
   - content schema 不再接受卡牌或敌人 move 中的坏嵌套 action spec，numericConfig override 后的运行时入口会更早失败。
   - release readiness 已刷新到全绿；下一轮可继续查 runtimeV2 skipped browser edge、Windows checkout/report gate 或更深层 generated-report 证据。
+
+## DeckRogue Fix Batch 024 - Generated Report Git-State Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、HEAD、最近提交与 Batch 023 报告，确认从 `355c344` 干净状态继续。
+  - 非重复检查转向 generated-report gate 与 runtimeV2 覆盖：`npm run test:runtime-v2:ts --silent` 输出 `114` tests、`113` pass、`1` skip；同一轮 `npm run check:release-readiness --silent` 仍输出 `pass=41 warn=0 fail=0`。
+  - 进一步读取 `reports\doctor\report.json` 发现旧报告 `gitHead=add5d5b4`、`gitDirty=true`，而当前 HEAD 为 `355c3440`；release readiness 只看 doctor summary 和 mtime，没有校验 doctor report 是否对应当前 git state。
+  - 源码证据显示 `scripts\doctor\gameDoctor.ts` 的 full doctor 也没有独立 `Runtime V2 TypeScript Tests` 阶段，导致 release readiness 无法要求 doctor 报告包含 runtimeV2 TS suite。
+- 修复内容：
+  - **GENERATED-DOCTOR-REPORT-GIT-STATE-BYPASS-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 新增 `checkDoctorReportArtifact()`，要求 doctor report 同时满足 green、fresh、`gitHead` 与当前 `git rev-parse HEAD` 前 8 位一致、`gitDirty` 与当前 `git status --porcelain` 一致。
+    - 旧提交或旧 dirty state 生成的 doctor report 现在会被 `doctor_report` gate 拒绝，并给出 report/current git state 对比。
+  - **RUNTIME-V2-DOCTOR-STAGE-GAP-001：已修。**
+    - `scripts\doctor\gameDoctor.ts` 将 `npm run test:runtime-v2:ts` 纳入 full doctor，阶段名为 `Runtime V2 TypeScript Tests`。
+    - release readiness 的 doctor report gate 要求该阶段存在且通过，避免全绿报告缺失 runtimeV2 TS suite。
+  - `tests\unit\releaseAndTranslationGate.test.ts` 新增两条回归：旧 git state doctor report 必须失败；缺少 `Runtime V2 TypeScript Tests` 的 doctor report 必须失败。
+- Fresh 验证输出：
+  - 红灯复现 1：新增 `checkDoctorReportArtifact` 引用后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，报错为 `does not provide an export named 'checkDoctorReportArtifact'`。
+  - 红灯复现 2：补 helper 后但尚未要求 runtimeV2 doctor stage 时，同一 focused test exit `1`，新增用例失败为 `'pass' !== 'fail'`，证明缺少 runtimeV2 stage 的 doctor report 会被误收。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`114` tests，`113` pass，`1` skip。
+  - `npm run test:supplemental-units --silent`：exit `0`，`202/202` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，包含 stale build、desktop、doctor、security、UI/flow reports，证明生成报告 freshness gate 重新生效。
+  - `npm run doctor:game:full --silent`：exit `0`，`45/45` stages passed，包含 `Runtime V2 TypeScript Tests`。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`；doctor 摘要为 `gitHead=355c3440`、`gitDirty=True`、`runtimeStage=pass`。
+- 状态：
+  - release readiness 不再接受旧提交或旧 dirty 状态生成的 doctor 报告。
+  - full doctor 现在显式执行 runtimeV2 TypeScript suite；后续提交后必须重新跑 doctor/report gate，让 doctor report 的 git state 对齐新 HEAD。

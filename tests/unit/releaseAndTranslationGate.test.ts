@@ -14,7 +14,11 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { REQUIRED_PYODIDE_ASSET_FILES } from '../../scripts/desktop/pyodide_assets.ts';
-import { checkDesktopArtifacts, checkFlowReport } from '../../scripts/validation/check_release_readiness.ts';
+import {
+  checkDesktopArtifacts,
+  checkDoctorReportArtifact,
+  checkFlowReport,
+} from '../../scripts/validation/check_release_readiness.ts';
 import { auditDataRecords, type AuditDataFieldConfig } from '../../scripts/validation/translation_audit.ts';
 
 const DESKTOP_SMOKE_SOURCE = readFileSync(resolve('scripts/validation/playwright_electron_smoke.ts'), 'utf-8');
@@ -197,6 +201,76 @@ test('release readiness rejects flow smoke reports with missing screenshot evide
     assert.match(check.evidence, /screenshot/i);
   } finally {
     process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('release readiness rejects doctor reports generated for a stale git state', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-doctor-git-state-'));
+  const doctorReportPath = join(fixtureRoot, 'reports', 'doctor', 'report.json');
+
+  try {
+    mkdirSync(join(fixtureRoot, 'reports', 'doctor'), { recursive: true });
+    writeFileSync(
+      doctorReportPath,
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        gitHead: 'oldhead',
+        gitDirty: true,
+        summary: {
+          total: 44,
+          passed: 44,
+          failed: 0,
+          skipped: 0,
+        },
+      }),
+    );
+
+    const check = checkDoctorReportArtifact(doctorReportPath, 0, {
+      gitHead: 'newhead',
+      gitDirty: false,
+    });
+
+    assert.equal(check.status, 'fail');
+    assert.match(check.evidence, /git state/i);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('release readiness requires doctor reports to include the runtime V2 TypeScript stage', () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-doctor-runtime-v2-'));
+  const doctorReportPath = join(fixtureRoot, 'reports', 'doctor', 'report.json');
+
+  try {
+    mkdirSync(join(fixtureRoot, 'reports', 'doctor'), { recursive: true });
+    writeFileSync(
+      doctorReportPath,
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        gitHead: 'samehead',
+        gitDirty: false,
+        stages: [
+          { name: 'Lint', status: 'pass', duration: 1 },
+          { name: 'Supplemental Unit Tests', status: 'pass', duration: 1 },
+        ],
+        summary: {
+          total: 2,
+          passed: 2,
+          failed: 0,
+          skipped: 0,
+        },
+      }),
+    );
+
+    const check = checkDoctorReportArtifact(doctorReportPath, 0, {
+      gitHead: 'samehead',
+      gitDirty: false,
+    });
+
+    assert.equal(check.status, 'fail');
+    assert.match(check.evidence, /Runtime V2 TypeScript Tests/);
+  } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });

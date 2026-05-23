@@ -241,6 +241,7 @@ async function main(): Promise<void> {
     { name: 'Build', command: 'npm run build --silent' },
     { name: 'Desktop Build', command: 'npm run build:desktop 2>&1' },
     { name: 'Supplemental Unit Tests', command: 'npm run test:supplemental-units 2>&1' },
+    { name: 'Runtime V2 TypeScript Tests', command: 'npm run test:runtime-v2:ts 2>&1' },
     { name: 'Check Content Bundle', command: 'npm run check:content-bundle 2>&1' },
     { name: 'Check Content Reachability', command: 'npm run check:content-reachability 2>&1' },
     { name: 'Check Deep Reachability', command: 'npm run check:deep-reachability 2>&1' },
