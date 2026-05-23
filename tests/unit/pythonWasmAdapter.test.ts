@@ -232,6 +232,55 @@ test('PythonWasmAdapter replaces stale Pyodide loader scripts instead of waiting
   }
 });
 
+test('PythonWasmAdapter recovers when an existing loading script exposes loadPyodide before listeners fire', async () => {
+  const previousWindow = (globalThis as any).window;
+  const previousDocument = (globalThis as any).document;
+  const calls: string[] = [];
+  const loadingScript = {
+    dataset: { pyodideLoader: 'true', pyodideLoaderState: 'loading' },
+    addEventListener(): void {
+      (globalThis as any).window.loadPyodide = async () => ({
+        globals: { set(): void {} },
+        runPythonAsync: async (code: string) => {
+          calls.push(code);
+          return {
+            toJs: () => ({ snapshot: makePythonSnapshot('CharacterSelect') }),
+          };
+        },
+      });
+    },
+    remove(): void {},
+  };
+
+  (globalThis as any).window = {};
+  (globalThis as any).document = {
+    querySelector: () => loadingScript,
+    createElement: () => {
+      throw new Error('existing loader should be reused');
+    },
+    head: {
+      appendChild(): void {
+        throw new Error('existing loader should be reused');
+      },
+    },
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    const result = await Promise.race([
+      adapter.start({ seed: 5 }),
+      new Promise<'pending'>((resolve) => setTimeout(() => resolve('pending'), 25)),
+    ]);
+
+    assert.notEqual(result, 'pending', 'missed load event should not leave start pending once loadPyodide is available');
+    assert.equal((result as any).lifecycle.screen, 'CharacterSelect');
+    assert.ok(calls.some((code) => code.trimStart().startsWith('init_runtime(')));
+  } finally {
+    (globalThis as any).window = previousWindow;
+    (globalThis as any).document = previousDocument;
+  }
+});
+
 test('PythonWasmAdapter uses bundled Pyodide assets for deckrogue desktop URLs', async () => {
   const previousWindow = (globalThis as any).window;
   const previousDocument = (globalThis as any).document;

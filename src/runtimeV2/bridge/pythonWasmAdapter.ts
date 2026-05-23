@@ -189,6 +189,9 @@ export class PythonWasmAdapter implements RuleRuntimeAdapter {
       await new Promise<void>((resolve, reject) => {
         existingScript.addEventListener('load', () => resolve(), { once: true });
         existingScript.addEventListener('error', () => reject(new Error('Failed to load Pyodide loader script')), { once: true });
+        if (window.loadPyodide) {
+          resolve();
+        }
       });
       return;
     }

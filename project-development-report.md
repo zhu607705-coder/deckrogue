@@ -8558,3 +8558,27 @@
 - 状态：
   - release readiness 不再接受缺少 Python WASM sync 或 Python package unittest 的 doctor report。
   - full doctor 现在显式覆盖 embedded runtime 同步检查和包侧 Python runtime 单元测试；下一步提交后仍需按新 HEAD 重新跑 doctor/release readiness。
+
+## DeckRogue Fix Batch 028 - Python WASM Loader Race Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交与 Batch 027 报告，确认从 `de57065` 干净状态继续。
+  - 非重复检查转向 Python WASM adapter 浏览器/desktop loader：读取 `src\runtimeV2\bridge\pythonWasmAdapter.ts` 与 `tests\unit\pythonWasmAdapter.test.ts`。
+  - 根因：`injectPyodideScript()` 在发现已有 `script[data-pyodide-loader="true"]` 且状态为 `loading` 时，只在进入分支前检查一次 `window.loadPyodide`；如果 loader 在监听器绑定窗口中已经暴露但 `load` 事件被错过，adapter 会一直等待不会再触发的事件。
+  - 红灯回归：新增 `PythonWasmAdapter recovers when an existing loading script exposes loadPyodide before listeners fire` 后，修复前 `npx tsx --test tests/unit/pythonWasmAdapter.test.ts` exit `1`，失败为 `actual: 'pending'`，证明 `start()` 会卡住。
+- 修复内容：
+  - **PYTHON-WASM-LOADER-MISSED-LOAD-EVENT-HANG-001：已修。**
+    - `src\runtimeV2\bridge\pythonWasmAdapter.ts` 在已有 loading script 分支绑定 `load/error` 监听器后立即复查 `window.loadPyodide`，若 loader 已可用则直接 resolve。
+    - `tests\unit\pythonWasmAdapter.test.ts` 新增 race 回归，模拟已有 loading script 在监听器绑定时暴露 `window.loadPyodide` 但不再触发新 `load` 事件。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/pythonWasmAdapter.test.ts` 修复前 exit `1`，新增用例失败为 pending。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts`：exit `0`，`6/6` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`115/115` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`203/203` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因是源码/测试变更触发 build、desktop、doctor、安全、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`47/47` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`；doctor report 摘要为 `gitHead=de570652`、`gitDirty=True`、`total=47`、`passed=47`、`failed=0`。
+- 状态：
+  - Python WASM adapter 不再因错过已有 Pyodide loader 的 `load` 事件而挂起。
+  - runtimeV2 suite 现有覆盖提升到 `115/115` pass；下一步提交后仍需按新 HEAD 重新跑 doctor/release readiness。
