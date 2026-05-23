@@ -270,6 +270,35 @@ test('intent policy weight parser rejects non-number authoring values instead of
   assert.throws(() => parseIntentPolicyWeight(null, 'test_enemy', 'Attack'), /number/);
 });
 
+test('intent bias multiplier zero suppresses a matching intent instead of defaulting to one', () => {
+  const state = makeState();
+  const enemyDef = {
+    id: 'zero_bias_enemy',
+    name: 'Zero Bias Enemy',
+    keywords: [],
+    intent_policy: [
+      { intent: 'attack', weight: 1 },
+      { intent: 'defend', weight: 1 },
+    ],
+    ai_profile: {
+      perceptionAccuracy: 0.95,
+      personality: {
+        aggression: 0.5,
+        defensiveness: 0.5,
+        unpredictability: 0.3,
+        revengefulness: 0.2,
+      },
+      intentBiases: [
+        { intent: 'attack', multiplier: 0 },
+      ],
+    },
+  };
+
+  const intent = selectEnemyIntentForCombat(state, enemyDef, state.combat!.enemies[0], 1, () => 0.1, {});
+
+  assert.equal(intent, 'defend');
+});
+
 test('group coordination preserves explicit zero intent weights', () => {
   const adjusted = adjustIntentWeightForGroup(
     0,

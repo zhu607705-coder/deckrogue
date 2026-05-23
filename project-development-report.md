@@ -8708,3 +8708,24 @@
 - 状态：
   - Python WASM rest 用例当前没有 skip；route reinforcement/save-load parity 的隐藏门禁缺口已补齐到 npm、doctor、release readiness 和文档路径。
   - 下一步提交后必须按新 HEAD 重新跑 full doctor 和 release readiness，使新增四个 stage 与生成报告绑定当前提交。
+
+## DeckRogue Fix Batch 034 - Enemy Intent Bias Zero Multiplier - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 033 报告，确认从已推送 `2ca9ed3` 干净状态继续。
+  - 非重复检查转向 content schema / AI intent chain：`npm run check:content-authoring --silent`、`npm run check:enemy-ai-profiles --silent`、`npm run check:enemy-ai-boundaries --silent` 均为 green，但源码审计发现 schema 与 runtime 解释不一致。
+  - `EnemyAiProfile.intentBiases.multiplier` 类型与 `check_enemy_ai_profiles.ts` 均允许 `0` 作为非负数；但 `src\core\ai\selectEnemyIntent.ts` 在 `applyIntentProfile()` 内使用 `Number(rule.multiplier) || 1`，会把合法的 `0` 当成默认 `1`。
+  - 红灯回归：新增 `intent bias multiplier zero suppresses a matching intent instead of defaulting to one` 后，修复前 `npx tsx --test tests/unit/enemyIntentFacade.test.ts` exit `1`，失败为 actual `attack`、expected `defend`。
+- 修复内容：
+  - **AI-INTENT-BIAS-ZERO-MULTIPLIER-001：已修。**
+    - `src\core\ai\selectEnemyIntent.ts` 将 bias multiplier 解析改为仅在值是 finite number 时使用原值，否则默认 `1`；再用 `Math.max(0, multiplier)` 保留合法零值。
+    - `tests\unit\enemyIntentFacade.test.ts` 新增回归，锁定匹配的 `multiplier: 0` 必须真正 suppress 该 intent。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/enemyIntentFacade.test.ts` exit `1`，新增用例失败为 `'attack' !== 'defend'`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts`：exit `0`，`18/18` pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，OK。
+  - `npm run check:enemy-ai-boundaries --silent`：exit `0`，OK。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、pass rate `100%`。
+- 状态：
+  - AI intent chain 现在保留作者显式配置的 zero multiplier，不会把 suppress 规则静默变成中性规则。
+  - 下一步提交前需跑 TypeScript、supplemental、lint/build 和 diff 检查；提交后仍需按新 HEAD 刷新 full doctor 与 release readiness。

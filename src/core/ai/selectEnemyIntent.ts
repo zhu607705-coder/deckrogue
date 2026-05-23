@@ -355,7 +355,10 @@ function applyIntentProfile(
     for (const rule of profile.intentBiases || []) {
       if (rule.intent !== policy.intent) continue;
       if (!matchesBiasRule(rule, perception)) continue;
-      weight *= Math.max(0, Number(rule.multiplier) || 1);
+      const multiplier = typeof rule.multiplier === 'number' && Number.isFinite(rule.multiplier)
+        ? rule.multiplier
+        : 1;
+      weight *= Math.max(0, multiplier);
     }
 
     const antiStall = profile.antiStall;
