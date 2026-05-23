@@ -8681,3 +8681,30 @@
 - 状态：
   - runtimeV2 adapter differential parity 现在不再隐藏红灯，Python process candidate 与 TS legacy 的 shop card route commit 和 entropy relic upgrade cost 已对齐。
   - 下一步提交后必须按新 HEAD 重新跑 full doctor 和 release readiness，使新增 doctor stage 与生成报告绑定当前提交。
+
+## DeckRogue Fix Batch 033 - Route Reinforcement Release Gate Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 032 报告，确认从已推送 `f73dfeb` 干净状态继续。
+  - 复核上轮建议的 Python WASM rest skip：`npx tsx --test tests/unit/runtimeV2Host.test.ts` exit `0`，`31/31` pass，`skipped 0`；`python wasm rest command heals and returns to map with follow-up nodes intact` 当前是可执行 mock adapter 回归，不再是 skip。
+  - 非重复检查转向 validation/doctor 门禁映射：`scripts\validation` 中存在 `check_route_state_save_load_parity.ts`、`check_event_choice_reinforcement.ts`、`check_rest_route_reinforcement.ts`、`check_shop_route_reinforcement.ts`，但 `package.json`、full doctor、release readiness required stages 和 validation README 未接入。
+  - 四个脚本本身均可执行：`check_route_state_save_load_parity` 为 `15/15` pass；`check_event_choice_reinforcement` 为 `5/5` pass；`check_rest_route_reinforcement` 为 `160/160` alignment / semantic alignment；`check_shop_route_reinforcement` 的 primary/service alignment 与 semantic alignment 均为 `160/160`。
+  - 红灯回归：新增 `route reinforcement and save-load parity checks stay on the release gate path` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，失败为缺少 `check:route-state-save-load-parity` npm script。
+- 修复内容：
+  - **ROUTE-REINFORCEMENT-DOCTOR-GATE-BYPASS-001：已修。**
+    - `package.json` 新增 `check:route-state-save-load-parity`、`check:event-choice-reinforcement`、`check:rest-route-reinforcement`、`check:shop-route-reinforcement`。
+    - `scripts\doctor\gameDoctor.ts` 将四个检查纳入 full doctor stage。
+    - `scripts\validation\check_release_readiness.ts` 将四个 stage 纳入 required doctor stage，防止旧 doctor report 漏跑也被接受。
+    - `scripts\validation\README.md` 同步列出脚本文件和 npm 入口。
+    - `tests\unit\validationScripts.test.ts` 增加静态回归，锁定 npm script、doctor stage、release readiness stage 和 README 同步。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例失败为 `actual undefined` / expected `tsx scripts/validation/check_route_state_save_load_parity.ts`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`26/26` pass。
+  - `npm run check:route-state-save-load-parity --silent`：exit `0`，`15/15` pass。
+  - `npm run check:event-choice-reinforcement --silent`：exit `0`，`5/5` pass。
+  - `npm run check:rest-route-reinforcement --silent`：exit `0`，`160/160` alignment / semantic alignment。
+  - `npm run check:shop-route-reinforcement --silent`：exit `0`，primary/service alignment 与 semantic alignment 均 `160/160`。
+  - `npm run check:release-readiness --silent`：修复后、提交前按预期 exit `1`，`pass=25 warn=0 fail=16`，原因是当前源码改动使 build、doctor、security、UI/flow smoke 等生成证据陈旧；提交后需要用 full doctor 刷新。
+- 状态：
+  - Python WASM rest 用例当前没有 skip；route reinforcement/save-load parity 的隐藏门禁缺口已补齐到 npm、doctor、release readiness 和文档路径。
+  - 下一步提交后必须按新 HEAD 重新跑 full doctor 和 release readiness，使新增四个 stage 与生成报告绑定当前提交。

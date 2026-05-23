@@ -318,6 +318,43 @@ test('script debt repair keeps route and Python runtime checks gated', () => {
   assert.match(reviewCi, /check:midgame-route-sustain/);
 });
 
+test('route reinforcement and save-load parity checks stay on the release gate path', () => {
+  const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
+  const doctorSource = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+  const releaseReadiness = readFileSync('scripts/validation/check_release_readiness.ts', 'utf-8');
+  const validationReadme = readFileSync('scripts/validation/README.md', 'utf-8');
+  const expectedChecks = [
+    {
+      script: 'check:route-state-save-load-parity',
+      command: 'tsx scripts/validation/check_route_state_save_load_parity.ts',
+      stage: 'Check Route State Save Load Parity',
+    },
+    {
+      script: 'check:event-choice-reinforcement',
+      command: 'tsx scripts/validation/check_event_choice_reinforcement.ts',
+      stage: 'Check Event Choice Reinforcement',
+    },
+    {
+      script: 'check:rest-route-reinforcement',
+      command: 'tsx scripts/validation/check_rest_route_reinforcement.ts',
+      stage: 'Check Rest Route Reinforcement',
+    },
+    {
+      script: 'check:shop-route-reinforcement',
+      command: 'tsx scripts/validation/check_shop_route_reinforcement.ts',
+      stage: 'Check Shop Route Reinforcement',
+    },
+  ];
+
+  for (const check of expectedChecks) {
+    assert.equal(pkg.scripts[check.script], check.command);
+    assert.match(doctorSource, new RegExp(check.stage));
+    assert.match(doctorSource, new RegExp(check.script));
+    assert.match(releaseReadiness, new RegExp(check.stage));
+    assert.match(validationReadme, new RegExp(check.script));
+  }
+});
+
 test('github transport diagnostics are documented and gated for Windows SSH over 443', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
   const scriptSource = readFileSync('scripts/validation/check_github_transport.ts', 'utf-8');

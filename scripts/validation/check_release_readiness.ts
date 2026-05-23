@@ -29,6 +29,10 @@ const REQUIRED_DOCTOR_STAGE_NAMES = [
   'Runtime V2 Adapter Differential Parity',
   'Check Python WASM Runtime Sync',
   'Python Runtime Unit Tests',
+  'Check Route State Save Load Parity',
+  'Check Event Choice Reinforcement',
+  'Check Rest Route Reinforcement',
+  'Check Shop Route Reinforcement',
 ];
 
 type CheckStatus = 'pass' | 'warn' | 'fail';

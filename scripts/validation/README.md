@@ -13,8 +13,12 @@
 - `check_readme_consistency.ts`
 - `check_github_transport.ts`
 - `check_runtime_v2_adapter_differential_parity.ts`
+- `check_route_state_save_load_parity.ts`
 - `check_event_tradeoff_route_state.ts`
+- `check_event_choice_reinforcement.ts`
 - `check_midgame_route_sustain.ts`
+- `check_rest_route_reinforcement.ts`
+- `check_shop_route_reinforcement.ts`
 - `dead_file_scan.ts`
 - `run_python_runtime_tests.ts`
 - `review_ci.ts`
@@ -36,8 +40,12 @@ flowchart LR
 - `npm run check:readme-consistency`
 - `npm run check:github-transport`
 - `npm run check:runtime-v2-adapter-differential-parity`
+- `npm run check:route-state-save-load-parity`
 - `npm run check:event-tradeoff-route-state`
+- `npm run check:event-choice-reinforcement`
 - `npm run check:midgame-route-sustain`
+- `npm run check:rest-route-reinforcement`
+- `npm run check:shop-route-reinforcement`
 - `npm run test:python-runtime`
 - `npm run scan:dead`
 - `npm run review:ci`
