@@ -278,7 +278,7 @@ function checkBuildArtifacts(freshnessBaseline: number): ReleaseCheck[] {
   return results;
 }
 
-function hasBundledPyodideAssets(buildReport: DesktopBuildReport | null): boolean {
+function hasBundledPyodideAssets(buildReport: DesktopBuildReport | null, freshnessBaseline: number): boolean {
   if (!buildReport?.pyodideAssetDir || !existsSync(buildReport.pyodideAssetDir)) {
     return false;
   }
@@ -291,7 +291,8 @@ function hasBundledPyodideAssets(buildReport: DesktopBuildReport | null): boolea
     if (!existsSync(reported.path)) {
       return false;
     }
-    return statSync(reported.path).isFile() && statSync(reported.path).size > 0;
+    const stats = statSync(reported.path);
+    return stats.isFile() && stats.size > 0 && isArtifactFresh(reported.path, freshnessBaseline);
   });
 }
 
@@ -306,11 +307,11 @@ export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[]
     const rendererExists = buildReport?.rendererIndexPath ? existsSync(buildReport.rendererIndexPath) : false;
     const mainExists = buildReport?.electronMainPath ? existsSync(buildReport.electronMainPath) : false;
     const preloadExists = buildReport?.preloadPath ? existsSync(buildReport.preloadPath) : false;
-    const pyodideAssetsBundled = hasBundledPyodideAssets(buildReport);
+    const pyodideAssetsBundled = hasBundledPyodideAssets(buildReport, freshnessBaseline);
     const healthy = buildReport?.overallStatus === 'pass' && rendererExists && mainExists && preloadExists && pyodideAssetsBundled;
     checks.push(healthy && fresh
       ? { id: 'desktop_build_report', status: 'pass', evidence: 'desktop build report is green, fresh, and includes bundled Pyodide runtime assets' }
-      : { id: 'desktop_build_report', status: 'fail', evidence: fresh ? 'desktop build report is not green, missing expected artifacts, or missing bundled Pyodide runtime assets' : 'desktop build report is stale for current workspace state; run build:desktop again' });
+      : { id: 'desktop_build_report', status: 'fail', evidence: fresh ? 'desktop build report is not green, missing expected artifacts, or missing fresh bundled Pyodide runtime assets' : 'desktop build report is stale for current workspace state; run build:desktop again' });
   }
 
   const smokeReportPath = resolve('reports/desktop/desktop-smoke.json');

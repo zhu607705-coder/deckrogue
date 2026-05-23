@@ -8501,3 +8501,32 @@
   - runtimeV2 Python WASM rest 路径不再依赖永久 skip。
   - runtimeV2 TS 套件已从 `1 skip` 回到 `0 skip`，该用例现在可稳定执行并作为回归门禁。
   - 下一轮可继续查 release readiness freshness、Windows checkout stability，或把当前修复整理进提交 / 推送流程。
+
+## DeckRogue Fix Batch 026 - Desktop Pyodide Asset Freshness Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、HEAD、最近提交、Batch 025 报告和当前 diff，确认工作树只包含 desktop Pyodide freshness 修复相关文件。
+  - 非重复检查转向 desktop packaging / generated-report gate：`npm run check:release-readiness --silent` 在修复前可接受 `desktop-build.json` 指向的 stale `dist\pyodide` assets，只要文件存在且非空。
+  - 红灯探针：构造 fresh `reports\desktop\desktop-build.json`，但把 `dist\pyodide\pyodide.js`、`.wasm`、stdlib 等资产 mtime 设为 `2000-01-01`；修复前 `checkDesktopArtifacts(Date.now() - 1000)` 仍返回 `desktop_build_report: pass`。
+  - 首轮 gate 修复后，`npm run doctor:game:full --silent` 暴露第二层根因：`cpSync()` 会保留 `node_modules\pyodide` 包侧旧 mtime，导致真实 `dist\pyodide` staging 仍旧，不满足新的 freshness gate。
+- 修复内容：
+  - **DESKTOP-PYODIDE-ASSET-FRESHNESS-BYPASS-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 的 desktop build gate 现在要求每个 reported Pyodide asset 同时是文件、非空，并且通过 `isArtifactFresh(..., freshnessBaseline)`。
+    - failure evidence 更新为 `missing fresh bundled Pyodide runtime assets`，避免把 asset 存在误判为可发布。
+  - **DESKTOP-PYODIDE-STAGING-MTIME-DRIFT-001：已修。**
+    - `scripts\desktop\pyodide_assets.ts` 在复制每个 required Pyodide asset 后调用 `utimesSync(targetPath, stagedAt, stagedAt)`，让 desktop build artifact mtime 表示本次 staging，而不是包安装时间。
+  - `tests\unit\releaseAndTranslationGate.test.ts` 新增 stale bundled Pyodide asset 回归，锁定 fresh desktop report + stale runtime assets 必须失败。
+  - `tests\unit\desktopPyodideAssets.test.ts` 把 source fixture 回拨到 `2000-01-01`，并断言 staged target mtime 被刷新到当前复制时间。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`8/8` pass。
+  - `npx tsx --test tests/unit/desktopPyodideAssets.test.ts tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`9/9` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`203/203` pass。
+  - `npm run build:desktop --silent`：exit `0`；`dist\pyodide` 五个 required assets 的 `LastWriteTimeUtc` 均刷新为本轮构建时间 `2026/5/23 2:14:16`，后续 full doctor 刷新为 `2026/5/23 2:18:09`。
+  - `npm run check:release-readiness --silent`：desktop build 后首次 exit `1`，`pass=28 warn=0 fail=13`，失败项均为 desktop smoke、doctor、安全、UI expansion 和 flow smoke stale report，证明 freshness gate 正在拒绝旧生成证据。
+  - `npm run doctor:game:full --silent`：exit `0`，`45/45` stages passed，包含 `Runtime V2 TypeScript Tests`、`Desktop Smoke`、`Check Experience Polish`、`Check Release Readiness`。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`；doctor report 摘要为 `gitHead=b8b8c0b8`、`gitDirty=True`、`runtimeStage=pass`。
+- 状态：
+  - release readiness 不再接受 fresh desktop report 包着 stale Pyodide runtime assets 的发布状态。
+  - desktop Pyodide staging 会刷新 copied asset mtimes，避免真实 package asset mtime 漂移把正确 build 错判为旧构建。
+  - 下一步提交后必须按新 HEAD 重新跑 doctor/release readiness，让 doctor report 的 `gitHead` 绑定提交后的状态。

@@ -9,7 +9,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -162,6 +162,82 @@ test('release readiness rejects desktop builds without bundled Pyodide runtime a
 
     assert.equal(buildCheck?.status, 'fail');
     assert.match(buildCheck?.evidence || '', /Pyodide/i);
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('release readiness rejects desktop builds with stale bundled Pyodide runtime assets', () => {
+  const previousCwd = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-desktop-stale-pyodide-'));
+  const desktopReportsDir = join(fixtureRoot, 'reports', 'desktop');
+  const distDir = join(fixtureRoot, 'dist');
+  const pyodideAssetDir = join(distDir, 'pyodide');
+  const electronDir = join(fixtureRoot, 'electron');
+  const outputDir = join(fixtureRoot, 'output', 'playwright');
+  const rendererIndexPath = join(distDir, 'index.html');
+  const electronMainPath = join(electronDir, 'main.mjs');
+  const preloadPath = join(electronDir, 'preload.cjs');
+  const staleAssetTime = new Date('2000-01-01T00:00:00Z');
+  const screenshotPaths = ['launcher', 'tutorial', 'character_select', 'map', 'combat']
+    .map((step) => join(outputDir, `${step}.png`));
+
+  try {
+    mkdirSync(desktopReportsDir, { recursive: true });
+    mkdirSync(pyodideAssetDir, { recursive: true });
+    mkdirSync(electronDir, { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(rendererIndexPath, '<!doctype html>');
+    writeFileSync(electronMainPath, 'export {};');
+    writeFileSync(preloadPath, 'module.exports = {};');
+    for (const screenshotPath of screenshotPaths) {
+      writeFileSync(screenshotPath, 'png-bytes');
+    }
+
+    const pyodideAssets = REQUIRED_PYODIDE_ASSET_FILES.map((fileName) => {
+      const assetPath = join(pyodideAssetDir, fileName);
+      writeFileSync(assetPath, 'asset-bytes');
+      utimesSync(assetPath, staleAssetTime, staleAssetTime);
+      return {
+        fileName,
+        path: assetPath,
+        sizeBytes: 11,
+      };
+    });
+
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-build.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        overallStatus: 'pass',
+        rendererIndexPath,
+        electronMainPath,
+        preloadPath,
+        pyodideAssetDir,
+        pyodideAssets,
+      }),
+    );
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-smoke.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        mode: 'production',
+        overallStatus: 'pass',
+        closeStatus: 'pass',
+        screenshots: screenshotPaths,
+        steps: ['launcher', 'tutorial', 'character_select', 'map', 'combat'],
+        consoleErrors: [],
+        pageErrors: [],
+        failedRequests: [],
+      }),
+    );
+
+    process.chdir(fixtureRoot);
+    const buildCheck = checkDesktopArtifacts(Date.now() - 1000).find((check) => check.id === 'desktop_build_report');
+
+    assert.equal(buildCheck?.status, 'fail');
+    assert.match(buildCheck?.evidence || '', /fresh bundled Pyodide/i);
   } finally {
     process.chdir(previousCwd);
     rmSync(fixtureRoot, { recursive: true, force: true });

@@ -5,7 +5,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -23,15 +23,23 @@ test('desktop Pyodide asset copier stages required runtime files into dist', () 
     mkdirSync(pyodideSourceDir, { recursive: true });
     mkdirSync(distDir, { recursive: true });
     for (const fileName of REQUIRED_PYODIDE_ASSET_FILES) {
-      writeFileSync(join(pyodideSourceDir, fileName), `fixture:${fileName}`);
+      const sourcePath = join(pyodideSourceDir, fileName);
+      writeFileSync(sourcePath, `fixture:${fileName}`);
+      utimesSync(sourcePath, new Date('2000-01-01T00:00:00Z'), new Date('2000-01-01T00:00:00Z'));
     }
 
+    const copyStartedAt = Date.now();
     const report = copyPyodideAssets({ workspaceRoot });
 
     assert.equal(report.files.length, REQUIRED_PYODIDE_ASSET_FILES.length);
     assert.equal(report.targetDir, join(distDir, 'pyodide'));
     for (const fileName of REQUIRED_PYODIDE_ASSET_FILES) {
-      assert.equal(existsSync(join(distDir, 'pyodide', fileName)), true, `${fileName} should be copied`);
+      const stagedPath = join(distDir, 'pyodide', fileName);
+      assert.equal(existsSync(stagedPath), true, `${fileName} should be copied`);
+      assert.ok(
+        statSync(stagedPath).mtimeMs >= copyStartedAt - 1000,
+        `${fileName} should be touched to the current staging time`,
+      );
     }
   } finally {
     rmSync(workspaceRoot, { recursive: true, force: true });

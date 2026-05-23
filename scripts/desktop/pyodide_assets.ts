@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, statSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 
 export const REQUIRED_PYODIDE_ASSET_FILES = [
@@ -54,6 +54,7 @@ export function copyPyodideAssets(options: CopyPyodideAssetsOptions = {}): Pyodi
   mkdirSync(targetDir, { recursive: true });
 
   const files: PyodideAssetFile[] = [];
+  const stagedAt = new Date();
   for (const fileName of REQUIRED_PYODIDE_ASSET_FILES) {
     const sourcePath = path.join(sourceDir, fileName);
     if (!existsSync(sourcePath)) {
@@ -61,6 +62,7 @@ export function copyPyodideAssets(options: CopyPyodideAssetsOptions = {}): Pyodi
     }
     const targetPath = path.join(targetDir, fileName);
     cpSync(sourcePath, targetPath);
+    utimesSync(targetPath, stagedAt, stagedAt);
     const sizeBytes = statSync(targetPath).size;
     if (sizeBytes <= 0) {
       throw new Error(`Required Pyodide asset is empty: ${targetPath}`);
