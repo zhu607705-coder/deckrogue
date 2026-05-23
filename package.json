@@ -23,6 +23,7 @@
     "diag:numeric": "tsx scripts/analysis/numeric_diagnostics.ts",
     "scan:dead": "tsx scripts/validation/dead_file_scan.ts",
     "review:ci": "tsx scripts/validation/review_ci.ts",
+    "check:github-transport": "tsx scripts/validation/check_github_transport.ts",
     "check:import-boundaries": "tsx scripts/validation/check_import_boundaries.ts",
     "check:deprecated-imports": "tsx scripts/validation/check_deprecated_imports.ts",
     "check:readme-consistency": "tsx scripts/validation/check_readme_consistency.ts",

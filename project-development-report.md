@@ -8582,3 +8582,27 @@
 - 状态：
   - Python WASM adapter 不再因错过已有 Pyodide loader 的 `load` 事件而挂起。
   - runtimeV2 suite 现有覆盖提升到 `115/115` pass；下一步提交后仍需按新 HEAD 重新跑 doctor/release readiness。
+
+## DeckRogue Fix Batch 029 - GitHub SSH-over-443 Transport Diagnostics - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 028 报告，确认从 `574deb2` 干净状态继续。
+  - 记忆与当前 Git remote 均指向同一操作性缺口：历史推送中 HTTPS Git 经常 `github.com:443` reset/不可达，`ssh.github.com:443` 可达但没有持久 SSH key；当前 `git remote -v` 仍是 `https://github.com/zhu607705-coder/deckrogue.git`。
+  - 红灯回归：新增 `github transport diagnostics are documented and gated for Windows SSH over 443` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，失败为缺少 `scripts\validation\check_github_transport.ts`。
+- 修复内容：
+  - **GITHUB-SSH-OVER-443-DIAGNOSTIC-GAP-001：仓库侧已修。**
+    - 新增 `scripts\validation\check_github_transport.ts`，只读检查 `origin` remote、`ssh -G github.com` 解析出的 HostName/Port/User、可用 identity file，以及 setup guide 是否存在。
+    - 新增 `npm run check:github-transport`，方便在推送或发布前快速确认本机是否已配置持久 SSH-over-443。
+    - 新增 `docs\environment\github-ssh-over-443.md`，记录 Windows PowerShell 下生成 ed25519 key、`gh ssh-key add`、`Host github.com -> ssh.github.com:443`、`git remote set-url origin git@github.com:zhu607705-coder/deckrogue.git` 的持久配置流程。
+    - 更新 `docs\environment\README.md` 与 `scripts\validation\README.md`，把新文档和检查入口纳入目录说明。
+    - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 npm script、诊断脚本、配置文档和 validation README 不再漂移。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例失败为 `ENOENT: no such file or directory, open '...\scripts\validation\check_github_transport.ts'`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`17/17` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:readme-consistency --silent`：exit `0`，`[check_readme_consistency] OK`。
+  - `npm run check:github-transport --silent`：exit `1`，按预期诊断当前本机仍未配置；失败项为 `origin_remote=https://...`、`ssh_host=github.com`、`ssh_port=22`、`ssh_user=123`、`ssh_identity` 未找到，`setup_docs` 为 pass。
+- 状态：
+  - 仓库侧已具备可重复的 GitHub transport 自检和 Windows SSH-over-443 配置文档。
+  - 本机持久 SSH credential/config 仍未改动；若要让 `npm run check:github-transport` 绿，需要按 `docs\environment\github-ssh-over-443.md` 生成/注册 key、写入 `$env:USERPROFILE\.ssh\config`，并切换 `origin`。
+  - 下一步可在用户明确允许机器级凭据改动后执行实际 SSH key 配置；否则继续 runtimeV2/UI/rendering 修复轮。

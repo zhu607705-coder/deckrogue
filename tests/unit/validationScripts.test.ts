@@ -309,6 +309,24 @@ test('script debt repair keeps route and Python runtime checks gated', () => {
   assert.match(reviewCi, /check:midgame-route-sustain/);
 });
 
+test('github transport diagnostics are documented and gated for Windows SSH over 443', () => {
+  const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { scripts: Record<string, string> };
+  const scriptSource = readFileSync('scripts/validation/check_github_transport.ts', 'utf-8');
+  const docsSource = readFileSync('docs/environment/github-ssh-over-443.md', 'utf-8');
+  const validationReadme = readFileSync('scripts/validation/README.md', 'utf-8');
+
+  assert.equal(pkg.scripts['check:github-transport'], 'tsx scripts/validation/check_github_transport.ts');
+  assert.match(scriptSource, /git\s+remote\s+get-url\s+origin/);
+  assert.match(scriptSource, /ssh\.github\.com/);
+  assert.match(scriptSource, /git@github\.com:zhu607705-coder\/deckrogue\.git/);
+  assert.match(docsSource, /ssh-keygen -t ed25519/);
+  assert.match(docsSource, /gh ssh-key add/);
+  assert.match(docsSource, /HostName ssh\.github\.com/);
+  assert.match(docsSource, /Port 443/);
+  assert.match(docsSource, /git remote set-url origin git@github\.com:zhu607705-coder\/deckrogue\.git/);
+  assert.match(validationReadme, /check:github-transport/);
+});
+
 test('obsolete one-off script generators remain removed', () => {
   for (const file of [
     'scripts/add_character_expansion_cards.py',

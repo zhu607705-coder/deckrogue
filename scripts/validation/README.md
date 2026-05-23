@@ -11,6 +11,7 @@
 - `check_import_boundaries.ts`
 - `check_deprecated_imports.ts`
 - `check_readme_consistency.ts`
+- `check_github_transport.ts`
 - `check_event_tradeoff_route_state.ts`
 - `check_midgame_route_sustain.ts`
 - `dead_file_scan.ts`
@@ -32,12 +33,14 @@ flowchart LR
 - `npm run check:import-boundaries`
 - `npm run check:deprecated-imports`
 - `npm run check:readme-consistency`
+- `npm run check:github-transport`
 - `npm run check:event-tradeoff-route-state`
 - `npm run check:midgame-route-sustain`
 - `npm run test:python-runtime`
 - `npm run scan:dead`
 - `npm run review:ci`
 - `npm run repair:macos-native`
+- `npm run check:github-transport`
 
 ## 7. 约束与禁忌
 - 校验规则变化必须同步文档。

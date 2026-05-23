@@ -9,6 +9,7 @@
 
 ## 3. 主要文件清单 (Key Files)
 - `hidden_directories.md`: 隐藏/缓存目录说明。
+- `github-ssh-over-443.md`: Windows GitHub SSH-over-443 持久配置说明。
 
 ## 4. 模块关系 (Dependencies)
 - 上游：本地工具链和 IDE。
@@ -21,7 +22,7 @@ flowchart LR
 ```
 
 ## 6. 对外接口
-- 无代码接口。
+- `npm run check:github-transport`
 
 ## 7. 约束与禁忌
 - 不要把工具目录误当作业务目录重构。
@@ -31,3 +32,4 @@ flowchart LR
 
 ## 9. 测试入口与验证命令
 - `npm run check:readme-consistency`
+- `npm run check:github-transport`
