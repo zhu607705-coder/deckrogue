@@ -15,6 +15,7 @@ import { enemiesData } from '@/content/narrative/numericSystem';
 import { GameEngine } from '@/core/events/gameEngine';
 import { buildEnemyPerceptionSnapshot, selectEnemyIntentForCombat } from '@/core/ai';
 import { combatMemory } from '@/core/ai/combatMemory';
+import { adjustIntentWeightForGroup } from '@/core/ai/groupCoordination';
 import { intentSelector } from '@/core/ai/intentSelector';
 import { parseIntentPolicyWeight } from '@/core/ai/intentPolicy';
 import { cooldownsReducer } from '@/core/ai/cooldowns';
@@ -269,6 +270,18 @@ test('intent policy weight parser rejects non-number authoring values instead of
   assert.throws(() => parseIntentPolicyWeight(null, 'test_enemy', 'Attack'), /number/);
 });
 
+test('group coordination preserves explicit zero intent weights', () => {
+  const adjusted = adjustIntentWeightForGroup(
+    0,
+    'special',
+    { attackWeight: 0.35, defendWeight: 0.25, debuffWeight: 0.15, buffWeight: 0.1, specialWeight: 0.15 },
+    false,
+    0,
+  );
+
+  assert.equal(adjusted.adjustedWeight, 0);
+});
+
 test('authored enemy intent policies keep at least one positive-weight fallback', () => {
   const offenders = enemiesData
     .filter((enemy) => Array.isArray(enemy.intent_policy) && enemy.intent_policy.length > 0)
@@ -451,7 +464,7 @@ test('lagavulin anti-stall forces attack after one non-attack streak', () => {
   const lagavulin = enemiesData.find((enemy) => enemy.id === 'lagavulin');
 
   assert.ok(lagavulin);
-  const intent = selectEnemyIntentForCombat(state, lagavulin, state.combat!.enemies[0], 2, () => 0.8, {});
+  const intent = selectEnemyIntentForCombat(state, lagavulin, state.combat!.enemies[0], 2, () => 0.99, {});
   assert.equal(intent, 'attack');
 });
 

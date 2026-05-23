@@ -8390,3 +8390,31 @@
 - 状态：
   - Runtime V2 contract docs 不再宣传当前仓库不存在的 URL 入口、React/Pixi shell 或 npm smoke 脚本。
   - 新增 live-reference gate 会在 runtimeV2 suite 和 supplemental/doctor lane 中拦住后续 contract doc 漂移；下一轮可继续查 AI intent chain、content schema 深层契约或 Windows checkout stability。
+
+## DeckRogue Fix Batch 022 - AI Intent Zero-Weight Suppression Closure - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、HEAD、最近提交与 Batch 021 报告，确认从 `022dbb2` 干净状态继续。
+  - 非重复源码审计转向 AI intent chain，读取 `src\core\ai\intentPolicy.ts`、`intentSelector.ts`、`selectEnemyIntent.ts`、`groupCoordination.ts` 与现有 `enemyIntentFacade` 覆盖。
+  - 根因：`adjustIntentWeightForGroup()` 在所有路径末尾执行 `Math.max(0.1, adjustedWeight)`，会把 `parseIntentPolicyWeight()` 或 anti-stall profile 明确压到 `0` 的 intent 重新抬成可抽中的正权重。
+  - 红灯复现 1：`adjustIntentWeightForGroup(0, 'special', ...)` 修复前输出 `{"adjustedWeight":0.1,...}`。
+  - 红灯复现 2：Lagavulin 在 `nonAttackIntentStreak=1` 时 anti-stall 应压制 `siphon`，但修复前 `rng=0.99` 仍选择 `siphon`。
+- 修复内容：
+  - **AI-INTENT-ZERO-WEIGHT-REVIVAL-001：已修。**
+    - `src\core\ai\groupCoordination.ts` 在 `baseWeight <= 0` 时直接返回 `adjustedWeight: 0`，保持 authoring 和 anti-stall 的显式禁用语义。
+    - 正权重 intent 仍保留原有 group coordination multiplier 与最小正权重保护。
+  - `tests\unit\enemyIntentFacade.test.ts` 新增 `group coordination preserves explicit zero intent weights`，并把 Lagavulin anti-stall 回归改为高 roll `0.99`，锁定被压制的 `siphon` 不能再漏选。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/enemyIntentFacade.test.ts` 修复前 exit `1`，`17` tests 中 `15` pass、`2` fail；失败为 `0.1 !== 0` 与 `'siphon' !== 'attack'`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts`：exit `0`，`17/17` pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:enemy-ai-boundaries --silent`：exit `0`，`[check_enemy_ai_boundaries] OK`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`200/200` pass。
+  - `npm run check:release-readiness --silent`：修复后首次 exit `1`，`pass=25 warn=0 fail=16`，原因为源码/测试改动触发 build、desktop、doctor、UI/flow smoke freshness gate。
+  - `npm run doctor:game:full --silent`：exit `0`，`44/44` stages passed。
+  - `npm run check:release-readiness --silent`：exit `0`，`pass=41 warn=0 fail=0`。
+- 状态：
+  - AI intent chain 不再把显式 0 权重或 anti-stall suppressed intent 复活成可选项。
+  - release readiness 已刷新到全绿；下一轮可继续查 content schema 深层 guard、runtimeV2 skipped browser edge 或 Windows checkout/report gate。

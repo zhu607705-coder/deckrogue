@@ -245,6 +245,13 @@ export function adjustIntentWeightForGroup(
   hasConflict: boolean,
   enemyIndex: number
 ): CoordinationResult {
+  if (baseWeight <= 0) {
+    return {
+      adjustedWeight: 0,
+      reason: '显式零权重保持禁用',
+    };
+  }
+
   let adjustedWeight = baseWeight;
   let reason = '';
 
