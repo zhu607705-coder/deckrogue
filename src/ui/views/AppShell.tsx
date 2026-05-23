@@ -1047,7 +1047,7 @@ function AppContent() {
         )}
         {activeScreen === 'RemoveCard' && (
           <Suspense fallback={<ScreenLoadingFallback label="RemoveCard" />}>
-            <RemoveCardView engine={engine} />
+            <RemoveCardView engine={engine} renderModel={renderModel} />
           </Suspense>
         )}
         {activeScreen === 'Event' && (

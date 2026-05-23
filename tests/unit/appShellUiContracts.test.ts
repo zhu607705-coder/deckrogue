@@ -105,3 +105,11 @@ test('RestView uses runtime-v2 rest capability gates before legacy fallback', ()
   assert.equal(options.filter((value) => value === '4').length, 1);
   assert.equal(new Set(options).size, options.length);
 });
+
+test('AppShell passes runtime-v2 render model into RemoveCardView', () => {
+  assert.match(
+    APP_SHELL_SOURCE,
+    /<RemoveCardView\s+engine=\{engine\}\s+renderModel=\{renderModel\}\s*\/>/,
+    'RemoveCardView must receive renderModel so runtime-v2 remove-card choices are visible'
+  );
+});

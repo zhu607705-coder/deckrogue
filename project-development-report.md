@@ -8806,3 +8806,29 @@
 - 状态：
   - 休整点移除卡牌现在按 runtimeV2/legacy render capability 暴露，不再要求玩家拥有腐化遗物。
   - 下一步提交后按新 HEAD 刷新 full doctor 和 release readiness，再继续追 RemoveCardView runtimeV2 choices 或 Python WASM surface parity 的下一处可修问题。
+
+## DeckRogue Fix Batch 038 - RemoveCardView Runtime Choices Projection - 2026-05-23
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 037 报告，确认从已推送 `24b7660` 干净状态继续。
+  - 非重复检查转向 UI/rendering + runtimeV2 RemoveCard surface：`src\runtimeV2\renderModel.ts` 已为 `screen='RemoveCard'` 输出 `room.kind='remove_card'`、`cardRemovalCost` 和 `choices`。
+  - `src\ui\views\AppShell.tsx` 仍只渲染 `<RemoveCardView engine={engine} />`，`src\ui\views\RemoveCardView.tsx` 只遍历 legacy `engine.state.player.deck`，所以 runtimeV2/Python snapshot 有 choices 但 legacy deck 为空时，焚毁界面没有任何卡牌入口。
+  - 红灯复现：修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/removeCardViewRenderModel.test.tsx` exit `1`，失败包括 `RemoveCardView must receive renderModel` 与 `Runtime-only Strike` 未渲染。
+- 修复内容：
+  - **UI-RUNTIMEV2-REMOVECARDVIEW-IGNORES-RENDERMODEL-CHOICES-001：已修。**
+    - `src\ui\views\AppShell.tsx` 将 `renderModel` 传入 `RemoveCardView`。
+    - `src\ui\views\RemoveCardView.tsx` 在 `renderModel.room.kind === 'remove_card'` 且 legacy deck 为空时渲染 runtimeV2 `room.choices`，并将 runtime selector token 交给 `engine.removeCard(choice.id)`。
+    - legacy deck 存在时仍优先使用 `RunCardInstance.instanceId` 路径，避免 `createLegacyRenderModel()` 的 content-id selector 抢走 legacy 移除逻辑。
+    - 取消按钮只保留 `data-keyboard-close`，避免与第 10 个可选卡牌争用 `data-keyboard-option="10"`。
+    - `tests\unit\removeCardViewRenderModel.test.tsx` 新增 SSR 回归，覆盖 runtime-only choices 可见与 legacy deck 优先；`package.json` 将该回归纳入 `test:supplemental-units`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts tests/unit/removeCardViewRenderModel.test.tsx` exit `1`，`4/6` pass、2 fail。
+  - `npx tsx --test tests/unit/removeCardViewRenderModel.test.tsx tests/unit/appShellUiContracts.test.ts`：exit `0`，`7/7` pass。
+  - `npm run test:remove-card-flow-smoke --silent`：exit `0`，Vite dev server 启动后流程返回成功；中途曾发现标题兼容等待点，已保留稳定标题“焚毁记忆印痕”后复跑通过。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`207/207` pass。
+  - `npm run build`：exit `0`，Vite build succeeded，`2266` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RemoveCard UI 现在能消费 runtimeV2/Python remove-card choices，同时保留 legacy instance-id 移除路径。
+  - 下一步提交后按新 HEAD 刷新 full doctor 与 release readiness，再继续追 Enchant/Upgrade/RelicUpgrade 的同类 renderModel choices surface 或 Python WASM surface parity。
