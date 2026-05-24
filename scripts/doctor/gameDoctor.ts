@@ -288,6 +288,7 @@ async function main(): Promise<void> {
     { name: 'Boss Phase Flow Smoke', command: 'npm run test:boss-phase-flow-smoke 2>&1' },
     { name: 'Boss Terminal Flow Smoke', command: 'npm run test:boss-terminal-flow-smoke 2>&1' },
     { name: 'Desktop Smoke', command: 'npm run test:desktop-smoke 2>&1' },
+    { name: 'Windows Desktop Distribution', command: 'npm run dist:win -- --skip-build 2>&1' },
     { name: 'Check Experience Polish', command: 'npm run check:experience-polish 2>&1' },
     { name: 'Check Release Readiness', command: 'npm run check:release-readiness 2>&1', env: { DOCTOR_IN_FLIGHT: '1' } },
   ];

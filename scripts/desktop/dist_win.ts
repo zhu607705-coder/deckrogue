@@ -13,6 +13,7 @@ const REPORT_DIR = path.join(process.cwd(), 'reports', 'desktop');
 const REPORT_PATH = path.join(REPORT_DIR, 'win-dist.json');
 const RELEASE_DIR = path.join(process.cwd(), 'release', 'win');
 const STAGING_DIR = path.join(process.cwd(), '.desktop-build', 'win-app');
+const SKIP_BUILD = process.argv.includes('--skip-build');
 
 interface WinDistArtifact {
   path: string;
@@ -108,11 +109,19 @@ async function main(): Promise<void> {
     cleanDir(RELEASE_DIR);
     evidence.push('release directory cleaned');
 
-    execSync('npm run build:desktop --silent', {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-    });
-    evidence.push('desktop renderer and Electron entries verified');
+    if (SKIP_BUILD) {
+      evidence.push('desktop build reused from current workspace artifacts');
+    } else {
+      execSync('npm run build:desktop --silent', {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+      });
+      evidence.push('desktop renderer and Electron entries verified');
+    }
+
+    if (!existsSync(path.join(process.cwd(), 'dist', 'index.html'))) {
+      throw new Error('dist/index.html missing; run build:desktop before dist:win -- --skip-build');
+    }
     prepareStagingApp();
     evidence.push('minimal desktop staging app prepared without production node_modules');
 

@@ -244,6 +244,80 @@ test('release readiness rejects desktop builds with stale bundled Pyodide runtim
   }
 });
 
+test('release readiness rejects missing Windows installer distribution evidence', () => {
+  const previousCwd = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-win-dist-missing-'));
+  const desktopReportsDir = join(fixtureRoot, 'reports', 'desktop');
+  const distDir = join(fixtureRoot, 'dist');
+  const pyodideAssetDir = join(distDir, 'pyodide');
+  const electronDir = join(fixtureRoot, 'electron');
+  const outputDir = join(fixtureRoot, 'output', 'playwright');
+  const rendererIndexPath = join(distDir, 'index.html');
+  const electronMainPath = join(electronDir, 'main.mjs');
+  const preloadPath = join(electronDir, 'preload.cjs');
+  const screenshotPaths = ['launcher', 'tutorial', 'character_select', 'map', 'combat']
+    .map((step) => join(outputDir, `${step}.png`));
+
+  try {
+    mkdirSync(desktopReportsDir, { recursive: true });
+    mkdirSync(pyodideAssetDir, { recursive: true });
+    mkdirSync(electronDir, { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(rendererIndexPath, '<!doctype html>');
+    writeFileSync(electronMainPath, 'export {};');
+    writeFileSync(preloadPath, 'module.exports = {};');
+    for (const screenshotPath of screenshotPaths) {
+      writeFileSync(screenshotPath, 'png-bytes');
+    }
+
+    const pyodideAssets = REQUIRED_PYODIDE_ASSET_FILES.map((fileName) => {
+      const assetPath = join(pyodideAssetDir, fileName);
+      writeFileSync(assetPath, 'asset-bytes');
+      return {
+        fileName,
+        path: assetPath,
+        sizeBytes: 11,
+      };
+    });
+
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-build.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        overallStatus: 'pass',
+        rendererIndexPath,
+        electronMainPath,
+        preloadPath,
+        pyodideAssetDir,
+        pyodideAssets,
+      }),
+    );
+    writeFileSync(
+      join(desktopReportsDir, 'desktop-smoke.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        mode: 'production',
+        overallStatus: 'pass',
+        closeStatus: 'pass',
+        screenshots: screenshotPaths,
+        steps: ['launcher', 'tutorial', 'character_select', 'map', 'combat'],
+        consoleErrors: [],
+        pageErrors: [],
+        failedRequests: [],
+      }),
+    );
+
+    process.chdir(fixtureRoot);
+    const winDistCheck = checkDesktopArtifacts(0).find((check) => check.id === 'win_dist_report');
+
+    assert.equal(winDistCheck?.status, 'fail');
+    assert.match(winDistCheck?.evidence || '', /dist:win|win-dist/i);
+  } finally {
+    process.chdir(previousCwd);
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test('release readiness rejects flow smoke reports with missing screenshot evidence', () => {
   const previousCwd = process.cwd();
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-flow-evidence-'));

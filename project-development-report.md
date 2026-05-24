@@ -9011,3 +9011,28 @@
 - 状态：
   - GitHub transport 已进入 full doctor 与 release readiness 的生成报告链路，不再只靠手动单独脚本发现。
   - 下一步提交后刷新 `doctor:game:full` 和 `check:release-readiness`，再继续追 desktop packaging 或 AI intent chain。
+
+## DeckRogue Fix Batch 045 - Release Gate Covers Windows Installer Distribution - 2026-05-24
+
+- 发现证据：
+  - 本轮先读当前 `git status`、最近提交和 Batch 041-044 报告，确认从已推送 `c87fd69` 的主线继续，并接手未提交的 desktop packaging gate 修复。
+  - `npm run dist:win -- --skip-build --silent` 能生成 `reports\desktop\win-dist.json` 与 `release\win\DeckRogue-0.0.0-x64.exe`，但修复前 release readiness 不检查 `win-dist.json` 或 `.exe` installer artifact。
+  - 红灯复现：新增 `release readiness rejects missing Windows installer distribution evidence` 后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，`winDistCheck` 为 `undefined`，证明 `checkDesktopArtifacts()` 未覆盖 `win_dist_report`。
+- 修复内容：
+  - **RELEASE-GATE-WINDOWS-INSTALLER-EVIDENCE-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 新增 `win_dist_report` release check，要求 `reports\desktop\win-dist.json` 为 green、fresh，并包含存在且非空的 fresh `.exe` artifact。
+    - `scripts\validation\check_release_readiness.ts` 将 `Windows Desktop Distribution` 加入 required doctor stages。
+    - `scripts\doctor\gameDoctor.ts` 在 `Desktop Smoke` 后、`Check Release Readiness` 前运行 `npm run dist:win -- --skip-build`，复用刚刷新的 desktop dist，避免 installer 与 smoke freshness 互相打架。
+    - `scripts\desktop\dist_win.ts` 新增 `--skip-build` 路径，并在复用时强制检查 `dist\index.html` 存在。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 与 `tests\unit\validationScripts.test.ts` 锁定 release readiness 和 full doctor 的 Windows installer distribution gate。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`9/9` pass。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`20/20` pass。
+  - `npm run dist:win -- --skip-build --silent`：exit `0`；`reports\desktop\win-dist.json` 为 `overallStatus=pass`，`DeckRogue-0.0.0-x64.exe` size `603697660` bytes，evidence 包含 `desktop build reused from current workspace artifacts` 与 `exe artifacts produced: 1`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - 提交后 `npm run doctor:game:full --silent`：exit `0`，`54/54` stages passed，新增 `Windows Desktop Distribution` stage 为 pass。
+  - 提交后 `npm run check:release-readiness --silent`：exit `0`，`pass=43 warn=0 fail=0`；`win_dist_report` 与 `doctor_report` 均为 pass。
+- 状态：
+  - Windows installer distribution 现在进入 release readiness 与 full doctor 链路。
+  - 下一轮继续追 under-covered UI/rendering、runtimeV2、Python WASM adaptation 或 AI intent chain 的下一处可复现 P1/P2 缺陷。

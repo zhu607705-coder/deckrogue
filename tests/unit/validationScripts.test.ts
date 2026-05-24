@@ -85,6 +85,18 @@ test('desktop smoke isolates production runs', () => {
   assert.match(source, /desktop_\$\{runId\}_launcher\.png/);
 });
 
+test('game doctor keeps Windows desktop installer distribution gated after smoke', () => {
+  const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+  const desktopSmokeIndex = source.indexOf("name: 'Desktop Smoke'");
+  const winDistIndex = source.indexOf("name: 'Windows Desktop Distribution'");
+  const releaseIndex = source.indexOf("name: 'Check Release Readiness'");
+
+  assert.ok(desktopSmokeIndex >= 0, 'Desktop Smoke stage missing');
+  assert.ok(winDistIndex > desktopSmokeIndex, 'Windows distribution must run after Desktop Smoke so it can reuse fresh dist');
+  assert.ok(releaseIndex > winDistIndex, 'Release readiness must run after Windows distribution');
+  assert.match(source, /npm run dist:win -- --skip-build/);
+});
+
 test('game doctor prunes old logs before release readiness growth checks', () => {
   const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
 

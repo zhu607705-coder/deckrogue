@@ -26,6 +26,7 @@ const DEFAULT_REPORT_MAX_FILES = 2000;
 const DEFAULT_REPORT_MAX_BYTES = 50 * 1024 * 1024;
 const REQUIRED_DOCTOR_STAGE_NAMES = [
   'Check GitHub Transport',
+  'Windows Desktop Distribution',
   'Runtime V2 TypeScript Tests',
   'Runtime V2 Adapter Differential Parity',
   'Check Python WASM Runtime Sync',
@@ -130,6 +131,14 @@ type DesktopSmokeReport = {
   consoleErrors?: unknown[];
   pageErrors?: unknown[];
   failedRequests?: unknown[];
+};
+
+type WinDistReport = {
+  overallStatus?: string;
+  artifacts?: Array<{
+    path?: string;
+    sizeBytes?: number;
+  }>;
 };
 
 function ensureDir(dir: string) {
@@ -354,6 +363,30 @@ export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[]
     checks.push(healthy && fresh
       ? { id: 'desktop_smoke_report', status: 'pass', evidence: 'desktop smoke report is green, closed cleanly, production-mode, includes screenshot evidence, and is fresh' }
       : { id: 'desktop_smoke_report', status: 'fail', evidence: fresh ? 'desktop smoke report is not green, did not close cleanly, is not production-mode, misses required flow steps, or lacks fresh screenshot evidence' : 'desktop smoke report is stale for current workspace state; run test:desktop-smoke again' });
+  }
+
+  const winDistReportPath = resolve('reports/desktop/win-dist.json');
+  if (!existsSync(winDistReportPath)) {
+    checks.push({ id: 'win_dist_report', status: 'fail', evidence: 'reports/desktop/win-dist.json missing; run dist:win' });
+  } else {
+    const winDistReport = readJsonFile<WinDistReport>(winDistReportPath);
+    const fresh = isArtifactFresh(winDistReportPath, freshnessBaseline);
+    const artifacts = Array.isArray(winDistReport?.artifacts) ? winDistReport.artifacts : [];
+    const exeArtifact = artifacts.find((artifact) =>
+      typeof artifact.path === 'string' && artifact.path.toLowerCase().endsWith('.exe')
+    );
+    const exeExists = !!exeArtifact?.path && existsSync(exeArtifact.path);
+    const exeFresh = exeExists && isArtifactFresh(exeArtifact!.path!, freshnessBaseline);
+    const exeSize = exeExists ? statSync(exeArtifact!.path!).size : 0;
+    const healthy =
+      winDistReport?.overallStatus === 'pass' &&
+      exeExists &&
+      exeFresh &&
+      exeSize > 0 &&
+      (exeArtifact?.sizeBytes ?? 0) > 0;
+    checks.push(healthy && fresh
+      ? { id: 'win_dist_report', status: 'pass', evidence: 'Windows installer distribution report is green, fresh, and includes a fresh .exe artifact' }
+      : { id: 'win_dist_report', status: 'fail', evidence: fresh ? 'Windows installer distribution report is not green or lacks a fresh .exe artifact; run dist:win' : 'Windows installer distribution report is stale for current workspace state; run dist:win' });
   }
 
   return checks;
