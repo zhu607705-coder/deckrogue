@@ -1,5 +1,21 @@
 # Project Development Report
 
+## GitHub Repository Presentation Polish - 2026-06-01
+
+- Corrected scope after the user clarified that the requested decoration was for the GitHub repository page, not the in-app launcher.
+- Updated the root `README.md` into a GitHub-facing project front page while preserving the repository's required 1-9 README consistency section markers.
+- Added a stable repository preview image at `docs/github/launcher-preview.png`, copied from the latest verified UI smoke launcher screenshot.
+  - SHA-256: `AC9E4B1B7C18B04EA0A64FFD8059F5C448F80A8643DA0FAB76AAD23A96ED7611`.
+- Updated GitHub repository metadata through `gh repo edit`:
+  - Description: `DeckRogue: React/TypeScript deckbuilding roguelite prototype with Runtime V2, Python rules core, Electron desktop builds, and verified UI smoke evidence.`
+  - Topics: `deckbuilding-game`, `roguelite`, `react`, `typescript`, `vite`, `electron`, `python`, `game-dev`, `runtime-v2`.
+- Verification completed before commit:
+  - `gh repo view zhu607705-coder/deckrogue --json name,description,homepageUrl,repositoryTopics,defaultBranchRef,url,isPrivate`: returned updated description and all topics.
+  - `npm run check:readme-consistency --silent`: `[check_readme_consistency] OK`.
+  - `git diff --check`: exit `0`.
+- Remaining risk:
+  - GitHub social preview image was not changed because GitHub does not expose that setting through the current `gh repo edit` path; the README preview image is committed in-repo and renders on the repository front page.
+
 ## GitHub Review and Launcher Introduction Polish - 2026-06-01
 
 - Continued the GitHub submission objective after `99ef6a3` was pushed.
