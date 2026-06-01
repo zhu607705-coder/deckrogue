@@ -1,5 +1,25 @@
 # Project Development Report
 
+## GitHub Review and Launcher Introduction Polish - 2026-06-01
+
+- Continued the GitHub submission objective after `99ef6a3` was pushed.
+- Current repository sync evidence before this pass:
+  - `git status --short --branch`: `main...origin/main`.
+  - `git rev-list --left-right --count HEAD...origin/main`: `0 0`.
+- Review pass:
+  - Inspected the pushed commit scope and searched for high-risk patterns in the touched source/script/test areas.
+  - No blocking security or correctness issue was found in the current pushed state.
+  - Known non-blocking risk remains the broad size of `99ef6a3`; it is mitigated by the pre-push verification recorded below and this follow-up focused UI/test pass.
+- Launcher introduction polish:
+  - Added a first-screen four-part battle brief to `SetupLauncher`: route scouting, deck construction, meta progression, and chapter pressure.
+  - Added icon-backed, responsive launcher brief cards in `grimdark.css`.
+  - Extended `tutorialModule.test.tsx` so launcher intro copy is locked by static render coverage.
+- Verification completed for this follow-up:
+  - `npx tsx --test tests/unit/tutorialModule.test.tsx`: `5/5` passed.
+  - `npm run lint --silent`: exit `0`.
+  - `npm run build`: exit `0`.
+  - `npm run test:ui-smoke`: exit `0`; `output/playwright/ui_smoke_report.json` recorded `0` console errors, page errors, failed requests, broken images, and layout issues across launcher, character select, map, combat, reward, post-reward map, save, continue, and load-slot checks.
+
 ## GitHub Mainline Submission Prep - 2026-06-01
 
 - Prepared the current `main` workspace state for GitHub submission and checked merge status for the two likely historical branches:

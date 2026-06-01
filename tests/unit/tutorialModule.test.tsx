@@ -48,6 +48,9 @@ test('SetupLauncher renders a tutorial entry in the launch sequence', () => {
 
   assert.match(html, /战区教程/);
   assert.match(html, /术语、资源与战斗流程/);
+  assert.match(html, /路线侦察/);
+  assert.match(html, /读节点，再决定风险/);
+  assert.match(html, /章节压迫/);
 });
 
 test('TutorialView renders glossary-driven onboarding content', () => {

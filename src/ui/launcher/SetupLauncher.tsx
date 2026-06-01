@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { Compass, Layers3, ShieldCheck, Swords } from 'lucide-react';
 import type { MetaProfile, SaveSlot } from '@/core';
 import { getUiLabelZh } from '@/ui/content/terminology';
 
@@ -59,6 +60,33 @@ function resetLauncherScrollPosition(node: HTMLDivElement | null): void {
     }
   }
 }
+
+const launcherBriefItems = [
+  {
+    Icon: Compass,
+    label: '路线侦察',
+    title: '读节点，再决定风险',
+    copy: '每条路径都会改变卡组成长、商店收益和下一场战斗压力。'
+  },
+  {
+    Icon: Layers3,
+    label: '牌组构筑',
+    title: '保留关键牌，删掉负担',
+    copy: '奖励、升级、移除和事件选择都会改变后续三章节的节奏。'
+  },
+  {
+    Icon: ShieldCheck,
+    label: '局外成长',
+    title: '失败也会留下资源',
+    copy: '征用点、回响、图鉴和成就会把每次远征转化为下一次起点。'
+  },
+  {
+    Icon: Swords,
+    label: '章节压迫',
+    title: '从普通战斗推进到首领',
+    copy: '敌人意图、房间服务和 Boss 阶段会持续检验路线判断。'
+  }
+];
 
 export function SetupLauncher({
   canContinue,
@@ -146,6 +174,20 @@ export function SetupLauncher({
                 <p className="reveal-rise mt-6 max-w-xl text-sm leading-7 text-stone-300 md:text-base xl:mt-4 xl:max-w-lg xl:text-sm xl:leading-6">
                   继续推进三章节远征，管理作战档案，保留每一次失败后的可复现路径与下一局方向。
                 </p>
+                <div className="launcher-brief-grid reveal-rise mt-7 grid max-w-3xl gap-3 sm:grid-cols-2 xl:mt-5 xl:max-w-2xl">
+                  {launcherBriefItems.map(({ Icon, label, title, copy }) => (
+                    <div key={label} className="launcher-brief-card">
+                      <div className="launcher-brief-icon" aria-hidden="true">
+                        <Icon size={18} strokeWidth={1.8} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="launcher-brief-label">{label}</div>
+                        <div className="launcher-brief-title">{title}</div>
+                        <div className="launcher-brief-copy">{copy}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 {latestRun ? (
                   <div className="reveal-rise mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-stone-300/80 xl:mt-5">
                     <span>最近层数 {latestRun.reachedFloor}</span>
@@ -242,7 +284,7 @@ export function SetupLauncher({
             </div>
           </section>
 
-          <section className="grid gap-6 border-t border-white/10 py-10 xl:min-h-0 xl:flex-1 xl:grid-cols-[0.68fr_1.32fr] xl:gap-4 xl:py-4">
+          <section className="mt-24 grid gap-6 border-t border-white/10 py-10 xl:min-h-0 xl:flex-1 xl:grid-cols-[0.68fr_1.32fr] xl:gap-4 xl:py-4">
             <div className="space-y-4 xl:min-h-0 xl:space-y-3">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.34em] text-stone-500">{getUiLabelZh('Version State')}</div>
