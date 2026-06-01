@@ -263,6 +263,59 @@ test('PythonProcessAdapter ignores unknown request id responses without corrupti
   adapter.dispose();
 });
 
+test('PythonProcessAdapter ignores missing request id responses without resolving the head pending request', async () => {
+  const processHandle = createFakePythonProcess();
+  const adapter = PythonProcessAdapter.createForTesting(processHandle, { requestTimeoutMs: 1000 });
+  const requestsPromise = readJsonLines(processHandle.stdin, 1);
+  const snapshotPromise = adapter.dispatch({ type: 'select_character', characterId: 'informant' });
+  const [request] = await requestsPromise;
+
+  processHandle.stdout.write(`${JSON.stringify({ ok: true, snapshot: { seed: 99 } })}\n`);
+  processHandle.stdout.write(`${JSON.stringify({ request_id: request.request_id, ok: true, snapshot: { seed: 7 } })}\n`);
+
+  const snapshot = await snapshotPromise;
+  assert.equal(snapshot.seed, 7);
+  adapter.dispose();
+});
+
+test('PythonProcessAdapter rejects pending requests when the child process emits an error', async () => {
+  const processHandle = createFakePythonProcess();
+  const adapter = PythonProcessAdapter.createForTesting(processHandle, { requestTimeoutMs: 1000 });
+  const requestsPromise = readJsonLines(processHandle.stdin, 1);
+  const snapshotPromise = adapter.dispatch({ type: 'select_character', characterId: 'informant' });
+  await requestsPromise;
+
+  processHandle.emit('error', new Error('python pipe failure'));
+
+  await assert.rejects(
+    Promise.race([
+      snapshotPromise,
+      new Promise((resolve) => setTimeout(() => resolve('pending'), 25)),
+    ]),
+    /python pipe failure/,
+  );
+  adapter.dispose();
+});
+
+test('PythonProcessAdapter clears pending request when stdin write throws synchronously', async () => {
+  const processHandle = createFakePythonProcess();
+  processHandle.stdin.write = (() => {
+    throw new Error('stdin write failed before queue flush');
+  }) as typeof processHandle.stdin.write;
+  const adapter = PythonProcessAdapter.createForTesting(processHandle, { requestTimeoutMs: 1000 });
+
+  await assert.rejects(
+    adapter.dispatch({ type: 'select_character', characterId: 'informant' }),
+    /stdin write failed before queue flush/,
+  );
+
+  processHandle.stdout.write(`${JSON.stringify({ request_id: 'req_1', ok: true, snapshot: { seed: 99 } })}\n`);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+
+  assert.equal(adapter.getSnapshot(), null);
+  adapter.dispose();
+});
+
 test('runParityScenario reports zero diffs for stable matching fields', async () => {
   const result = await runParityScenario({
     legacyAdapter: createLegacyOracleAdapter(),

@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   bootstrapContext,
   checkServer,
+  createFlowSmokeErrorCollector,
   createRewardFixture,
   ensureDir,
   getDefaultSmokeUrl,
@@ -27,11 +28,13 @@ import {
 } from './flow_smoke_helpers';
 
 interface RewardFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedReward: boolean;
   returnedToMap: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -53,16 +56,8 @@ async function main() {
   await bootstrapContext(context, [createRewardFixture()]);
   const page = await context.newPage();
 
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
-  });
 
   let reachedReward = false;
   let returnedToMap = false;
@@ -87,11 +82,13 @@ async function main() {
     screenshots.push(mapShot);
   } finally {
     const report: RewardFlowReport = {
+      generatedAt: new Date().toISOString(),
       baseUrl,
       reachedReward,
       returnedToMap,
-      consoleErrors,
-      pageErrors,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
       screenshots,
     };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -102,8 +99,8 @@ async function main() {
     }
   }
 
-  if (!reachedReward || !returnedToMap || pageErrors.length > 0 || consoleErrors.length > 0) {
-    throw new Error(`Reward flow smoke failed: reachedReward=${reachedReward} returnedToMap=${returnedToMap} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedReward || !returnedToMap || errorCollector.pageErrors.length > 0 || errorCollector.consoleErrors.length > 0 || errorCollector.failedRequests.length > 0) {
+    throw new Error(`Reward flow smoke failed: reachedReward=${reachedReward} returnedToMap=${returnedToMap} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

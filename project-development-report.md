@@ -1,5 +1,22 @@
 # Project Development Report
 
+## GitHub Mainline Submission Prep - 2026-06-01
+
+- Prepared the current `main` workspace state for GitHub submission and checked merge status for the two likely historical branches:
+  - `mainline-upload-20260511` is already contained in `main`.
+  - `codex/test-auto/ui-click-30` is already contained in `main`.
+- Fixed a release-readiness regression exposed during pre-commit verification:
+  - `checkResponsiveReadabilityReport` now requires responsive readability coverage to include `relic-upgrade`, so generic surface-count padding cannot pass the gate.
+- Verification completed before commit:
+  - `npm run lint --silent`: exit `0`.
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`: exit `0`.
+  - `npm run test:runtime-v2:ts`: `150/150` passed.
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`: `21/21` passed.
+  - `npm run test:supplemental-units`: `243/243` passed.
+  - `npm run build`: exit `0`.
+- Remaining risk:
+  - Direct SSH fetch/push to `origin` failed with `Permission denied (publickey)`; GitHub CLI is authenticated over HTTPS and should be used for the push path.
+
 ## Wave II Visual Polish and Balance Closure - 2026-05-09
 
 - Continued from the remaining non-blocking risks around hand-authored visual polish and longform numeric balance.
@@ -9036,3 +9053,1716 @@
 - 状态：
   - Windows installer distribution 现在进入 release readiness 与 full doctor 链路。
   - 下一轮继续追 under-covered UI/rendering、runtimeV2、Python WASM adaptation 或 AI intent chain 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 046 - AI Intent Bands And Windows Python Launcher Fallback - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、记忆中的 DeckRogue/Python launcher 线索和 Batch 041-045 报告，确认从已推送 `8e263c5` 主线继续，避免重复跑空 discovery。
+  - AI intent chain：`src\content\data\enemies.json` 中 `goblin_trapper` 与 `jaw_worm_burrower` 使用 `playerHpBand: "healthy"`，但运行时感知只会产出 `safe`、`pressured`、`kill_range`；修复前 `npm run check:enemy-ai-profiles --silent` 仍为 exit `0`，说明 profile gate 漏检。
+  - 红灯复现：新增 `enemy AI profile gate rejects intent bias bands that runtime perception cannot produce` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，错误为非法 `playerHpBand` 未被拒绝。
+  - Windows Python runtime：本机 `py -3 --version` exit `112` 并输出 `No installed Python found!`，但 `python --version` exit `0` 为 `Python 3.13.12`；旧 `test:python-runtime` 与 `PythonProcessAdapter` 都优先硬编码 `py -3`，导致真实 Python 可用时仍失败，adapter parity 子进程写入已退出 stdin 后报 `write EOF`。
+  - 红灯复现：新增 `Python runtime launchers skip unavailable Windows py launcher before falling back to python` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`；新增 `pythonCommand.test.ts` 进一步锁定非零 launcher 必须继续 fallback。
+- 修复内容：
+  - **AI-INTENT-BIAS-BAND-SCHEMA-001：已修。**
+    - `scripts\validation\check_enemy_ai_profiles.ts` 新增 `intentBiases` band 枚举校验：`attackIntentBand`、`defenseIntentBand`、`comboThreatBand`、`playerHpBand`、`enemyHpBand`、`playerBlockBand`。
+    - `src\content\data\enemies.json` 将两处不可能匹配的 `"healthy"` 改为运行时可产出的 `"safe"`。
+    - `tests\unit\validationScripts.test.ts` 新增 fixture 回归，要求非法 `playerHpBand` 直接失败并输出合法枚举。
+  - **WINDOWS-PYTHON-LAUNCHER-FALLBACK-001：已修。**
+    - 新增 `src\runtimeV2\node\pythonCommand.ts`，统一提供 `resolvePythonCommandCandidates()`、`selectAvailablePythonCommand()` 与 `resolveAvailablePythonCommand()`。
+    - `scripts\validation\run_python_runtime_tests.ts` 先对每个候选执行 `--version`，遇到 `ENOENT` 或非零 exit 继续尝试下一候选，再运行 unittest。
+    - `src\runtimeV2\node\pythonProcessAdapter.ts` 改用同一可用解释器解析逻辑，不再在 Windows 上直接返回 `py -3`。
+    - `tests\unit\pythonCommand.test.ts` 锁定 Windows 候选顺序和 `py -3` 非零退出后 fallback 到 `python` 的行为。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，分别证明 AI band gate 漏检和 Python fallback 生产代码缺口。
+  - 环境复现：`py -3 --version` exit `112`，`No installed Python found!`；`python --version` exit `0`，`Python 3.13.12`。
+  - `npx tsx --test tests/unit/pythonCommand.test.ts tests/unit/validationScripts.test.ts`：exit `0`，`24/24` pass。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 10 tests` / `OK`。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent`：exit `0`，`passCount: 19/19`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`122/122` pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，OK。
+  - `npm run check:content-authoring --silent`：exit `0`，`Cards: 354/354 valid`、`Enemies: 58/58 valid`、`Relics: 106/106 valid`。
+  - `npm run check:content-contract-layer --silent`：exit `0`，OK。
+  - `npm run test:supplemental-units --silent`：exit `0`，`216/216` pass。
+  - `npx tsx scripts/test-ai-features.ts`：exit `0`，`20/20` pass。
+  - `npm run check:enemy-variant-behavior --silent`：exit `0`，`14 variants checked`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - AI profile gate 现在会拒绝运行时永远产不出的 intent bias band，两个真实内容条目已改回可匹配的 `safe`。
+  - Windows runtimeV2 / Python unittest 路径现在能跳过不可用的 `py -3` launcher，使用本机可用 `python.exe`，此前 `write EOF` parity failure 已恢复。
+  - 下一轮继续追 under-covered UI/rendering、Python WASM adapter edge case、content schema 或 generated-report gate 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 047 - Flow Smoke Failed Request Evidence Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、Batch 043-046 报告、DeckRogue 记忆和上一轮 handoff，确认从 Batch 046 的 shadow commit `7d29dfd` 继续，避免重复空跑。
+  - Generated-report gate：`checkFlowReport()` 修复前只检查 `consoleErrors`、`pageErrors`、截图 freshness 和流程谓词，canonical flow smoke report 没有 `failedRequests` 字段，也没有监听 Playwright `requestfailed`。
+  - 红灯复现：新增 `release readiness rejects flow smoke reports with failed network requests` 后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，失败为 failed request fixture 仍被判成 `pass`，证明静态资源/网络请求失败可让 flow smoke 假绿。
+- 修复内容：
+  - **FLOW-SMOKE-FAILED-REQUEST-GATE-001：已修。**
+    - `scripts\validation\flow_smoke_helpers.ts` 新增 `createFlowSmokeErrorCollector(page)`，统一采集 `consoleErrors`、`pageErrors` 和 Playwright `requestfailed` 的 `failedRequests`。
+    - `scripts\validation\check_release_readiness.ts` 扩展 flow report contract，要求 `failedRequests` 字段存在且为空；缺失或非空都会让 release readiness 对应 flow check 失败。
+    - 9 个 canonical flow smoke 脚本接入共享 collector 并在 report 中写入 `failedRequests`：reward、terminal、shop、event、rest、upgrade、remove-card、boss-phase、boss-terminal。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增 failed network request fixture，锁定旧报告不能再假绿。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增 fixture 失败于 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`10/10` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - 真实 flow smoke 全部 fresh 运行通过：`npm run test:reward-flow-smoke --silent`、`test:terminal-flow-smoke`、`test:shop-flow-smoke`、`test:event-flow-smoke`、`test:rest-flow-smoke`、`test:upgrade-flow-smoke`、`test:remove-card-flow-smoke`、`test:boss-phase-flow-smoke`、`test:boss-terminal-flow-smoke` 均 exit `0`。
+  - 生成报告复查：`reports\flows\*-flow-smoke.json` 共 9 份，`failedRequests=0`、`consoleErrors=0`、`pageErrors=0`；除 terminal flow 用 `cases=2` 外，其余 smoke 均有 fresh screenshot evidence。
+- 状态：
+  - Flow smoke 与 release readiness 现在会把 failed network/static asset request 作为一等失败信号，不再只看页面错误和流程文本。
+  - 原始 `.git` 当前仍有写权限阻塞；Batch 046 已写入 shadow commit `7d29dfd`，Batch 047 将继续使用 `.omx\git-shadow` 记录，远端推送仍需等 SSH/权限恢复后再验证。
+  - 下一轮继续追 under-covered UI/rendering、runtimeV2/Python WASM adapter edge case、content schema 或 desktop packaging 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 048 - RuntimeV2 Python WASM Special Resources - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、Batch 046-047 报告和 DeckRogue 记忆，再按已排队的 Python WASM rest skip 线索复核 `npm run test:runtime-v2:ts --silent`；当前输出为 `122/122` pass、`skipped=0`，说明该 skip 已不是活跃缺陷。
+  - 继续沿 runtimeV2 / Python WASM adaptation 查相邻边界时发现：Python rules-core 会在 player 顶层输出 `time_layer`、`thread`、`concoction`，旧战斗状态也在 `combat.player` 持有这些角色特殊资源，但 `RuleSnapshot.player`、`normalizePythonSnapshot()`、`normalizeLegacyGameState()` 和 `createRenderModel()` 都未保留它们。
+  - 红灯复现：新增 `normalizePythonSnapshot preserves Python special resource fields` 后，修复前 `npx tsx --test tests/unit/pythonInterop.test.ts` exit `1`，失败为 `undefined !== 3`；新增 `createRenderModel preserves special route resources on runtime player state` 后，修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，同样失败为 `undefined !== 3`。
+- 修复内容：
+  - **RUNTIMEV2-SPECIAL-RESOURCE-PROJECTION-001：已修。**
+    - `src\runtimeV2\contracts.ts` 将 `timeLayer`、`thread`、`concoction` 和 `secondaryResources` 纳入 runtimeV2 `RuleSnapshot.player` / `RenderModel.player` contract。
+    - `src\runtimeV2\pythonInterop.ts` 规范化 Python `time_layer`、`thread`、`concoction` 为非负整数，保留到 WASM/Process snapshot。
+    - `src\runtimeV2\normalizeLegacyGameState.ts` 从 legacy `combat.player` 投影特殊资源，保持 legacy oracle 与 Python WASM render path 一致。
+    - `src\runtimeV2\renderModel.ts` 透传 `secondaryResources` 与三类特殊资源，避免 Chronomancer/Puppeteer/Alchemist 的资源在 runtimeV2 UI 模型中静默归零。
+    - `tests\unit\pythonInterop.test.ts` 与 `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 新增 focused 回归，覆盖 Python snapshot、手写 runtime snapshot 和 legacy combat projection。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/pythonInterop.test.ts` exit `1`，`undefined !== 3`；修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，`undefined !== 3`。
+  - `npx tsx --test tests/unit/pythonInterop.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`17/17` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`125/125` pass、`skipped=0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Python WASM rest skip 当前确认已关闭；本轮修复的是相邻 runtimeV2/Python WASM 资源投影缺陷。
+  - Chronomancer/Puppeteer/Alchemist 的 `timeLayer`、`thread`、`concoction` 现在能从 Python/legacy snapshot 进入 runtimeV2 render model，不再在 UI/adapter 边界静默丢失。
+  - 原始 `.git` 和远端推送仍受本机权限/SSH 443 阻塞影响；本轮继续用 `.omx\git-shadow` 记录可验证提交。
+  - 下一轮继续追 UI/rendering、content schema、desktop packaging 或 Python WASM surface parity 的下一处可复现 P1/P2 缺陷。
+
+## DeckRogue Fix Batch 049 - Python Process Request Id Isolation - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、shadow git 状态、最近 Batch 046-048 报告和 DeckRogue 记忆，确认 Batch 048 已在 shadow commit `07a62ea` 结束，避免继续追已关闭的 Python WASM rest skip。
+  - runtimeV2 / Python process adapter 协议边界仍有新缺口：`PythonProcessAdapter.sendRequest()` 总是写入 `request_id`，但 stdout 响应解析时遇到缺失 `request_id` / `requestId` 的 JSON 行会默认匹配 pending 队首。
+  - 红灯复现：新增 `PythonProcessAdapter ignores missing request id responses without resolving the head pending request` 后，修复前 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` exit `1`，失败为 `99 !== 7`，证明无 id 响应会把队首 pending 错误 resolve 成错误 snapshot。
+- 修复内容：
+  - **PYTHON-PROCESS-MISSING-REQUEST-ID-001：已修。**
+    - `src\runtimeV2\node\pythonProcessAdapter.ts` 要求响应必须携带字符串 `requestId` 或 `request_id` 才能匹配 pending 请求；缺失 id 的响应会被忽略，继续等待真实 request id 响应。
+    - `tests\unit\runtimeV2Parity.test.ts` 新增 fake process 回归，先写入无 id `seed=99` 响应，再写入正确 `request_id` 的 `seed=7` 响应，锁定 adapter 不再污染队首 pending。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` exit `1`，新增测试失败于 `99 !== 7`。
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`31/31` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`126/126` pass、`skipped=0`。
+  - `npm run test:python-runtime --silent`：exit `0`，`Ran 10 tests` / `OK`。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent`：exit `0`，`passCount: 19/19`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Python process adapter 的新版 request-id 协议现在不会被无 id 响应污染 pending 队列；out-of-order 和 unknown-id 既有回归仍保持通过。
+  - 本轮改动范围只涉及 `src\runtimeV2\node\pythonProcessAdapter.ts` 与 `tests\unit\runtimeV2Parity.test.ts`，报告已记录到本节。
+  - 下一轮建议继续追 UI/rendering 的 runtimeV2-only map surface、content schema gate 或 desktop packaging 生成报告缺口。
+
+## DeckRogue Fix Batch 050 - RuntimeV2 MapView Render Source - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、shadow git 状态、最近 Batch 046-049 报告和 DeckRogue 记忆，确认 Batch 049 已在 shadow commit `43fd319` 结束，继续追 UI/rendering 的 runtimeV2-only map surface。
+  - `AppShell` 已把 `renderModel` 传入 `MapView`，`createRenderModel()` 也会投影 runtimeV2/Python snapshot 的 `map.nodes` 与 `availableNodeIds`，但 `MapView` 仍以 `engine.state.map` 作为渲染、路线 dossier 和 HUD 统计的数据源。
+  - 红灯复现：新增 `MapView renders runtime-v2 map nodes when legacy map state is empty` 后，修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx` exit `1`，失败为找不到 `data-node-id="runtime-combat-1"`，HTML 同时出现 `0 / -Infinity`，证明 runtimeV2-only 地图节点不会显示且空 legacy map 产生非法进度文本。
+- 修复内容：
+  - **UI-RUNTIMEV2-MAPVIEW-RENDERMODEL-NODES-001：已修。**
+    - `src\ui\views\MapView.tsx` 将地图数据源改为 `renderModel.map.nodes` 优先、legacy `engine.state.map` fallback，使 runtimeV2/Python map 节点能进入节点按钮、连线、路线 dossier、HUD 和键盘选项。
+    - `src\ui\views\MapView.tsx` 对空地图使用 `maxFloorIndex=0`，避免 `Math.max(...[])` 产生 `-Infinity`。
+    - `tests\unit\mapViewRenderModel.test.tsx` 新增 SSR 回归，锁定 legacy map 为空时 runtimeV2-only 节点仍渲染、可选键位为 `1`，且 HTML 不包含 `Infinity` / `NaN`。
+    - `package.json` 将该回归加入 `npm run test:supplemental-units`，避免后续 UI 补充测试漏跑。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx` exit `1`，找不到 `data-node-id="runtime-combat-1"`，并输出 `0 / -Infinity`。
+  - `npx tsx --test tests/unit/mapViewRenderModel.test.tsx`：exit `0`，`1/1` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`218/218` pass，包含新 MapView 回归。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`126/126` pass、`skipped=0`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - MapView 现在可以在 legacy map 为空或 stale 时渲染 runtimeV2/Python snapshot 的地图节点，不再显示空白地图或 `-Infinity` 进度。
+  - 本轮改动范围为 `src\ui\views\MapView.tsx`、`tests\unit\mapViewRenderModel.test.tsx`、`package.json` 和本报告。
+  - 下一轮建议继续追 content schema gate、desktop packaging generated-report，或 UI/rendering 的其他 runtimeV2-only surface。
+
+## DeckRogue Fix Batch 051 - RuntimeV2 MapView Pending and Player Summary - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、shadow git 状态、Batch 050 报告和 DeckRogue 记忆，确认上一轮 MapView 节点来源修复已进入 shadow commit `074e508`，从新的 UI/rendering 边界继续。
+  - 继续审计 `MapView` 后发现：地图节点和 `availableNodeIds` 已优先来自 `renderModel`，但 `pendingNodeResolution`、生命值、侦察值、遗物数量和牌库数量仍直接读取 stale legacy `engine.state`。
+  - 红灯复现：新增 `MapView trusts runtime-v2 map pending state and player summary over stale legacy state` 后，修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx` exit `1`；失败为缺少 `data-keyboard-option="1"`，HTML 同时显示 legacy `1/99`、侦察 `0`、遗物 `1`、牌库 `1` 和 `巡逻结算中`。
+- 修复内容：
+  - **UI-RUNTIMEV2-MAPVIEW-STALE-LEGACY-SUMMARY-001：已修。**
+    - `src\ui\views\MapView.tsx` 新增 `pendingNodeResolution` 的 renderModel 优先来源，避免 runtimeV2 已可选节点被 stale legacy pending 状态禁用。
+    - `src\ui\views\MapView.tsx` 将地图 HUD 的 HP、intel、relicCount、deckCount 改为 `renderModel.player` 优先、legacy fallback，使 runtimeV2/Python map screen 不再显示旧摘要。
+    - `tests\unit\mapViewRenderModel.test.tsx` 新增 SSR 回归，构造 stale legacy pending/player 与 fresh runtime renderModel 冲突，锁定可选键位和资源摘要均以 runtimeV2 为准。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx` exit `1`，新增测试失败于缺少 `data-keyboard-option="1"`，并暴露 legacy `1/99`、侦察 `0`、`巡逻结算中`。
+  - `npx tsx --test tests/unit/mapViewRenderModel.test.tsx`：exit `0`，`2/2` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`219/219` pass，包含新 MapView stale legacy 回归。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`126/126` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2/Python map screen 现在不再被 stale legacy pending/player summary 覆盖；节点可选性和地图 HUD 摘要与 renderModel 保持一致。
+  - 本轮改动范围为 `src\ui\views\MapView.tsx`、`tests\unit\mapViewRenderModel.test.tsx` 和本报告。
+  - 下一轮建议继续追 content schema gate、desktop packaging generated-report，或 Shop/Rest/Event 等 runtimeV2-only surface 的 stale legacy summary。
+
+## DeckRogue Fix Batch 052 - RuntimeV2 RewardView Render Cards - 2026-05-25
+
+- 发现证据：
+  - 本轮先读当前 `git status`、shadow git 状态、Batch 050-051 报告和 DeckRogue 记忆，确认 Batch 051 已在 shadow commit `1534988` 结束，继续追 runtimeV2-only UI surface。
+  - `RewardView` 已用 `renderModel.reward.offerCount` 显示奖励数量，但实际 draft cards 仍固定来自 legacy `engine.state.rewardCards.slice(0, 3)`；runtimeV2/Python snapshot 只通过 `renderModel.reward.cards` 提供奖励卡时，页面会显示“可选印痕 1”，但卡牌区为空。
+  - delegated reward 选择也有同源缺口：`GameEngine.takeReward()` 只从 legacy `rewardCards` 将 `cardInstanceId` 转成 `cardId`；legacy 为空时 runtime-only reward card id 会变成 `undefined`，委托运行时只能默认拿第一张。
+  - 红灯复现：
+    - 新增 `RewardView renders runtime-v2 reward cards when legacy reward cards are empty` 后，修复前 `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx` exit `1`，HTML 有 `可选印痕 1`，但没有 `Runtime Precision Strike`。
+    - 新增 `GameEngine.takeReward forwards runtime-v2 reward card ids when legacy reward cards are empty` 后，修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，delegate 收到 `[undefined]` 而不是 `['runtime_precision_strike']`。
+- 修复内容：
+  - **UI-RUNTIMEV2-REWARDVIEW-RENDERMODEL-CARDS-001：已修。**
+    - `src\ui\views\RewardView.tsx` 将 `renderModel.reward.cards` 投影为最小可显示的 `RunCardInstance` 形状，并在 legacy `rewardCards` 为空时用于 draft card 渲染。
+    - `src\ui\views\RewardView.tsx` 在卡牌根节点写入 `data-reward-card-id`，并继续保留数字快捷键。
+    - `src\core\events\gameEngine.ts` 在 delegated `takeReward()` 路径中，当 legacy `rewardCards` 为空时把传入 token 当作 runtime card id 交给 runtime delegate，保留 legacy instanceId 优先路径。
+    - 新增 `tests\unit\rewardViewRenderModel.test.tsx`，并加入 `npm run test:supplemental-units`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx` exit `1`，找不到 `Runtime Precision Strike`；修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，`actual [undefined]` vs expected `['runtime_precision_strike']`。
+  - `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx`：exit `0`，`1/1` pass。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`20/20` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`220/220` pass，包含新 RewardView runtime card 回归。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`127/127` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2/Python reward screen 现在可以在 legacy rewardCards 为空时显示并选择 renderModel 中的奖励卡，不再出现“计数存在但卡牌区空白”或委托默认选第一张的问题。
+  - 本轮改动范围为 `src\ui\views\RewardView.tsx`、`src\core\events\gameEngine.ts`、`tests\unit\rewardViewRenderModel.test.tsx`、`tests\unit\gameEngineRuntimeDelegation.test.ts`、`package.json` 和本报告。
+  - 下一轮建议继续追 ShopView 的 renderModel-only offer 渲染/购买路径，或 desktop packaging generated-report gate。
+
+## DeckRogue Fix Batch 053 - RuntimeV2 ShopView Render and Buy Offers - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、最近 Batch 052 报告和 DeckRogue 记忆，确认 Batch 052 已在 shadow commit `711c7da` 结束，继续追 ShopView 的 runtimeV2-only offer 渲染/购买路径，避免重复空跑。
+  - `ShopView` 的商品卡、遗物、药剂实际渲染仍固定来自 legacy `engine.state.shopCards/shopRelics/shopPotions`；当 runtimeV2/Python snapshot 只通过 `renderModel.room.cards/relics/potions` 提供商店库存时，UI 会显示空库存而不是可买商品。
+  - runtime-only 购买同源缺口：`GameEngine.buyShopCard()`、`buyShopRelic()`、`buyShopPotion()` 在 legacy 库存为空时直接返回或走 legacy lookup，无法把 runtime offer id 委托给 runtimeV2。
+  - 红灯复现：新增 `ShopView renders runtime-v2 shop offers when legacy shop stock is empty` 后，修复前 `npx tsx --test tests/unit/shopViewRenderModel.test.tsx` exit `1`，HTML 找不到 `Runtime Shop Strike`，并出现“库存售罄”。
+- 修复内容：
+  - **UI-RUNTIMEV2-SHOPVIEW-RENDERMODEL-OFFERS-001：已修。**
+    - `src\ui\views\ShopView.tsx` 在 legacy shop stock 为空时从 `renderModel.room.cards/relics/potions` 投影最小可显示的 card/relic/potion offer，并继续保留 legacy stock 优先。
+    - `src\ui\views\ShopView.tsx` 将 runtime card removal cost、商品 keyboard option 和 `data-shop-card-id` / `data-shop-relic-id` / `data-shop-potion-id` 标记接入 renderModel offer，避免 runtime-only 商店被显示为空库存。
+    - `src\core\events\runtimeDelegation.ts` 为 `GameEngineRuntimeDelegate` 和 `SyncBootAndMapRuntimeDelegate` 增加 `buyShopCard`、`buyShopRelic`、`buyShopPotion`，在 runtime snapshot 中扣费、移除 offer，并更新 deck/relic/potion inventory。
+    - `src\core\events\gameEngine.ts` 在 legacy shop stock 为空且 runtime delegate 可用时，把 runtime-only card/relic/potion offer id 委托给 runtimeV2，并通过 `applyDelegatedRoomSnapshot()` 投影回 legacy UI state。
+    - 新增 `tests\unit\shopViewRenderModel.test.tsx` 并加入 `npm run test:supplemental-units`；`tests\unit\gameEngineRuntimeDelegation.test.ts` 新增 runtime-only 商店购买回归。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/shopViewRenderModel.test.tsx`：exit `0`，`1/1` pass。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`21/21` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`221/221` pass，新增 ShopView 回归为 subtest 166。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`128/128` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2/Python shop screen 现在可以在 legacy shop stock 为空时显示并购买 renderModel 中的 card/relic/potion offer，不再出现“库存售罄但 runtime 有库存”或点击购买无效的问题。
+  - 本轮改动范围为 `src\ui\views\ShopView.tsx`、`src\core\events\gameEngine.ts`、`src\core\events\runtimeDelegation.ts`、`tests\unit\shopViewRenderModel.test.tsx`、`tests\unit\gameEngineRuntimeDelegation.test.ts`、`package.json` 和本报告。
+  - 下一轮建议继续追 desktop packaging generated-report gate，或 UI/rendering 的 Event/Rest runtimeV2-only stale legacy surface。
+
+## DeckRogue Fix Batch 054 - RuntimeV2 EventView Render and Choice Projection - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、最近 Batch 053 报告和当前 worktree，确认上一轮 ShopView 修复已在 shadow commit `7c516c1`，继续追 UI/rendering 的 Event runtimeV2-only surface。
+  - `createRenderModel()` 已能把 runtimeV2/Python `activeEvent` 投影为 `renderModel.room.kind === 'event'`，但 `AppShell` 未向 `EventView` 传 `renderModel`，且 `EventView` 只看 legacy `engine.state.activeEvent`。
+  - `GameEngine.resolveEventChoice()` 会调用 runtime delegate 的 `chooseEventOption()`，但旧逻辑丢弃返回 snapshot，并继续走 legacy event manager；当 legacy `activeEvent` 为空时，runtime-only event choice 不会回投到 legacy UI state。
+  - 红灯复现：
+    - 新增 `EventView renders runtime-v2 event choices when legacy activeEvent is empty` 后，修复前 `npx tsx --test tests/unit/eventViewRenderModel.test.tsx` exit `1`，HTML 只显示“无事件记录”，找不到 `Runtime Signal Shrine`。
+    - 新增 AppShell contract 后，修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts` exit `1`，`EventView` 未收到 `renderModel`。
+    - 新增 runtime-only event choice 回归后，修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，`engine.state.screen` 仍为 `Event` 而不是 delegated snapshot 的 `Map`。
+- 修复内容：
+  - **UI-RUNTIMEV2-EVENTVIEW-RENDERMODEL-CHOICES-001：已修。**
+    - `src\ui\views\AppShell.tsx` 将 `renderModel` 传入 `EventView`，与 Reward/Shop/Rest/Upgrade 等 runtimeV2 room surface 保持一致。
+    - `src\ui\views\EventView.tsx` 增加 `RuntimeEventPanel`，在 legacy `activeEvent` 为空但 `renderModel.room.kind === 'event'` 时渲染 runtime title/body/guidance/choices，并为选项写入 `data-event-choice-id` 与 keyboard option。
+    - `src\core\events\gameEngine.ts` 在 delegated `resolveEventChoice()` 路径中，当 legacy `activeEvent` 为空时使用 delegate 返回 snapshot 通过 `applyDelegatedRoomSnapshot()` 回投，避免 runtime-only event choice 卡在旧 UI 状态。
+    - 新增 `tests\unit\eventViewRenderModel.test.tsx` 并加入 `npm run test:supplemental-units`；`tests\unit\appShellUiContracts.test.ts` 和 `tests\unit\gameEngineRuntimeDelegation.test.ts` 增加 focused 回归。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/eventViewRenderModel.test.tsx` exit `1`，只显示“无事件记录”；修复前 `npx tsx --test tests/unit/appShellUiContracts.test.ts` exit `1`，EventView 未传 renderModel；修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，`Event !== Map`。
+  - `npx tsx --test tests/unit/eventViewRenderModel.test.tsx`：exit `0`，`1/1` pass。
+  - `npx tsx --test tests/unit/appShellUiContracts.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`22/22` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`129/129` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`223/223` pass，新增 EventView 回归为 subtest 85。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2/Python event screen 现在可以在 legacy `activeEvent` 为空时显示 runtime event body、guidance 和 choices；runtime-only event choice 也能把 delegated snapshot 回投到 legacy UI state。
+  - 本轮改动范围为 `src\ui\views\EventView.tsx`、`src\ui\views\AppShell.tsx`、`src\core\events\gameEngine.ts`、`tests\unit\eventViewRenderModel.test.tsx`、`tests\unit\appShellUiContracts.test.ts`、`tests\unit\gameEngineRuntimeDelegation.test.ts`、`package.json` 和本报告。
+  - 下一轮建议继续追 RestView 的 runtime-only potion mix command 回投，或 desktop packaging generated-report gate。
+
+## DeckRogue Fix Batch 055 - RuntimeV2 Rest Potion Mix Delegation - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、最近 Batch 054 报告和当前 worktree，确认上一轮 EventView 修复已在 shadow commit `d3f5714`，继续追 RestView 的 runtime-only potion mix command 回投。
+  - `RestView` 已能从 `renderModel.room.potions` 显示 runtimeV2/Python rest potion choices，但 `GameEngine.mixPotions()` 只读取 legacy `state.player.potions`；legacy potion inventory 为空时直接返回 `false`，不会委托 runtimeV2，也不会把 rest room snapshot 回投。
+  - 红灯复现：新增 `GameEngine.mixPotions delegates runtime-v2 potion indexes when legacy potion inventory is empty` 后，修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，失败为 `false !== true`。
+- 修复内容：
+  - **RUNTIMEV2-REST-POTION-MIX-DELEGATION-001：已修。**
+    - `src\core\events\runtimeDelegation.ts` 为 `GameEngineRuntimeDelegate` 和 `SyncBootAndMapRuntimeDelegate` 增加 `mixPotions(indexA, indexB)`，仅在 rest phase 接受不同有效 slot，消耗两个 runtime potion，添加 `mutagenic_draft`，并通过 `returnToMapSnapshot()` 返回地图。
+    - `src\core\events\gameEngine.ts` 在 legacy potion slots 缺失、当前 screen 为 `Rest`、legacy potion inventory 为空且 runtime delegation 可用时，委托 `mixPotions()`，记录 `lastDelegatedCommand = 'mix_potions'`，并用 delegated snapshot 回投 legacy UI state。
+    - `tests\unit\gameEngineRuntimeDelegation.test.ts` 新增 GameEngine 层回归，锁定 runtime-only potion indexes 可以被委托并回投到 Map。
+    - `tests\unit\runtimeDelegationRoomExit.test.ts` 新增 Sync delegate 回归，锁定 runtime rest potion mix 会消耗 potion、添加混合产物并返回 map。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，新增测试失败为 `false !== true`。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`23/23` pass。
+  - `npx tsx --test tests/unit/runtimeDelegationRoomExit.test.ts`：exit `0`，`5/5` pass。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`131/131` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`223/223` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2/Python rest screen 现在可以在 legacy potion inventory 为空时执行 potion mix command，不再出现 UI 显示 potion 但命令返回 `false` 的卡住路径。
+  - 本轮改动范围为 `src\core\events\gameEngine.ts`、`src\core\events\runtimeDelegation.ts`、`tests\unit\gameEngineRuntimeDelegation.test.ts`、`tests\unit\runtimeDelegationRoomExit.test.ts` 和本报告。
+  - 下一轮建议继续追 desktop packaging generated-report gate，或继续补 Rest/room runtime command parity 与 Python WASM adapter parity。
+
+## DeckRogue Fix Batch 056 - Report Bundle Release Failure Evidence - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态、Batch 052-055 报告和当前验证脚本，确认上一轮 shadow commit `19ca177` 后继续追 generated-report gate。
+  - `npm run check:release-readiness --silent` fresh 运行 exit `1`，生成 `reports/release/release-readiness.json`，输出 `pass=27 warn=0 fail=16`；失败项包含 `desktop_build_report`、`desktop_smoke_report`、`win_dist_report`、`github_transport`、`doctor_report`、`security_report` 等。
+  - 旧 `npm run report:bundle --silent` 会读到 release readiness `fail=16`，但总览只写“warning 证据为：`none`”，Release Readiness 段只列 pass/warn/fail 数量，不列任何 failing check id/evidence，导致 generated bundle 在失败态下缺少可执行修复入口。
+  - 红灯复现：新增 `report bundle surfaces release readiness failed checks` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，失败为找不到 `失败项`，输出文本里只有 `overallStatus = fail` 和 `唯一 warning：none`。
+- 修复内容：
+  - **REPORT-BUNDLE-RELEASE-FAILURE-EVIDENCE-001：已修。**
+    - `scripts\validation\generate_report_bundle.ts` 新增 release readiness attention evidence：失败态优先显示第一条 failing check 的 `id: evidence`，无失败时才回退 warning evidence。
+    - `scripts\validation\generate_report_bundle.ts` 在 Release Readiness 段列出前 6 个失败项及证据，并在失败项超过摘要上限时提示剩余数量与原始 JSON。
+    - `scripts\validation\generate_report_bundle.ts` 在“当前最需要继续跟进的点”列出前 3 个 release readiness 失败项，并在最新文件表中显示 `fail with N fail / M warn`。
+    - `tests\unit\validationScripts.test.ts` 新增真实脚本执行回归，使用临时工作区 failing `release-readiness.json` 验证 bundle 必须包含 `失败项`、`desktop_build_report` 和失败证据。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增测试失败于缺少 `失败项`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`23/23` pass。
+  - `npm run report:bundle --silent`：exit `0`，输出 `[report-bundle] wrote docs/reports/report_bundle.md`。
+  - 读回 `docs\reports\report_bundle.md`：已包含 `desktop_build_report: desktop build report is stale...`，Release Readiness 段列出 6 个失败项，并提示另有 `10` 个失败项详见原始 JSON；最新文件表显示 `fail with 16 fail / 0 warn`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`223/223` pass。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Report bundle 现在不会在 release readiness 失败时只给 `warning none`；生成报告会保留首批失败项和证据，便于下一轮直接追 desktop build/smoke/dist freshness 或 GitHub transport。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议根据 bundle 的失败项优先追 `desktop_build_report` / `desktop_smoke_report` / `win_dist_report` freshness，或继续追 Python WASM adapter parity。
+
+## DeckRogue Fix Batch 057 - Desktop Smoke GPU Sandbox and Stale Lock Recovery - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态、Batch 056 报告和 DeckRogue 记忆，确认上一轮 shadow commit `2072cfc` 后继续追 desktop packaging/generated-report gate。
+  - `npm run build:desktop --silent` fresh 运行 exit `0`，让 release-readiness 从 `pass=27 warn=0 fail=16` 推进到 `pass=28 warn=0 fail=15`，但 `desktop_smoke_report` 仍失败。
+  - `npm run test:desktop-smoke --silent` 先失败为 `page.waitForLoadState: Navigation failed because page crashed!`；临时 Electron 诊断输出多次 `GPU process exited unexpectedly: exit_code=-1073741515` 和 `GPU process isn't usable. Goodbye.`。
+  - 后续发现 `reports\desktop\desktop-smoke-production.lock` 留有不存在的 PID `39044`，再次运行 smoke 会卡在 `Timed out waiting for production desktop smoke lock`，说明旧锁会阻断后续修复验证。
+  - 修复过程中真实 smoke 又暴露两个可复现缺口：`electronApplication.evaluate` 在 `tsx` 转译后把 `__name` helper 注入 Electron 主进程导致 `ReferenceError: __name is not defined`；最小 Electron 探针证明当前 Windows 环境下 renderer sandbox 会 `launch-failed`、`exitCode=49`，而 smoke harness 加 `--no-sandbox` 可加载同类 data/file 页面。
+- 修复内容：
+  - **DESKTOP-SMOKE-GPU-SANDBOX-LOCK-001：已修。**
+    - `electron\main.mjs` 在 `DECKROGUE_DESKTOP_SMOKE=1` 或 `DECKROGUE_DISABLE_HARDWARE_ACCELERATION=1` 时禁用硬件加速，并追加 `disable-gpu`、`disable-gpu-sandbox`、`disable-gpu-compositing`，仅用于 smoke/显式软件渲染环境。
+    - `scripts\validation\playwright_electron_smoke.ts` 为 production smoke lock 增加 stale PID 清理；旧锁里的 PID 不存在或 lock JSON 无效时会删除锁并重试，避免后续 runs 被历史失败卡住。
+    - `scripts\validation\playwright_electron_smoke.ts` 记录 renderer/GPU crash 证据，监听 `page.on('crash')`、主进程 `render-process-gone` / `child-process-gone`、Electron stdout/stderr，并把证据写入 `rendererCrashes`，失败报告不再只留下空步骤。
+    - `scripts\validation\playwright_electron_smoke.ts` 将 Electron 主进程 evaluate 改为 `new Function('electronModules', ...)`，避免 `tsx` 的 `__name` helper 被序列化到 Electron 主进程。
+    - `scripts\validation\playwright_electron_smoke.ts` 在 smoke harness 启动参数中加入 `--no-sandbox`、`--disable-gpu`、`--disable-gpu-sandbox`、`--disable-gpu-compositing`；产品窗口仍保留 `webPreferences.sandbox: true`。
+    - `tests\unit\validationScripts.test.ts` 扩展 `desktop smoke isolates production runs` 静态回归，锁定 stale lock 清理、crash diagnostics、GPU/software-rendering flags、`--no-sandbox` harness 和 no-arrow `app.evaluate()` 注入约束。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增断言先失败于缺少 `rendererCrashes`，后失败于缺少 stale lock 清理；修复后该 focused suite 多次转绿。
+  - 红灯复现：修复前 `npm run test:desktop-smoke --silent` exit `1`，先为 GPU process crash/page crash，后为 stale production lock timeout；中间修复暴露并解决 `ReferenceError: __name is not defined`。
+  - 根因探针：最小 Electron 窗口在无 `--no-sandbox` 时记录 `render-gone {"reason":"launch-failed","exitCode":49}`，同等参数加 `--no-sandbox` 后可加载 `data:text/html` 和 `file://.../dist/index.html?legacy=1`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`23/23` pass。
+  - `npm run test:desktop-smoke --silent`：exit `0`；脚本内 fresh `build:desktop` 成功，Vite build succeeded，`2267` modules transformed。
+  - 读回 `reports\desktop\desktop-smoke.json`：`overallStatus=pass`、`closeStatus=pass`、`steps.length=5`、`screenshots.length=5`、`rendererCrashes=0`、`consoleErrors=0`、`pageErrors=0`、`failedRequests=0`；步骤为 launcher/tutorial/character_select/map/combat，production lock 已释放。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=29 warn=0 fail=14`；`desktop_smoke_report` 已从失败项出列，剩余失败为 `win_dist_report`、`github_transport`、`doctor_report`、`security_report`、`ui_smoke_expansion_report` 和多个 stale flow smoke reports。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`223/223` pass。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Desktop production smoke 现在能在当前 Windows/Electron 环境中完成 launcher、tutorial、character select、map、combat 冒烟流程，并把 renderer/GPU crash 写入报告 gate。
+  - 本轮改动范围为 `electron\main.mjs`、`scripts\validation\playwright_electron_smoke.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 `win_dist_report` freshness，或运行 doctor/security/UI/flow smoke 报告刷新链以继续降低 release-readiness fail 数。
+
+## DeckRogue Fix Batch 058 - Windows Distribution Pyodide Asset Staging - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态、Batch 057 报告、`reports\release\release-readiness.json`、`reports\desktop\desktop-build.json` 和 `reports\desktop\win-dist.json`，确认上一轮 shadow commit `8ca1cdd` 后继续追 Windows distribution/Python WASM packaging gate。
+  - 旧 `npm run dist:win -- --skip-build` 能在复用已有 `dist` 时生成 `overallStatus=pass` 的 `reports\desktop\win-dist.json` 和 `release\win\DeckRogue-0.0.0-x64.exe`，但报告 evidence 只有 `desktop build reused` / `minimal desktop staging app prepared` / `exe artifacts produced`，没有确认 Pyodide runtime assets 在 staging 前存在。
+  - `npm run check:release-readiness --silent` 曾显示 `desktop_build_report` 因缺少 fresh bundled Pyodide assets 失败，而 `win_dist_report` 自身仍为 pass；这会让 Windows installer distribution report 对 Python WASM/Pyodide 缺失产生假阳性，风险等级为 P2。
+- 修复内容：
+  - **DESKTOP-WIN-DIST-PYODIDE-STAGING-001：已修。**
+    - `scripts\desktop\dist_win.ts` 在 `--skip-build` 复用 `dist\index.html` 后、`prepareStagingApp()` 前调用 `copyPyodideAssets()`，确保 Windows staging app 复制的是已补齐 Pyodide runtime assets 的 `dist`。
+    - `scripts\desktop\dist_win.ts` 将 `Pyodide assets staged before Windows distribution: <count>` 写入 `win-dist.json` evidence，让 distribution report 自身可证明 Python WASM 资产已参与打包输入。
+    - `tests\unit\desktopPyodideAssets.test.ts` 新增静态回归，锁定 `dist_win.ts` 必须在 `prepareStagingApp();` 之前调用 `copyPyodideAssets()`，并保留 distribution evidence 文案。
+- Fresh 验证输出：
+  - `npm run dist:win -- --skip-build`：exit `0`，electron-builder 成功生成 Windows NSIS installer 与 blockmap。
+  - 读回 `reports\desktop\win-dist.json`：`overallStatus=pass`，timestamp `2026-05-25T05:19:05.678Z`，evidence 包含 `Pyodide assets staged before Windows distribution: 5`，installer `DeckRogue-0.0.0-x64.exe` 大小 `603692218` bytes。
+  - 读回 `dist\pyodide` 和 `.desktop-build\win-app\dist\pyodide`：均存在 `pyodide.js`、`pyodide.asm.js`、`pyodide.asm.wasm`、`python_stdlib.zip`、`pyodide-lock.json` 共 5 个文件。
+  - `npx tsx --test tests/unit/desktopPyodideAssets.test.ts`：exit `0`，`2/2` pass。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`10/10` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`224/224` pass，包含新增 desktop Pyodide distribution 回归为 subtest 35。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+  - `npm run build:desktop --silent`：exit `0`，Vite build succeeded，`2267` modules transformed，并刷新 `desktop-build.json`，其中 `pyodideAssets` 为 5 个。
+  - `npm run test:desktop-smoke --silent`：exit `0`，脚本内 fresh desktop build succeeded；读回 `reports\desktop\desktop-smoke.json` 为 `overallStatus=pass`、`closeStatus=pass`、`steps.length=5`、`screenshots.length=5`、`rendererCrashes=0`、`consoleErrors=0`、`pageErrors=0`、`failedRequests=0`。
+  - `npm run check:release-readiness --silent`：exit `1`，但桌面相关三项均转绿；summary 从本轮中途 `pass=29 warn=0 fail=14` 推进到 `pass=30 warn=0 fail=13`。剩余失败为 `github_transport`、`doctor_report`、`security_report`、`ui_smoke_expansion_report` 和 9 个 stale flow smoke reports。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Windows distribution skip-build 路径现在会在 staging 前补齐 Pyodide/Python WASM runtime assets，`win-dist.json` 也能直接携带该证据，不再依赖 `desktop_build_report` 间接挡住缺资产 installer。
+  - 本轮改动范围为 `scripts\desktop\dist_win.ts`、`tests\unit\desktopPyodideAssets.test.ts` 和本报告。
+  - 下一轮建议继续追 `github_transport` 配置报告，或刷新 `doctor_report` / `security_report` / UI expansion 与 flow smoke stale gates 以继续降低 release-readiness fail 数。
+
+## DeckRogue Fix Batch 059 - GitHub Transport Environment Classification and SSH Config Attempt - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态和 Batch 058 报告，确认上一轮 shadow commit 后继续追 `github_transport` / `doctor_report` gate。
+  - `npm run test:runtime-v2:ts --silent` 已在本轮上下文确认 `131/131` pass、`skipped=0`，Python WASM rest test 不是合理环境 skip，已经是可执行 mock/adapter 回归。
+  - `npm run check:runtime-v2-adapter-differential-parity --silent` 已确认 `passCount: 19/19`。
+  - `npm run doctor:game --silent` 先停在 `Check GitHub Transport`，但旧分类把包含 `guide` 的 `check_github_transport` 输出误归为 `ui`；真实失败是本机/当前进程 SSH 环境。
+  - SSH 探测显示 `C:\Users\123\.ssh\config` 与 `id_ed25519_github` 已存在，且显式 `ssh -F C:\Users\123\.ssh\config -i C:\Users\123\.ssh\id_ed25519_github -G github.com` 能解析到 `HostName ssh.github.com`、`User git`、`Port 443`。
+  - 当前 Codex 进程的 OpenSSH 实际 profile 是 `C:\Users\CodexSandboxOffline`，默认 `ssh -G github.com` 仍解析为 `User codexsandboxoffline`、`HostName github.com`、`Port 22`；`$env:USERPROFILE` 对 Windows OpenSSH 默认 profile 选择没有生效。
+  - 真实网络/认证探测仍未通过：`ssh -F ... -i ... -T git@github.com` 与 `git -c core.sshCommand=... ls-remote origin HEAD` 均失败为 `ssh: connect to host ssh.github.com port 443: Permission denied`；`Test-NetConnection ssh.github.com -Port 443` 显示 `TcpTestSucceeded: False`；`gh auth status` 显示 token invalid。
+  - 尝试写入仓库本地 `core.sshCommand` 失败：`git config core.sshCommand ...` 返回 `could not lock config file .git/config: Permission denied`，因此没有强行手写 `.git\config`。
+- 修复内容：
+  - **DOCTOR-GITHUB-TRANSPORT-ENV-001：已修。**
+    - `scripts\doctor\gameDoctor.ts` 的 `failureType` 新增 `environment`。
+    - `classifyFailure()` 优先把 `Check GitHub Transport`、`check_github_transport`、`ssh.github.com`、`github.com resolves to` 归类为 `environment`。
+    - UI 分类从宽泛 `lower.includes('ui')` 收窄到 stage name、Playwright/smoke 证据或完整词 `\bui\b`，避免 `guide` 等普通单词误触发 UI 分类。
+    - `tests\unit\validationScripts.test.ts` 新增静态回归，锁定 GitHub transport 失败必须归类为 environment，并禁止恢复 `lower.includes('ui')`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增测试失败于缺少 `environment` 分类。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`24/24` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`224/224` pass。
+  - `npm run check:github-transport --silent`：exit `1`，仍报告默认 SSH 解析为 `github.com:22` / `User codexsandboxoffline` / no configured identity；这是当前进程 profile 与 network gate 未解决。
+  - `npm run doctor:game --silent`：exit `1`，但失败分类已修正为 `[environment]`，summary 为 `Passed: 26`、`Failed: 1`、`Failures by Category: environment: 1`。
+- 状态：
+  - Doctor 报告不再把 GitHub transport 环境问题误归为 UI 问题；后续 release-readiness/doctor gate 的失败方向现在可读。
+  - SSH 配置尝试未完全成功：`C:\Users\123` 下已有正确 config/key，但当前 Codex sandbox 的 OpenSSH profile、Git config 写权限、`gh` 登录状态和 TCP 443 连接共同阻止了端到端 `git ls-remote`。
+  - 下一轮建议在普通 PowerShell 用户环境中刷新 `gh auth login`，注册 `C:\Users\123\.ssh\id_ed25519_github.pub`，再运行 `ssh -T git@github.com`、`git ls-remote origin HEAD` 与 `npm run check:github-transport --silent`；若仍在 Codex sandbox 内运行，需要先解决 `C:\Users\CodexSandboxOffline` profile 或仓库 `.git\config` 写权限。
+
+## DeckRogue Fix Batch 060 - GitHub Transport Active OpenSSH Profile Diagnostics - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态、Batch 059 报告、`reports\release\release-readiness.json` 和 `reports\doctor\report.json`，确认继续追 generated-report / GitHub transport gate。
+  - 当前 release-readiness 仍为 `pass=28 warn=0 fail=15`，主要失败项是 stale desktop/flow/UI/security 报告和 `github_transport` / `doctor_report`；其中 `github_transport` 是当前可在仓库内继续改善的诊断 gate。
+  - Batch 059 探测已经证明 `C:\Users\123\.ssh\config` / `id_ed25519_github` 存在，但 OpenSSH 实际 profile 是 `C:\Users\CodexSandboxOffline`；旧 `check_github_transport.ts` 用 Node `os.homedir()` 展开 `~`，在 Windows sandbox/profile 不一致时会把 identity 证据映射到错误 home，导致诊断说明不够准。
+  - 新增动态回归先红：临时 fake `ssh -G` 输出 `userknownhostsfile <fixture>/openssh-home/.ssh/known_hosts` 和 `identityfile ~/.ssh/id_ed25519_github`，旧脚本无法按 active OpenSSH profile 找到 identity；测试迭代还暴露 `spawnSync` 对 `.cmd` shim 和启动失败输出不够健壮。
+- 修复内容：
+  - **GITHUB-TRANSPORT-OPENSSH-HOME-001：已修。**
+    - `scripts\validation\check_github_transport.ts` 不再直接用 Node `homedir()` 展开 `identityfile ~/.ssh/...`，而是优先从 `ssh -G` 的 `userknownhostsfile` 推断 active OpenSSH user home，再解析 identity 路径。
+    - `run()` 现在能处理 `spawnSync.error` 和空 stdout/stderr，不会在命令启动失败时崩溃。
+    - 诊断脚本支持 `DECKROGUE_GIT_COMMAND` / `DECKROGUE_SSH_COMMAND` 覆盖命令，便于 Windows `.cmd` shim 与动态回归测试；默认仍使用系统 `git` / `ssh`。
+    - `tests\unit\validationScripts.test.ts` 新增动态回归，使用临时 `git.cmd` / `ssh.cmd` 证明 `~/.ssh/id_ed25519_github` 会按 active OpenSSH profile 解析。
+- Fresh 验证输出：
+  - 红灯复现：新增动态测试最初失败，旧脚本没有命中 fake `ssh -G` active profile；迭代中还暴露 `.cmd` shim `spawnSync ... EINVAL` 与命令错误时 stdout 未定义崩溃。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`25/25` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`224/224` pass。
+  - `npm run check:github-transport --silent`：exit `1`，真实环境仍失败，但 identity 证据现在明确指向 active profile `C:\Users\CodexSandboxOffline\.ssh\...`，不再混淆为 `C:\Users\123`。
+  - `npm run doctor:game --silent`：exit `1`，仍停在 `Check GitHub Transport`，分类为 `[environment]`，summary `Passed: 26`、`Failed: 1`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅有 Windows CRLF touch warning。
+- 状态：
+  - GitHub transport gate 仍未端到端通过，外部阻塞仍是当前 Codex sandbox 的 OpenSSH profile/network/GH token；但诊断脚本现在能准确解释 active OpenSSH profile 和 identity 解析路径，避免下一轮误追 `C:\Users\123` 已存在的 key。
+  - 本轮改动范围为 `scripts\validation\check_github_transport.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议转向刷新 stale UI/flow/security gates，或在普通用户 PowerShell 完成 GitHub key 注册后再跑 `npm run check:github-transport --silent`。
+
+## DeckRogue Fix Batch 061 - Security Report Baseline Key Compatibility - 2026-05-25
+
+- 发现证据：
+  - 本轮先读 shadow git 状态、普通 worktree 状态、Batch 060 报告、`reports\release\release-readiness.json` 和 `reports\security\security-report.json`，确认继续追 release/security generated-report gate。
+  - `npm run report:security --silent` 在修复前 exit `0`，但输出的建议只有“定期运行安全扫描”和“PR 审查”，没有根据 `arrayBoundsRisk: 78` 给出“优先处理核心模块的数组越界问题”。
+  - `reports\vulnerability\vulnerability-scan.json` 的 `baseline` 使用 camelCase：`unprotectedJsonParse`、`arrayBoundsRisk`、`nullableAccessRisk`、`unexpectedDebugCode`；而 `scripts\validation\security_report.ts` 的 findings/recommendations 使用 kebab-case：`unprotected-json-parse`、`array-bounds-risk` 等，导致治理建议漏报。
+  - `npm run check:release-readiness --silent` 在刷新 security 前从 `pass=28 fail=15` 经 `report:security` 到 `pass=29 fail=14`；修复后因为本轮又改动 `scripts`，freshness baseline 更新，release-readiness 当前为 `pass=26 fail=17`，失败项主要是 stale desktop/flow/UI 与外部 GitHub transport。
+- 修复内容：
+  - **SECURITY-REPORT-BASELINE-KEYS-001：已修。**
+    - `scripts\validation\security_report.ts` 新增 `baselineCount()`，优先读取漏洞扫描器当前输出的 camelCase baseline key，并兼容历史 kebab-case key。
+    - `generateKeyFindings()` 和 `generateRecommendations()` 改为通过 `baselineCount()` 读取 `unprotectedJsonParse`、`arrayBoundsRisk`、`nullableAccessRisk`、`unexpectedDebugCode`。
+    - `tests\unit\validationScripts.test.ts` 新增动态回归，构造 camelCase vulnerability baseline，验证 security report stdout 和 JSON recommendations 都包含“优先处理核心模块的数组越界问题”。
+- Fresh 验证输出：
+  - 红灯复现：新增 `security report reads camelCase vulnerability baseline counters` 修复前失败，输出没有匹配 `/优先处理核心模块的数组越界问题/`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`26/26` pass。
+  - `npm run report:security --silent`：exit `0`，真实输出现在包含 `- 优先处理核心模块的数组越界问题`，`security-report.json` 也随之刷新。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`224/224` pass。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=26 warn=0 fail=17`；security_report 已不在失败项中，剩余为 stale desktop/flow/UI、GitHub transport、doctor。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅有 Windows CRLF touch warning。
+- 状态：
+  - 安全报告现在能正确消费漏洞扫描器当前 camelCase baseline 输出，不再漏掉数组越界治理建议。
+  - 本轮改动范围为 `scripts\validation\security_report.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议刷新 stale UI/flow/desktop reports，或继续追 release-readiness freshness 里能被脚本改进的 generated-report gate。
+
+## DeckRogue Fix Batch 062 - Flow Smoke GeneratedAt Freshness Evidence - 2026-05-25
+
+- 发现证据：
+  - 本轮先读普通 git 状态、shadow git 状态、Batch 061 报告和 `reports\release\release-readiness.json`，确认 GitHub transport 仍是当前 Codex sandbox 外部环境问题，转向本地可修的 generated-report / flow smoke gate。
+  - `npm run test:rest-flow-smoke --silent` 能真实通过并刷新 `reports\flows\rest-flow-smoke.json`，但旧报告只有文件 mtime、截图路径和布尔结果，没有 `generatedAt` / timestamp；相比 UI expansion contract 已要求 `generatedAt`，flow smoke 报告复制或打包后缺少自描述生成时间证据。
+  - 红灯回归先失败：新增 `release readiness rejects flow smoke reports with stale generatedAt evidence` 后，旧 `checkFlowReport()` 对 `generatedAt: 2000-01-01T00:00:00.000Z` 但 mtime 新鲜的报告返回 `pass`。
+- 修复内容：
+  - **FLOW-SMOKE-GENERATED-AT-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 的 `GenericFlowReport` 新增 `generatedAt`，并通过 `hasFreshGeneratedAt()` 要求 canonical flow smoke 报告的生成时间可解析且不早于 workspace freshness baseline。
+    - 9 个 canonical flow smoke 脚本写入 `generatedAt: new Date().toISOString()`：reward、terminal、shop、event、rest、upgrade、remove-card、boss-phase、boss-terminal。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增 stale `generatedAt` 回归，并让 missing screenshot / failed request 夹具显式提供新鲜 `generatedAt`，保持失败原因互相独立。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` 修复前 exit `1`，新增测试失败于 `Expected 'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`11/11` pass。
+  - `npm run test:rest-flow-smoke --silent`：exit `0`，Vite 启动后流程通过。
+  - 读回 `reports\flows\rest-flow-smoke.json`：包含 `"generatedAt": "2026-05-25T06:43:21.176Z"`、`reachedRest=true`、`healed=true`、`returnedToMap=true`、`consoleErrors/pageErrors/failedRequests=[]` 和 2 张截图。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`26/26` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`225/225` pass。
+  - `npm run check:release-readiness --silent`：exit `1`，`pass=26 warn=0 fail=17`；本轮更严格 gate 生效，剩余失败仍为 stale build/desktop/UI/其他 flow 报告、GitHub transport、doctor/security 报告刷新。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Flow smoke report gate 现在不再只信文件 mtime，会拒绝缺失、无效或早于 workspace baseline 的 `generatedAt`，generated-report 证据更自描述。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、9 个 `scripts\validation\playwright_*_flow_smoke.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 下一轮建议批量刷新 8 个剩余 canonical flow smoke 报告或继续追 UI expansion stale gate。
+
+## DeckRogue Fix Batch 063 - Report Bundle Windows Doctor Markdown Count - 2026-05-25
+
+- 发现证据：
+  - 本轮先读普通 git 状态、shadow git 状态、Batch 062 报告、`reports\release\release-readiness.json` 和 flow 报告列表，确认上一轮后 release-readiness 为 `pass=26 fail=17`。
+  - 真实刷新 8 个剩余 canonical flow smoke、UI expansion、build、security report、desktop build、desktop smoke、Windows dist 后，`npm run check:release-readiness --silent` 推进到 `pass=41 warn=0 fail=2`；剩余失败为 `github_transport` 和 `doctor_report`，其中 GitHub transport 仍受当前 Codex sandbox OpenSSH profile/network 外部环境阻塞。
+  - 继续追本地 generated-report 缺陷时发现 `docs\reports\report_bundle.md` 的“全部报告清单”包含 `reports/doctor/report.md`，但历史数量仍显示 ``reports/doctor/*.md`` 为 `0` 份。
+  - 根因是 `scripts\validation\generate_report_bundle.ts` 在 Windows 下用 `path.includes('/doctor/')` 统计 doctor markdown，`walkFiles()` 返回反斜杠路径时无法命中。
+- 修复内容：
+  - **REPORT-BUNDLE-WINDOWS-DOCTOR-MD-COUNT-001：已修。**
+    - `scripts\validation\generate_report_bundle.ts` 改为用现有 `repoPath(path).startsWith('reports/doctor/')` 统计 doctor markdown，统一 Windows 路径分隔符。
+    - `tests\unit\validationScripts.test.ts` 的 report bundle 回归 fixture 新增 `reports\doctor\report.md`，断言生成的统计为 ``reports/doctor/*.md``：`1` 份。
+- Fresh 验证输出：
+  - Flow/UI/desktop 刷新证据：
+    - 8 个剩余 canonical flow smoke 均 exit `0`，读回 9 个 flow report 均有 `generatedAt`、`consoleErrors/pageErrors/failedRequests=0`。
+    - `npm run test:ui-smoke:expansion --silent`：exit `0`，读回 `ui_smoke_expansion_report.json` 为 `completed=true`、`failedStep=null`、14 个 audits、6 个 slotsLoaded、错误数组全空。
+    - `npm run build`：exit `0`，Vite build succeeded，`2267` modules transformed。
+    - `npm run report:security --silent`：exit `0`，安全态势 `HEALTHY`，建议包含“优先处理核心模块的数组越界问题”。
+    - `npm run build:desktop --silent`：exit `0`，读回 `desktop-build.json` 为 `overallStatus=pass`，Pyodide assets `5` 个。
+    - `npm run test:desktop-smoke --silent`：exit `0`，读回 `desktop-smoke.json` 为 `overallStatus=pass`、`closeStatus=pass`、5 个 steps、5 张截图、错误数组全空。
+    - `npm run dist:win -- --skip-build`：exit `0`，读回 `win-dist.json` 为 `overallStatus=pass`，installer `DeckRogue-0.0.0-x64.exe` 大小 `603692218` bytes，evidence 包含 `Pyodide assets staged before Windows distribution: 5`。
+  - 红灯复现：`npx tsx --test tests/unit/validationScripts.test.ts` 修复前 exit `1`，`report bundle surfaces release readiness failed checks` 未匹配 ``reports/doctor/*.md``：`1` 份。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`26/26` pass。
+  - `npm run report:bundle --silent`：exit `0`，读回 `docs\reports\report_bundle.md` 显示 ``reports/doctor/*.md``：`1` 份，且列出 `reports/doctor/report.md`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`11/11` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`225/225` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Report bundle 的 Windows doctor markdown 数量统计已修，不再出现清单列出 `reports/doctor/report.md` 但数量为 `0` 的矛盾。
+  - 本轮刷新后 release-readiness 已从 `pass=26 fail=17` 推进到 `pass=41 fail=2`；剩余两项仍为当前环境下的 GitHub transport 外部阻塞及由其导致的 doctor report 不绿/不新鲜。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议优先追 `doctor_report` 对环境型 GitHub transport 的 release-readiness 表达，或继续在源码层扫描 runtime/UI/content 的可复现缺陷。
+
+## DeckRogue Fix Batch 064 - Doctor Failure Evidence In Release Readiness - 2026-05-25
+
+- 发现证据：
+  - 本轮先读普通 git 状态、shadow git 状态、Batch 063 报告、`reports\release\release-readiness.json` 和 `reports\doctor\report.json`，确认上一轮 shadow 已 clean，普通 worktree 仍包含大量历史/并行改动，不能回退。
+  - 最新 release-readiness 初始为 `pass=41 warn=0 fail=2`，剩余 `github_transport` 与 `doctor_report`；doctor JSON 明确显示失败阶段为 `Check GitHub Transport`，`failureType=environment`，但 release-readiness 的 `doctor_report` 证据只说 `latest doctor report is stale for current workspace state`。
+  - 这会把同一个外部 SSH/GitHub transport 阻塞拆成两个表面问题：一个是 GitHub transport，另一个像是普通 stale doctor 报告，后续容易误追刷新报告而不是识别环境阻塞。
+- 修复内容：
+  - **RELEASE-DOCTOR-FAILED-STAGE-EVIDENCE-001：已修。**
+    - `scripts\validation\check_release_readiness.ts` 扩展 `DoctorReport` stage/summary 类型，读取 `failureType` 和 `byCategory`。
+    - 新增 failed doctor stage 摘要逻辑：当 doctor report 已有失败阶段时，release-readiness 优先输出失败阶段和分类，同时保留 stale 状态上下文。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增回归：构造 stale 且失败的 doctor report，断言 evidence 同时包含 `Check GitHub Transport`、`environment` 和 `stale`。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` 修复前 exit `1`，新增用例失败，旧 evidence 只有 `latest doctor report is stale for current workspace state`，没有 `Check GitHub Transport`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`12/12` pass。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`26/26` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - 串行刷新报告：`npm run build`、`npm run report:security --silent`、9 个 canonical flow smoke、`npm run test:ui-smoke:expansion --silent`、`npm run build:desktop --silent`、`npm run test:desktop-smoke --silent`、`npm run dist:win -- --skip-build` 均 exit `0`。
+  - 读回 fresh 报告：9 个 flow report 均有 `generatedAt` 且 `consoleErrors/pageErrors/failedRequests=0`；UI expansion `completed=true`、`failedStep=null`、14 个 audits、错误数组全空；desktop build `overallStatus=pass` 且 Pyodide assets `5`；desktop smoke `overallStatus=pass`、`closeStatus=pass`、5 steps、5 screenshots；Windows installer `DeckRogue-0.0.0-x64.exe` 大小 `603692164` bytes。
+  - `npm run check:release-readiness --silent`：exit `1`，但已恢复到 `pass=41 warn=0 fail=2`；`doctor_report` evidence 现在为 `latest doctor report failed stages: Check GitHub Transport [environment]; ...; report is stale for current workspace state`。
+- 状态：
+  - Release-readiness 不再吞掉 doctor 的真实失败阶段；当前剩余失败明确收敛为 GitHub SSH transport 外部环境阻塞及由其造成的 doctor report 不绿/不新鲜。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 下一轮建议避开 GitHub transport 空转，继续在 runtimeV2/UI/content/report gate 中寻找本地可复现缺陷；若用户在普通 PowerShell 中修好 GitHub key/network，再回到 `npm run check:github-transport --silent` 与 doctor gate。
+
+## DeckRogue Fix Batch 065 - Python Process Adapter Child Error Handling - 2026-05-25
+
+- 发现证据：
+  - 本轮先读普通 git 状态、shadow git 状态、Batch 064 报告，并运行 `npm run test:runtime-v2:ts`，确认 runtimeV2 当前 `131/131` 通过且没有 Python WASM rest skip；`npm run test:python-runtime` 为 `10/10`，`npm run check:python-wasm-runtime-sync` 为 `OK`，`npm run check:runtime-v2-adapter-differential-parity` 为 `19/19`。
+  - 继续审计 `src\runtimeV2\node\pythonProcessAdapter.ts` 时发现 adapter 只监听 child process `exit`，没有监听 `error`；当 Python 子进程或管道在 Windows/Node 层触发 `error` 事件时，pending request 不会被清理，调用方只能等 timeout，且 fake process 测试里会产生异步未处理拒绝。
+  - 红灯回归先失败：新增 `PythonProcessAdapter rejects pending requests when the child process emits an error` 后，`processHandle.emit('error', new Error('python pipe failure'))` 直接变成测试失败，随后 pending request 还在 1000ms 后 timeout。
+- 修复内容：
+  - **PYTHON-PROCESS-CHILD-ERROR-001：已修。**
+    - `src\runtimeV2\node\pythonProcessAdapter.ts` 在 `attachProcess()` 中监听 child process `error`。
+    - 发生 `error` 时立即 splice 全部 pending request、清理 timeout，并用原始 Error 拒绝调用方，避免 Python 管道/启动异常拖到 request timeout。
+    - `tests\unit\runtimeV2Parity.test.ts` 新增 fake process 回归，断言 child process `error` 会在 25ms race 内拒绝 pending dispatch，并保留 `python pipe failure` 诊断。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests/unit/runtimeV2Parity.test.ts` 修复前 exit `1`，新增用例失败于 `python pipe failure` 未被 adapter 捕获，并伴随后续 timeout 异步活动。
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`32/32` pass。
+  - `npm run test:runtime-v2:ts`：exit `0`，`132/132` pass；新用例作为 subtest 99 通过，Python WASM rest command 仍通过且无 skip。
+  - `npm run test:python-runtime`：exit `0`，Python package `10/10` pass。
+  - `npm run check:python-wasm-runtime-sync`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run check:runtime-v2-adapter-differential-parity`：exit `0`，`passCount: 19/19`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+- 状态：
+  - Python process adapter 现在能立即处理 Node child-process `error`，避免 runtimeV2 Python 桥在管道/启动异常时挂到 timeout，诊断更快、更准确。
+  - 本轮改动范围为 `src\runtimeV2\node\pythonProcessAdapter.ts`、`tests\unit\runtimeV2Parity.test.ts` 和本报告。
+  - 下一轮建议继续沿 runtimeV2 bridge / UI render-model / content schema 的本地可复现边界找缺陷；GitHub transport 仍是当前 Codex sandbox 外部环境阻塞，不宜空转。
+
+## DeckRogue Fix Batch 066 - Enemy AI Intent Policy Weight Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮先读普通 git 状态、shadow git 状态、Batch 065 报告和 enemy AI profile gate diff，确认上一轮 shadow 已 clean，普通 worktree 仍包含大量历史/并行改动，不能回退。
+  - 继续追 content schema / AI intent chain 时发现 `scripts\validation\check_enemy_ai_profiles.ts` 自称校验 `intent_policy` 完整性，但只检查 intent 是否引用现有 move，没有校验 `weight` 类型。
+  - Runtime 侧 `src\core\ai\intentPolicy.ts` 的 intent policy parser 只接受 finite number；如果 authoring 数据把 `weight` 写成字符串，单独运行 enemy AI profile gate 会显示 OK，但运行时 intent 解析会抛错。
+  - 红灯回归先失败：新增 `enemy AI profile gate rejects intent policy weights encoded as strings` 后，fixture 使用 `intent_policy: [{ intent: 'attack', weight: '1' }]`，修复前脚本仍输出 `[check_enemy_ai_profiles] OK`。
+- 修复内容：
+  - **ENEMY-AI-PROFILE-POLICY-WEIGHT-001：已修。**
+    - `scripts\validation\check_enemy_ai_profiles.ts` 将 `intent_policy` / `intentPolicy` 的 `weight` 视为 `unknown`，并要求存在时必须是 finite number。
+    - `tests\unit\validationScripts.test.ts` 新增动态 fixture 回归，断言字符串权重被 gate 拒绝，并输出 `intent_policy.attack.weight must be a finite number`。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`27/27` pass。
+  - `npm run check:enemy-ai-profiles --silent`：exit `0`，`[check_enemy_ai_profiles] OK`。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/enemyIntentFacade.test.ts tests/unit/enemyAiProfileCoverage.test.ts`：exit `0`，`21/21` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Enemy AI profile gate 现在会拒绝 runtime intent policy parser 无法接受的字符串/非数值权重，不再放过会在 AI intent selection 阶段抛错的 authoring 数据。
+  - 本轮改动范围为 `scripts\validation\check_enemy_ai_profiles.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续在 content authoring gate 与 runtime parser 的契约边界、UI render-model fallback、runtimeV2 bridge 中寻找本地可复现缺陷；GitHub transport 仍需外部网络/SSH 环境恢复后再追。
+
+## DeckRogue Fix Batch 067 - Content Authoring Card Targeting Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮从 content authoring gate 与 runtime schema 的契约差异继续追查，读取 `scripts\validation\check_content_authoring.ts`、`src\content\narrative\contentSchema.ts` 和 `src\content\narrative\cardsDataEntry.ts`。
+  - 发现真实内容入口 `validateCardsData()` 要求所有卡牌都有非空 `targeting`，但 `check_content_authoring.ts` 只要求 Attack 卡有 targeting；Skill/Power 卡缺失 targeting 会在 authoring gate 中被判 valid，随后在 schema 导入阶段失败。
+  - 红灯复现：新增 `content authoring gate rejects non-attack cards without targeting`，fixture 中 Skill 卡缺失 `targeting`；修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，stdout 显示 `Cards: 1/1 valid`、Pass rate `100%`、`Content authoring check passed`。
+- 修复内容：
+  - **CONTENT-AUTHORING-CARD-TARGETING-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 改为要求所有卡牌的 `targeting` 必须是非空字符串。
+    - 保留 Attack 卡原有 `Attack card missing targeting` 文案；非 Attack 卡输出 `Missing targeting`，用于定位 schema 契约漏检。
+    - `tests\unit\validationScripts.test.ts` 新增动态 fixture 回归，锁住 Skill 卡缺失 targeting 的失败路径。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`28/28` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+- 状态：
+  - Content authoring gate 现在会在导入 schema 之前拒绝缺失 targeting 的任意卡牌，不再让非 Attack 卡的 schema 断点漏到运行时/构建时。
+  - 本轮改动范围为 `scripts\validation\check_content_authoring.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续扫描 `check_content_authoring.ts` 与 `contentSchema.ts` 的剩余差异，例如敌人 `keywords`、relic effect/trigger、potion price/effect 的 authoring gate 覆盖。
+
+## DeckRogue Fix Batch 068 - Content Authoring Relic Runtime Contract Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮继续扫描 `check_content_authoring.ts` 与 `contentSchema.ts` 的剩余差异，确认上一轮 shadow 已 clean，普通 worktree 仍包含历史/并行改动，不能回退。
+  - 真实 schema `validateRelicsData()` 要求 relic 必须有非空 `trigger`，并且 `effect`、`effects`、`passiveEffect` 至少存在一个；但 content authoring gate 只检查 `id`、`name`、`description`。
+  - 红灯复现：新增 `content authoring gate rejects relics missing runtime trigger and effect contracts`，fixture 中 relic 只有 `id/name/description`；修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，stdout 显示 `Relics: 1/1 valid`、Pass rate `100%`、`Content authoring check passed`。
+- 修复内容：
+  - **CONTENT-AUTHORING-RELIC-RUNTIME-CONTRACT-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 的 `checkRelic()` 新增 `trigger` 非空字符串校验。
+    - 同一函数新增 relic runtime effect contract 校验，要求 `effect/effects/passiveEffect` 至少存在一个。
+    - `tests\unit\validationScripts.test.ts` 新增动态 fixture 回归；同时更新 BOM relic fixture，让它继续验证 BOM 解析而不违反新的 runtime contract。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例显示不完整 relic 被误判为 valid。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`29/29` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+- 状态：
+  - Content authoring gate 现在会在 schema 导入之前拒绝缺失 runtime trigger/effect contract 的 relic，不再让不完整遗物定义进入后续运行时或构建路径。
+  - 本轮改动范围为 `scripts\validation\check_content_authoring.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 `check_content_authoring.ts` 与 `contentSchema.ts` 的 potions/effect 覆盖差异，或转向 UI render-model fallback 的本地可复现缺陷。
+
+## DeckRogue Fix Batch 069 - Content Authoring Potion Runtime Contract Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮从当前普通 git 状态、shadow git 状态、Batch 068 报告和 `check_content_authoring.ts` / `contentSchema.ts` 差异继续，不回退普通 worktree 中已有历史/并行改动。
+  - 真实 schema `validatePotionsData()` 要求 potion 具备非空 `id/name/description`、finite `price`、可选 finite `toxicity`、可选 string-array `tags`，并且必须有 `effect`；但 content authoring gate 原本只读取 cards/enemies/relics，完全忽略 `src/content/data/potions.json`。
+  - 红灯复现来自本批新增 fixture：坏 potion 只有 `id/name/description` 时，修复前脚本仍显示 content authoring pass，说明不完整 potion 会绕过 authoring gate，后续才在 schema/runtime shop/potion 路径失败。
+- 修复内容：
+  - **CONTENT-AUTHORING-POTION-RUNTIME-CONTRACT-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 新增 potion 分区，读取 `src/content/data/potions.json`，将 potions 纳入 total/passRate/invalid 统计与命令行摘要。
+    - 新增 `checkPotion()`：拒绝缺失或非字符串 `id/name/description`、缺失或非 finite number `price`、非 finite `toxicity`、非法 `tags` 和缺失 `effect` 的 potion。
+    - 新增 `isNonEmptyString()`，避免 malformed potion 字段导致 validator 自身 TypeError；错误会作为 authoring issue 输出。
+    - `tests\unit\validationScripts.test.ts` 新增两条回归：不完整 potion runtime contract 被拒绝；非字符串 potion `id/name/description` 被报告而不是让脚本崩溃。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`31/31` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Potions `12/12`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Content authoring gate 现在会在 schema 导入或 runtime shop/potion 路径之前拒绝不完整或 malformed potion 定义。
+  - 本轮改动范围为 `scripts\validation\check_content_authoring.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 content schema gate parity：card `tags`、enemy `keywords`、relic optional field types 或 potion `effect` object/action 细化契约；也可转向 UI render-model fallback 的本地可复现缺陷。
+
+## DeckRogue Fix Batch 070 - Content Authoring Required Tags And Keywords Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮在 Batch 069 收口后继续做 content schema gate parity 审计，读取 `src\content\narrative\contentSchema.ts` 与 `scripts\validation\check_content_authoring.ts`。
+  - Runtime schema `validateCardsData()` 要求所有 card 都有 string-array `tags`，`validateEnemiesData()` 要求所有 enemy 都有 string-array `keywords`；但 authoring gate 只检查 card targeting/actions 与 enemy hp/intent/moves，缺失 `tags` 或 `keywords` 时仍可能显示 authoring pass。
+  - 新增红灯 fixture 复现：完整的其它内容下，缺 `tags` 的 card 和缺 `keywords` 的 enemy 会绕过旧 authoring gate，随后才在 schema import / runtime content bundle 路径失败。
+- 修复内容：
+  - **CONTENT-AUTHORING-TAGS-KEYWORDS-RUNTIME-CONTRACT-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 将 card `tags` 视作 runtime-required string array，并输出 `Missing or invalid tags`。
+    - 同一脚本将 enemy `keywords` 视作 runtime-required string array，并输出 `Missing or invalid keywords`。
+    - `tests\unit\validationScripts.test.ts` 新增 card tags / enemy keywords 两条回归，并补齐旧 fixture 的 `tags: []` 与 `keywords: []`，避免其它契约遮挡原有用例。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`33/33` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Potions `12/12`、Pass rate `100%`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Content authoring gate 现在会在 schema import 之前拒绝缺失 runtime-required `tags` / `keywords` 的 card/enemy 内容，减少 false-green authoring pass。
+  - 本轮改动范围为 `scripts\validation\check_content_authoring.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 relic optional `price/tags/priority` 类型或 potion `effect` object/action 细化契约，也可转向 UI render-model fallback。
+
+## DeckRogue Fix Batch 071 - Content Authoring Relic Optional Field Type Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮从当前普通 git 状态、shadow 状态、Batch 070 报告和 `contentSchema.ts` / `check_content_authoring.ts` 差异继续；普通 worktree 仍有大量历史/并行改动，本轮只处理 content authoring parity。
+  - Runtime schema `validateRelicsData()` 会对 relic optional `price`、`tags`、`priority` 做类型校验：`price/priority` 必须是 finite number，`tags` 必须是 string array；但 authoring gate 只校验 relic `id/name/description/trigger/effect contract`。
+  - 红灯复现：新增 `content authoring gate rejects invalid relic optional runtime fields` 后，fixture 使用 `price: "99"`、`tags: ["valid", 42]`、`priority: "10"`；修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，stdout 显示 `Relics: 1/1 valid`、Pass rate `100%`、`Content authoring check passed`。
+- 修复内容：
+  - **CONTENT-AUTHORING-RELIC-OPTIONAL-FIELD-TYPE-001：已修。**
+    - `scripts\validation\check_content_authoring.ts` 的 `checkRelic()` 新增 `price` finite number 校验，输出 `Invalid relic price`。
+    - 同一函数新增 `tags` string-array 校验，输出 `Invalid relic tags`。
+    - 同一函数新增 `priority` finite number 校验，输出 `Invalid relic priority`。
+    - `tests\unit\validationScripts.test.ts` 新增动态 fixture 回归，锁住上述三类 runtime schema 漏检。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例显示坏 optional fields 被误判为 valid。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`34/34` pass。
+  - `npm run check:content-authoring --silent`：exit `0`，Cards `354/354`、Enemies `58/58`、Relics `106/106`、Potions `12/12`、Pass rate `100%`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`15/15` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Content authoring gate 现在会在 schema import 之前拒绝 relic optional field 类型错误，不再让无效遗物经济/排序/tag 数据 false-green。
+  - 本轮改动范围为 `scripts\validation\check_content_authoring.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 potion `effect` object/action 细化契约，或转向 UI render-model fallback / runtimeV2 bridge 的本地可复现缺陷。
+
+## DeckRogue Fix Batch 072 - RuntimeV2 Potion Bundle Display Metadata - 2026-05-25
+
+- 发现证据：
+  - 本轮从当前普通 git 状态、shadow 状态和 Batch 071 报告继续；普通 worktree 仍有大量历史/并行改动，本轮只处理 RuntimeV2 content bundle 到 render model 的 potion 元数据断点。
+  - `src\runtimeV2\renderModel.ts` 的 shop/rest potion UI 通过 `ContentService.getPotion()` 读取 `name`、`description`、`rarity`，但 `buildRuntimeV2ContentBundle()` 只投影 `{ id, price }`。
+  - 红灯复现：新增 `runtime v2 content bundle preserves potion display metadata for render models` 后，修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，`healing_potion.name` actual `undefined`，expected `疗愈药剂`。
+- 修复内容：
+  - **RUNTIME-V2-POTION-BUNDLE-DISPLAY-METADATA-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 的 `ContentBundlePotion` 增加可选 `name`、`description`、`rarity`，让 content bundle contract 能表达 UI 展示所需字段。
+    - `src\runtimeV2\content\buildContentBundle.ts` 的 `PotionEntry` 和 potions projection 保留 `name`、`description`、`rarity`，同时继续规范化 `price`。
+    - `tests\unit\runtimeV2ContentBundle.test.ts` 新增真实 `potions.json` 对照回归，锁住 `healing_potion` 的展示元数据不再被 bundle 裁掉。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，新增用例显示 `healing_potion.name` 从 bundle 中丢失。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`2/2` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`30/30` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - RuntimeV2 content bundle 现在保留 potion UI 展示元数据，使用 bundle 初始化 `ContentService` 的 shop/rest render model 不再退化为 id 文本或丢失描述/稀有度。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\content\buildContentBundle.ts`、`tests\unit\runtimeV2ContentBundle.test.ts` 和本报告。
+  - 下一轮建议继续追 RuntimeV2 bundle 与 render model 的 metadata parity，尤其 relic/card 展示字段、shop/rest UI fallback，以及 Python WASM rest test skip 是否应改成可执行 mock/adapter 回归。
+
+## DeckRogue Fix Batch 073 - RuntimeV2 Relic Bundle Display And Corruption Metadata - 2026-05-25
+
+- 发现证据：
+  - 本轮在 Batch 072 收口后继续追 RuntimeV2 content bundle 与 render model metadata parity；普通 worktree 仍有历史/并行改动，本轮只处理 relic bundle 投影缺口。
+  - `src\runtimeV2\renderModel.ts` 的 shop relic、relic upgrade choices 和 rest `canRelicUpgrade` 会通过 `ContentService.getRelic()` 读取 `name`、`description`、`rarity` 与 `corrupted`；但 `buildRuntimeV2ContentBundle()` 的 relic projection 只保留 `id`、`price`、`rarity`。
+  - 红灯复现：新增 `runtime v2 content bundle preserves relic display and corruption metadata for render models` 后，修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，`burning_blood.name` actual `undefined`，expected `殉道者炽血瓶`；同一回归同时锁住 `mark_of_entropy.corrupted`。
+- 修复内容：
+  - **RUNTIME-V2-RELIC-BUNDLE-DISPLAY-CORRUPTION-METADATA-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 的 `ContentBundleRelic` 增加可选 `name`、`description`、`corrupted`，让 bundle contract 覆盖 render model 需要的 relic 展示与腐化状态字段。
+    - `src\runtimeV2\content\buildContentBundle.ts` 的 `RelicEntry` 和 relic projection 保留 `name`、`description`、`corrupted`，并继续规范化 `price` 与 `rarity`。
+    - `tests\unit\runtimeV2ContentBundle.test.ts` 新增真实 `relics.json` 对照回归，锁住 `burning_blood` 展示元数据和 `mark_of_entropy` 腐化标记不会被 bundle 裁掉。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，新增用例显示 `burning_blood.name` 从 bundle 中丢失。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`3/3` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npx tsx --test tests/unit/numericsDomain.test.ts tests/unit/runtimeV2ContentBundle.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/relicUpgradeFlow.test.ts`：exit `0`，`32/32` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - RuntimeV2 content bundle 现在保留 relic UI 展示元数据和腐化标记，使用 bundle 初始化 `ContentService` 的 shop/relic-upgrade/rest render model 不再退化为 id 文本或丢失腐化判定输入。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\content\buildContentBundle.ts`、`tests\unit\runtimeV2ContentBundle.test.ts` 和本报告。
+  - 下一轮建议继续追 card display metadata parity、RuntimeV2 render model fallback 与 Python WASM rest test skip 是否应改成可执行 mock/adapter 回归。
+
+## DeckRogue Fix Batch 074 - RuntimeV2 Card Bundle Display Metadata - 2026-05-25
+
+- 发现证据：
+  - 本轮先追旧线索“Python WASM rest test 1 skip”：fresh 运行 `npm run test:runtime-v2:ts --silent`，当前结果为 `135/135` pass、`skipped 0`，其中 `python wasm rest command heals and returns to map with follow-up nodes intact` 已作为通过用例出现；`npm run test:python-runtime --silent` 也为 `10` tests OK，`npm run check:python-wasm-runtime-sync --silent` 输出 `[sync_python_wasm_runtime] OK`。因此该 skip 在当前树上不是活跃 blocker。
+  - 随后继续追 RuntimeV2 content bundle 与 render model metadata parity，发现 `src\runtimeV2\renderModel.ts` 的 reward/shop/upgrade/enchant 表面通过 `ContentService.getCard()` 读取 `name`、`cost`、`type`、`text`、`upgrade` 等字段，但 `buildRuntimeV2ContentBundle()` 的 card projection 只保留 `id`、`rarity`、`character` 和 route signal 字段。
+  - 红灯复现：新增 `runtime v2 content bundle preserves card display metadata for render models` 后，修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，`gather_intel.name` actual `undefined`，expected `收集情报`。
+- 修复内容：
+  - **RUNTIME-V2-CARD-BUNDLE-DISPLAY-METADATA-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 的 `ContentBundleCard` 增加可选 `name`、`cost`、`type`、`targeting`、`tags`、`text`、`upgrade`，让 bundle contract 覆盖 render model 和嵌套表面选择所需字段。
+    - `src\runtimeV2\content\buildContentBundle.ts` 的 card projection 保留上述 display/choice metadata，同时保留既有 rarity、character、route signal 字段供 Python core shop/reward 路线逻辑使用。
+    - `tests\unit\runtimeV2ContentBundle.test.ts` 新增真实 `cards.json` 对照回归，锁住 `gather_intel` 的名称、费用、类型、目标、tags、文本和升级契约不会被 bundle 裁掉。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts` exit `1`，新增用例显示 `gather_intel.name` 从 bundle 中丢失。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`4/4` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`135/135` pass、`skipped 0`。
+  - `npm run test:python-runtime --silent`：exit `0`，`10` tests OK。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2 content bundle 现在保留 card 展示、费用、类型、选择和升级元数据，使用 bundle 初始化 `ContentService` 的 reward/shop/upgrade/enchant render model 不再退化为 id 文本、默认费用/类型或缺失升级资格。
+  - 旧 Python WASM rest skip 当前已转为可执行 passing coverage；本轮未发现仍需保留环境 skip 的证据。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\content\buildContentBundle.ts`、`tests\unit\runtimeV2ContentBundle.test.ts` 和本报告。
+  - 下一轮建议继续追 RuntimeV2 content bundle 与 ContentService 的 character/enemy display parity、Python WASM adapter negative rollback、desktop packaging generated-report gates。
+
+## DeckRogue Fix Batch 075 - RuntimeV2 Character And Enemy Bundle Display Metadata - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 074 报告继续，优先追 RuntimeV2 content bundle 与 `ContentService` 的 character/enemy display parity。
+  - `src\runtimeV2\content\contentService.ts` 的 `CharacterData` / `EnemyData` 需要 `name`，角色还需要 `description`、`portraitPrompt`、`background` 等展示/档案字段；但 `buildRuntimeV2ContentBundle()` 的 character/enemy projection 仍只保留 Python core 最小数值字段。
+  - 红灯复现：修复前用 `buildRuntimeV2ContentBundle()` 初始化 `new ContentService(bundle as any)`，读取 `informant` 和 `gremlin_nob` 时实际 `name` 为 `undefined`，源数据 expected 分别为 `情报员`、`小鬼头目`。
+- 修复内容：
+  - **RUNTIME-V2-CHARACTER-ENEMY-BUNDLE-DISPLAY-METADATA-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 的 `ContentBundleCharacter` 增加可选 `name`、`description`、`portrait_prompt`、`complexity`、`archetype`、`background`、`mechanic_narrative`、`lore_fragments`。
+    - `src\runtimeV2\contracts.ts` 的 `ContentBundleEnemy` 增加可选 `name`、`description`。
+    - `src\runtimeV2\content\buildContentBundle.ts` 的 character/enemy projection 保留上述展示字段，同时继续保留原有 max hp/energy、starting deck、secondary resource、hp range、keywords 与 normalized intent policy。
+    - `tests\unit\runtimeV2ContentBundle.test.ts` 新增角色和敌人真实数据对照回归，锁住 `informant` 档案字段、`gremlin_nob` 名称和 `coolant_hound` 描述不会被 bundle 裁掉。
+- Fresh 验证输出：
+  - 红灯复现：修复前最小 `npx tsx -e` 检查 exit `1`，stdout 只有 expected `情报员` / `小鬼头目`，实际 bundle-backed `ContentService` name 为 `undefined`。
+  - `npx tsx --test tests/unit/runtimeV2ContentBundle.test.ts`：exit `0`，`6/6` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - bundle-backed `ContentService` 实场景检查：exit `0`，`characterName` = `情报员`，`enemyName` = `小鬼头目`，`coolantDescription` 与源数据一致。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`137/137` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - RuntimeV2 content bundle 现在可作为 `ContentService` 的完整显示数据源，不再让 bundle-backed 角色/敌人展示退化为 undefined/id fallback。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\content\buildContentBundle.ts`、`tests\unit\runtimeV2ContentBundle.test.ts` 和本报告。
+  - 下一轮建议转向 Python WASM adapter negative rollback / error semantic coverage，或 desktop packaging generated-report gates。
+
+## DeckRogue Fix Batch 076 - Python WASM Runtime Envelope Error Semantics - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 075 报告继续，转向 Python WASM adapter negative rollback / error semantic coverage。
+  - `PythonProcessAdapter` 会在 stdout response `ok:false` 或缺失 `snapshot` 时 reject；但 WASM 路径共享的 `unwrapPythonSnapshotEnvelope()` 对 `{ ok: false, error }` 与 `{ ok: true }` 没有 envelope 校验，会把它们当裸 snapshot 送进 `normalizePythonSnapshot()`。
+  - 红灯复现：新增 `unwrapPythonSnapshotEnvelope rejects failed Python runtime envelopes` 与 `rejects successful envelopes without snapshots` 后，修复前 `npx tsx --test tests/unit/pythonInterop.test.ts` exit `1`，两个用例均为 `Missing expected exception`。
+- 修复内容：
+  - **PYTHON-WASM-RUNTIME-ENVELOPE-ERROR-SEMANTICS-001：已修，Priority P2。**
+    - `src\runtimeV2\pythonInterop.ts` 的 `unwrapPythonSnapshotEnvelope()` 现在会对 `ok:false` 抛出 Python runtime error，并对带 `ok` 但缺失合法 `snapshot` 的 envelope 抛出 `missing snapshot`。
+    - 保留裸 snapshot 兼容路径，避免影响当前 `init_runtime()` / `dispatch_command()` 直接返回 snapshot 或 `{ snapshot }` 的成功路径。
+    - `tests\unit\pythonWasmAdapter.test.ts` 新增 WASM adapter 级回归：dispatch 返回 `{ ok:false,error }` 时必须 reject，且 `adapter.getSnapshot()` 保持 start 后的最后有效 snapshot，不被伪 CharacterSelect/默认快照覆盖。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/pythonInterop.test.ts` exit `1`，失败点为 failed/missing snapshot envelope 未抛错。
+  - `npx tsx --test tests/unit/pythonInterop.test.ts`：exit `0`，`5/5` pass。
+  - `npx tsx --test tests/unit/pythonWasmAdapter.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`140/140` pass。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - WASM runtime 失败 envelope 现在会进入正常异常/rollback 语义，不再被规范化成默认成功快照。
+  - 本轮改动范围为 `src\runtimeV2\pythonInterop.ts`、`tests\unit\pythonInterop.test.ts`、`tests\unit\pythonWasmAdapter.test.ts` 和本报告。
+  - 下一轮建议继续追 desktop packaging generated-report gates，或 Python process adapter stdin/write failure 对内部 snapshot 与 pending queue 的一致性。
+
+## DeckRogue Fix Batch 077 - Python Process Adapter Sync Write Failure Cleanup - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 076 报告继续，转向 Python process adapter stdin/write failure 对内部 snapshot 与 pending queue 的一致性。
+  - `PythonProcessAdapter.sendRequest()` 会先把 entry 放入 pending，再调用 `processRef.stdin.write()`；异步 callback error 会清理 pending，但同步抛错路径没有清理 entry。
+  - 红灯复现：新增 `PythonProcessAdapter clears pending request when stdin write throws synchronously` 后，修复前 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` exit `1`，迟到 `req_1` stdout 响应把 `adapter.getSnapshot()` 写成 seed `99` 的 normalized snapshot，expected `null`。
+- 修复内容：
+  - **PYTHON-PROCESS-ADAPTER-SYNC-WRITE-FAILURE-CLEANUP-001：已修，Priority P2。**
+    - `src\runtimeV2\node\pythonProcessAdapter.ts` 的 `sendRequest()` 抽出 `rejectWriteFailure()`，同步和异步写入失败都移除 pending entry、清理 timeout 并 reject。
+    - `processRef.stdin.write()` 现在包在 `try/catch` 内，避免同步写失败后留下可被迟到 stdout 响应消费的 request id。
+    - `tests\unit\runtimeV2Parity.test.ts` 新增 fake process 回归，锁住同步 write throw 后迟到 `req_1` 不得污染 adapter snapshot。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2Parity.test.ts` exit `1`，新增用例显示 actual snapshot seed `99`，expected `null`。
+  - `npx tsx --test tests/unit/runtimeV2Parity.test.ts`：exit `0`，`33/33` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`141/141` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run test:supplemental-units --silent`：exit `0`，`226/226` pass。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Python process adapter 现在在同步 stdin 写失败后会撤销 pending request，迟到响应不会再覆盖最后有效 snapshot 或从 `null` 恢复成伪成功快照。
+  - 本轮改动范围为 `src\runtimeV2\node\pythonProcessAdapter.ts`、`tests\unit\runtimeV2Parity.test.ts` 和本报告。
+  - 下一轮建议继续追 desktop packaging generated-report gates，尤其 generated report 的 artifact freshness、screenshot/network evidence、doctor report git-state 门禁是否仍有 false-green。
+
+## DeckRogue Fix Batch 078 - Release Readiness Empty Screenshot Evidence Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 077 报告继续，转向 desktop packaging/generated-report gates 的 false-green。
+  - `check_release_readiness.ts` 的 desktop smoke 与 generic flow smoke 只要求截图路径存在且 mtime fresh，没有确认截图文件是普通文件且 size > 0。
+  - 红灯复现：新增 `release readiness rejects desktop smoke reports with empty screenshot evidence` 与 `release readiness rejects flow smoke reports with empty screenshot evidence` 后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，两个用例 actual status 均为 `pass`，expected `fail`。
+- 修复内容：
+  - **RELEASE-READINESS-EMPTY-SCREENSHOT-EVIDENCE-001：已修，Priority P2。**
+    - `scripts\validation\check_release_readiness.ts` 新增 `hasFreshNonEmptyArtifact()`，统一要求截图 evidence 路径存在、是文件、size > 0，且 mtime 不早于 freshness baseline。
+    - `hasFreshScreenshotEvidence()` 和 desktop smoke `screenshotsFresh` 都改用该 helper，覆盖 canonical flow smoke 与 desktop smoke 两条 release readiness 路径。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增 desktop/flow 空截图 fixture 回归，锁住 0-byte screenshot 不再 false-green。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增 desktop 与 flow 空截图用例均显示 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`14/14` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`228/228` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Release readiness 现在会拒绝空截图文件，不再把 0-byte desktop/flow screenshot 当成有效生成报告证据。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 下一轮建议继续追 generated-report bundle 对 release/doctor/security 报告内容字段的完整性，或检查 win-dist artifact path/size 记录与实际文件哈希的一致性。
+
+## DeckRogue Fix Batch 079 - Report Bundle Destructive Suite Pass Count - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 078 报告继续，转向 generated-report bundle 对报告字段完整性的 false-green。
+  - `generate_report_bundle.ts` 在 `2.8 Scenario Matrix / Expansion / System Assertions` 摘要里会正确显示 destructive suite `2 cases, 1 failing`，但在 `5.1 当前最新文件` 表格里把 destructive suite 写成 `${cases.length}/${cases.length} pass`。
+  - 红灯复现：新增 `report bundle reports destructive suite failed cases instead of counting every case as pass` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，fixture 含 1 pass / 1 fail 时 bundle 仍输出 `| destructive suite | ... | 2/2 pass |`。
+- 修复内容：
+  - **REPORT-BUNDLE-DESTRUCTIVE-SUITE-PASS-COUNT-001：已修，Priority P2。**
+    - `scripts\validation\generate_report_bundle.ts` 新增 `countPassingStatuses()`，按 `status === 'pass'` 计算通过 case 数。
+    - `latestRows` 的 destructive suite 结论改为真实 `pass/total`，不再把失败 case 计入通过数。
+    - `tests\unit\validationScripts.test.ts` 新增 fixture 回归，锁住失败 destructive case 在报告表格中显示 `1/2 pass`，且不得显示 `2/2 pass`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，输出中 destructive suite 最新文件表格为 `2/2 pass`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`35/35` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`228/228` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+- 状态：
+  - Report bundle 现在在所有 destructive suite 摘要位置都如实暴露失败 case，不再在最新文件表格中 false-green。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 report bundle 对 security report fallback schema 的完整性，尤其 `summary` / `analysis` 旧格式是否会被误报为 `null`。
+
+## DeckRogue Fix Batch 080 - Report Bundle Security Summary Fallback Schema - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 079 报告继续，转向 generated-report bundle 对 security report fallback schema 的完整性。
+  - `scripts\validation\generate_report_bundle.ts` 的 `SecurityReport` 只声明并读取 `current.summary`，但安全报告链路中存在顶层 `summary` / `analysis` 旧格式或替代格式。
+  - 红灯复现：新增 `report bundle reads fallback security report summary schema` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，fixture 含 `summary.total = 12`、`high = 1` 时 bundle 仍输出 `security report：\`null\` 个问题`，最新文件表格还写成 `无高危，null 项中低级问题`。
+- 修复内容：
+  - **REPORT-BUNDLE-SECURITY-SUMMARY-FALLBACK-SCHEMA-001：已修，Priority P2。**
+    - `scripts\validation\generate_report_bundle.ts` 的 `SecurityReport` 增加顶层 `summary` 与 `analysis` 兼容字段。
+    - 新增 `getSecuritySummary()`，统一按 `current.summary || summary` 读取安全摘要，覆盖总览、Content/Security/Translation 摘要、跟进点与最新文件表格。
+    - 新增 `formatSecurityConclusion()`，最新文件表格改为真实 `total/critical/high` 字段，不再在 `high > 0` 时输出误导性的 `无高危`。
+    - `tests\unit\validationScripts.test.ts` 新增 fallback schema fixture 回归，锁住顶层 summary 不得被报告成 `null`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例显示 bundle 输入中 `security report：\`null\` 个问题` 和 `无高危，null 项中低级问题`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`36/36` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`228/228` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `npm run build --silent`：exit `0`，Vite `2267 modules transformed`，`built in 4.24s`。
+- 状态：
+  - Report bundle 现在兼容当前与 fallback security report schema，不再把有效顶层 summary 写成 `null`，也不再在 `high` 非零时写出 `无高危`。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+  - 下一轮建议继续追 generated-report bundle 对 win-dist artifact path/size/hash 的一致性，或转回 runtimeV2 UI/render-model 未覆盖面。
+
+## DeckRogue Fix Batch 081 - Release Readiness Win Dist Artifact Size Consistency - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 080 报告继续，转向 Windows desktop distribution artifact path/size/hash 一致性。
+  - `reports\desktop\win-dist.json` 会记录 `.exe` artifact 的 `path`、`sizeBytes` 和 `updatedAt`，但 `check_release_readiness.ts` 的 `win_dist_report` gate 只要求报告里 `sizeBytes > 0`，没有要求它等于磁盘上真实 installer 大小。
+  - 红灯复现：新增 `release readiness rejects Windows installer reports with mismatched artifact size` 后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，fixture 中真实 `.exe` 为 `real-exe-bytes`、报告 `sizeBytes = 999`，actual status 仍为 `pass`，expected `fail`。
+- 修复内容：
+  - **RELEASE-READINESS-WIN-DIST-ARTIFACT-SIZE-CONSISTENCY-001：已修，Priority P2。**
+    - `scripts\validation\check_release_readiness.ts` 的 `win_dist_report` gate 现在读取实际 `.exe` 文件大小，并要求 `artifact.sizeBytes` 是有限数字且与真实 `statSync(path).size` 完全一致。
+    - 失败 evidence 扩展为包含 `mismatched artifact size`，避免把 size mismatch 与缺失 artifact 混在一起。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增 Windows installer size mismatch fixture，锁住手写或陈旧 `win-dist.json` 不得假绿。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增用例失败为 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`229/229` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `npm run build --silent`：exit `0`，Vite `2267 modules transformed`，`built in 3.83s`。
+- 状态：
+  - Release readiness 现在会拒绝 installer 报告大小与真实 `.exe` 文件大小不一致的 Windows distribution evidence，不再让篡改或陈旧 `win-dist.json` 假绿。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 下一轮建议继续追 `win-dist` artifact hash/updatedAt freshness 与 report bundle 最新文件结论，或转向 runtimeV2 UI/render-model 未覆盖面。
+
+## DeckRogue Fix Batch 082 - Win Dist Artifact SHA-256 Evidence Gate - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 081 报告继续，继续追 Windows desktop distribution artifact hash 完整性。
+  - `scripts\desktop\dist_win.ts` 的 `WinDistArtifact` 只记录 `path`、`sizeBytes`、`updatedAt`，`scripts\validation\check_release_readiness.ts` 只校验 `.exe` 存在、fresh、size 与报告一致。相同大小但内容不同的 installer 可绕过 release readiness。
+  - 红灯复现：新增 `release readiness rejects Windows installer reports with mismatched artifact hash` 后，修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，fixture 中真实 `.exe` 内容为 `same-size-v1`、报告 `sha256 = 000...000`，actual status 仍为 `pass`，expected `fail`。
+- 修复内容：
+  - **WIN-DIST-ARTIFACT-SHA256-EVIDENCE-GATE-001：已修，Priority P2。**
+    - `scripts\desktop\dist_win.ts` 的 `WinDistArtifact` 增加 `sha256`，`collectArtifacts()` 对每个 release 文件写入 SHA-256。
+    - `scripts\validation\check_release_readiness.ts` 的 `WinDistReport` artifact schema 增加 `sha256`，`win_dist_report` gate 现在会读取真实 `.exe` 内容 hash，并要求报告 hash 是 64 位 hex 且与真实 hash 一致。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 新增 hash mismatch fixture，锁住同大小不同内容的 installer 不能通过 release readiness。
+    - `tests\unit\desktopPyodideAssets.test.ts` 新增静态回归，锁住 Windows distribution report 必须继续记录 artifact SHA-256。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts` exit `1`，新增 hash mismatch 用例失败为 `'pass' !== 'fail'`。
+  - `npx tsx --test tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`16/16` pass。
+  - `npx tsx --test tests/unit/desktopPyodideAssets.test.ts tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`19/19` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`231/231` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `npm run build --silent`：exit `0`，Vite `2267 modules transformed`，`built in 3.87s`。
+- 状态：
+  - Windows distribution report 现在在生成端写入 SHA-256，release readiness 也会拒绝 hash 缺失、格式错误或与真实 `.exe` 不一致的 installer evidence。
+  - 本轮改动范围为 `scripts\desktop\dist_win.ts`、`scripts\validation\check_release_readiness.ts`、`tests\unit\desktopPyodideAssets.test.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 下一轮建议继续追 report bundle 对 win-dist 最新文件结论是否展示 hash/size/freshness，或转向 runtimeV2 UI/render-model 未覆盖面。
+
+## DeckRogue Fix Batch 083 - Report Bundle Windows Distribution Evidence Row - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 082 报告继续，按建议追 report bundle 对 `win-dist` 最新文件结论是否展示 hash/size/freshness。
+  - `reports\desktop\win-dist.json` 只出现在 `6.3 reports 自动生成报告` 清单；`5.1 当前最新文件` 没有 Windows distribution 行，人工读 `docs\reports\report_bundle.md` 时看不到 installer size/hash 证据，也看不到旧报告缺失 hash。
+  - 红灯复现：新增 `report bundle surfaces Windows distribution artifact size and hash evidence` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，bundle 输入中仅列出 `- reports/desktop/win-dist.json`，缺少 `| windows distribution | ... | pass, exe=12 bytes, sha256=... |` 最新文件表格行。
+- 修复内容：
+  - **REPORT-BUNDLE-WIN-DIST-EVIDENCE-ROW-001：已修，Priority P2。**
+    - `scripts\validation\generate_report_bundle.ts` 新增 `WinDistReport` 读取模型，并通过 `canonicalReportPath(['reports','desktop','win-dist.json'])` 读取最新 Windows distribution 产物。
+    - 新增 `latestWinDistExeArtifact()` 与 `formatWinDistConclusion()`，在 `5.1 当前最新文件` 表格中输出 `overallStatus`、installer `.exe` size 和 12 位短 SHA-256。
+    - `tests\unit\validationScripts.test.ts` 新增 fixture 回归，锁住 `reports/desktop/win-dist.json` 不得只出现在完整清单，必须在人读最新文件结论里暴露 size/hash evidence。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增用例失败为缺少 `windows distribution` 最新文件表格行。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`37/37` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`231/231` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`；读回 `docs\reports\report_bundle.md` 第 235 行为 `| windows distribution | reports/desktop/win-dist.json | pass, exe=603692164 bytes, sha256=missing |`。
+  - `npm run build --silent`：exit `0`，Vite `2267 modules transformed`，`built in 4.16s`。
+- 状态：
+  - Report bundle 现在会把 Windows distribution artifact evidence 提升到最新文件表格，人工发布前能直接看到 installer size 和 hash 状态。
+  - 当前真实 `reports\desktop\win-dist.json` 仍是旧产物，读回显示 `sha256=missing`；这符合 Batch 082 后尚未重跑 `dist:win` 的事实，并且现在不会被总报告隐藏。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts`、`docs\reports\report_bundle.md` 和本报告。
+  - 下一轮建议继续追 Windows distribution `updatedAt` freshness 在 report bundle 中是否应显式展示，或转向 runtimeV2 UI/render-model 未覆盖面。
+
+## DeckRogue Fix Batch 084 - Report Bundle Windows Distribution UpdatedAt Evidence - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 083 报告继续，继续追 Windows distribution `updatedAt` freshness 是否在人读总报告中显式展示。
+  - `scripts\validation\generate_report_bundle.ts` 的 `WinDistReport` 已包含 artifact `updatedAt` 字段，但 `formatWinDistConclusion()` 只输出 `overallStatus`、`.exe` size 和短 `sha256`。
+  - 红灯复现：把 `report bundle surfaces Windows distribution artifact size and hash evidence` 回归扩展为要求 `updatedAt=2026-05-25T00:00:00.000Z` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，实际行仍为 `pass, exe=12 bytes, sha256=aaaaaaaaaaaa`。
+- 修复内容：
+  - **REPORT-BUNDLE-WIN-DIST-UPDATEDAT-EVIDENCE-001：已修，Priority P2。**
+    - `scripts\validation\generate_report_bundle.ts` 的 `formatWinDistConclusion()` 现在追加 `updatedAt=<artifact.updatedAt>`，缺失时显示 `updatedAt=missing`。
+    - `tests\unit\validationScripts.test.ts` 的 win-dist fixture 继续提供固定 `updatedAt`，锁住人读总报告必须暴露 Windows installer artifact 的生成时间。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，新增断言显示缺少 `updatedAt=2026-05-25T00:00:00.000Z`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`37/37` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`231/231` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`；读回 `docs\reports\report_bundle.md` 第 235 行为 `| windows distribution | reports/desktop/win-dist.json | pass, exe=603692164 bytes, sha256=missing, updatedAt=2026-05-25T07:30:21.148Z |`。
+  - `npm run build --silent`：exit `0`，Vite `2267 modules transformed`，`built in 5.76s`。
+- 状态：
+  - Report bundle 现在会在最新文件表格中同时暴露 Windows installer size、hash 状态和 artifact 更新时间，人工发布检查可以直接判断旧 dist 报告是否需要重跑。
+  - 当前真实 `reports\desktop\win-dist.json` 仍显示 `sha256=missing`，但其 `updatedAt` 已被总报告同步暴露；下一步更适合转向 runtimeV2 UI/render-model 未覆盖面，或继续检查 release readiness 与 report bundle 对旧 win-dist hash 缺失的交叉呈现。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts` 和本报告。
+
+## DeckRogue Fix Batch 085 - RuntimeV2 Shop Potion Mixing Render Model Bridge - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 084 报告继续，转向 runtimeV2 UI/render-model 未覆盖面。
+  - `GameEngine.mixPotions` 已支持 legacy potion inventory 为空时委托 runtime-v2 索引调和，`RuleSnapshot.player.potionIds` 也存在；但 `RenderModel.player` 之前只暴露 `potionCount`，`ShopView` 的调和下拉只读取 `player.potions`。
+  - 结果是在 runtime-v2 delegated shop 中，legacy `player.potions=[]` 但 snapshot 有两个药剂时，调和下拉为空且 `蒸馏` 按钮 disabled。
+  - 红灯复现：新增 `ShopView enables runtime-v2 potion mixing when legacy player potions are empty` 后，修复前 `npx tsx --test tests/unit/shopViewRenderModel.test.tsx` exit `1`，输出中找不到 runtime-v2 药剂名，且按钮呈 disabled。
+- 修复内容：
+  - **RUNTIMEV2-SHOP-POTION-MIXING-RENDER-BRIDGE-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 的 `RenderModel.player` contract 增加 `potionIds`，让 UI 可直接读取 runtime-v2 玩家药剂 id。
+    - `src\runtimeV2\renderModel.ts` 的 `createRenderModel()` 现在投影 `snapshot.player.potionIds`，并继续用同一来源计算 `potionCount`。
+    - `src\ui\views\ShopView.tsx` 的炼金调和选项优先读取 `renderModel.player.potionIds`，legacy UI 仍回退到 `player.potions`。
+    - `tests\unit\shopViewRenderModel.test.tsx` 新增 delegated shop 回归，锁住 legacy 药剂为空时仍显示 `疗愈药剂`、`护盾药剂` 并启用 `蒸馏`。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 增加 `renderModel.player.potionIds` 断言，防止后续 render bridge 再丢失玩家药剂 id。
+- Fresh 验证输出：
+  - `npx tsx --test tests/unit/shopViewRenderModel.test.tsx`：exit `0`，`2/2` pass。
+  - `npx tsx --test tests/unit/shopViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`16/16` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`232/232` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Runtime-v2 shop render model 现在能把玩家药剂 id 传给 `ShopView`，delegated shop 不再因 legacy inventory 为空而隐藏可调和药剂。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\renderModel.ts`、`src\ui\views\ShopView.tsx`、`tests\unit\shopViewRenderModel.test.tsx`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts` 和本报告。
+  - 下一轮建议继续追 runtimeV2 UI/render-model 其他 legacy-empty surfaces，优先检查 map/event/reward/shop 嵌套入口是否仍有只读 legacy state 的遗漏。
+
+## DeckRogue Fix Batch 086 - RuntimeV2 Shop Service Capability Gates - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 085 报告继续，继续追 runtimeV2 UI/render-model legacy-empty surface。
+  - `src\runtimeV2\renderModel.ts` 的 Shop room summary 之前将 `canRemove` 只按金币判断、`canEnchant` 固定为 `true`，且没有从 runtime deck 派生 `canUpgrade`。
+  - `ShopView` 会优先信任 `roomSummary.canRemove/canEnchant/canUpgrade`，因此 runtime-v2 delegated shop 可能在 `snapshot.player.deck=[]` 时启用“焚毁记忆印痕”或附魔服务，也可能在 legacy deck 为空但 runtime deck 可强化时缺少锻造能力信号。
+  - 红灯复现：新增 `createRenderModel derives shop service gates from the runtime deck` 后，修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，空 runtime deck 下 `canRemove` actual 为 `true`、expected 为 `false`。
+- 修复内容：
+  - **RUNTIMEV2-SHOP-SERVICE-CAPABILITY-GATES-001：已修，Priority P2。**
+    - `src\runtimeV2\renderModel.ts` 的 Shop 分支现在从 runtime deck choices 派生服务能力：`canUpgrade` 要求金币足够且存在可强化目标，`canRemove` 要求金币足够且 runtime deck 非空，`canEnchant` 要求存在可附魔目标。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 新增空 deck 与可强化 deck 双向回归，锁住 Shop 服务 gate 不再只看 legacy/金币。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `1`，新增用例失败为 `true !== false`。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`15/15` pass。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/shopViewRenderModel.test.tsx tests/unit/surfaceChoiceViewsRenderModel.test.tsx tests/unit/shopRouteAdvisor.test.ts`：exit `0`，`28/28` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`232/232` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Runtime-v2 shop render model 现在会按 runtime deck 真实内容暴露服务能力，避免 UI 在无牌可删/无牌可附魔时误启服务。
+  - 本轮改动范围为 `src\runtimeV2\renderModel.ts`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts` 和本报告。
+  - 下一轮建议继续追 Rest room service gates 是否也应从 runtime deck choices 派生，尤其 `canUpgrade: true` / `canEnchant: true` 在空 deck 下的 UI 表现。
+
+## DeckRogue Fix Batch 087 - RuntimeV2 Rest Service Capability Gates - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 086 报告继续，追 Rest room service gates 是否也应从 runtime deck choices 派生。
+  - `src\runtimeV2\renderModel.ts` 的 Rest room summary 之前固定 `canUpgrade: true` 与 `canEnchant: true`，且 `canRemove` 只看金币，不看 runtime deck 是否为空。
+  - `RestView` 已优先信任 `roomSummary.canUpgrade/canEnchant/canRemove`，所以 runtime-v2 delegated rest 在 `snapshot.player.deck=[]` 时会误启锻造、附魔或移除服务。
+  - 红灯复现：新增 `createRenderModel derives rest deck service gates from the runtime deck` 后，修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，空 runtime deck 下新增用例失败为 `true !== false`。
+- 修复内容：
+  - **RUNTIMEV2-REST-SERVICE-CAPABILITY-GATES-001：已修，Priority P2。**
+    - `src\runtimeV2\renderModel.ts` 的 Rest 分支现在复用 runtime deck target rules：`canUpgrade` 需要存在可强化目标，`canEnchant` 需要存在可附魔目标，`canRemove` 需要金币足够且 runtime deck 非空。
+    - `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 新增空 deck 与可强化 deck 双向回归，锁住 Rest 服务 gate 不再固定为 true。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `1`，新增用例失败为 `true !== false`。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`16/16` pass。
+  - `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/surfaceChoiceViewsRenderModel.test.tsx tests/unit/appShellUiContracts.test.ts tests/unit/restRouteAdvisor.test.ts`：exit `0`，`33/33` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`232/232` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Runtime-v2 rest render model 现在按 runtime deck 真实内容暴露服务能力，避免 RestView 在无牌可操作时误启 deck 服务。
+  - 本轮改动范围为 `src\runtimeV2\renderModel.ts`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts` 和本报告。
+  - 下一轮建议继续追 Rest/Shop 的 route advice 输入是否仍从 legacy deck 读取，尤其 runtime deck 与 legacy deck 分叉时推荐文案是否会误导。
+
+## DeckRogue Fix Batch 088 - RuntimeV2 Rest/Shop Route Advice Render Model Inputs - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 087 报告继续，追 Rest/Shop 的 route advice 输入是否仍从 legacy deck/routeState 读取。
+  - `src\ui\views\RestView.tsx` 之前把 `buildRestRouteAdvice()` 的 `characterId`、`deck`、`routeState`、`currentHp`、`maxHp` 全部从 `engine.state` 取；`src\ui\views\ShopView.tsx` 也把 `buildShopRouteAdvice()` 的 `characterId`、`deck`、`routeState` 从 `engine.state` 取，并用 legacy deck 计算购买标签。
+  - runtime-v2 delegated UI 下，legacy deck/routeState/hp 与 `renderModel` 分叉时，Rest/Shop 的“当前路线/当前路线强化/推荐先做”会消失或被旧状态误导。
+  - 红灯复现：
+    - 修复前 `npx tsx --test tests/unit/restViewRenderModel.test.tsx tests/unit/shopViewRenderModel.test.tsx` exit `1`，Rest/Shop 新增 route advice 用例都缺少 `当前路线：跃迁链`。
+    - 进一步补充 HP 分叉红灯：修复前 `npx tsx --test tests/unit/restViewRenderModel.test.tsx` exit `1`，runtime HP 低于 45% 时缺少 `推荐先做 休整` 与 `当前生命偏低，先保住推进节奏`。
+- 修复内容：
+  - **RUNTIMEV2-REST-SHOP-ROUTE-ADVICE-RENDER-MODEL-INPUTS-001：已修，Priority P2。**
+    - `src\ui\views\routeAdvisorDeck.ts` 新增共享 `createRuntimeRouteDeck()`，把 runtime-v2 deck id（含 `+`/`*` 后缀）投影成 route advisor 可识别的 `RunCardInstance`。
+    - `src\ui\views\RestView.tsx` 的 route advice 现在优先使用 `renderModel.player.characterId`、`renderModel.player.deck`、`renderModel.routeState`、`renderModel.player.hp/maxHp`，legacy state 仅作回退。
+    - `src\ui\views\ShopView.tsx` 的 route advice 现在优先使用 `renderModel.player.characterId`、`renderModel.player.deck`、`renderModel.routeState`，并让商店卡牌 build-fit 标签使用同一 runtime deck。
+    - `tests\unit\restViewRenderModel.test.tsx` 新增 Rest route deck、runtime HP、runtime routeState 三个回归。
+    - `tests\unit\shopViewRenderModel.test.tsx` 新增 Shop route deck 与 runtime routeState 两个回归。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/restViewRenderModel.test.tsx tests/unit/shopViewRenderModel.test.tsx`：exit `1`，Rest/Shop route advice 用例缺少 `当前路线：跃迁链`。
+  - 红灯复现：修复前 `npx tsx --test tests/unit/restViewRenderModel.test.tsx`：exit `1`，runtime HP 低血量用例缺少 `推荐先做 休整`。
+  - `npx tsx --test tests/unit/restViewRenderModel.test.tsx tests/unit/shopViewRenderModel.test.tsx`：exit `0`，`7/7` pass。
+  - `npx tsx --test tests/unit/restViewRenderModel.test.tsx tests/unit/shopViewRenderModel.test.tsx tests/unit/restRouteAdvisor.test.ts tests/unit/shopRouteAdvisor.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`37/37` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`234/234` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.79s`。
+- 状态：
+  - Runtime-v2 delegated Rest/Shop 现在会用 renderModel 的路线、卡组和 Rest HP 作为推荐文案输入，避免 legacy stale state 把路线建议隐藏或指向旧路线。
+  - 本轮改动范围为 `src\ui\views\RestView.tsx`、`src\ui\views\ShopView.tsx`、`src\ui\views\routeAdvisorDeck.ts`、`tests\unit\restViewRenderModel.test.tsx`、`tests\unit\shopViewRenderModel.test.tsx` 和本报告。
+  - 下一轮建议继续追 `UpgradeView` / `EnchantView` / `RelicUpgradeView` 是否仍有 route advice 或 route sorting 输入只读 legacy state 的遗漏，尤其 nested runtime-v2 surface 下的 `engine.state.routeState` 分叉。
+
+## DeckRogue Fix Batch 089 - RuntimeV2 Nested Surface Route Affinity Inputs - 2026-05-25
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 088 报告继续，按建议检查 `UpgradeView` / `EnchantView` / `RelicUpgradeView` 的 nested runtime-v2 surface。
+  - 三个视图在显示 legacy card/relic 实例时，路线偏好仍用 `engine.state.character`、`engine.state.player.deck` 和 `engine.state.routeState` 计算；当 runtime-v2 delegated renderModel 已经进入新路线但 legacy state 仍停在旧路线时，卡牌/遗物排序和“当前路线强化”提示会被 stale legacy routeState 误导。
+  - 红灯复现：新增 `surfaceChoiceViewsRenderModel.test.tsx` 三个回归后，修复前 `npx tsx --test tests/unit/surfaceChoiceViewsRenderModel.test.tsx` exit `1`，新增用例 8/9/10 失败：
+    - `UpgradeView` 未把 `Runtime Warp Upgrade` 排在 stale delay card 前。
+    - `EnchantView` 未把 `Runtime Warp Enchant` 排在 stale delay card 前。
+    - `RelicUpgradeView` 没有显示 `当前路线强化：跃迁链`。
+- 修复内容：
+  - **RUNTIMEV2-NESTED-SURFACE-ROUTE-AFFINITY-INPUTS-001：已修，Priority P2。**
+    - `src\ui\views\UpgradeView.tsx` 的路线偏好计算现在优先读取 `renderModel.player.characterId`、`renderModel.player.deck` 与 `renderModel.routeState`，并通过 `createRuntimeRouteDeck()` 投影 runtime deck；legacy state 仅作回退，实际可升级卡牌列表仍保留 legacy card instance 路径。
+    - `src\ui\views\EnchantView.tsx` 采用同样的 runtime-first route context，避免附魔目标排序被旧路线误导。
+    - `src\ui\views\RelicUpgradeView.tsx` 采用 runtime-first route context，避免遗物升级卡片漏显或误显路线强化标签。
+    - `tests\unit\surfaceChoiceViewsRenderModel.test.tsx` 新增 Upgrade/Enchant/RelicUpgrade 三个 stale legacy routeState 回归。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/surfaceChoiceViewsRenderModel.test.tsx`：exit `1`，`7/10` pass，新增 3 个 stale routeState 用例失败。
+  - `npx tsx --test tests/unit/surfaceChoiceViewsRenderModel.test.tsx`：exit `0`，`10/10` pass。
+  - `npx tsx --test tests/unit/surfaceChoiceViewsRenderModel.test.tsx tests/unit/restViewRenderModel.test.tsx tests/unit/shopViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`40/40` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+- 状态：
+  - Nested runtime-v2 Upgrade/Enchant/RelicUpgrade 现在会用 renderModel 的 authoritative route context 计算路线排序/标签，不再被 stale legacy routeState 拖回旧路线。
+  - 本轮改动范围为 `src\ui\views\UpgradeView.tsx`、`src\ui\views\EnchantView.tsx`、`src\ui\views\RelicUpgradeView.tsx`、`tests\unit\surfaceChoiceViewsRenderModel.test.tsx` 和本报告。
+  - 下一轮建议继续追 `RemoveCardView` 是否也存在 runtime-v2 route context / card instance 分叉下的排序或提示缺口，或回到 Python WASM rest test skip 判定是否可改成可执行 mock/adapter 回归。
+
+## DeckRogue Fix Batch 090 - RuntimeV2 Relic Upgrade Configured Relic Gate - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 089 报告继续，先追用户点名的 Python WASM rest test skip。
+  - `tests\unit\runtimeV2Host.test.ts` 中 `python wasm rest command heals and returns to map with follow-up nodes intact` 是普通 `test(...)`，并非 `test.skip`/`todo`。
+  - Fresh 运行 `npx tsx --test tests/unit/runtimeV2Host.test.ts` 显示该用例为 `ok 31`，总计 `31/31` pass，`skipped 0`、`todo 0`；因此当前 Python WASM rest 用例不是合理环境 skip，也不需要改成 mock 才可执行。
+  - 随后追查 Rest 遗物升级 gate：`RestView` fallback 已按 `RELIC_UPGRADE_CONFIGS` 启用普通可升级遗物，但 `RunFlowManager.restUpgradeRelic()`、`runtimeV2/renderModel.ts`、`legacyOracleAdapter.ts` 和 Python runtime 仍存在 corrupted-only 或等价限制，导致 `lantern` 这类配置可升级遗物可见但无法进入或被 adapter/runtime 拒绝。
+  - 红灯复现记录：新增 `rest relic upgrade accepts configured non-corrupted upgrade relics` 后，修复前 `npx tsx --test tests/unit/relicUpgradeFlow.test.ts` 为 `1/2` pass，screen 停在 `Rest` 而非 `RelicUpgrade`；新增 `createRenderModel exposes configured non-corrupted relic upgrade choices` 后，修复前 `npx tsx --test tests/unit/runtimeV2LegacyRenderBridge.test.ts` 为 `16/17` pass，choices 为空。
+  - Windows Python launcher 仍不可用：fresh `py -V` 输出 `No installed Python found!`；本轮 Python 验证继续使用 `python` 可执行文件和显式 `PYTHONPATH`。
+- 修复内容：
+  - **RUNTIMEV2-RELIC-UPGRADE-CONFIGURED-RELIC-GATE-001：已修，Priority P2。**
+    - `src\core\events\RunFlowManager.ts` 的 `restUpgradeRelic()` 现在按 `RELIC_UPGRADE_CONFIGS` 和当前等级是否存在下一等级判断可升级遗物，不再只接受 corrupted relic。
+    - `src\runtimeV2\renderModel.ts` 的 Rest `canRelicUpgrade` 和 RelicUpgrade `choices` 现在使用配置驱动的未满级判断。
+    - `src\runtimeV2\bridge\legacyOracleAdapter.ts` 的 `upgrade_relic` 命令现在信任 `getRelicUpgradeInfo()` 的 `canUpgrade/canAfford`，不再额外拒绝非 corrupted 遗物。
+    - `python_runtime\src\deckrogue_rules_core\runtime.py` 增加 `_is_upgradeable_relic()`，`enter_relic_upgrade` 与 `upgrade_relic` 按升级 cost/等级判断；`src\content\narrative\pythonRuntime.ts` 已由 `npm run sync:python-wasm-runtime --silent` 同步生成。
+    - `tests\unit\relicUpgradeFlow.test.ts`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts` 和 `python_runtime\tests\test_runtime.py` 分别增加 TS flow、render bridge、Python runtime 回归。
+- Fresh 验证输出：
+  - `npm run sync:python-wasm-runtime --silent`：exit `0`，`[sync_python_wasm_runtime] wrote src/content/narrative/pythonRuntime.ts`。
+  - `npx tsx --test tests/unit/runtimeV2Host.test.ts`：exit `0`，`31/31` pass，`skipped 0`，其中 `python wasm rest command heals and returns to map with follow-up nodes intact` 为 `ok 31`。
+  - `npx tsx --test tests/unit/pythonWasmRuntimeSync.test.ts tests/unit/pythonWasmAdapter.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/relicUpgradeFlow.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`65/65` pass。
+  - `$env:PYTHONPATH='python_runtime/src'; python -m unittest python_runtime.tests.test_runtime`：exit `0`，`Ran 5 tests ... OK`。
+  - `npm run check:python-wasm-runtime-sync --silent`：exit `0`，`[sync_python_wasm_runtime] OK`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+  - `$env:PYTHONPATH='python_runtime/src'; python -m unittest discover -s python_runtime/tests -p "test_*.py"`：exit `0`，`Ran 11 tests ... OK`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Python WASM rest 用例当前是可执行真实回归，不是 skip；本轮无需替换为 mock/adapter 回归。
+  - Rest 遗物升级现在在 TS flow、runtime-v2 render model、legacy oracle adapter、Python runtime 和嵌入式 Python WASM source 之间统一按 `RELIC_UPGRADE_CONFIGS` 判断普通可升级遗物。
+  - 本轮改动范围为 `src\core\events\RunFlowManager.ts`、`src\runtimeV2\renderModel.ts`、`src\runtimeV2\bridge\legacyOracleAdapter.ts`、`python_runtime\src\deckrogue_rules_core\runtime.py`、`src\content\narrative\pythonRuntime.ts`、`tests\unit\relicUpgradeFlow.test.ts`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts`、`python_runtime\tests\test_runtime.py` 和本报告。
+  - 下一轮建议继续追 `RemoveCardView` 在 runtime-v2 route context / card instance 分叉下是否还有排序、费用或提示缺口；或转向 generated-report gates 与 Windows packaging 的未覆盖发布证据。
+
+## DeckRogue Fix Batch 091 - RuntimeV2 Remove Card Selector Drift - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 090 报告继续，按建议追 `RemoveCardView` / runtime-v2 remove-card 分叉。
+  - `RemoveCardView` 的 runtime choices 会把 `0:card_id` 这类 index-prefixed token 传给 `engine.removeCard(choiceId)`；Python runtime `_apply_remove_card()` 已按 index 和 card id 校验后删除目标。
+  - `src\core\events\runtimeDelegation.ts` 的 `SyncBootAndMapRuntimeDelegate.removeCard(_cardInstanceId)` 之前忽略 selector 参数并总是 `shift()` 第一张 runtime deck。玩家在 runtime-v2 remove-card surface 选择第二张或第三张时，delegate snapshot 会删错卡并与 UI/legacy state 漂移。
+  - 红灯复现：新增 `SyncBootAndMapRuntimeDelegate.removeCard removes the selected runtime deck entry` 后，修复前 `npx tsx --test tests/unit/runtimeDelegationRoomExit.test.ts` exit `1`，实际 deck 为 `['watch', 'defend']`，期望 `['precision_strike', 'defend']`。
+- 修复内容：
+  - **RUNTIMEV2-REMOVE-CARD-SELECTOR-DRIFT-001：已修，Priority P2。**
+    - `SyncBootAndMapRuntimeDelegate.removeCard()` 现在解析 index-prefixed selector，校验 index 范围和当前 deck entry 与 selector card id 一致后删除目标项。
+    - 无 selector 的 `removeCard()` 现在只允许从 `rest/shop/event` 进入 remove-card surface，并写入对应 `surfaceContext` 与 `roomSession`，避免在非入口 phase 静默删除第一张牌。
+    - 选择完成后按 surface context 处理返回：Shop remove 扣除移除费用并回到 Shop；Rest/event/default remove 走回 Map 并清理 room session，行为与 Python rules-core 的 remove-card 语义对齐。
+    - `tests\unit\runtimeDelegationRoomExit.test.ts` 增加第二张牌删除回归，同时锁住返回 Map、`pendingNodeResolution=false` 和 `roomSession=null`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/runtimeDelegationRoomExit.test.ts`：exit `1`，新增用例实际删除第一张牌。
+  - `npx tsx --test tests/unit/runtimeDelegationRoomExit.test.ts`：exit `0`，`6/6` pass。
+  - `npx tsx --test tests/unit/runtimeDelegationRoomExit.test.ts tests/unit/removeCardViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeV2Host.test.ts`：exit `0`，`79/79` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`145/145` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Runtime-v2 TS sync delegate 现在和 Python rules-core 一样按 remove-card selector 删除目标，不再在多卡 deck 中固定删第一张。
+  - 本轮改动范围为 `src\core\events\runtimeDelegation.ts`、`tests\unit\runtimeDelegationRoomExit.test.ts` 和本报告。
+  - 下一轮建议继续追 runtime-v2 remove-card 的 legacy-instance 路径是否需要在 legacy deck 非空时同步 delegate snapshot，或转向 generated-report / Windows packaging gates。
+
+## DeckRogue Fix Batch 092 - RuntimeV2 Remove Card Legacy Instance Sync - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 091 报告继续，接手已排队的 runtime-v2 remove-card legacy-instance 同步风险。
+  - `RemoveCardView` 在 legacy deck 非空时仍会点击 legacy `CardView` 并把 `card.instanceId` 传入 `GameEngine.removeCard()`；Batch 091 后 `SyncBootAndMapRuntimeDelegate.removeCard()` 需要 `index:card_id` selector。
+  - 队列中的红灯为 `RUNTIMEV2-REMOVE-CARD-LEGACY-INSTANCE-SYNC-001`：legacy instanceId 会让 sync delegate remove_card 拒绝并进入 fallback，之后 legacy deck 被删除但 delegate snapshot 短暂停留在旧 remove-card phase。
+  - 当前 fresh 复测显示半途修复后的新增 sync delegate 回归已通过，但旧 fake delegate 用例仍期待 legacy instanceId；`npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` 修正前 exit `1`，`23/24` pass，实际 delegate 参数为 `0:strike`，旧期望为 legacy instanceId。
+- 修复内容：
+  - **RUNTIMEV2-REMOVE-CARD-LEGACY-INSTANCE-SYNC-001：已修，Priority P2。**
+    - `src\core\events\gameEngine.ts` 新增 `resolveDelegatedDeckSelector()`，在 legacy instanceId 仍存在于当前 deck 时转换为 runtime delegate 需要的 `${index}:${card.id}` selector。
+    - `GameEngine.removeCard()` 现在保存 delegated remove snapshot；当 delegate 已经返回 Map 时，legacy 侧只执行 `RunFlowManager.leaveCurrentRoomToMap()` 的状态收束，避免再调用 delegated `leave_room` 造成第二次 fallback。
+    - 非 Map 返回路径会在 remove 后用 legacy state 重新同步 runtime delegate snapshot，保持 Shop/Rest 等嵌套 surface 继续对齐。
+    - `tests\unit\gameEngineRuntimeDelegation.test.ts` 新增真实 `SyncBootAndMapRuntimeDelegate` legacy instance removal 回归，锁住 legacy 点击第二张牌后 legacy deck、delegate snapshot、Map screen、roomSession 和 fallbackCount 全部对齐。
+    - 旧 fake delegate 回归已更新为断言 delegate 收到 runtime selector `0:<cardId>`，明确新的 remove-card delegation contract。
+- Fresh 验证输出：
+  - 修复测试期望前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `1`，`23/24` pass；失败点为旧 fake delegate 期望 legacy instanceId，实际收到 `0:strike`。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`24/24` pass。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeDelegationRoomExit.test.ts tests/unit/removeCardViewRenderModel.test.tsx tests/unit/runtimeV2Host.test.ts`：exit `0`，`63/63` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`146/146` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+- 状态：
+  - Runtime-v2 remove-card 现在同时支持 runtime selector 点击路径和 legacy instance 点击路径；sync delegate 不再因为 legacy instanceId 误入 fallback 或让 snapshot 与 legacy deck 短暂漂移。
+  - 本轮改动范围为 `src\core\events\gameEngine.ts`、`tests\unit\gameEngineRuntimeDelegation.test.ts` 和本报告。
+  - 下一轮建议继续追 generated-report / Windows packaging gates，或检查 remove-card shop paid removal 在 runtime-v2 legacy-instance 路径下的金币扣除与 selector 同步是否还缺独立回归。
+
+## DeckRogue Fix Batch 093 - RuntimeV2 Paid Remove Card Shop Sync - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 092 报告继续，追 remove-card shop paid removal 在 runtime-v2 legacy-instance 路径下的金币扣除与 selector 同步。
+  - `GameEngine.removeCard()` 在 Batch 092 后仍先调用 delegated `removeCard()`，再做 legacy 商店付费移除金币校验；这会让 legacy 金币不足但 runtime snapshot 金币足够时，delegate 先删牌扣钱，legacy 随后早退并留下 snapshot 漂移。
+  - 另一个对称分叉是 runtime snapshot 金币偏低时 delegated remove 抛错 fallback，但 legacy 金币足够会继续成功删牌扣钱；原代码只在 `delegatedRemoveSnapshot` 存在时同步，fallback 后 Shop 返回分支不会把 legacy authoritative state 写回 runtime snapshot。
+  - 红灯复现：
+    - 新增 `GameEngine.removeCard does not mutate the sync delegate when paid legacy removal is unaffordable` 后，修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，`24/25` pass；失败显示 delegate deck 少了目标 `strike`。
+    - 新增 `GameEngine.removeCard resyncs the sync delegate when paid runtime removal falls back` 后，修复前同命令 exit `1`，`25/26` pass；失败显示 legacy deck 已删除目标，但 delegate snapshot 仍保留原 deck。
+- 修复内容：
+  - **RUNTIMEV2-PAID-REMOVE-CARD-SHOP-SYNC-001：已修，Priority P2。**
+    - `src\core\events\gameEngine.ts` 将商店付费移除的 legacy 金币校验前置到 delegated remove 之前；legacy 金币不足时不再突变 runtime delegate snapshot。
+    - Shop/Rest 等非 Map 返回分支现在始终调用 `syncRuntimeDelegateFromLegacyState('remove_card')`；该 helper 自带 delegation guard，能在 delegated remove fallback 后把 legacy 成功结果写回 runtime snapshot。
+    - `tests\unit\gameEngineRuntimeDelegation.test.ts` 增加两个 paid shop removal 回归，分别覆盖 legacy unaffordable/runtime affordable 与 legacy affordable/runtime fallback 两个分叉。
+- Fresh 验证输出：
+  - 红灯复现 1：修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `1`，`24/25` pass，delegate snapshot 已误删目标牌。
+  - 红灯复现 2：修复前 `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `1`，`25/26` pass，delegate snapshot 未从 legacy 成功移除结果重同步。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`26/26` pass。
+  - `npx tsx --test tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeDelegationRoomExit.test.ts tests/unit/removeCardViewRenderModel.test.tsx tests/unit/runtimeV2Host.test.ts`：exit `0`，`65/65` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`148/148` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+- 状态：
+  - Runtime-v2 paid shop remove-card 现在以 legacy click path 的 legacy affordability 为前置门禁，并在 delegate fallback 后恢复 runtime snapshot 对齐，避免金币与 deck 发生单侧突变。
+  - 本轮改动范围为 `src\core\events\gameEngine.ts`、`tests\unit\gameEngineRuntimeDelegation.test.ts` 和本报告。
+  - 下一轮建议转向 generated-report / Windows packaging gates，或检查 Python rules-core paid remove 与 TS sync delegate 在 cardRemovalCost 来源上是否还存在边界不一致。
+
+## DeckRogue Fix Batch 094 - Report Bundle Windows Distribution Hash Gate - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 093 报告继续，先复查 Python rules-core paid remove 与 TS sync delegate 的 `cardRemovalCost` 来源；Python runtime 已按 `shop.card_removal_cost` 校验，设置 `card_removal_cost=125`、gold=99 时会抛 `ValueError Not enough gold for shop remove_card`，暂未发现该方向 bug。
+  - 随后转向 generated-report / Windows packaging gates；当前 `reports\desktop\win-dist.json` 的 Windows installer 报告 `overallStatus` 为 `pass`，但 `.exe` artifact 没有 `sha256` 字段。
+  - `scripts\validation\check_release_readiness.ts` 已要求 Windows `.exe` artifact 拥有 64 位 SHA-256 且与实际文件匹配；但 `scripts\validation\generate_report_bundle.ts` 之前只复述 `win-dist.json.overallStatus`，导致 `docs\reports\report_bundle.md` 生成 `pass, exe=603692164 bytes, sha256=missing`，人读报告会把缺 hash 的 installer 误判为通过。
+  - 红灯复现：新增 `report bundle downgrades Windows distribution when installer hash evidence is missing` 后，修复前 `npx tsx --test tests/unit/validationScripts.test.ts` exit `1`，`37/38` pass；失败输出显示 Windows distribution 行仍是 `pass, exe=12 bytes, sha256=missing`。
+- 修复内容：
+  - **GENERATED-REPORT-WIN-DIST-HASH-GATE-001：已修，Priority P2。**
+    - `scripts\validation\generate_report_bundle.ts` 新增 SHA-256 格式校验；当 `win-dist.json` 声称 `pass` 但 `.exe` artifact 缺失、size 非正数或 hash 缺失/无效时，报告目录结论降级为 `fail`。
+    - `tests\unit\validationScripts.test.ts` 增加缺 hash fixture 回归，锁住 `pass + sha256=missing` 不能再出现在 Windows distribution 结论行。
+    - 重新运行 `npm run report:bundle --silent` 后，真实 `docs\reports\report_bundle.md` 已显示 `windows distribution` 为 `fail, exe=603692164 bytes, sha256=missing, updatedAt=2026-05-25T07:30:21.148Z`。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/validationScripts.test.ts`：exit `1`，`37/38` pass，新增用例捕获 `pass, exe=12 bytes, sha256=missing`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts`：exit `0`，`38/38` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run lint --silent`：exit `0`。
+  - `npm run test:supplemental-units --silent`：exit `0`，`237/237` pass。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run report:bundle --silent`：exit `0`，`[report-bundle] wrote docs/reports/report_bundle.md`，生成报告已将缺 hash Windows distribution 降级为 `fail`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 3.38s`。
+- 状态：
+  - Generated report 现在与 release readiness 的 Windows installer hash gate 对齐，不再把缺 SHA-256 的 installer 证据展示为通过。
+  - 本轮改动范围为 `scripts\validation\generate_report_bundle.ts`、`tests\unit\validationScripts.test.ts`、`docs\reports\report_bundle.md` 和本报告。
+  - 下一轮建议继续修 Windows distribution 产物源头：确认 `scripts\desktop\dist_win.ts` 是否总会写入 artifact `sha256`，并决定是否需要重新生成 `reports\desktop\win-dist.json` / installer release 证据。
+
+## DeckRogue Fix Batch 095 - RuntimeV2 Reward Stale Legacy Drift - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow clean、普通 dirty worktree 和 Batch 094 报告继续，先追 Windows distribution 源头；fresh `npm run dist:win -- --skip-build` 证明当前 `scripts\desktop\dist_win.ts` 会写入 artifact `sha256`，`reports\desktop\win-dist.json` 的 installer 条目已包含 64 位 SHA-256。
+  - 随后转向 runtimeV2/UI 未覆盖面，发现 `src\ui\views\RewardView.tsx` 只在 legacy `rewardCards` 为空时使用 `renderModel.reward.cards`。当 runtime-v2 delegated reward 已更新但 legacy rewardCards 仍残留旧奖励时，UI 会显示 stale legacy card。
+  - 对称的 engine 分叉在 `src\core\events\gameEngine.ts`：`takeReward(cardInstanceId)` 在 legacy rewardCards 非空且找不到该 instance 时，会把 `undefined` 传给 runtime delegate，导致选择 runtime 奖励时可能变成默认第一张或 fallback。
+  - 红灯复现：
+    - 新增 `RewardView prefers runtime-v2 reward cards over stale legacy reward cards` 后，修复前 `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx tests/unit/gameEngineRuntimeDelegation.test.ts` exit `1`，HTML 仍显示 `Stale Legacy Strike` 且缺少 `Runtime Precision Strike`。
+    - 新增 `GameEngine.takeReward forwards runtime-v2 reward card ids when legacy reward cards are stale` 后，同一红灯命令显示 delegate 收到 `undefined`，期望 `runtime_precision_strike`。
+- 修复内容：
+  - **RUNTIMEV2-REWARD-STALE-LEGACY-DRIFT-001：已修，Priority P2。**
+    - `src\ui\views\RewardView.tsx` 现在只要存在 `renderModel.reward` 就以 runtime reward cards 为权威显示源，避免 stale legacy rewardCards 抢占 UI。
+    - `src\core\events\gameEngine.ts` 的 delegated `takeReward()` 现在读取当前 delegate snapshot 的 `reward.cardIds`；当传入 id 命中 runtime reward 列表时，即使 legacy rewardCards 非空也会把 runtime card id 转发给 delegate。
+    - `tests\unit\rewardViewRenderModel.test.tsx` 和 `tests\unit\gameEngineRuntimeDelegation.test.ts` 分别增加 UI 与 engine 回归，覆盖 stale legacy rewardCards 分叉。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `1`，`27/29` pass，两个新增用例分别失败在 stale legacy UI 和 delegate `undefined`。
+  - `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx tests/unit/gameEngineRuntimeDelegation.test.ts`：exit `0`，`29/29` pass。
+  - `npx tsx --test tests/unit/rewardViewRenderModel.test.tsx tests/unit/gameEngineRuntimeDelegation.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`84/84` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`149/149` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run test:supplemental-units --silent`：exit `0`，`238/238` pass。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.33s`。
+  - `npm run dist:win -- --skip-build`：exit `0`，electron-builder 生成 `release\win\DeckRogue-0.0.0-x64.exe` 与 blockmap；读回 `reports\desktop\win-dist.json` 显示 `overallStatus=pass` 且 installer `sha256=03c8e604efbf60daff6d20b730ae7b6e46f8fbc2ea4cf6f763ba6eaa5097e9c7`。
+  - `npx tsx scripts/validation/check_release_readiness.ts` 写出 `reports/release/release-readiness.json`；读回 summary 为 `28 pass / 15 fail / 0 warn`，其中 `win_dist_report=pass`，剩余失败为 stale desktop build/smoke/flow/security/doctor 报告和 GitHub transport 环境项。
+  - `npm run report:bundle --silent`：exit `0`，`docs\reports\report_bundle.md` 当前显示 `release readiness fail with 15 fail / 0 warn`，`windows distribution pass, exe=603695171 bytes, sha256=03c8e604efbf, updatedAt=2026-05-26T00:56:50.299Z`。
+- 状态：
+  - Runtime-v2 reward UI 和 engine reward selection 现在以 runtime snapshot reward 为权威，不再因 stale legacy rewardCards 显示旧奖励或把选择转成默认第一张。
+  - Windows distribution 源头已经重新生成带 SHA-256 的 installer 报告；release readiness 的 win_dist 项为 pass。
+  - 本轮改动范围为 `src\ui\views\RewardView.tsx`、`src\core\events\gameEngine.ts`、`tests\unit\rewardViewRenderModel.test.tsx`、`tests\unit\gameEngineRuntimeDelegation.test.ts` 和本报告。
+  - 下一轮建议继续追 release readiness 中可本地修复的 stale desktop build/smoke/flow 报告，或转向 `MapView`/combat HUD 仍只读 legacy state 的 runtimeV2 render-model 分叉。
+
+## DeckRogue Fix Batch 096 - RuntimeV2 Map Energy HUD Drift - 2026-05-26
+
+- 发现证据：
+  - 本轮从 shadow 状态、普通 dirty worktree 和 Batch 095 报告继续，按建议转向 `MapView` / runtimeV2 render-model 分叉。
+  - `src\ui\views\MapView.tsx` 已用 `renderModel` 接管 map/currentNodeId/availableNodeIds/hp/intel/relicCount/deckCount，但资源概览里的 `playerEnergy` 与 `playerMaxEnergy` 仍直接读取 `engine.state.player.energy/maxEnergy`。
+  - `src\runtimeV2\contracts.ts` 的 `RenderModel.player` 之前没有 `energy/maxEnergy` 字段，`src\runtimeV2\renderModel.ts` 也不会从 runtime snapshot 或角色内容派生地图 HUD 能量。
+  - 在 delegated runtimeV2 map 已经选中角色但 legacy engine state 仍是 `0/0` 的短窗口里，Map HUD 会显示 stale legacy 能量 `0/0`，和同屏 runtime-v2 hp/intel/deck/relic 汇总不一致。
+  - 红灯复现：
+    - 新增 `MapView trusts runtime-v2 map pending state and player summary over stale legacy state` 的能量断言后，修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts` exit `1`，HTML 仍显示 `能量 ... 0/0`。
+    - 新增 `createRenderModel exposes selected character map energy for runtime-v2 map HUDs` 后，同一红灯命令显示 `renderModel.player.energy` 为 `undefined`，期望 `3`。
+- 修复内容：
+  - **RUNTIMEV2-MAP-ENERGY-HUD-DRIFT-001：已修，Priority P2。**
+    - `src\runtimeV2\contracts.ts` 将 `energy/maxEnergy` 加入 `RenderModel.player` contract。
+    - `src\runtimeV2\renderModel.ts` 新增 runtime player energy 派生：combat snapshot 使用 `combat.playerEnergy`，非 combat map/room snapshot 按已选角色内容表的 `maxEnergy` 暴露默认能量与上限。
+    - `src\runtimeV2\legacyRenderBridge.ts` 在 legacy render bridge 中用 live legacy `engine.state.player.energy/maxEnergy` 覆盖派生字段，避免 legacy-only 视图被角色默认值误覆盖。
+    - `src\ui\views\MapView.tsx` 的资源概览现在优先读取 `renderModel.player.energy/maxEnergy`；路线建议的 `characterId` 也改为 runtime render model 优先，保持和其它 surface 的 route context 优先级一致。
+    - `tests\unit\mapViewRenderModel.test.tsx` 与 `tests\unit\runtimeV2LegacyRenderBridge.test.ts` 增加回归，分别锁住 UI HTML 和 render model contract。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests/unit/mapViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `1`，`18/20` pass；失败点为 Map HUD `0/0` 和 `renderModel.player.energy === undefined`。
+  - `npx tsx --test tests/unit/mapViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts`：exit `0`，`20/20` pass。
+  - `npx tsx --test tests/unit/mapViewRenderModel.test.tsx tests/unit/runtimeV2LegacyRenderBridge.test.ts tests/unit/runtimeV2Host.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`58/58` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run test:runtime-v2:ts --silent`：exit `0`，`150/150` pass。
+  - `npm run test:supplemental-units --silent`：exit `0`，`238/238` pass。
+  - `npm run lint --silent`：exit `0`。
+  - `git --git-dir=.omx\git-shadow --work-tree=. diff --check`：exit `0`，仅提示 Windows CRLF touch warning。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 13.36s`。
+- 状态：
+  - Runtime-v2 Map HUD 现在在 delegated render model 存在时以 runtime player summary 为权威，不再因 stale legacy `engine.state.player.energy/maxEnergy` 显示 `0/0`。
+  - 本轮改动范围为 `src\runtimeV2\contracts.ts`、`src\runtimeV2\renderModel.ts`、`src\runtimeV2\legacyRenderBridge.ts`、`src\ui\views\MapView.tsx`、`tests\unit\mapViewRenderModel.test.tsx`、`tests\unit\runtimeV2LegacyRenderBridge.test.ts` 和本报告。
+  - 下一轮建议继续追 combat HUD / Battlefield 仍直接读取 legacy `engine.state.player.maxEnergy` 的 runtimeV2 render-model 分叉，或回到 release readiness 中 stale desktop build/smoke/flow 报告。
+
+## DeckRogue Fix Batch 097 - UI Responsive Readability Coverage - 2026-05-26
+
+- 发现证据：
+  - 用户目标是完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小。先读当前工作树、Batch 096 报告和 `reports\ui\responsive-readability.json`，确认上一轮主流程审计仍有 4 个移动端触控问题：角色选择页“展开场外面板”按钮 `134x38`，地图重置视图按钮 `36x33`。
+  - 参考外部经验与标准：W3C WCAG 2.2 Target Size Minimum 页面包含 `24 by 24 CSS pixels`；WCAG Resize Text 页面包含 `200 percent`；GitHub 上 `oskarrough\slaytheweb` 是 Web 单机 roguelike deckbuilder，说明同类 Web 卡牌项目也需要持续处理移动端 UI/尺寸问题。
+  - 扩展审计后发现更大覆盖缺口：新增系统菜单、教程、图鉴、成就、战斗牌库/抽牌堆/弃牌堆弹窗后，fresh Playwright 审计一度失败 `123 issue(s)`，全部为 tap target 小于阈值，集中在 menu/codex/achievement/tutorial overlay。
+  - 探针复现一个真实交互 bug：390px 移动视口下点击抽牌堆按钮时，`elementFromPoint` 命中 `.grimdark-frontline-zone` 的“防线空缺”，DOM click 才能打开弹窗，说明前线层覆盖了底部牌堆按钮。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-097：已修，Priority P2。**
+    - `src\ui\views\CharacterSelectView.tsx` 给“展开/收起场外面板”按钮补 `min-h-10`。
+    - `src\ui\views\MapView.tsx` 和 `src\ui\theme\grimdark.css` 给地图重置视图按钮稳定 `40x40` 命中盒，避免 Tailwind padding/组合类压缩。
+    - `src\ui\views\combat\CombatHUD.tsx`、`src\ui\views\combat\ActionHand.tsx` 给牌库、抽牌堆、弃牌堆按钮补 `aria-label`，让真实浏览器 role/name 查询和辅助技术可识别。
+    - `src\ui\theme\grimdark.css` 提升战斗底部手牌/牌堆控制 z-index，修复移动端前线层覆盖牌堆按钮导致用户点击无效的问题。
+    - `src\ui\overlays\CodexOverlay.tsx`、`src\ui\overlays\AchievementOverlay.tsx`、`src\ui\views\TutorialView.tsx` 增加 overlay 根类；`src\index.css` 统一给系统菜单、图鉴、成就、教程 overlay 按钮设置 40px 触控高度，并给菜单面板加移动端最大高度与滚动。
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 从 14 个 surface 扩展到 24 个 surface：新增 character-codex-overlay、character-achievements-overlay、launcher-tutorial-overlay、system-menu-root/theme/save-load/keybinds、combat-deck-modal/draw-pile-modal/discard-pile-modal，并为战斗弹窗注入真实卡牌 fixture。
+    - `tests\unit\uiReadabilityCss.test.ts` 增加菜单/overlay 触控目标、地图按钮、战斗牌堆 aria-label 的静态回归。
+- Fresh 验证输出：
+  - 修复前读回 `reports\ui\responsive-readability.json`：`overallStatus=fail`，`surfaceCount=14`，`viewportCount=4`，`issues=4`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts`：exit `0`，`4/4` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.12s`。
+  - 红灯复现扩展覆盖：`npx tsx scripts/validation/playwright_ui_responsive_readability.ts` 在 24 surface 后 exit `1`，`responsive readability audit failed with 123 issue(s)`，问题集中在 menu/codex/achievement/tutorial overlay 的小触控目标。
+  - 移动端命中探针修复前：抽牌堆按钮中心 hit 为 `.grimdark-frontline-zone`，文本 `防线防线空缺`；修复后 hit 为 `.grimdark-pile-name`，文本 `抽牌堆`，点击打开 modal，`modal=1`，heading `战术缓存（4）`。
+  - 最终真实浏览器审计：`$env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:4181/'; npx tsx scripts/validation/playwright_ui_responsive_readability.ts; Remove-Item Env:\PLAYWRIGHT_BASE_URL` exit `0`。
+  - 读回 `reports\ui\responsive-readability.json`：`overallStatus=pass`，`surfaceCount=24`，`viewportCount=4`，`audits=96`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`，截图数 `96` 位于 `output\playwright\ui-responsive-readability`。
+  - `git diff --check -- ...`：exit `0`，仅 Windows CRLF touch warning。
+- 状态：
+  - 主流程与常用 overlay/modal 的响应式可读性审计已扩到 24 个界面/覆盖层、4 类视口并通过，卡牌正文/标题最小字号和移动端 40px 触控目标都有新回归覆盖。
+  - 当前仍不把整个长期目标标记完成：还可继续覆盖更少见的确认弹窗、错误态、light theme 全量、200% 浏览器缩放和更多超小/超宽视口。
+  - 下一轮建议继续扩展 `playwright_ui_responsive_readability.ts` 到 restart-combat-confirm、error/loading states、codex import tools、200% text zoom，或用实际浏览器人工浏览检查视觉密度。
+
+## DeckRogue Fix Batch 098 - Full-Profile Responsive Overlay Readability Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 097 和最新 `reports\ui\responsive-readability.json`，发现上一轮 96 audit 通过后，新增 baseline 覆盖已扩到 `25 surface / 7 viewport`，但最新报告为 `overallStatus=fail`。
+  - 失败集中在 `character-codex-overlay` / `character-achievements-overlay` 的移动端 `tap-target-occluded`：320/360/390/414px 下关闭按钮中心命中 `.app-topbar-btn`，真实截图显示全局主题/菜单浮动按钮压在图鉴/成就 overlay 右上角。
+  - 另一个阻塞是全量 baseline 在 `desktop-1920x1080` 的 `character-codex-overlay` 打开步骤超时；读代码后确认角色选择页会持久化“场外面板展开/收起”，审计脚本每次盲点展开按钮会在已展开时反而收起面板。
+  - GitHub 同类参考继续采用 `oskarrough\slaytheweb`：README 有 `optimize UI for mobile`，CHANGELOG 包含 `Improve mobile UI`、`Fit more cards on mobile screens`、`Upgrade card UI to use tap/click instead of hover`、`Use overlays for draw and discard piles`，支撑把移动端 overlay、tap/click 和卡牌可读性纳入持续门禁。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-098：已修，Priority P2。**
+    - `src\ui\overlays\CodexOverlay.tsx` 与 `src\ui\overlays\AchievementOverlay.tsx` 给 panel/body/sidebar/list/detail 增加稳定语义类，供 CSS 和审计明确约束。
+    - `src\index.css` 给图鉴/成就/教程 overlay 增加显式高层级，并在任一全屏 overlay 打开时隐藏 `.app-floating-controls`，避免 AppShell 顶层按钮跨 stacking context 覆盖 overlay 关闭按钮。
+    - `src\index.css` 增加 480px 以下 overlay 单列内部滚动布局：panel inset 缩小、body 改 flex-column、entry list 限高并独立滚动、detail 改普通流式内容，避免窄屏双区互压。
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 的遮挡判定允许命中当前按钮内部 SVG/span；只有中心点命中其他控件或外部元素时才报 `tap-target-occluded`。
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 `ensureCharacterMetaPanelOpen()`，仅当图鉴/成就入口不可见时才点击“展开场外面板”，修复桌面宽屏全量 baseline 的状态翻转超时。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住 overlay 层级、全局浮动按钮隐藏规则、移动端 overlay 单列滚动和 entry list 限高。
+- Fresh 验证输出：
+  - 修复前读回最新报告：`overallStatus=fail`，`surfaceCount=25`，`viewportCount=7`，问题为 13 个移动端 overlay 遮挡/内部命中；聚焦修复后先降为 8 个关闭按钮遮挡。
+  - 浏览器探针确认：`.codex-overlay` computed `zIndex=1200`，但关闭按钮中心仍 hit `.app-topbar-btn`，因此最终采用 overlay 打开时隐藏全局浮动按钮的修复。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts`：exit `0`，`4/4` pass。
+  - 聚焦审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4192/ RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=character-codex-overlay,character-achievements-overlay RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-360x740,mobile-390x844,mobile-414x896 npx tsx scripts/validation/playwright_ui_responsive_readability.ts`：exit `0`；读回 `auditCount=8`，`issueCount=0`。
+  - 宽屏超时回归：`RESPONSIVE_READABILITY_VIEWPORTS=desktop-1920x1080` + 图鉴/成就聚焦审计：exit `0`。
+  - baseline 全量：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4192/ RESPONSIVE_READABILITY_PROFILES=baseline npx tsx scripts/validation/playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`surfaceCount=25`，`viewportCount=7`，`audits=175`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`。
+  - 全 profile 真实浏览器审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4192/ npx tsx scripts/validation/playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`baseline=25x7`，`text-zoom-200=10x3`，`light-theme=7x2`，总 `audits=219`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`11/11` pass。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 5.75s`。
+  - `git diff --check -- src\index.css src\ui\overlays\CodexOverlay.tsx src\ui\overlays\AchievementOverlay.tsx scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts`：exit `0`，仅 Windows CRLF touch warning。
+- 状态：
+  - 响应式可读性门禁现在覆盖 baseline 25 个 surface、7 个视口，并追加 200% 字号与 light theme profile；当前真实浏览器报告 219 audit / 0 issue。
+  - 本轮改动范围为 `src\index.css`、`src\ui\overlays\CodexOverlay.tsx`、`src\ui\overlays\AchievementOverlay.tsx`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：还可继续补充错误边界/loading fallback、更多实际人工游戏流视觉 QA、以及桌面打包后的内嵌窗口验证。
+
+## DeckRogue Fix Batch 099 - Error And Loading Responsive Fallback Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 098、`src\ui\components\ErrorBoundary.tsx`、`src\ui\views\AppShell.tsx`、`src\main.tsx` 和 `scripts\validation\playwright_ui_responsive_readability.ts`，确认上一轮响应式门禁虽已覆盖 25 surface，但异常边界与 loading fallback 仍未被真实 surface 打开。
+  - `ErrorBoundary` 默认 fallback 仍使用 inline style，没有 `.deckrogue-error-boundary` 稳定类；`ScreenLoadingFallback` 没有 `.screen-loading-fallback`；`main.tsx` 初始化中/初始化失败也使用独立 Tailwind 片段，无法复用统一可读性规则。
+  - 审计脚本的 `smallTextSelectors` 已包含 `.deckrogue-error-boundary` 和 `.screen-loading-fallback`，但缺少可生成这些状态的 surface，因此报告不能证明错误/加载状态在移动端、桌面、200% 字号和 light theme 下可读。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-099：已修，Priority P2。**
+    - `src\ui\components\ErrorBoundary.tsx` 将默认 fallback 改为 `.deckrogue-error-boundary` / `__panel` / `__title` / `__message` / `__action` 类名驱动，保留中文文案 `界面渲染异常` 和 `重试`，并加 `role="alert"`。
+    - `src\ui\views\AppShell.tsx` 将 Suspense fallback 改为 `.screen-loading-fallback` 结构，提供 `role="status"` / `aria-live="polite"` 和统一 spinner/label。
+    - `src\main.tsx` 的初始化中与初始化失败状态复用 `.screen-loading-fallback` 与 `.deckrogue-error-boundary`，让真实启动路径也受同一响应式规则约束。
+    - `src\index.css` 新增 fallback 共享布局：`100dvh`、可滚动、响应式 panel、`clamp()` 字号、`overflow-wrap:anywhere`、移动端按钮纵向排列和 40px 触控目标。
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 `screen-loading-fallback` 与 `error-boundary-fallback` synthetic surfaces，并加入 baseline、200% text zoom、light theme profile。
+    - `tests\unit\uiReadabilityCss.test.ts` 与 `tests\unit\errorBoundaryContract.test.ts` 锁住 fallback 类名、可访问角色、字号/触控 CSS 和审计脚本 surface 注册。
+- Fresh 验证输出：
+  - 红灯复现：首次在 `http://127.0.0.1:4181/` 跑 fallback 聚焦审计时，因为 dist 仍是旧构建，`error-boundary-fallback` 的“返回首页”按钮为 `64x24`，报告 `issues=4`；随后执行 fresh build 刷新 dist。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/errorBoundaryContract.test.ts`：exit `0`，`6/6` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 5.13s`。
+  - fallback 聚焦审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181/ RESPONSIVE_READABILITY_PROFILES=baseline,text-zoom-200,light-theme RESPONSIVE_READABILITY_SURFACES=screen-loading-fallback,error-boundary-fallback RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,desktop-1920x1080 npx tsx scripts\validation\playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`audits=12`，`issues=0`。
+  - baseline 全量真实 dist 审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181/ RESPONSIVE_READABILITY_PROFILES=baseline npx tsx scripts\validation\playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`surfaceCount=27`，`viewportCount=7`，`audits=189`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`。
+  - 全 profile 真实 dist 审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181/ npx tsx scripts\validation\playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`baseline=189 audits`，`text-zoom-200=36 audits`，`light-theme=18 audits`，总 `audits=243`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/errorBoundaryContract.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`13/13` pass。
+  - `git diff --check -- src\ui\components\ErrorBoundary.tsx src\ui\views\AppShell.tsx src\main.tsx src\index.css scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts tests\unit\errorBoundaryContract.test.ts`：exit `0`，仅 Windows CRLF touch warning。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`，监听进程为 `node scripts/dev/serve-dist-local.mjs 4181`。
+- 状态：
+  - 响应式可读性门禁现在覆盖 27 个 surface，新增错误边界和加载 fallback；真实 dist 页面在 baseline、200% 字号、light theme 下共 243 次审计 0 issue。
+  - 本轮改动范围为 `src\ui\components\ErrorBoundary.tsx`、`src\ui\views\AppShell.tsx`、`src\main.tsx`、`src\index.css`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts`、`tests\unit\errorBoundaryContract.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：还可继续做实际人工游戏流视觉 QA、桌面打包内嵌窗口验证，以及更少见的导入/存档错误态覆盖。
+
+## DeckRogue Fix Batch 100 - Extreme Aspect Responsive Readability Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 099 和 `reports\ui\responsive-readability.json`，确认上一轮真实 dist 门禁为 `27 surface / 7 viewport / 243 audits / 0 issues`，但缺少横屏手机、低高度窗口和超宽桌面。
+  - GitHub 同类经验继续采用 `oskarrough\slaytheweb`：README 与 CHANGELOG 中的 mobile UI、fit more cards、tap/click、overlay flexibility 方向，说明 Web 卡牌 roguelike 需要持续覆盖不同设备形态，而不只常规竖屏手机和桌面。
+  - 新增 `extreme-aspect` profile 后，真实 dist 审计红灯复现 4 个问题：`character-codex-overlay` 在 `mobile-landscape-640x320` 和 `mobile-landscape-844x390` 下出现 `tap-target-occluded`，分类/筛选按钮中心命中右侧 `.codex-overlay__detail` 或内部绝对层。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-100：已修，Priority P2。**
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 4 个设备形态：`mobile-landscape-640x320`、`mobile-landscape-844x390`、`desktop-short-1024x576`、`desktop-ultrawide-2560x1080`。
+    - 同脚本新增 `extreme-aspect` profile，覆盖 launcher、角色选择、系统菜单、图鉴 overlay、地图、战斗、战斗牌堆弹窗、奖励、商店、loading fallback、error fallback。
+    - `src\index.css` 为 `max-height: 430px and max-width: 900px` 的短屏横向设备新增图鉴/成就 overlay 单列滚动布局，避免横屏手机仍走左右分栏而互相遮挡。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住 extreme-aspect profile 注册、四个新增视口，以及短屏 overlay 单列布局规则。
+- Fresh 验证输出：
+  - 红灯复现：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181/ RESPONSIVE_READABILITY_PROFILES=extreme-aspect npx tsx scripts\validation\playwright_ui_responsive_readability.ts` 修复前 exit `1`，报告 `issues=4`，集中在 `character-codex-overlay` 横屏手机按钮遮挡。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts`：exit `0`，`6/6` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.52s`。
+  - 修复后 extreme-aspect 真实 dist 审计：exit `0`；读回 `overallStatus=pass`，`surfaceCount=12`，`viewportCount=4`，`audits=48`，`issues=0`，`minCardText=9.92`，`minCardTitle=10.88`。
+  - 全 profile 真实 dist 审计：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181/ npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=4`，`surfaceCount=27`，`viewportCount=11`，`audits=399`，`issues=0`，profile 分布为 `baseline=297`、`text-zoom-200=36`、`light-theme=18`、`extreme-aspect=48`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/errorBoundaryContract.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`14/14` pass。
+  - `git diff --check -- src\index.css scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts project-development-report.md`：exit `0`，仅 Windows CRLF touch warning。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`，监听进程为 `node scripts/dev/serve-dist-local.mjs 4181`。
+- 状态：
+  - 响应式可读性门禁现在覆盖 27 个 surface、11 个视口、4 个 profile，共 399 次真实浏览器审计 0 issue，新增覆盖横屏手机、短屏桌面和超宽桌面。
+  - 本轮改动范围为 `src\index.css`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：还可继续做桌面打包 Electron 内嵌窗口验证、真实人工长流程视觉 QA，以及 codex import tools / 存档错误态覆盖。
+
+## DeckRogue Fix Batch 101 - Electron Window Responsive Readability Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 100、`electron\main.mjs` 与 `scripts\validation\playwright_electron_smoke.ts`，确认网页端门禁已覆盖 `27 surface / 11 viewport / 399 audits / 0 issues`，但 Electron 桌面壳仍只按默认大窗口 smoke。
+  - `electron\main.mjs` 原先 `minWidth=1280`、`minHeight=800`，会阻止桌面用户把窗口缩到低高度/小屏设备可用尺寸；这和“各种大小屏幕和设备”目标不一致。
+  - 旧 `playwright_electron_smoke.ts` 只记录 launcher/tutorial/character/map/combat 截图，没有在 Electron 内嵌 Chromium 窗口中验证横向溢出、小字或小触控目标。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-101：已修，Priority P2。**
+    - `electron\main.mjs` 将默认最小窗口调整为 `960x540`，并支持 `DECKROGUE_DESKTOP_MIN_WIDTH` / `DECKROGUE_DESKTOP_MIN_HEIGHT` 环境变量覆盖。
+    - `scripts\validation\playwright_electron_smoke.ts` 新增 `responsiveChecks` 报告字段和 `DESKTOP_RESPONSIVE_VIEWPORTS`：`desktop-min-960x540`、`desktop-default-1280x720`、`desktop-wide-1600x900`。
+    - Electron smoke 现在在 launcher、tutorial、character_select、map、combat 五个桌面阶段分别调整窗口并检查 horizontal overflow、小字、小触控目标；任一检查失败都会让 smoke 失败。
+    - `tests\unit\validationScripts.test.ts` 与 `tests\unit\releaseAndTranslationGate.test.ts` 锁住桌面 smoke 的 responsiveChecks、最小窗口环境变量、960x540 覆盖和失败 gating。
+- Fresh 验证输出：
+  - 初次实现时 `npx tsc --noEmit --pretty false --project tsconfig.json` 失败：`Property 'setSize' does not exist on type 'Page'`；修复为通过 Electron `BrowserWindow.setSize()` 调整窗口。
+  - 首次 Electron smoke 运行失败：`page.evaluate: ReferenceError: __name is not defined`，原因是 tsx helper 泄漏到页面上下文；修复为纯字符串自执行脚本，并去除内嵌 TypeScript 语法。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts tests/unit/releaseAndTranslationGate.test.ts`：exit `0`，`54/54` pass。
+  - `npm run test:desktop-smoke --silent`：exit `0`；读回 `reports\desktop\desktop-smoke.json`：`overallStatus=pass`，`closeStatus=pass`，steps=`launcher,tutorial,character_select,map,combat`，screenshots=`5`，responsiveChecks=`15`，failedResponsiveChecks=`0`，consoleErrors/pageErrors/failedRequests/rendererCrashes 全部 `0`，窗口覆盖 `desktop-min-960x540`、`desktop-default-1280x720`、`desktop-wide-1600x900`。
+  - `reports\ui\responsive-readability.json` 仍为 `overallStatus=pass`，`profileCount=4`，`surfaceCount=27`，`viewportCount=11`，`audits=399`，`issues=0`。
+  - `npx tsx --test tests/unit/validationScripts.test.ts tests/unit/releaseAndTranslationGate.test.ts tests/unit/uiReadabilityCss.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`67/67` pass。
+  - `git diff --check -- electron\main.mjs scripts\validation\playwright_electron_smoke.ts tests\unit\validationScripts.test.ts tests\unit\releaseAndTranslationGate.test.ts project-development-report.md`：exit `0`，仅 Windows CRLF touch warning。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`。
+- 状态：
+  - 网页端真实浏览器门禁保持 `399 audits / 0 issues`；Electron 桌面端新增 `5 steps x 3 window sizes = 15` 个内嵌窗口响应式检查且全部通过。
+  - 本轮改动范围为 `electron\main.mjs`、`scripts\validation\playwright_electron_smoke.ts`、`tests\unit\validationScripts.test.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：还可继续覆盖 codex import tools / 存档错误态，或做真实长流程视觉 QA 来确认更少见的运行时状态。
+
+## DeckRogue Fix Batch 102 - Deep Import And Save Slot Responsive Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 101、`scripts\validation\playwright_ui_responsive_readability.ts`、`src\ui\overlays\CodexOverlay.tsx`、`src\ui\views\AppShell.tsx`、`src\ui\views\RestView.tsx` 和最新 `reports\ui\responsive-readability.json`。
+  - 现有门禁已覆盖主路径、overlay、fallback、极端比例和 Electron 窗口，但 `CodexOverlay` 的“导入/同步”展开态与 launcher 的多存档槽位列表仍未作为独立 surface 审计。
+  - 新增 deep surface 后，真实 dist 全量 baseline 审计红灯复现 8 个问题：`rest` 在移动端药剂 A/B `<select>` 高度为 `224x38`，低于 40px 触控下限；`character-codex-import-tools` 在 `tablet-768x1024` 下“导入并合并”按钮中心被右侧详情层命中，属于 `tap-target-occluded`。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-102：已修，Priority P2。**
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 `character-codex-import-tools` 与 `launcher-save-slots` surface，并把这两个 deep 状态纳入 `baseline`、`text-zoom-200`、`light-theme`、`extreme-aspect` profile。
+    - 同脚本新增 `fixtures?: () => SaveSlotFixture[]`，让 launcher 存档列表可以一次注入 combat/reward/shop 多槽位；可读性审计的触控目标扩展到 `input/select/textarea`，覆盖导入文本框和下拉控件。
+    - `src\ui\views\RestView.tsx` 为药剂 A/B 下拉加入 `min-h-10`，满足移动端 40px 触控高度下限。
+    - `src\index.css` 在 `max-width: 1023px` 下让图鉴/成就 overlay 使用单列滚动布局，避免 tablet 宽度仍使用左右分栏时，导入工具按钮被详情区域覆盖。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住 Rest 下拉 `min-h-10`、tablet overlay 单列规则、deep import/save slot surface 注册，以及 `input/select/textarea` 进入审计。
+- Fresh 验证输出：
+  - 红灯复现：新增 deep surface 后，全量 baseline 审计半程报告 `overallStatus=fail`，`auditCount=244`，`issues=8`；明细为 `rest` 移动端 7 个 `tap-target-small` 和 `character-codex-import-tools tablet-768x1024` 1 个 `tap-target-occluded`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts`：exit `0`，`7/7` pass。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 3.67s`。
+  - 修复后 focused 真实 dist 审计：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=rest,character-codex-import-tools RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-360x740,mobile-390x844,mobile-414x896,tablet-768x1024 npx tsx scripts\validation\playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`auditCount=10`，`issues=0`。
+  - baseline 真实 dist 分段审计：
+    - mobile/landscape：exit `0`；读回 `overallStatus=pass`，`surfaceCount=29`，`viewportCount=6`，`audits=174`，`issues=0`。
+    - tablet/short desktop：exit `0`；读回 `overallStatus=pass`，`surfaceCount=29`，`viewportCount=2`，`audits=58`，`issues=0`。
+    - desktop/wide/ultrawide：exit `0`；读回 `overallStatus=pass`，`surfaceCount=29`，`viewportCount=3`，`audits=87`，`issues=0`。
+  - 剩余 profile 真实 dist 审计：`RESPONSIVE_READABILITY_PROFILES=text-zoom-200,light-theme,extreme-aspect npx tsx scripts\validation\playwright_ui_responsive_readability.ts`：exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`surfaceCount=17`，`viewportCount=8`，`auditCount=120`，`issues=0`；其中 deep surfaces 覆盖 `character-codex-import-tools` 和 `launcher-save-slots` 的 text-zoom、light-theme、extreme-aspect 共 18 次审计。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/validationScripts.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`52/52` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check -- scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts src\ui\views\RestView.tsx src\index.css project-development-report.md`：exit `0`，仅 Windows CRLF touch warning。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`。
+- 状态：
+  - 响应式可读性门禁现在覆盖 29 个 surface、11 个 baseline 视口、4 个 profile；新增 deep 状态包括图鉴导入/同步展开态与多存档槽位启动器。
+  - 本轮改动范围为 `scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts`、`src\ui\views\RestView.tsx`、`src\index.css` 和本报告；其中前两个文件当前仍是未跟踪文件，属于前序 UI 响应式门禁工作遗留/新增文件。
+  - 仍不把长期目标标记完成：可继续做存档删除/读取失败态、导入错误态消息、更多真实长流程人工视觉 QA 和 release gate 聚合，直到逐项 completion audit 证明所有显式目标已满足。
+
+## DeckRogue Fix Batch 103 - Import And Corrupt Save Error State Responsive Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 102、`reports\ui\responsive-readability.json`、`src\core\persistence\codexStore.ts`、`src\core\persistence\saveManager.ts`、`src\ui\views\AppShell.tsx` 和 `src\ui\launcher\SetupLauncher.tsx`。
+  - Batch 102 后 deep import/save-slot 展开态已覆盖，但实际错误态仍缺：图鉴导入无效 JSON 后的 `导入失败：...` 消息，以及损坏存档 checksum mismatch 后的 launcher 错误横幅。
+  - 新增 `character-codex-import-error` 与 `launcher-corrupt-save-error` surface 后，真实 dist focused 审计红灯复现 4 个问题：`launcher-corrupt-save-error` 在 `mobile-320x640` 与 `mobile-390x844` 下，存档卡片“读取/删除”按钮为 `54x38`，低于移动端 40px 触控下限。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-103：已修，Priority P2。**
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 `character-codex-import-error` surface：打开图鉴导入工具、输入坏 JSON、触发 `导入失败：...` 消息，并纳入 baseline、200% 字号、light theme、extreme-aspect。
+    - 同脚本新增 `launcher-corrupt-save-error` surface：通过 `afterBootstrap` 将 `readable_boss_phase_flow` 槽位 checksum 改成 `forced-corrupt-checksum`，点击读取后验证 launcher 错误横幅。
+    - `src\ui\launcher\SetupLauncher.tsx` 为本地作战档案卡片的“读取/删除”按钮加入 `min-h-10`，保证移动端存档错误态下仍满足 40px 触控高度。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住错误态 surface 注册、坏 JSON/corrupt checksum fixture，以及存档读取/删除按钮 `min-h-10`。
+- Fresh 验证输出：
+  - 红灯复现：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=character-codex-import-error,launcher-corrupt-save-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` 修复前 exit `1`；报告 `auditCount=8`，`issues=4`，均为移动端存档卡片按钮 `tap-target-small`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 18.02s`。
+  - 修复后 focused 真实 dist 审计：同一 baseline focused 命令 exit `0`；读回 `overallStatus=pass`，`surfaceCount=2`，`viewportCount=4`，`auditCount=8`，`issues=0`。
+  - 失败态剩余 profile 真实 dist 审计：`RESPONSIVE_READABILITY_PROFILES=text-zoom-200,light-theme,extreme-aspect RESPONSIVE_READABILITY_SURFACES=character-codex-import-error,launcher-corrupt-save-error npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`surfaceCount=2`，`viewportCount=8`，`auditCount=18`，`issues=0`。
+  - `npx tsx --test tests/unit/uiReadabilityCss.test.ts tests/unit/validationScripts.test.ts tests/unit/appShellUiContracts.test.ts`：exit `0`，`52/52` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check -- scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts src\ui\launcher\SetupLauncher.tsx project-development-report.md`：exit `0`，仅 Windows CRLF touch warning。
+- 状态：
+  - 响应式可读性门禁现在除主路径、fallback、overlay、deep import/save slots 外，进一步覆盖图鉴导入错误消息和损坏存档读取失败横幅。
+  - 本轮改动范围为 `scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts`、`src\ui\launcher\SetupLauncher.tsx` 和本报告。
+  - 仍不把长期目标标记完成：下一步可继续覆盖存档删除失败态、快速读取失败态、release gate 聚合，以及一次 goal-level completion audit。
+
+## DeckRogue Fix Batch 104 - Delete Save Error Responsive Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 103、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts`、`src\ui\launcher\SetupLauncher.tsx` 和当前 `reports\ui\responsive-readability.json`。
+  - `launcher-delete-save-error` surface 已有草稿，但 focused 真实 dist 审计不能触发 `删除存档失败：readable_boss_phase_flow`；逐步定位后确认两层问题：门禁里 `locator.evaluate('(button) => button.click()')` 字符串没有真正触发按钮事件，且 `tsx` 对浏览器上下文函数会引入 `__name` helper，不能直接传编译后的函数。
+  - 修正触发后，真实 UI 审计复现 P2 红灯：`light-theme desktop-1440x960` 与 `extreme-aspect desktop-ultrawide-2560x1080` 下，本地作战档案“读取/删除”按钮中心命中父级 `.grid.gap-6.border-t`，属于 `tap-target-occluded`。截图和几何数据显示按钮被 launcher 的 `xl` 固定高度/`overflow-hidden` 裁剪到可视区域外。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-104：已修，Priority P2。**
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 让 `launcher-delete-save-error` surface 在页面打开后用纯字符串 `page.evaluate` 安装并自检 `Storage.prototype.removeItem` 删除失败 patch，避免 `tsx` helper 泄漏到浏览器上下文。
+    - 同 surface 改用 `[data-save-slot-action="delete"][data-save-slot-id="readable_boss_phase_flow"]` 精确定位目标槽位，并用页面内 `document.querySelector(...).click()` 触发真实删除按钮；失败时给出明确 patch/button 错误。
+    - `src\ui\launcher\SetupLauncher.tsx` 为存档“读取/删除”按钮加入 `data-save-slot-action` / `data-save-slot-id`，为 launcher 错误横幅加入 `role="alert"` 与 `data-launcher-error="true"`。
+    - 同文件去掉 launcher 根和 `xl` 桌面布局里的纵向裁剪：`launcher-shell` 改为 `overflow-x-hidden overflow-y-auto`，外层从 `xl:h-screen xl:overflow-hidden` 改为 `xl:min-h-screen`，下半区 section 去掉 `xl:overflow-hidden`，让桌面/超宽下存档列表保持可滚动、可点击。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住删除失败 surface 的 patch 自检、精确 selector、按钮数据属性、错误 alert 标记，以及 launcher 不再用 `xl` 纵向裁剪的布局约束。
+- Fresh 验证输出：
+  - 红灯复现：删除失败 surface 修正触发后，`RESPONSIVE_READABILITY_PROFILES=text-zoom-200,light-theme,extreme-aspect RESPONSIVE_READABILITY_SURFACES=launcher-delete-save-error npx tsx scripts\validation\playwright_ui_responsive_readability.ts` 初次 exit `1`；报告 `issues=4`，均为 `light-theme desktop-1440x960` 与 `extreme-aspect desktop-ultrawide-2560x1080` 的存档“读取/删除”按钮 `tap-target-occluded`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.41s`。
+  - `npx tsx --test tests\unit\uiReadabilityCss.test.ts`：exit `0`，`7/7` pass。
+  - 修复后删除失败 baseline focused 审计：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=launcher-delete-save-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=1`，`surfaceCount=1`，`viewportCount=4`，`audits=4`，`issues=0`。
+  - 修复后删除失败剩余 profile 审计：`RESPONSIVE_READABILITY_PROFILES=text-zoom-200,light-theme,extreme-aspect RESPONSIVE_READABILITY_SURFACES=launcher-delete-save-error npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`surfaceCount=1`，`viewportCount=8`，`audits=9`，`issues=0`。
+  - Launcher 同域回归审计：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=launcher,launcher-save-slots,launcher-corrupt-save-error,launcher-delete-save-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576,desktop-1440x960,desktop-ultrawide-2560x1080 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`surfaceCount=4`，`viewportCount=6`，`audits=24`，`issues=0`。
+  - `npx tsx --test tests\unit\uiReadabilityCss.test.ts tests\unit\validationScripts.test.ts tests\unit\appShellUiContracts.test.ts`：exit `0`，`52/52` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `git diff --check -- src\ui\launcher\SetupLauncher.tsx scripts\validation\playwright_ui_responsive_readability.ts tests\unit\uiReadabilityCss.test.ts project-development-report.md`：exit `0`，仅 Windows CRLF touch warning。
+- 状态：
+  - 存档删除失败态已经纳入真实浏览器响应式可读性门禁，并覆盖 baseline、200% 字号、亮色主题和极端比例。
+  - 本轮修复了一个真实桌面/超宽 launcher 裁剪问题：本地作战档案按钮在错误态下不再被父级布局遮挡。
+  - 本轮改动范围为 `src\ui\launcher\SetupLauncher.tsx`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：下一步可追快速读取失败态、release gate 聚合响应式报告，或做一次 goal-level completion audit。
+
+## DeckRogue Fix Batch 105 - System Menu Quick Load Error Responsive Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 104、`src\ui\views\AppShell.tsx`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts`、`scripts\validation\flow_smoke_helpers.ts` 和存档管理实现。
+  - 真实浏览器复现 corrupt quicksave：先从 launcher 载入 `Boss Phase Flow`，再在 localStorage 中制造 `deckrogue_save_quicksave` 与损坏 checksum；系统菜单“快速读取”按钮处于可点击状态，但点击后菜单关闭，页面仍停留在战斗 UI，DOM 中没有“快速读取失败”文本。
+  - 根因：`handleQuickLoad()` 失败路径只写 `launcherError`，但玩家当前仍在游戏内界面，`SetupLauncher` 不在可见 DOM；因此 P2 用户反馈丢失，且该错误态未纳入响应式可读性门禁。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-105：已修，Priority P2。**
+    - `src\ui\views\AppShell.tsx` 新增 `systemMenuError`，让快速读取失败、快速保存失败、保存退出失败、重开失败和重启失败在当前系统菜单内显示 `role="alert"` / `data-system-menu-error="true"`。
+    - `handleQuickLoad()` 失败后保持菜单打开并回到 `save` 页，用户能直接看到“快速读取失败：未找到有效快速存档。”；成功路径仍关闭菜单并载入引擎。
+    - 系统菜单面板改为 `w-[min(20rem,calc(100vw-1rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto`，错误横幅使用 `overflowWrap: 'anywhere'`，避免移动端、横屏和 200% 字号下横向溢出或不可滚动。
+    - `scripts\validation\playwright_ui_responsive_readability.ts` 新增 `system-menu-quick-load-error` surface：注入正常作战槽位与损坏 quicksave，确认快速读取按钮可点、错误提示在系统菜单内可见，并纳入 baseline、200% 字号、亮色主题和极端比例。
+    - `tests\unit\uiReadabilityCss.test.ts` 锁住新 surface、corrupt quicksave fixture、错误横幅标记、菜单宽高滚动约束，以及快速读取失败不再落到 launcher error。
+- Fresh 验证输出：
+  - 红灯复现：手写 Playwright 真实浏览器脚本制造 corrupt quicksave 后，`quickLoadState.disabled=false`，点击“快速读取”后 `hasFailureText=false`、`menuVisible=false`、`launcherVisible=false`，可见文本仍为战斗 UI，证明错误反馈丢失。
+  - `npx tsx --test tests\unit\uiReadabilityCss.test.ts`：exit `0`，`8/8` pass。
+  - `npx tsx --test tests\unit\appShellUiContracts.test.ts`：exit `0`，`7/7` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `npm run build --silent`：exit `0`，Vite `2268 modules transformed`，`built in 4.24s`。
+  - 快速读取失败 baseline focused 审计：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=system-menu-quick-load-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=1`，`surfaceCount=1`，`viewportCount=4`，`auditCount=4`，`issues=0`。
+  - 快速读取失败剩余 profile 审计：`RESPONSIVE_READABILITY_PROFILES=text-zoom-200,light-theme,extreme-aspect RESPONSIVE_READABILITY_SURFACES=system-menu-quick-load-error npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=3`，`surfaceCount=1`，`viewportCount=8`，`auditCount=9`，`issues=0`。
+  - 系统菜单同域回归审计：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=system-menu-root,system-menu-theme,system-menu-save-load,system-menu-keybinds,system-menu-restart-confirm,system-menu-quick-load-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576,desktop-1440x960,desktop-ultrawide-2560x1080 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`surfaceCount=6`，`viewportCount=6`，`auditCount=36`，`issues=0`。
+  - `npx tsx --test tests\unit\uiReadabilityCss.test.ts tests\unit\validationScripts.test.ts tests\unit\appShellUiContracts.test.ts`：exit `0`，`53/53` pass。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`。
+- 状态：
+  - 游戏内系统菜单的快速读取失败态已纳入真实浏览器响应式可读性门禁，并覆盖 baseline、200% 字号、亮色主题、横屏手机、短屏桌面和超宽桌面。
+  - 本轮改动范围为 `src\ui\views\AppShell.tsx`、`scripts\validation\playwright_ui_responsive_readability.ts`、`tests\unit\uiReadabilityCss.test.ts` 和本报告。
+  - 仍不把长期目标标记完成：下一步可继续做 release gate 聚合响应式报告，或做一次 goal-level completion audit 来检查所有 UI surface 是否已有足够证据。
+
+## DeckRogue Fix Batch 106 - Responsive Readability Release Report Gate - 2026-05-26
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 105、`scripts\validation\check_release_readiness.ts`、`scripts\validation\generate_report_bundle.ts`、`tests\unit\releaseAndTranslationGate.test.ts`、`tests\unit\validationScripts.test.ts` 和当前 `reports\ui\responsive-readability.json`。
+  - 现有 release readiness 只检查 `output\playwright\ui_smoke_expansion_report.json`，总报告只汇总 UI smoke / UI expansion；核心响应式可读性报告 `reports\ui\responsive-readability.json` 没有作为一等发布证据进入 release/report 链路。
+  - 红灯复现：新增 `release readiness rejects responsive readability reports with unresolved issues`、`release readiness requires responsive readability report to cover real screenshots` 和 `report bundle surfaces responsive readability coverage and issue counts` 后，旧代码分别因缺少 `checkResponsiveReadabilityReport` 导出、总报告源码不含 `responsive-readability.json` 而失败。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-RELEASE-GATE-001：已修，Priority P2。**
+    - `scripts\validation\check_release_readiness.ts` 新增 `checkResponsiveReadabilityReport()`，要求 `reports\ui\responsive-readability.json` 存在、fresh、`generatedAt` fresh、`overallStatus=pass`、`issues=[]`、surface/viewport/profile/audit 计数为正，并要求截图证据真实存在且非空。
+    - 同脚本将 `ui_responsive_readability_report` 纳入 release readiness 主检查列表；响应式/小字/触控目标问题现在会让发布准备报告失败。
+    - `scripts\validation\generate_report_bundle.ts` 新增 `ResponsiveReadabilityReport` 摘要，跨报告总览、关键数字、UI Smoke 章节、冲突注意点、最新自动化报告表和全部报告清单都会显示 `reports/ui/responsive-readability.json` 的 surface / viewport / profile / issue 覆盖。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 锁住 unresolved issues 与缺失截图必须失败。
+    - `tests\unit\validationScripts.test.ts` 锁住 report bundle 会展示响应式可读性 coverage 与 issue kinds。
+- Fresh 验证输出：
+  - 红灯复现：修复前 `npx tsx --test tests\unit\releaseAndTranslationGate.test.ts` exit `1`，错误为 `checkResponsiveReadabilityReport` 未导出；修复前 `npx tsx --test tests\unit\validationScripts.test.ts` exit `1`，错误为源码不匹配 `/responsive-readability\.json/`。
+  - 修复后 focused 单测：
+    - `npx tsx --test tests\unit\releaseAndTranslationGate.test.ts`：exit `0`，`18/18` pass。
+    - `npx tsx --test tests\unit\validationScripts.test.ts`：exit `0`，`39/39` pass。
+    - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - Fresh 响应式审计刷新：`RESPONSIVE_READABILITY_PROFILES=baseline RESPONSIVE_READABILITY_SURFACES=system-menu-root,system-menu-theme,system-menu-save-load,system-menu-keybinds,system-menu-restart-confirm,system-menu-quick-load-error RESPONSIVE_READABILITY_VIEWPORTS=mobile-320x640,mobile-390x844,tablet-768x1024,desktop-short-1024x576,desktop-1440x960,desktop-ultrawide-2560x1080 npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `overallStatus=pass`，`profileCount=1`，`surfaceCount=6`，`viewportCount=6`，`auditCount=36`，`issues=0`。
+  - `npx tsx scripts\validation\check_release_readiness.ts` 已重新生成 `reports\release\release-readiness.json`；总体仍因既有 stale build/desktop/flow 等项目为 `fail`，但新检查 `ui_responsive_readability_report` 为 `pass`，evidence：`responsive readability report is clean and fresh: reports/ui/responsive-readability.json (6 surfaces, 6 viewports, 1 profiles, 36 audits)`。
+  - `npx tsx scripts\validation\generate_report_bundle.ts` exit `0`，写入 `docs\reports\report_bundle.md`；读回包含 `响应式可读性`、`reports/ui/responsive-readability.json`、`6 surfaces / 6 viewports / 1 profiles / 0 issues`、`问题类型：none`。
+  - 组合回归：`npx tsx --test tests\unit\releaseAndTranslationGate.test.ts tests\unit\validationScripts.test.ts tests\unit\uiReadabilityCss.test.ts` exit `0`，`65/65` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+- 状态：
+  - 响应式可读性门禁现在不只停留在手动 Playwright 脚本，已经进入 release readiness 与 generated report bundle 链路。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、`scripts\validation\generate_report_bundle.ts`、`tests\unit\releaseAndTranslationGate.test.ts`、`tests\unit\validationScripts.test.ts`、`reports\release\release-readiness.json`、`docs\reports\report_bundle.md` 和本报告。
+  - 仍不把长期目标标记完成：下一步可做 goal-level completion audit，或继续刷新全 profile 响应式可读性报告后让 release readiness 使用更完整的最新证据。
+
+## DeckRogue Fix Batch 107 - Full Responsive Readability Profile Release Gate - 2026-05-27
+
+- 发现证据：
+  - 继续用户目标“完善所有 UI 正常显示大小、跨屏幕自适应，并解决 UI/卡牌文字过小”。先读当前 worktree、Batch 106、`reports\ui\responsive-readability.json`、`scripts\validation\check_release_readiness.ts`、`tests\unit\releaseAndTranslationGate.test.ts` 和 `scripts\validation\playwright_ui_responsive_readability.ts`。
+  - Batch 106 后 release gate 已接入响应式报告，但当前报告仍是 focused 产物：`overallStatus=pass`、`profileCount=1`、`surfaceCount=6`、`viewportCount=6`、`audits=36`、`profiles=baseline`。这不足以证明“所有 UI / 各种屏幕 / 小字可读性”。
+  - 红灯复现：新增 `release readiness rejects focused responsive readability reports without full profile coverage` 后，旧 `checkResponsiveReadabilityReport()` 把 `1 profile / 6 surfaces / 6 viewports` 的 focused 报告判为 `pass`，单测 exit `1`，错误为 `'pass' !== 'fail'`。
+- 修复内容：
+  - **UI-RESPONSIVE-READABILITY-RELEASE-GATE-002：已修，Priority P2。**
+    - `scripts\validation\check_release_readiness.ts` 新增响应式可读性 profile coverage 合约：必须包含 `baseline`、`text-zoom-200`、`light-theme`、`extreme-aspect`。
+    - 同合约要求 baseline 至少 `30 surfaces / 11 viewports`，200% 字号至少 `18 surfaces / 3 viewports`，亮色主题至少 `15 surfaces / 2 viewports`，极端比例至少 `18 surfaces / 4 viewports`；并用 audit 明细里的实际 surface/viewport 去交叉验证，避免只改 summary 数字。
+    - `tests\unit\releaseAndTranslationGate.test.ts` 增加 focused 报告必须失败、完整四 profile 报告必须通过的回归测试。
+    - 重新生成 `reports\ui\responsive-readability.json`、`reports\release\release-readiness.json` 和 `docs\reports\report_bundle.md`，让 release/report 链引用完整响应式可读性证据。
+- Fresh 验证输出：
+  - 红灯复现：`npx tsx --test tests\unit\releaseAndTranslationGate.test.ts` 初次 exit `1`；新增 focused coverage 测试失败，证明旧 gate 会误接受窄报告。
+  - 修复后 focused 单测：`npx tsx --test tests\unit\releaseAndTranslationGate.test.ts` exit `0`，`20/20` pass。
+  - 旧 focused 报告下 `npx tsx scripts\validation\check_release_readiness.ts; exit 0` 重新生成 release readiness，总体 `pass=26 warn=0 fail=18`；读回 `ui_responsive_readability_report` 为 `fail`，证据先被脚本修改后的 freshness gate 捕获：`reports/ui/responsive-readability.json is stale for current workspace state`。
+  - 全量真实浏览器响应式审计：`npx tsx scripts\validation\playwright_ui_responsive_readability.ts` exit `0`；读回 `reports\ui\responsive-readability.json` 为 `overallStatus=pass`，`profileCount=4`，`surfaceCount=33`，`viewportCount=11`，`auditCount=519`，`issues=0`，profile 明细为 `baseline=33x11`、`text-zoom-200=18x3`、`light-theme=15x2`、`extreme-aspect=18x4`，并抽检确认没有缺失或空截图。
+  - `npx tsx scripts\validation\check_release_readiness.ts; exit 0` 刷新后总体仍因既有非 UI 项为 `fail`，但 `ui_responsive_readability_report` 为 `pass`，evidence：`responsive readability report is clean and fresh: reports/ui/responsive-readability.json (33 surfaces, 11 viewports, 4 profiles, 519 audits)`。
+  - `npx tsx scripts\validation\generate_report_bundle.ts` exit `0`；读回 `docs\reports\report_bundle.md` 含 `33 surfaces / 11 viewports / 4 profiles / 0 issues`、`审计次数：519`、`问题类型：none`。
+  - 组合回归：`npx tsx --test tests\unit\releaseAndTranslationGate.test.ts tests\unit\validationScripts.test.ts tests\unit\uiReadabilityCss.test.ts` exit `0`，`67/67` pass。
+  - `npx tsc --noEmit --pretty false --project tsconfig.json`：exit `0`。
+  - `http://127.0.0.1:4181/` 探活：HTTP `200`，title `DeckRogue - Warp & Entropy`。
+- 状态：
+  - release readiness 现在会拒绝 focused 响应式可读性报告，必须有完整四 profile、全量 baseline、多设备视口和真实截图证据才能通过。
+  - 本轮改动范围为 `scripts\validation\check_release_readiness.ts`、`tests\unit\releaseAndTranslationGate.test.ts`、`reports\ui\responsive-readability.json`、`reports\release\release-readiness.json`、`docs\reports\report_bundle.md` 和本报告。
+  - 仍不把长期目标标记完成：响应式可读性核心 Web gate 已加强，但还需后续 completion audit 对所有显式目标、实际游戏流程、少见运行时状态和剩余 release/doctor 失败项逐项核证。

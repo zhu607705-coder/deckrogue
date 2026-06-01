@@ -502,6 +502,14 @@ class RuleRuntime:
         }
         return int(upgrade_costs.get(relic_id, {}).get(current_level, 0))
 
+    def _is_upgradeable_relic(self, relic_id: str) -> bool:
+        relic_states = self._snapshot["player"].get("relic_states") or {}
+        relic_state = relic_states.get(relic_id)
+        if relic_state is None:
+            return False
+        current_level = int(relic_state.get("level", 1))
+        return self._get_relic_upgrade_cost(relic_id, current_level) > 0
+
     def _start_shop(self) -> None:
         character_id = self._snapshot["player"]["character_id"]
         card_pool = [
@@ -735,13 +743,12 @@ class RuleRuntime:
         phase = str(self._snapshot["lifecycle"]["phase"])
         if phase != "rest":
             raise ValueError("enter_relic_upgrade is only valid during rest phase")
-        relic_states = self._snapshot["player"].get("relic_states") or {}
-        has_corrupted_relic = any(
-            str(relic_id) in self._snapshot["player"]["relic_ids"] and bool(state.get("corrupted", False))
-            for relic_id, state in relic_states.items()
+        has_upgradeable_relic = any(
+            self._is_upgradeable_relic(str(relic_id))
+            for relic_id in self._snapshot["player"]["relic_ids"]
         )
-        if not has_corrupted_relic:
-            raise ValueError("No corrupted relic is available for relic upgrade")
+        if not has_upgradeable_relic:
+            raise ValueError("No relic is available for relic upgrade")
         surface_context = self._snapshot.get("surface_context") or {}
         surface_context["relic_upgrade_return_screen"] = "Rest"
         surface_context["campfire_choice_locked"] = True
@@ -761,10 +768,10 @@ class RuleRuntime:
         relic_state = relic_states.get(relic_id)
         if relic_state is None:
             raise ValueError(f"Relic is not available for upgrade: {relic_id}")
-        if not bool(relic_state.get("corrupted", False)):
-            raise ValueError(f"Relic is not corrupted and cannot use the runtime-v2 relic upgrade flow: {relic_id}")
         current_level = int(relic_state.get("level", 1))
         upgrade_cost = self._get_relic_upgrade_cost(relic_id, current_level)
+        if upgrade_cost <= 0:
+            raise ValueError(f"Relic is already at max upgrade level: {relic_id}")
         if int(self._snapshot["player"]["gold"]) < upgrade_cost:
             raise ValueError("Not enough gold to upgrade relic")
         self._snapshot["player"]["gold"] = int(self._snapshot["player"]["gold"]) - upgrade_cost

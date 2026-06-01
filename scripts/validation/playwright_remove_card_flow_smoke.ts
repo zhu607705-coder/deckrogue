@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   bootstrapContext,
   checkServer,
+  createFlowSmokeErrorCollector,
   createRemoveCardFixture,
   ensureDir,
   getDefaultSmokeUrl,
@@ -27,6 +28,7 @@ import {
 } from './flow_smoke_helpers';
 
 interface RemoveCardFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedRest: boolean;
   reachedRemoveCard: boolean;
@@ -34,6 +36,7 @@ interface RemoveCardFlowReport {
   returnedToMap: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -53,12 +56,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createRemoveCardFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
 
   let reachedRest = false;
   let reachedRemoveCard = false;
@@ -86,15 +85,26 @@ async function main() {
     await page.screenshot({ path: end, fullPage: true });
     screenshots.push(end);
   } finally {
-    const report: RemoveCardFlowReport = { baseUrl, reachedRest, reachedRemoveCard, removedCard, returnedToMap, consoleErrors, pageErrors, screenshots };
+    const report: RemoveCardFlowReport = {
+      generatedAt: new Date().toISOString(),
+      baseUrl,
+      reachedRest,
+      reachedRemoveCard,
+      removedCard,
+      returnedToMap,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
+      screenshots,
+    };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
     await context.close();
     await browser.close();
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedRest || !reachedRemoveCard || !removedCard || !returnedToMap || consoleErrors.length || pageErrors.length) {
-    throw new Error(`Remove-card flow smoke failed: reachedRest=${reachedRest} reachedRemoveCard=${reachedRemoveCard} removedCard=${removedCard} returnedToMap=${returnedToMap} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedRest || !reachedRemoveCard || !removedCard || !returnedToMap || errorCollector.consoleErrors.length || errorCollector.pageErrors.length || errorCollector.failedRequests.length) {
+    throw new Error(`Remove-card flow smoke failed: reachedRest=${reachedRest} reachedRemoveCard=${reachedRemoveCard} removedCard=${removedCard} returnedToMap=${returnedToMap} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

@@ -14,6 +14,8 @@ const CANONICAL_REMOTE_URL = 'git@github.com:zhu607705-coder/deckrogue.git';
 const DIRECT_443_REMOTE_URL = 'ssh://git@ssh.github.com:443/zhu607705-coder/deckrogue.git';
 const REMOTE_PROBE_LABEL = 'git remote get-url origin';
 const DOC_PATH = path.join(process.cwd(), 'docs', 'environment', 'github-ssh-over-443.md');
+const GIT_COMMAND = process.env.DECKROGUE_GIT_COMMAND || 'git';
+const SSH_COMMAND = process.env.DECKROGUE_SSH_COMMAND || 'ssh';
 
 type CheckStatus = 'pass' | 'fail';
 
@@ -31,20 +33,18 @@ interface CheckResult {
 }
 
 function run(command: string, args: string[]): CommandResult {
-  const result = spawnSync(command, args, { encoding: 'utf-8' });
+  const result = spawnSync(command, args, {
+    encoding: 'utf-8',
+    shell: /\.(?:cmd|bat)$/i.test(command),
+  });
+  const stdout = typeof result.stdout === 'string' ? result.stdout.trim() : '';
+  const stderr = typeof result.stderr === 'string' ? result.stderr.trim() : '';
   return {
-    ok: result.status === 0,
-    stdout: result.stdout.trim(),
-    stderr: result.stderr.trim(),
+    ok: !result.error && result.status === 0,
+    stdout,
+    stderr: result.error ? result.error.message : stderr,
     status: result.status ?? 1,
   };
-}
-
-function normalizeSshPath(value: string): string {
-  if (value.startsWith('~/')) {
-    return path.join(homedir(), value.slice(2));
-  }
-  return value;
 }
 
 function parseSshConfig(output: string): Map<string, string[]> {
@@ -67,8 +67,25 @@ function first(config: Map<string, string[]>, key: string): string {
   return config.get(key)?.[0] ?? '';
 }
 
+function getSshUserHome(parsedConfig: Map<string, string[]>): string {
+  const knownHostsPath = first(parsedConfig, 'userknownhostsfile').split(/\s+/)[0];
+  const marker = '/.ssh/';
+  const markerIndex = knownHostsPath.toLowerCase().indexOf(marker);
+  if (markerIndex > 0) {
+    return knownHostsPath.slice(0, markerIndex).replaceAll('/', path.sep);
+  }
+  return homedir();
+}
+
+function normalizeSshIdentityPath(value: string, parsedConfig: Map<string, string[]>): string {
+  if (value.startsWith('~/')) {
+    return path.join(getSshUserHome(parsedConfig), value.slice(2));
+  }
+  return value;
+}
+
 function checkOriginRemote(): CheckResult {
-  const remote = run('git', ['remote', 'get-url', 'origin']);
+  const remote = run(GIT_COMMAND, ['remote', 'get-url', 'origin']);
   if (!remote.ok) {
     return {
       id: 'origin_remote',
@@ -93,7 +110,7 @@ function checkOriginRemote(): CheckResult {
 }
 
 function checkSshResolution(): CheckResult[] {
-  const sshConfig = run('ssh', ['-G', 'github.com']);
+  const sshConfig = run(SSH_COMMAND, ['-G', 'github.com']);
   if (!sshConfig.ok) {
     return [
       {
@@ -108,7 +125,7 @@ function checkSshResolution(): CheckResult[] {
   const hostname = first(parsed, 'hostname');
   const port = first(parsed, 'port');
   const user = first(parsed, 'user');
-  const identityFiles = (parsed.get('identityfile') ?? []).map(normalizeSshPath);
+  const identityFiles = (parsed.get('identityfile') ?? []).map((file) => normalizeSshIdentityPath(file, parsed));
   const existingIdentityFiles = identityFiles.filter((file) => existsSync(file));
   const results: CheckResult[] = [];
 

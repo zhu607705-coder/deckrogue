@@ -11,6 +11,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { createHash } from 'crypto';
 import { resolve } from 'path';
 import { pathToFileURL } from 'url';
 import { execSync } from 'child_process';
@@ -79,11 +80,13 @@ type DoctorReport = {
   stages?: Array<{
     name?: string;
     status?: string;
+    failureType?: string;
   }>;
   summary?: {
     total?: number;
     passed?: number;
     failed?: number;
+    byCategory?: Record<string, number>;
   };
 };
 
@@ -104,9 +107,39 @@ type SecurityReport = {
 };
 
 type GenericFlowReport = Record<string, unknown> & {
+  generatedAt?: string;
   consoleErrors?: unknown[];
   pageErrors?: unknown[];
+  failedRequests?: unknown[];
 };
+
+type ResponsiveReadabilityReport = Record<string, unknown> & {
+  generatedAt?: string;
+  overallStatus?: string;
+  surfaceCount?: number;
+  viewportCount?: number;
+  profileCount?: number;
+  profiles?: Array<{
+    name?: string;
+    surfaceCount?: number;
+    viewportCount?: number;
+  }>;
+  audits?: Array<{
+    surface?: string;
+    viewport?: string;
+    profile?: string;
+  }>;
+  issues?: unknown[];
+};
+
+const REQUIRED_RESPONSIVE_READABILITY_PROFILES = [
+  { name: 'baseline', minSurfaceCount: 30, minViewportCount: 11 },
+  { name: 'text-zoom-200', minSurfaceCount: 18, minViewportCount: 3 },
+  { name: 'light-theme', minSurfaceCount: 15, minViewportCount: 2 },
+  { name: 'extreme-aspect', minSurfaceCount: 18, minViewportCount: 4 },
+] as const;
+
+const REQUIRED_RESPONSIVE_READABILITY_SURFACES = ['relic-upgrade'] as const;
 
 type DesktopBuildReport = {
   overallStatus?: string;
@@ -138,6 +171,7 @@ type WinDistReport = {
   artifacts?: Array<{
     path?: string;
     sizeBytes?: number;
+    sha256?: string;
   }>;
 };
 
@@ -203,6 +237,14 @@ function isArtifactFresh(path: string, freshnessBaseline: number): boolean {
   return statSync(path).mtimeMs >= freshnessBaseline;
 }
 
+function hasFreshNonEmptyArtifact(path: string, freshnessBaseline: number): boolean {
+  if (!existsSync(path)) {
+    return false;
+  }
+  const stats = statSync(path);
+  return stats.isFile() && stats.size > 0 && stats.mtimeMs >= freshnessBaseline;
+}
+
 function readJsonFile<T>(path: string): T | null {
   try {
     return JSON.parse(readFileSync(path, 'utf-8')) as T;
@@ -227,6 +269,32 @@ function getMissingRequiredDoctorStages(doctorReport: DoctorReport | null): stri
     const stage = stages.find((entry) => entry.name === requiredName);
     return stage?.status !== 'pass';
   });
+}
+
+function summarizeFailedDoctorStages(doctorReport: DoctorReport | null): string {
+  const stages = Array.isArray(doctorReport?.stages) ? doctorReport.stages : [];
+  const failedStages = stages
+    .filter((entry) => entry.status === 'fail')
+    .map((entry) => {
+      const name = entry.name || '<unnamed stage>';
+      return entry.failureType ? `${name} [${entry.failureType}]` : name;
+    });
+  if (failedStages.length > 0) {
+    return failedStages.join(', ');
+  }
+
+  const categories = doctorReport?.summary?.byCategory;
+  if (categories && typeof categories === 'object') {
+    const categorySummary = Object.entries(categories)
+      .filter(([, count]) => Number.isFinite(count) && count > 0)
+      .map(([category, count]) => `${category}: ${count}`)
+      .join(', ');
+    if (categorySummary) {
+      return `failure categories: ${categorySummary}`;
+    }
+  }
+
+  return '';
 }
 
 function collectScreenshotEvidence(value: unknown): string[] {
@@ -259,8 +327,59 @@ function hasFreshScreenshotEvidence(report: unknown, freshnessBaseline: number):
       return false;
     }
     const screenshotPath = resolve(screenshot);
-    return existsSync(screenshotPath) && isArtifactFresh(screenshotPath, freshnessBaseline);
+    return hasFreshNonEmptyArtifact(screenshotPath, freshnessBaseline);
   });
+}
+
+function hasFreshGeneratedAt(report: GenericFlowReport | null, freshnessBaseline: number): boolean {
+  if (!report?.generatedAt) {
+    return false;
+  }
+  const generatedAtMs = Date.parse(report.generatedAt);
+  return Number.isFinite(generatedAtMs) && generatedAtMs >= freshnessBaseline;
+}
+
+function hasFreshReportGeneratedAt(report: { generatedAt?: string } | null, freshnessBaseline: number): boolean {
+  if (!report?.generatedAt) {
+    return false;
+  }
+  const generatedAtMs = Date.parse(report.generatedAt);
+  return Number.isFinite(generatedAtMs) && generatedAtMs >= freshnessBaseline;
+}
+
+function getResponsiveReadabilityProfileCoverageFailures(report: ResponsiveReadabilityReport | null): string[] {
+  const failures: string[] = [];
+  const profiles = Array.isArray(report?.profiles) ? report.profiles : [];
+  const audits = Array.isArray(report?.audits) ? report.audits : [];
+  const profileByName = new Map(profiles.map((profile) => [profile.name, profile]));
+
+  for (const requirement of REQUIRED_RESPONSIVE_READABILITY_PROFILES) {
+    const profile = profileByName.get(requirement.name);
+    if (!profile) {
+      failures.push(`${requirement.name} missing`);
+      continue;
+    }
+
+    const profileAudits = audits.filter((audit) => audit.profile === requirement.name);
+    const auditedSurfaces = new Set(profileAudits.map((audit) => audit.surface).filter((name): name is string => typeof name === 'string' && name.length > 0));
+    const auditedViewports = new Set(profileAudits.map((audit) => audit.viewport).filter((name): name is string => typeof name === 'string' && name.length > 0));
+    const surfaceCount = typeof profile.surfaceCount === 'number' ? profile.surfaceCount : 0;
+    const viewportCount = typeof profile.viewportCount === 'number' ? profile.viewportCount : 0;
+
+    if (surfaceCount < requirement.minSurfaceCount || auditedSurfaces.size < requirement.minSurfaceCount) {
+      failures.push(`${requirement.name} surfaces ${Math.min(surfaceCount, auditedSurfaces.size)}/${requirement.minSurfaceCount}`);
+    }
+    for (const requiredSurface of REQUIRED_RESPONSIVE_READABILITY_SURFACES) {
+      if (!auditedSurfaces.has(requiredSurface)) {
+        failures.push(`${requirement.name} missing ${requiredSurface}`);
+      }
+    }
+    if (viewportCount < requirement.minViewportCount || auditedViewports.size < requirement.minViewportCount) {
+      failures.push(`${requirement.name} viewports ${Math.min(viewportCount, auditedViewports.size)}/${requirement.minViewportCount}`);
+    }
+  }
+
+  return failures;
 }
 
 function checkVersionConsistency(): ReleaseCheck {
@@ -349,7 +468,7 @@ export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[]
           return false;
         }
         const screenshotPath = resolve(screenshot);
-        return existsSync(screenshotPath) && isArtifactFresh(screenshotPath, freshnessBaseline);
+        return hasFreshNonEmptyArtifact(screenshotPath, freshnessBaseline);
       });
     const healthy =
       smokeReport?.overallStatus === 'pass' &&
@@ -378,15 +497,26 @@ export function checkDesktopArtifacts(freshnessBaseline: number): ReleaseCheck[]
     const exeExists = !!exeArtifact?.path && existsSync(exeArtifact.path);
     const exeFresh = exeExists && isArtifactFresh(exeArtifact!.path!, freshnessBaseline);
     const exeSize = exeExists ? statSync(exeArtifact!.path!).size : 0;
+    const reportedExeSize = exeArtifact?.sizeBytes;
+    const exeSizeMatchesReport =
+      typeof reportedExeSize === 'number' &&
+      Number.isFinite(reportedExeSize) &&
+      reportedExeSize === exeSize;
+    const exeSha256 = exeExists ? createHash('sha256').update(readFileSync(exeArtifact!.path!)).digest('hex') : null;
+    const exeHashMatchesReport =
+      typeof exeArtifact?.sha256 === 'string' &&
+      /^[a-f0-9]{64}$/i.test(exeArtifact.sha256) &&
+      exeArtifact.sha256.toLowerCase() === exeSha256;
     const healthy =
       winDistReport?.overallStatus === 'pass' &&
       exeExists &&
       exeFresh &&
       exeSize > 0 &&
-      (exeArtifact?.sizeBytes ?? 0) > 0;
+      exeSizeMatchesReport &&
+      exeHashMatchesReport;
     checks.push(healthy && fresh
       ? { id: 'win_dist_report', status: 'pass', evidence: 'Windows installer distribution report is green, fresh, and includes a fresh .exe artifact' }
-      : { id: 'win_dist_report', status: 'fail', evidence: fresh ? 'Windows installer distribution report is not green or lacks a fresh .exe artifact; run dist:win' : 'Windows installer distribution report is stale for current workspace state; run dist:win' });
+      : { id: 'win_dist_report', status: 'fail', evidence: fresh ? 'Windows installer distribution report is not green, lacks a fresh .exe artifact, or has mismatched artifact size/hash evidence; run dist:win' : 'Windows installer distribution report is stale for current workspace state; run dist:win' });
   }
 
   return checks;
@@ -479,6 +609,7 @@ export function checkDoctorReportArtifact(
   const failed = doctorReport?.summary?.failed ?? Number.NaN;
   const fresh = isArtifactFresh(latestDoctor, freshnessBaseline);
   const missingRequiredStages = getMissingRequiredDoctorStages(doctorReport);
+  const failedStageSummary = summarizeFailedDoctorStages(doctorReport);
   const gitHeadMatches =
     typeof currentGitState.gitHead === 'string' &&
     currentGitState.gitHead.length > 0 &&
@@ -498,7 +629,12 @@ export function checkDoctorReportArtifact(
   }
 
   let evidence = `latest doctor report is not green: ${latestDoctor}`;
-  if (!fresh) {
+  if (Number.isFinite(failed) && failed > 0 && failedStageSummary) {
+    evidence = `latest doctor report failed stages: ${failedStageSummary}; ${latestDoctor}`;
+    if (!fresh) {
+      evidence += '; report is stale for current workspace state';
+    }
+  } else if (!fresh) {
     evidence = `latest doctor report is stale for current workspace state: ${latestDoctor}`;
   } else if (Number.isFinite(failed) && failed === 0 && !gitStateMatches) {
     const expectedDirty = currentGitState.gitDirty === true ? 'dirty' : currentGitState.gitDirty === false ? 'clean' : 'unknown';
@@ -557,6 +693,64 @@ function checkDoctorAndSecurityArtifacts(): ReleaseCheck[] {
   return checks;
 }
 
+export function checkResponsiveReadabilityReport(freshnessBaseline: number): ReleaseCheck {
+  const reportRelPath = 'reports/ui/responsive-readability.json';
+  const reportPath = resolve(reportRelPath);
+  if (!existsSync(reportPath)) {
+    return { id: 'ui_responsive_readability_report', status: 'fail', evidence: `${reportRelPath} missing; run scripts/validation/playwright_ui_responsive_readability.ts` };
+  }
+
+  const report = readJsonFile<ResponsiveReadabilityReport>(reportPath);
+  const fresh = isArtifactFresh(reportPath, freshnessBaseline);
+  const generatedAtFresh = hasFreshReportGeneratedAt(report, freshnessBaseline);
+  const screenshotEvidenceFresh = hasFreshScreenshotEvidence(report, freshnessBaseline);
+  const issues = Array.isArray(report?.issues) ? report.issues : null;
+  const audits = Array.isArray(report?.audits) ? report.audits : null;
+  const profileCoverageFailures = getResponsiveReadabilityProfileCoverageFailures(report);
+  const countsPresent =
+    typeof report?.surfaceCount === 'number' && report.surfaceCount > 0 &&
+    typeof report?.viewportCount === 'number' && report.viewportCount > 0 &&
+    typeof report?.profileCount === 'number' && report.profileCount > 0 &&
+    Array.isArray(audits) && audits.length > 0;
+  const clean =
+    report?.overallStatus === 'pass' &&
+    Array.isArray(issues) &&
+    issues.length === 0 &&
+    countsPresent &&
+    generatedAtFresh &&
+    screenshotEvidenceFresh &&
+    profileCoverageFailures.length === 0;
+
+  if (clean && fresh) {
+    return {
+      id: 'ui_responsive_readability_report',
+      status: 'pass',
+      evidence: `responsive readability report is clean and fresh: ${reportRelPath} (${report.surfaceCount} surfaces, ${report.viewportCount} viewports, ${report.profileCount} profiles, ${audits?.length ?? 0} audits)`,
+    };
+  }
+
+  let evidence = `responsive readability report failed contract: ${reportRelPath}`;
+  if (!fresh) {
+    evidence = `${reportRelPath} is stale for current workspace state`;
+  } else if (!generatedAtFresh) {
+    evidence += '; missing, invalid, or stale generatedAt evidence';
+  } else if (!screenshotEvidenceFresh) {
+    evidence += '; missing or stale screenshot evidence';
+  } else if (!Array.isArray(issues)) {
+    evidence += '; issues array is missing';
+  } else if (issues.length > 0) {
+    evidence += `; ${issues.length} issues remain`;
+  } else if (report?.overallStatus !== 'pass') {
+    evidence += `; overallStatus=${report?.overallStatus ?? 'missing'}`;
+  } else if (!countsPresent) {
+    evidence += '; missing positive surface/viewport/profile/audit counts';
+  } else if (profileCoverageFailures.length > 0) {
+    evidence += `; profile coverage incomplete: ${profileCoverageFailures.join(', ')}`;
+  }
+
+  return { id: 'ui_responsive_readability_report', status: 'fail', evidence };
+}
+
 export function checkFlowReport(
   id: string,
   reportRelPath: string,
@@ -572,10 +766,15 @@ export function checkFlowReport(
   const report = readJsonFile<GenericFlowReport>(reportPath);
   const fresh = isArtifactFresh(reportPath, freshnessBaseline);
   const screenshotEvidenceFresh = hasFreshScreenshotEvidence(report, freshnessBaseline);
+  const generatedAtFresh = hasFreshGeneratedAt(report, freshnessBaseline);
+  const failedRequests = Array.isArray(report?.failedRequests) ? report.failedRequests : null;
+  const failedRequestsClean = Array.isArray(failedRequests) && failedRequests.length === 0;
   const clean =
     (report?.consoleErrors?.length || 0) === 0 &&
     (report?.pageErrors?.length || 0) === 0 &&
+    failedRequestsClean &&
     !!report &&
+    generatedAtFresh &&
     screenshotEvidenceFresh &&
     predicate(report);
   return clean && fresh
@@ -584,7 +783,9 @@ export function checkFlowReport(
       id,
       status: 'fail',
       evidence: fresh
-        ? (screenshotEvidenceFresh ? failureEvidence : `${failureEvidence}; missing or stale screenshot evidence`)
+        ? (!generatedAtFresh
+          ? `${failureEvidence}; missing, invalid, or stale generatedAt evidence`
+          : (screenshotEvidenceFresh ? `${failureEvidence}${failedRequestsClean ? '' : '; failed request evidence present or missing'}` : `${failureEvidence}; missing or stale screenshot evidence`))
         : `${reportRelPath} is stale for current workspace state`
     };
 }
@@ -769,6 +970,7 @@ export function main() {
     checkGithubTransport(),
     ...checkEnemyVariantReadiness(),
     ...checkDoctorAndSecurityArtifacts(),
+    checkResponsiveReadabilityReport(freshnessBaseline),
     ...checkCanonicalFlowArtifacts(freshnessBaseline),
     checkArtifactWeight()
   ];

@@ -23,6 +23,7 @@ import {
   relicsData,
 } from '@/content/narrative/numericSystem';
 import { calculateRestHealAmount } from '@/core/events/restHealing';
+import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import { getContentService } from '@/runtimeV2/content/contentService';
 
 function normalizeCardContentId(cardId: string): string {
@@ -75,12 +76,11 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   };
   const toCamelRelicKey = (relicId: string) => relicId.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
   const getRelicState = (relicId: string) => snapshot.player.relicStates?.[relicId] ?? snapshot.player.relicStates?.[toCamelRelicKey(relicId)];
-  const isCorruptedRelic = (relicId: string) => {
-    const state = getRelicState(relicId);
-    if (typeof state?.corrupted === 'boolean') {
-      return state.corrupted;
-    }
-    return !!(contentService.getRelic(relicId) as { corrupted?: boolean } | undefined)?.corrupted;
+  const isUpgradeableRelic = (relicId: string) => {
+    const config = RELIC_UPGRADE_CONFIGS.find((entry) => entry.relicId === relicId);
+    if (!config) return false;
+    const currentLevel = getRelicState(relicId)?.level ?? 1;
+    return config.levels.some((level) => level.level === currentLevel + 1);
   };
   const deriveDeckSurfaceChoices = (
     includeCard?: (entry: { cardId: string; normalizedCardId: string; cardData: ReturnType<typeof contentService.getCard> }) => boolean,
@@ -117,6 +117,8 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
   }
 
   if (screen === 'Shop') {
+    const canUpgrade = snapshot.player.gold >= 50 && deriveDeckSurfaceChoices(isUpgradeTarget).length > 0;
+    const canEnchant = deriveDeckSurfaceChoices(isEnchantTarget).length > 0;
     const shopCards = (snapshot.shop?.cards ?? []).map((offer) => {
       const cardData = contentService.getCard(offer.id);
       return {
@@ -163,8 +165,9 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       cardCount: snapshot.shop?.cards.length ?? 0,
       relicCount: snapshot.shop?.relics.length ?? 0,
       potionStockCount: snapshot.shop?.potions.length ?? 0,
-      canRemove: snapshot.player.gold >= (snapshot.shop?.cardRemovalCost ?? 75),
-      canEnchant: true,
+      canUpgrade,
+      canRemove: snapshot.player.gold >= (snapshot.shop?.cardRemovalCost ?? 75) && snapshot.player.deck.length > 0,
+      canEnchant,
       cardRemovalCost: snapshot.shop?.cardRemovalCost ?? 75,
       cards: shopCards,
       relics: shopRelics,
@@ -174,6 +177,8 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
 
   if (screen === 'Rest') {
     const healAmount = calculateRestHealAmount(snapshot.player.maxHp);
+    const canUpgrade = deriveDeckSurfaceChoices(isUpgradeTarget).length > 0;
+    const canEnchant = deriveDeckSurfaceChoices(isEnchantTarget).length > 0;
     const restPotions = snapshot.player.potionIds.map((potionId) => {
       const potionData = contentService.getPotion(potionId);
       return {
@@ -195,10 +200,10 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
       ),
       canHeal: snapshot.player.hp < snapshot.player.maxHp,
       healAmount,
-      canUpgrade: true,
-      canRemove: snapshot.player.gold >= 75,
-      canEnchant: true,
-      canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isCorruptedRelic(relicId)),
+      canUpgrade,
+      canRemove: snapshot.player.gold >= 75 && snapshot.player.deck.length > 0,
+      canEnchant,
+      canRelicUpgrade: snapshot.player.relicIds.some((relicId) => isUpgradeableRelic(relicId)),
       canMix: snapshot.player.potionIds.length >= 2,
       cardRemovalCost: 75,
       potions: restPotions,
@@ -314,7 +319,7 @@ function deriveRoom(snapshot: RuleSnapshot): RenderModelRoom | null {
 
   if (screen === 'RelicUpgrade') {
     const relicChoices = snapshot.player.relicIds
-      .filter((relicId) => isCorruptedRelic(relicId))
+      .filter((relicId) => isUpgradeableRelic(relicId))
       .map((relicId) => {
         const relicData = contentService.getRelic(relicId);
         const relicLevel = getRelicState(relicId)?.level ?? 1;
@@ -370,6 +375,22 @@ function deriveRewardCards(snapshot: RuleSnapshot): RenderModelRewardCard[] {
   });
 }
 
+function derivePlayerEnergy(snapshot: RuleSnapshot): { energy: number; maxEnergy: number } {
+  const contentService = getContentService();
+  const characterMaxEnergy = snapshot.player.characterId
+    ? contentService.getCharacter(snapshot.player.characterId)?.maxEnergy
+    : undefined;
+  const maxEnergy = Math.max(0, Math.floor(Number(characterMaxEnergy ?? snapshot.combat?.playerEnergy ?? 0)));
+  const energy = snapshot.combat
+    ? Math.max(0, Math.floor(Number(snapshot.combat.playerEnergy) || 0))
+    : maxEnergy;
+
+  return {
+    energy,
+    maxEnergy,
+  };
+}
+
 export function createRenderModel(snapshot: RuleSnapshot): RenderModel {
   const currentNode = snapshot.map.currentNodeId
     ? snapshot.map.nodes.find((node) => node.id === snapshot.map.currentNodeId) ?? null
@@ -377,6 +398,7 @@ export function createRenderModel(snapshot: RuleSnapshot): RenderModel {
 
   const room = deriveRoom(snapshot);
   const rewardCards = deriveRewardCards(snapshot);
+  const playerEnergy = derivePlayerEnergy(snapshot);
 
   return {
     screen: snapshot.lifecycle.screen,
@@ -389,7 +411,14 @@ export function createRenderModel(snapshot: RuleSnapshot): RenderModel {
       intel: snapshot.player.intel,
       devotion: snapshot.player.devotion,
       corruption: snapshot.player.corruption,
+      energy: playerEnergy.energy,
+      maxEnergy: playerEnergy.maxEnergy,
+      secondaryResources: snapshot.player.secondaryResources,
+      timeLayer: snapshot.player.timeLayer,
+      thread: snapshot.player.thread,
+      concoction: snapshot.player.concoction,
       deck: snapshot.player.deck,
+      potionIds: snapshot.player.potionIds,
       deckCount: snapshot.player.deck.length,
       relicCount: snapshot.player.relicIds.length,
       potionCount: snapshot.player.potionIds.length,

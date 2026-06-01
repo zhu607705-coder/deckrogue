@@ -24,7 +24,7 @@ interface StageResult {
   status: 'pass' | 'fail' | 'skip';
   duration: number;
   logPath?: string;
-  failureType?: 'typecheck' | 'build' | 'runtime' | 'parity' | 'content' | 'expansion' | 'ui' | 'flake' | 'performance' | 'release' | 'security' | 'health';
+  failureType?: 'typecheck' | 'build' | 'runtime' | 'parity' | 'content' | 'expansion' | 'ui' | 'environment' | 'flake' | 'performance' | 'release' | 'security' | 'health';
   error?: string;
 }
 
@@ -139,16 +139,24 @@ function runCommand(name: string, command: string, extraEnv: Record<string, stri
 
 function classifyFailure(name: string, output: string): StageResult['failureType'] {
   const lower = output.toLowerCase();
-  if (name.includes('lint') || lower.includes('typescript') || lower.includes('type error')) return 'typecheck';
-  if (name.includes('build') || lower.includes('compilation') || lower.includes('webpack')) return 'build';
-  if (name.toLowerCase().includes('security') || lower.includes('security posture') || lower.includes('vulnerability density')) return 'security';
-  if (name.toLowerCase().includes('health') || lower.includes('code health status')) return 'health';
-  if (name.toLowerCase().includes('release') || lower.includes('changelog') || lower.includes('version_consistency')) return 'release';
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('lint') || lower.includes('typescript') || lower.includes('type error')) return 'typecheck';
+  if (lowerName.includes('build') || lower.includes('compilation') || lower.includes('webpack')) return 'build';
+  if (
+    lowerName.includes('github transport')
+    || lowerName.includes('git transport')
+    || lower.includes('check_github_transport')
+    || lower.includes('ssh.github.com')
+    || lower.includes('github.com resolves to')
+  ) return 'environment';
+  if (lowerName.includes('security') || lower.includes('security posture') || lower.includes('vulnerability density')) return 'security';
+  if (lowerName.includes('health') || lower.includes('code health status')) return 'health';
+  if (lowerName.includes('release') || lower.includes('changelog') || lower.includes('version_consistency')) return 'release';
   if (lower.includes('runtime') && lower.includes('test')) return 'runtime';
   if (lower.includes('parity') || lower.includes('mismatch')) return 'parity';
   if (lower.includes('content') || lower.includes('bundle') || lower.includes('reachability') || lower.includes('translation audit')) return 'content';
   if (lower.includes('expansion') || lower.includes('mirror') || lower.includes('branch')) return 'expansion';
-  if (lower.includes('ui') || lower.includes('playwright') || lower.includes('smoke')) return 'ui';
+  if (lowerName.includes('ui') || lower.includes('playwright') || lower.includes('smoke') || /\bui\b/.test(lower)) return 'ui';
   if (lower.includes('flake') || lower.includes('intermittent')) return 'flake';
   if (lower.includes('timeout') || lower.includes('slow')) return 'performance';
   return 'runtime';

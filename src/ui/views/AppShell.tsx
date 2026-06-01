@@ -19,7 +19,7 @@ import { ThemeProvider, useTheme } from '@/ui/theme/ThemeContext';
 import { GlobalFilterOverlay } from '@/ui/overlays/GlobalFilterOverlay';
 import { ViewBackgroundLayer, type ScreenId } from '@/ui/components/ViewBackgroundLayer';
 import { SetupLauncher } from '@/ui/launcher/SetupLauncher';
-import { Eye, Layers, Zap, Skull, Sun, Moon } from 'lucide-react';
+import { Eye, Layers, Zap, Skull, Sun, Moon, Menu } from 'lucide-react';
 import { getUiLabelZh } from '@/ui/content/terminology';
 import { safeStorageGetString, safeStorageSetString } from '@/core/utils/safeStorage';
 import { uiWorldLore } from '@/ui/content/worldLore';
@@ -89,9 +89,12 @@ const TutorialView = lazy(async () => import('@/ui/views/TutorialView').then((m)
 
 function ScreenLoadingFallback({ label }: { label: string }) {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="rounded-xl border border-slate-700 bg-slate-950/90 px-5 py-4 text-sm text-slate-200">
-        正在加载 {getUiLabelZh(label)}...
+    <div className="screen-loading-fallback" role="status" aria-live="polite">
+      <div className="screen-loading-fallback__panel">
+        <span className="screen-loading-fallback__spinner" aria-hidden="true" />
+        <span className="screen-loading-fallback__label">
+          正在加载 {getUiLabelZh(label)}...
+        </span>
       </div>
     </div>
   );
@@ -146,6 +149,7 @@ function AppContent() {
     return buildEffectiveKeybinds(stored);
   });
   const [rebindingAction, setRebindingAction] = useState<KeyboardActionId | null>(null);
+  const [systemMenuError, setSystemMenuError] = useState<string | null>(null);
   const [keybindError, setKeybindError] = useState<string | null>(null);
   const [isThemeTransitioning, setIsThemeTransitioning] = useState(false);
   const [, setMetaTick] = useState(0);
@@ -420,6 +424,7 @@ function AppContent() {
   const handleReturnToLauncher = () => {
     setShowMenu(false);
     setMenuPage('root');
+    setSystemMenuError(null);
     setShowTutorial(false);
     setLauncherError(null);
     gameSetup.clearActiveRun();
@@ -432,17 +437,22 @@ function AppContent() {
       if (result.ok) {
         setShowMenu(false);
         setMenuPage('root');
+        setSystemMenuError(null);
         setLauncherError(null);
         setEngine(null);
       } else {
         const errorMessage = result.error || '保存失败';
         console.error('保存游戏失败:', errorMessage);
-        setLauncherError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+        setSystemMenuError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+        setShowMenu(true);
+        setMenuPage('root');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '保存失败';
       console.error('保存游戏失败:', error);
-      setLauncherError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+      setSystemMenuError(`保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+      setShowMenu(true);
+      setMenuPage('root');
     }
   };
 
@@ -458,13 +468,17 @@ function AppContent() {
       if (!result.ok) {
         const errorMessage = result.error || '重开失败';
         console.error('重开战斗失败:', errorMessage);
-        setLauncherError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
+        setSystemMenuError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
+        setShowMenu(true);
+        setMenuPage('root');
       }
       setTick(t => t + 1);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '重开失败';
       console.error('重开战斗失败:', error);
-      setLauncherError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
+      setSystemMenuError(`重开战斗失败: ${errorMessage}。请尝试返回主菜单后重新开始。`);
+      setShowMenu(true);
+      setMenuPage('root');
     }
   };
 
@@ -472,43 +486,60 @@ function AppContent() {
     try {
       setShowMenu(false);
       setMenuPage('root');
+      setSystemMenuError(null);
       gameSetup.clearActiveRun();
       const newEngine = gameSetup.startNewRun();
       setEngine(newEngine);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '重启失败';
       console.error('重启游戏失败:', error);
-      setLauncherError(`重启游戏失败: ${errorMessage}。请检查游戏文件是否完整。`);
+      setSystemMenuError(`重启游戏失败: ${errorMessage}。请检查游戏文件是否完整。`);
+      setShowMenu(true);
+      setMenuPage('root');
     }
   };
 
   const handleQuickSave = () => {
     try {
-      gameSetup.quickSave();
+      setSystemMenuError(null);
+      const saved = gameSetup.quickSave();
+      if (!saved) {
+        setSystemMenuError('快速保存失败：当前没有可保存的作战状态。请确认本局仍在运行。');
+        setShowMenu(true);
+        setMenuPage('save');
+        return;
+      }
       setTick(t => t + 1);
       setShowMenu(false);
       setMenuPage('root');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '快速保存失败';
       console.error('快速保存失败:', error);
-      setLauncherError(`快速保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+      setSystemMenuError(`快速保存失败: ${errorMessage}。请检查存储空间是否充足。`);
+      setShowMenu(true);
+      setMenuPage('save');
     }
   };
 
   const handleQuickLoad = () => {
     try {
+      setSystemMenuError(null);
       const loadedEngine = gameSetup.quickLoad();
       if (loadedEngine) {
         setEngine(loadedEngine);
+        setShowMenu(false);
+        setMenuPage('root');
       } else {
-        setLauncherError('快速读取失败：未找到有效快速存档。');
+        setSystemMenuError('快速读取失败：未找到有效快速存档。');
+        setShowMenu(true);
+        setMenuPage('save');
       }
-      setShowMenu(false);
-      setMenuPage('root');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '快速读取失败';
       console.error('快速读取失败:', error);
-      setLauncherError(`快速读取失败: ${errorMessage}。请检查存档文件是否完整。`);
+      setSystemMenuError(`快速读取失败: ${errorMessage}。请检查存档文件是否完整。`);
+      setShowMenu(true);
+      setMenuPage('save');
     }
   };
 
@@ -601,7 +632,7 @@ function AppContent() {
       <div className={`theme-swap-flash ${isThemeTransitioning ? 'is-active' : ''}`} aria-hidden="true" />
       <GlobalFilterOverlay />
 
-      <div className="fixed top-2 right-2 z-50 flex gap-2">
+      <div className="app-floating-controls fixed top-2 right-2 z-50 flex gap-2">
         <button
           onClick={() => handleSetThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
           className="app-topbar-btn px-3 py-1.5 text-xs rounded-lg border shadow-lg flex items-center gap-1.5 transition-colors"
@@ -611,25 +642,41 @@ function AppContent() {
             <Sun size={14} className={themeMode === 'dark' ? 'block' : 'hidden'} />
             <Moon size={14} className={themeMode === 'dark' ? 'hidden' : 'block'} />
           </span>
-          {topbarThemeLabel}
+          <span className="app-topbar-label">{topbarThemeLabel}</span>
         </button>
         <button
           onClick={() => {
-            setShowMenu(v => !v);
+            setShowMenu(v => {
+              if (!v) setSystemMenuError(null);
+              return !v;
+            });
             setMenuPage('root');
           }}
           className="app-topbar-btn px-3 py-1.5 text-xs rounded-lg border shadow-lg"
+          title="打开菜单"
+          aria-label="打开菜单"
         >
-          菜单
+          <Menu size={14} className="app-topbar-menu-icon" aria-hidden="true" />
+          <span className="app-topbar-label">菜单</span>
         </button>
       </div>
 
       {showMenu && (
         <div className="fixed inset-0 z-[60] app-menu-backdrop" onClick={() => setShowMenu(false)}>
           <div
-            className="absolute top-12 right-2 w-80 rounded-xl app-menu-panel backdrop-blur-md shadow-2xl p-3"
+            className="absolute top-12 right-2 w-[min(20rem,calc(100vw-1rem))] max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-xl app-menu-panel backdrop-blur-md shadow-2xl p-3"
             onClick={(e) => e.stopPropagation()}
           >
+            {systemMenuError && (
+              <div
+                role="alert"
+                data-system-menu-error="true"
+                className="mb-3 rounded-lg border border-rose-500/60 bg-rose-950/80 px-3 py-2 text-sm leading-relaxed text-rose-100 shadow-lg"
+                style={{ overflowWrap: 'anywhere' }}
+              >
+                {systemMenuError}
+              </div>
+            )}
             {menuPage === 'root' && (
               <div className="flex flex-col gap-2">
                 <div className="px-2 py-1 text-[11px] tracking-wider uppercase text-slate-400">系统</div>
@@ -965,7 +1012,7 @@ function AppContent() {
       )}
 
       {showRestartCombatConfirm && (
-        <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center" onClick={() => setShowRestartCombatConfirm(false)}>
+        <div className="restart-combat-confirm fixed inset-0 z-[70] bg-black/60 flex items-center justify-center" onClick={() => setShowRestartCombatConfirm(false)}>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-2">确认重开当前战斗？</h3>
             <p className="text-sm text-slate-300 mb-4">当前战斗进度将丢失，但异端阵列和抽牌堆保持不变。</p>
@@ -1052,7 +1099,7 @@ function AppContent() {
         )}
         {activeScreen === 'Event' && (
           <Suspense fallback={<ScreenLoadingFallback label="Event" />}>
-            <EventView engine={engine} />
+            <EventView engine={engine} renderModel={renderModel} />
           </Suspense>
         )}
       </ResourcePreloader>

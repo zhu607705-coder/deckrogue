@@ -89,7 +89,7 @@ export function TutorialView({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[130]" data-screen="Tutorial">
+    <div className="tutorial-overlay fixed inset-0 z-[130]" data-screen="Tutorial">
       <div className="absolute inset-0 bg-black/78 backdrop-blur-md" onClick={onClose} />
       <div className="absolute inset-3 overflow-hidden rounded-[28px] border border-white/12 bg-[#050608]/96 shadow-[0_32px_120px_rgba(0,0,0,0.55)] md:inset-6">
         <div

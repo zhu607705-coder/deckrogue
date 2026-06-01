@@ -19,6 +19,7 @@ import type { RunCardInstance } from '@/core';
 import { getKnownRouteTagsForCharacter, getPreferredRouteTagFromState, sortCardsByRouteAffinity } from '@/content/narrative/numericSystem';
 import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
+import { createRuntimeRouteDeck } from '@/ui/views/routeAdvisorDeck';
 
 interface UpgradeDiff {
   type: string;
@@ -139,8 +140,10 @@ export function UpgradeView({ engine, renderModel }: { engine: GameEngine; rende
   const WORLD_LORE = uiWorldLore as any;
   const deck = engine.state.player.deck;
   const roomSummary = renderModel?.room?.kind === 'upgrade' ? renderModel.room : null;
-  const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
-  const preferredRouteTag = getPreferredRouteTagFromState(deck, routeTagsForCharacter, engine.state.routeState ?? null);
+  const routeCharacterId = renderModel?.player?.characterId ?? engine.state.character?.id;
+  const routeDeck = renderModel?.player?.deck?.length ? createRuntimeRouteDeck(renderModel.player.deck) : deck;
+  const routeTagsForCharacter = routeCharacterId ? getKnownRouteTagsForCharacter(routeCharacterId) : [];
+  const preferredRouteTag = getPreferredRouteTagFromState(routeDeck, routeTagsForCharacter, renderModel?.routeState ?? engine.state.routeState ?? null);
   const upgradableCards = sortCardsByRouteAffinity(
     deck.filter(c => !c.isUpgraded && c.upgrade),
     preferredRouteTag,

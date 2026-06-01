@@ -32,6 +32,18 @@ if (requestedUserDataDir) {
 const devServerUrl = process.env.VITE_DEV_SERVER_URL?.trim() || '';
 const forceLocalDist = process.env.DECKROGUE_FORCE_LOCAL_DIST === '1';
 const useDevServer = Boolean(devServerUrl) && !forceLocalDist;
+const desktopMinWidth = Number.parseInt(process.env.DECKROGUE_DESKTOP_MIN_WIDTH || '960', 10);
+const desktopMinHeight = Number.parseInt(process.env.DECKROGUE_DESKTOP_MIN_HEIGHT || '540', 10);
+const forceSoftwareRendering =
+  process.env.DECKROGUE_DISABLE_HARDWARE_ACCELERATION === '1' ||
+  process.env.DECKROGUE_DESKTOP_SMOKE === '1';
+
+if (forceSoftwareRendering) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
 
 function buildEntryQuery() {
   const params = new URLSearchParams();
@@ -59,8 +71,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1600,
     height: 1000,
-    minWidth: 1280,
-    minHeight: 800,
+    minWidth: Number.isFinite(desktopMinWidth) ? desktopMinWidth : 960,
+    minHeight: Number.isFinite(desktopMinHeight) ? desktopMinHeight : 540,
     show: false,
     autoHideMenuBar: true,
     title: 'DeckRogue',

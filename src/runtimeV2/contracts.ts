@@ -13,6 +13,8 @@ import type { GameState } from '@/core/types';
 
 export interface ContentBundleCharacter {
   id: string;
+  name?: string;
+  description?: string;
   max_hp: number;
   max_energy: number;
   starting_gold: number;
@@ -20,11 +22,24 @@ export interface ContentBundleCharacter {
   extended_pool?: string[];
   special_resource?: string;
   secondary_resource?: string;
+  portrait_prompt?: string;
+  complexity?: 'low' | 'medium' | 'high';
+  archetype?: string[];
+  background?: string;
+  mechanic_narrative?: string;
+  lore_fragments?: string[];
 }
 
 export interface ContentBundleCard {
   id: string;
+  name?: string;
   rarity: string;
+  cost?: number;
+  type?: string;
+  targeting?: string;
+  tags?: string[];
+  text?: string;
+  upgrade?: unknown;
   character: string;
   route_tags?: string[];
   route_signal_strength?: number;
@@ -34,18 +49,26 @@ export interface ContentBundleCard {
 export interface ContentBundleRelic {
   id: string;
   price: number;
+  name?: string;
+  description?: string;
   rarity?: string;
+  corrupted?: boolean;
 }
 
 export interface ContentBundlePotion {
   id: string;
   price: number;
+  name?: string;
+  description?: string;
+  rarity?: string;
 }
 
 export interface ContentBundleEnemy {
   id: string;
+  name?: string;
   hp_range: [number, number];
   keywords: string[];
+  description?: string;
   intent_policy?: Array<{
     intent: string;
     weight: number;
@@ -187,6 +210,9 @@ export interface RuleSnapshot {
     command?: number;
     verdict?: number;
     seal?: number;
+    timeLayer?: number;
+    thread?: number;
+    concoction?: number;
     deck: string[];
     relicIds: string[];
     potionIds: string[];
@@ -370,7 +396,9 @@ export interface RenderModelRewardCard {
 export interface RenderModel {
   screen: RuleSnapshot['lifecycle']['screen'];
   lifecycle: RuleSnapshot['lifecycle'];
-  player: Pick<RuleSnapshot['player'], 'characterId' | 'hp' | 'maxHp' | 'gold' | 'deck' | 'intel' | 'devotion' | 'corruption'> & {
+  player: Pick<RuleSnapshot['player'], 'characterId' | 'hp' | 'maxHp' | 'gold' | 'deck' | 'potionIds' | 'intel' | 'devotion' | 'corruption' | 'secondaryResources' | 'timeLayer' | 'thread' | 'concoction'> & {
+    energy: number;
+    maxEnergy: number;
     deckCount: number;
     relicCount: number;
     potionCount: number;

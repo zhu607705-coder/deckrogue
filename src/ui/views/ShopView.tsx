@@ -27,6 +27,7 @@ import { systemRandomInt } from '@/infrastructure/rng/systemRandom';
 import type { RunCardInstance, RelicDef, PotionDef as CorePotionDef } from '@/core/types/actions';
 import { uiWorldLore } from '@/ui/content/worldLore';
 import { buildShopRouteAdvice } from '@/ui/views/shopRouteAdvisor';
+import { createRuntimeRouteDeck } from '@/ui/views/routeAdvisorDeck';
 
 interface ShopRelic extends RelicDef {
   inscription?: string;
@@ -37,6 +38,87 @@ interface ShopRelic extends RelicDef {
 
 interface ShopPotion extends CorePotionDef {
   price: number;
+}
+
+type RuntimeShopCardOffer = RunCardInstance & {
+  isRuntimeModelOffer?: boolean;
+};
+
+type RuntimeShopOffer = {
+  id: string;
+  name: string;
+  price: number;
+  rarity?: string;
+  type?: string;
+  description?: string;
+};
+
+function createRuntimeShopCardOffer(offer: RuntimeShopOffer): { card: RuntimeShopCardOffer; basePrice: number; price: number } {
+  const rarity = (offer.rarity ?? 'Common') as RuntimeShopCardOffer['rarity'];
+  const type = (offer.type ?? 'Attack') as RuntimeShopCardOffer['type'];
+  const text = offer.description ?? '';
+  const card: RuntimeShopCardOffer = {
+    id: offer.id,
+    instanceId: offer.id,
+    baseCardId: offer.id,
+    name: offer.name,
+    cost: 1,
+    rarity,
+    type,
+    targeting: 'None',
+    tags: [],
+    text,
+    actions: [],
+    runtimeBase: {
+      id: offer.id,
+      name: offer.name,
+      cost: 1,
+      rarity,
+      type,
+      targeting: 'None',
+      tags: [],
+      text,
+      actions: [],
+    },
+    persistentEnchantments: [],
+    combatAfflictions: [],
+    isRuntimeModelOffer: true,
+  };
+
+  return {
+    card,
+    basePrice: offer.price,
+    price: offer.price,
+  };
+}
+
+function createRuntimeShopRelicOffer(offer: RuntimeShopOffer): { relic: ShopRelic; basePrice: number; price: number } {
+  return {
+    relic: {
+      id: offer.id,
+      name: offer.name,
+      description: offer.description ?? '',
+      price: offer.price,
+      trigger: 'Passive',
+    } as ShopRelic,
+    basePrice: offer.price,
+    price: offer.price,
+  };
+}
+
+function createRuntimeShopPotionOffer(offer: RuntimeShopOffer): { potion: ShopPotion; basePrice: number; price: number; stockIndex: number } {
+  return {
+    potion: {
+      id: offer.id,
+      name: offer.name,
+      description: offer.description ?? '',
+      price: offer.price,
+      effect: {},
+    } as ShopPotion,
+    basePrice: offer.price,
+    price: offer.price,
+    stockIndex: 0,
+  };
 }
 
 interface WorldLore {
@@ -54,20 +136,21 @@ interface WorldLore {
 export function ShopView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const potionRuntime = getPotionRuntimeConfig();
   const WORLD_LORE = uiWorldLore as WorldLore;
-  const cards = engine.state.shopCards;
-  const relics = engine.state.shopRelics;
-  const potions = engine.state.shopPotions;
+  const legacyCards = engine.state.shopCards;
+  const legacyRelics = engine.state.shopRelics;
+  const legacyPotions = engine.state.shopPotions;
   const player = engine.state.player;
   const roomSummary = renderModel?.room?.kind === 'shop' ? renderModel.room : null;
   const playerGold = renderModel?.player.gold ?? player.gold;
   const playerDeckCount = renderModel?.player.deckCount ?? player.deck.length;
   const playerPotionCount = renderModel?.player.potionCount ?? player.potions.length;
+  const cardRemovalCost = roomSummary?.cardRemovalCost ?? engine.state.cardRemovalCost;
   const canUpgrade = roomSummary?.canUpgrade ?? (player.deck.some(c => !c.isUpgraded && c.upgrade) && playerGold >= 50);
-  const canRemove = roomSummary?.canRemove ?? (playerGold >= engine.state.cardRemovalCost && playerDeckCount > 0);
+  const canRemove = roomSummary?.canRemove ?? (playerGold >= cardRemovalCost && playerDeckCount > 0);
   const canEnchantService =
     (roomSummary?.canEnchant ?? player.deck.some(c => (c.type === 'Attack' || c.type === 'Skill') && (!c.persistentEnchantments || c.persistentEnchantments.length === 0))) &&
     playerGold >= engine.getAdjustedShopPrice(65);
-  const cardOffers = cards.map((card) => {
+  const legacyCardOffers = legacyCards.map((card) => {
     const basePrice = card.rarity === 'Rare' ? 150 : card.rarity === 'Uncommon' ? 75 : 50;
     return {
       card,
@@ -75,7 +158,9 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
       price: engine.getAdjustedShopPrice(basePrice),
     };
   });
-  const relicOffers = relics
+  const runtimeCardOffers = (roomSummary?.cards ?? []).map(createRuntimeShopCardOffer);
+  const cardOffers = legacyCardOffers.length > 0 ? legacyCardOffers : runtimeCardOffers;
+  const legacyRelicOffers = legacyRelics
     .map((relicId) => {
       const relic = relicsData.find(r => r.id === relicId) as ShopRelic | undefined;
       if (!relic) return null;
@@ -86,10 +171,35 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
       };
     })
     .filter((offer): offer is { relic: ShopRelic; basePrice: number; price: number } => !!offer);
+  const runtimeRelicOffers = (roomSummary?.relics ?? []).map(createRuntimeShopRelicOffer);
+  const relicOffers = legacyRelicOffers.length > 0 ? legacyRelicOffers : runtimeRelicOffers;
+  const potionOffers = legacyPotions
+    .map((potionId: string, index: number) => {
+      const potion = potionsData.find(p => p.id === potionId) as ShopPotion | undefined;
+      if (!potion) return null;
+      const basePrice = potion.price;
+      return {
+        potion,
+        basePrice,
+        price: engine.getAdjustedShopPrice(basePrice),
+        stockIndex: index,
+      };
+    })
+    .filter((offer): offer is { potion: ShopPotion; basePrice: number; price: number; stockIndex: number } => !!offer);
+  const runtimePotionOffers = (roomSummary?.potions ?? []).map((offer, index) => ({
+    ...createRuntimeShopPotionOffer(offer),
+    stockIndex: index,
+  }));
+  const displayedPotionOffers = potionOffers.length > 0 ? potionOffers : runtimePotionOffers;
+  const routeDeck = renderModel?.player.deck
+    ? createRuntimeRouteDeck(renderModel.player.deck)
+    : player.deck;
+  const routeCharacterId = renderModel?.player.characterId ?? engine.state.character?.id;
+  const routeState = renderModel?.routeState ?? engine.state.routeState ?? null;
   const shopRouteAdvice = buildShopRouteAdvice({
-    characterId: engine.state.character?.id,
-    deck: player.deck,
-    routeState: engine.state.routeState ?? null,
+    characterId: routeCharacterId,
+    deck: routeDeck,
+    routeState,
     gold: playerGold,
     cardOffers: cardOffers.map(({ card, price }) => ({ card, price })),
     relicOffers: relicOffers.map(({ relic, price }) => ({ relicId: relic.id, price })),
@@ -98,12 +208,13 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
   });
   const [mixA, setMixA] = useState<number>(0);
   const [mixB, setMixB] = useState<number>(Math.min(1, Math.max(0, playerPotionCount - 1)));
-  const potionChoices = player.potions.map((id, idx) => ({
+  const playerPotionIds = renderModel?.player.potionIds ?? player.potions;
+  const potionChoices = playerPotionIds.map((id, idx) => ({
     index: idx,
     id,
     def: (potionsData as unknown as ShopPotion[]).find(p => p.id === id)
   }));
-  const canMix = (roomSummary?.canMix ?? (playerPotionCount >= 2)) && mixA !== mixB && player.potions[mixA] && player.potions[mixB];
+  const canMix = (roomSummary?.canMix ?? (playerPotionCount >= 2)) && mixA !== mixB && potionChoices[mixA] && potionChoices[mixB];
   const relicIconSrc = (id: string) => `/assets/relics/${id}.png`;
   const potionIconSrc = (id: string) => `/assets/potions/${id}.png`;
   
@@ -190,7 +301,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             const canAfford = playerGold >= price;
             const routeHint = shopRouteAdvice.cardHints[card.instanceId];
             
-            const deckArchetype = player.deck.reduce((acc: Record<string, number>, c: RunCardInstance) => {
+            const deckArchetype = routeDeck.reduce((acc: Record<string, number>, c: RunCardInstance) => {
               if (c.type === 'Attack') acc.attack = (acc.attack || 0) + 1;
               if (c.type === 'Skill') acc.skill = (acc.skill || 0) + 1;
               if (c.type === 'Power') acc.power = (acc.power || 0) + 1;
@@ -249,7 +360,13 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                     </span>
                   )}
                 </div>
-                <CardView card={card} disabled={!canAfford} />
+                <CardView
+                  card={card}
+                  disabled={!canAfford}
+                  rootProps={{
+                    'data-shop-card-id': card.id,
+                  }}
+                />
                 <button 
                   onClick={() => engine.buyShopCard(card.instanceId, basePrice)}
                   disabled={!canAfford}
@@ -278,7 +395,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
               const canAfford = playerGold >= price;
               const routeHint = shopRouteAdvice.relicHints[relic.id];
               return (
-                <div key={relic.id} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-300 group" title={`${relic.description}${relic.inscription ? `\n铭文：${relic.inscription}` : ''}${relic.flavorText ? `\n遗言：${relic.flavorText}` : ''}${relic.corrupted ? ' [腐化遗物]' : ''}`}>
+                <div key={relic.id} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all duration-300 group" title={`${relic.description}${relic.inscription ? `\n铭文：${relic.inscription}` : ''}${relic.flavorText ? `\n遗言：${relic.flavorText}` : ''}${relic.corrupted ? ' [腐化遗物]' : ''}`} data-shop-relic-id={relic.id}>
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center text-yellow-400 border-2 border-yellow-500/30 overflow-hidden group-hover:scale-110 transition-transform duration-300 shadow-lg">
                       <img
@@ -310,7 +427,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                     className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 shrink-0 transition-all duration-300 shadow-lg
                       ${canAfford ? 'bg-yellow-900/60 border-yellow-500 text-yellow-400 hover:bg-yellow-900 hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
                     `}
-                    data-keyboard-option={cards.length + index < 10 ? String(cards.length + index + 1) : undefined}
+                    data-keyboard-option={cardOffers.length + index < 10 ? String(cardOffers.length + index + 1) : undefined}
                     data-keyboard-focus="true"
                   >
                     <Coins size={16} /> {price}
@@ -318,7 +435,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                 </div>
               );
             })}
-            {relics.length === 0 && <div className="text-slate-500 italic text-center py-4">库存售罄</div>}
+            {relicOffers.length === 0 && <div className="text-slate-500 italic text-center py-4">库存售罄</div>}
           </div>
         </div>
 
@@ -328,14 +445,10 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <h2 className="campaign-title mt-3 text-2xl text-blue-200">药剂</h2>
           </div>
           <div className="flex flex-col gap-4">
-            {potions.map((potionId: string, index: number) => {
-              const potion = potionsData.find(p => p.id === potionId) as ShopPotion | undefined;
-              if (!potion) return null;
-              const basePrice = potion.price;
-              const price = engine.getAdjustedShopPrice(basePrice);
+            {displayedPotionOffers.map(({ potion, basePrice, price, stockIndex }, index: number) => {
               const canAfford = playerGold >= price && playerPotionCount < potionRuntime.slotLimit;
               return (
-                <div key={`${potion.id}-${index}`} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-300 group" title={`${potion.description} (Toxicity +${potion.toxicity ?? 1})`}>
+                <div key={`${potion.id}-${index}`} className="flex items-center justify-between bg-slate-800/80 p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 transition-all duration-300 group" title={`${potion.description} (Toxicity +${potion.toxicity ?? 1})`} data-shop-potion-id={potion.id}>
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center text-blue-400 border-2 border-blue-500/30 overflow-hidden group-hover:scale-110 transition-transform duration-300 shadow-lg">
                       <img
@@ -351,12 +464,12 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                     </div>
                   </div>
                   <button 
-                    onClick={() => engine.buyShopPotion(potion.id, basePrice, index)}
+                    onClick={() => engine.buyShopPotion(potion.id, basePrice, stockIndex)}
                     disabled={!canAfford}
                     className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 shrink-0 transition-all duration-300 shadow-lg
                       ${canAfford ? 'bg-yellow-900/60 border-yellow-500 text-yellow-400 hover:bg-yellow-900 hover:scale-105 hover:shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'bg-slate-800 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'}
                     `}
-                    data-keyboard-option={cards.length + relics.length + index < 10 ? String(cards.length + relics.length + index + 1) : undefined}
+                    data-keyboard-option={cardOffers.length + relicOffers.length + index < 10 ? String(cardOffers.length + relicOffers.length + index + 1) : undefined}
                     data-keyboard-focus="true"
                   >
                     <Coins size={16} /> {price}
@@ -364,7 +477,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
                 </div>
               );
             })}
-            {potions.length === 0 && <div className="text-slate-500 italic text-center py-4">库存售罄</div>}
+            {displayedPotionOffers.length === 0 && <div className="text-slate-500 italic text-center py-4">库存售罄</div>}
           </div>
         </div>
       </div>
@@ -406,7 +519,7 @@ export function ShopView({ engine, renderModel }: { engine: GameEngine; renderMo
             <Trash2 size={28} />
             <div className="text-left">
               <div className="font-bold text-lg">焚毁记忆印痕</div>
-              <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> {engine.state.cardRemovalCost} 信用筹码</div>
+              <div className="text-sm opacity-80 flex items-center gap-1"><Coins size={16}/> {cardRemovalCost} 信用筹码</div>
             </div>
           </button>
 

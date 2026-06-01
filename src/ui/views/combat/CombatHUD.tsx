@@ -98,6 +98,7 @@ export function CombatHUD({
         <button
           onClick={() => setShowDeck(true)}
           className="combat-hud__deckBtn grimdark-btn"
+          aria-label={`${terms.game.deck.name}（${engine.state.player.deck.length}）`}
         >
           <Layers size={16} />
           <span className="grimdark-text">{terms.game.deck.name}</span>

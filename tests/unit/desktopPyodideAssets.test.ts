@@ -5,7 +5,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -44,4 +44,22 @@ test('desktop Pyodide asset copier stages required runtime files into dist', () 
   } finally {
     rmSync(workspaceRoot, { recursive: true, force: true });
   }
+});
+
+test('Windows distribution script stages Pyodide assets before packaging skipped builds', () => {
+  const source = readFileSync('scripts/desktop/dist_win.ts', 'utf-8');
+  const copyIndex = source.indexOf('copyPyodideAssets()');
+  const stagingIndex = source.indexOf('prepareStagingApp();');
+
+  assert.match(source, /copyPyodideAssets/);
+  assert.ok(copyIndex >= 0, 'dist:win should stage Pyodide assets even when --skip-build reuses dist');
+  assert.ok(stagingIndex > copyIndex, 'Pyodide assets must be copied into dist before staging the installer app');
+  assert.match(source, /Pyodide assets staged before Windows distribution/);
+});
+
+test('Windows distribution report records artifact SHA-256 hashes', () => {
+  const source = readFileSync('scripts/desktop/dist_win.ts', 'utf-8');
+
+  assert.match(source, /createHash\('sha256'\)/);
+  assert.match(source, /sha256:\s*createHash\('sha256'\)/);
 });

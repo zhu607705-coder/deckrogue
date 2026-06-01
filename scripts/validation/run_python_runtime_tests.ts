@@ -12,17 +12,10 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
+import { resolvePythonCommandCandidates, type PythonCommand } from '@/runtimeV2/node/pythonCommand';
+
 const unittestArgs = ['-m', 'unittest', 'discover', '-s', 'python_runtime/tests', '-p', 'test_*.py'];
-const candidates = process.platform === 'win32'
-  ? [
-      { command: 'py', args: ['-3', ...unittestArgs] },
-      { command: 'python', args: unittestArgs },
-      { command: 'python3', args: unittestArgs },
-    ]
-  : [
-      { command: 'python3', args: unittestArgs },
-      { command: 'python', args: unittestArgs },
-    ];
+const candidates = resolvePythonCommandCandidates();
 
 const env = {
   ...process.env,
@@ -32,32 +25,45 @@ const env = {
   ].filter(Boolean).join(path.delimiter),
 };
 
-let lastMissingCommand: string | null = null;
+let lastUnavailableCommand: string | null = null;
+let pythonCommand: PythonCommand | null = null;
 
 for (const candidate of candidates) {
-  const result = spawnSync(candidate.command, candidate.args, {
+  const result = spawnSync(candidate.command, [...candidate.argsPrefix, '--version'], {
     cwd: process.cwd(),
-    env,
-    stdio: 'inherit',
+    encoding: 'utf-8',
+    stdio: 'pipe',
   });
 
-  if (result.error && (result.error as NodeJS.ErrnoException).code === 'ENOENT') {
-    lastMissingCommand = candidate.command;
+  if (result.error || result.status !== 0) {
+    lastUnavailableCommand = candidate.command;
     continue;
   }
 
-  if (result.error) {
-    console.error(`Failed to start ${candidate.command}:`, result.error.message);
-    process.exit(1);
+  pythonCommand = candidate;
+  break;
+}
+
+if (!pythonCommand) {
+  console.error(
+    `Python runtime tests could not start: no usable Python executable found (${candidates.map((entry) => entry.command).join(', ')}).`
+  );
+  if (lastUnavailableCommand) {
+    console.error(`Last unavailable command: ${lastUnavailableCommand}`);
   }
-
-  process.exit(result.status ?? 1);
+  process.exit(1);
 }
 
-console.error(
-  `Python runtime tests could not start: no Python executable found (${candidates.map((entry) => entry.command).join(', ')}).`
-);
-if (lastMissingCommand) {
-  console.error(`Last missing command: ${lastMissingCommand}`);
+const result = spawnSync(pythonCommand.command, [...pythonCommand.argsPrefix, ...unittestArgs], {
+  cwd: process.cwd(),
+  env,
+  stdio: 'inherit',
+});
+
+if (result.error) {
+  console.error(`Failed to start ${pythonCommand.command}:`, result.error.message);
+  process.exit(1);
 }
-process.exit(1);
+
+const exitCode = result.status ?? 1;
+process.exit(exitCode);

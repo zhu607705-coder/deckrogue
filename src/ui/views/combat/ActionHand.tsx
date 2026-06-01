@@ -101,6 +101,7 @@ export function ActionHand({
           onClick={() => setShowDrawPile(true)}
           className="grimdark-pile-btn grimdark-pile-btn--draw"
           title={`查看${terms.game.drawPile.name}`}
+          aria-label={`查看${terms.game.drawPile.name}（${state.drawPile.length}）`}
           data-keyboard-focus="true"
         >
           <span className="grimdark-pile-icon">📚</span>
@@ -111,6 +112,7 @@ export function ActionHand({
           onClick={() => setShowDiscardPile(true)}
           className="grimdark-pile-btn grimdark-pile-btn--discard"
           title={`查看${terms.game.discardPile.name}`}
+          aria-label={`查看${terms.game.discardPile.name}（${state.discardPile.length}）`}
           data-keyboard-focus="true"
         >
           <span className="grimdark-pile-icon">🗑️</span>

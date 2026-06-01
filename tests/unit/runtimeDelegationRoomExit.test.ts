@@ -190,3 +190,85 @@ test('SyncBootAndMapRuntimeDelegate.rest restores at least one HP for low max HP
 
   assert.equal(snapshot.player.hp, 2);
 });
+
+test('SyncBootAndMapRuntimeDelegate.mixPotions consumes runtime potions and returns to map', () => {
+  const delegate = new SyncBootAndMapRuntimeDelegate();
+  delegate.start(1);
+  delegate.loadSnapshot(
+    makeSnapshot({
+      lifecycle: {
+        screen: 'Rest',
+        phase: 'rest',
+        pendingNodeResolution: true,
+      },
+      player: {
+        characterId: 'informant',
+        hp: 50,
+        maxHp: 70,
+        gold: 99,
+        intel: 0,
+        devotion: 0,
+        corruption: 0,
+        deck: ['precision_strike'],
+        relicIds: [],
+        potionIds: ['healing_potion', 'block_potion'],
+      },
+      roomSession: {
+        token: 'room_token',
+        nodeId: 'floor_1_node_0',
+        ownerKind: 'rest',
+        resolverKind: 'rest',
+        surfaceStack: ['rest'],
+        status: 'active',
+      },
+    }),
+  );
+
+  const snapshot = delegate.mixPotions(0, 1);
+
+  assert.deepEqual(snapshot.player.potionIds, ['mutagenic_draft']);
+  assert.equal(snapshot.lifecycle.screen, 'Map');
+  assert.equal(snapshot.lifecycle.pendingNodeResolution, false);
+  assert.equal(snapshot.roomSession, null);
+});
+
+test('SyncBootAndMapRuntimeDelegate.removeCard removes the selected runtime deck entry', () => {
+  const delegate = new SyncBootAndMapRuntimeDelegate();
+  delegate.start(1);
+  delegate.loadSnapshot(
+    makeSnapshot({
+      lifecycle: {
+        screen: 'RemoveCard',
+        phase: 'remove_card',
+        pendingNodeResolution: true,
+      },
+      player: {
+        characterId: 'informant',
+        hp: 70,
+        maxHp: 70,
+        gold: 99,
+        intel: 0,
+        devotion: 0,
+        corruption: 0,
+        deck: ['precision_strike', 'watch', 'defend'],
+        relicIds: [],
+        potionIds: [],
+      },
+      roomSession: {
+        token: 'room_token',
+        nodeId: 'floor_1_node_0',
+        ownerKind: 'rest',
+        resolverKind: 'rest',
+        surfaceStack: ['rest', 'remove_card'],
+        status: 'active',
+      },
+    }),
+  );
+
+  const snapshot = delegate.removeCard('1:watch');
+
+  assert.deepEqual(snapshot.player.deck, ['precision_strike', 'defend']);
+  assert.equal(snapshot.lifecycle.screen, 'Map');
+  assert.equal(snapshot.lifecycle.pendingNodeResolution, false);
+  assert.equal(snapshot.roomSession, null);
+});

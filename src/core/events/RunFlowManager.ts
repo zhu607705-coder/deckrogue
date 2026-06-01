@@ -42,6 +42,7 @@ import {
 } from '@/content/narrative/numericSystem';
 import { balanceSystem } from '@/core/balance/balanceSystem';
 import { normalizeRunCardInstance, deriveRunCardInstance } from '@/core/combat/runCardInstance';
+import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 
 function isRuntimeCard(card: RunCardInstance | null): card is RunCardInstance {
   return card !== null;
@@ -486,11 +487,13 @@ export class RunFlowManager {
   restUpgradeRelic(): void {
     const state = this.deps.getState();
     if (state.screen !== 'Rest' || state.campfireChoiceLocked) return;
-    const hasCorruptedRelic = state.player.relics.some(r => {
-      const relic = relicsData.find(rel => rel.id === r);
-      return relic?.corrupted;
+    const hasUpgradeableRelic = state.player.relics.some(relicId => {
+      const relicState = state.player.relicStates[relicId];
+      const currentLevel = relicState?.level ?? 1;
+      const config = RELIC_UPGRADE_CONFIGS.find(entry => entry.relicId === relicId);
+      return !!config?.levels.some(level => level.level === currentLevel + 1);
     });
-    if (!hasCorruptedRelic) return;
+    if (!hasUpgradeableRelic) return;
     state.campfireChoiceLocked = true;
     state.relicUpgradeReturnScreen = 'Rest';
     state.screen = 'RelicUpgrade';

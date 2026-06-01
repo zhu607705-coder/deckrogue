@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   bootstrapContext,
   checkServer,
+  createFlowSmokeErrorCollector,
   createRestFixture,
   ensureDir,
   getDefaultSmokeUrl,
@@ -27,6 +28,7 @@ import {
 } from './flow_smoke_helpers';
 
 interface UpgradeFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedRest: boolean;
   reachedUpgrade: boolean;
@@ -34,6 +36,7 @@ interface UpgradeFlowReport {
   returnedToMap: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -53,12 +56,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createRestFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
 
   let reachedRest = false;
   let reachedUpgrade = false;
@@ -86,15 +85,26 @@ async function main() {
     await page.screenshot({ path: end, fullPage: true });
     screenshots.push(end);
   } finally {
-    const report: UpgradeFlowReport = { baseUrl, reachedRest, reachedUpgrade, appliedUpgrade, returnedToMap, consoleErrors, pageErrors, screenshots };
+    const report: UpgradeFlowReport = {
+      generatedAt: new Date().toISOString(),
+      baseUrl,
+      reachedRest,
+      reachedUpgrade,
+      appliedUpgrade,
+      returnedToMap,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
+      screenshots,
+    };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
     await context.close();
     await browser.close();
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedRest || !reachedUpgrade || !appliedUpgrade || !returnedToMap || consoleErrors.length || pageErrors.length) {
-    throw new Error(`Upgrade flow smoke failed: reachedRest=${reachedRest} reachedUpgrade=${reachedUpgrade} appliedUpgrade=${appliedUpgrade} returnedToMap=${returnedToMap} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedRest || !reachedUpgrade || !appliedUpgrade || !returnedToMap || errorCollector.consoleErrors.length || errorCollector.pageErrors.length || errorCollector.failedRequests.length) {
+    throw new Error(`Upgrade flow smoke failed: reachedRest=${reachedRest} reachedUpgrade=${reachedUpgrade} appliedUpgrade=${appliedUpgrade} returnedToMap=${returnedToMap} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

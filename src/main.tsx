@@ -34,26 +34,28 @@ function GameInitializer() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white p-4">
-        <h1 className="text-2xl text-red-500 mb-4 flex items-center gap-2">
-          <span>初始化异常</span>
-        </h1>
-        <p className="text-gray-400 mb-6 text-center max-w-md">{error}</p>
-        <div className="flex gap-4">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-red-700 hover:bg-red-600 text-white font-medium rounded transition-colors"
-          >
-            重试
-          </button>
-          <button
-            onClick={() => {
-              window.location.href = window.location.origin;
-            }}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded transition-colors"
-          >
-            返回首页
-          </button>
+      <div className="deckrogue-error-boundary deckrogue-init-error" role="alert">
+        <div className="deckrogue-error-boundary__panel">
+          <h1 className="deckrogue-error-boundary__title">
+            初始化异常
+          </h1>
+          <p className="deckrogue-error-boundary__message">{error}</p>
+          <div className="deckrogue-error-boundary__actions">
+            <button
+              onClick={() => window.location.reload()}
+              className="deckrogue-error-boundary__action"
+            >
+              重试
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = window.location.origin;
+              }}
+              className="deckrogue-error-boundary__action deckrogue-error-boundary__action--secondary"
+            >
+              返回首页
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -61,10 +63,12 @@ function GameInitializer() {
 
   if (!isReady) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
-        <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-6" />
-        <p className="text-gray-400 text-lg">正在初始化战区...</p>
-        <p className="text-gray-600 text-sm mt-2">正在加载资源和配置</p>
+      <div className="screen-loading-fallback screen-loading-fallback--initializing" role="status" aria-live="polite">
+        <div className="screen-loading-fallback__panel">
+          <span className="screen-loading-fallback__spinner" aria-hidden="true" />
+          <p className="screen-loading-fallback__label">正在初始化战区...</p>
+          <p className="screen-loading-fallback__hint">正在加载资源和配置</p>
+        </div>
       </div>
     );
   }

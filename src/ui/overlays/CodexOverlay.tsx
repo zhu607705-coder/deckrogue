@@ -240,9 +240,9 @@ export function CodexOverlay({
   const totalEntries = catalog.length;
 
   return (
-    <div className="fixed inset-0 z-[120]">
+    <div className="codex-overlay fixed inset-0 z-[120]">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-2 sm:inset-4 lg:inset-6 rounded-2xl border border-slate-700/70 bg-slate-950/92 shadow-2xl overflow-hidden flex flex-col">
+      <div className="codex-overlay__panel absolute inset-2 sm:inset-4 lg:inset-6 rounded-2xl border border-slate-700/70 bg-slate-950/92 shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-slate-100">
@@ -262,8 +262,8 @@ export function CodexOverlay({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_1fr]">
-          <div className="border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col min-h-0 bg-slate-950/60">
+        <div className="codex-overlay__body flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_1fr]">
+          <div className="codex-overlay__sidebar border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col min-h-0 bg-slate-950/60">
             <div className="p-4 space-y-3 border-b border-slate-800">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CATEGORY_ORDER.map((c) => {
@@ -360,7 +360,7 @@ export function CodexOverlay({
               )}
             </div>
 
-            <div className="flex-1 min-h-0 overflow-auto p-3 space-y-2">
+            <div className="codex-overlay__entry-list flex-1 min-h-0 overflow-auto p-3 space-y-2">
               {filteredEntries.length === 0 && (
                 <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-400">
                   没有匹配内容，尝试清空搜索或放宽筛选条件。
@@ -422,7 +422,7 @@ export function CodexOverlay({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-auto p-4 sm:p-5">
+          <div className="codex-overlay__detail min-h-0 overflow-auto p-4 sm:p-5">
             {!selectedEntry && (
               <div className="h-full rounded-xl border border-slate-800 bg-slate-900/40 flex items-center justify-center text-slate-500">
                 选择一个图鉴条目查看详情

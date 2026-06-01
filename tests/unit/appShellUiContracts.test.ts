@@ -123,3 +123,11 @@ test('AppShell passes runtime-v2 render model into nested deck and relic surface
     );
   }
 });
+
+test('AppShell passes runtime-v2 render model into EventView', () => {
+  assert.match(
+    APP_SHELL_SOURCE,
+    /<EventView\s+engine=\{engine\}\s+renderModel=\{renderModel\}\s*\/>/,
+    'EventView must receive renderModel so runtime-v2 event choices are visible'
+  );
+});

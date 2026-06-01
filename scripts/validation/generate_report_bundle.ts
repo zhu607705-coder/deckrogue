@@ -98,6 +98,21 @@ interface UiSmokeReport {
   }>;
 }
 
+interface ResponsiveReadabilityReport {
+  generatedAt?: string;
+  overallStatus?: string;
+  surfaceCount?: number;
+  viewportCount?: number;
+  profileCount?: number;
+  audits?: unknown[];
+  issues?: Array<{
+    kind?: string;
+    surface?: string;
+    viewport?: string;
+    selector?: string;
+  }>;
+}
+
 interface ReleaseReadiness {
   timestamp?: string;
   summary?: {
@@ -180,6 +195,11 @@ interface SecurityReport {
   current?: {
     summary?: SecuritySummary;
   };
+  summary?: SecuritySummary;
+  analysis?: {
+    overallStatus?: string;
+    riskLevel?: string;
+  };
 }
 
 interface VulnerabilityReport {
@@ -207,6 +227,17 @@ interface DestructiveSuite {
   timestamp?: string;
   unitTests?: { passed?: boolean };
   cases?: Array<{ status?: string }>;
+}
+
+interface WinDistReport {
+  timestamp?: string;
+  overallStatus?: string;
+  artifacts?: Array<{
+    path?: string;
+    sizeBytes?: number;
+    sha256?: string;
+    updatedAt?: string;
+  }>;
 }
 
 const REPO_ROOT = process.cwd();
@@ -286,6 +317,15 @@ function sumLayoutIssues(report: UiSmokeReport | null): number {
   return (report?.audits || []).reduce((sum, audit) => sum + (audit.layoutIssues?.length || 0), 0);
 }
 
+function summarizeResponsiveReadability(report: ResponsiveReadabilityReport | null): string {
+  return `${formatInt(report?.surfaceCount)} surfaces / ${formatInt(report?.viewportCount)} viewports / ${formatInt(report?.profileCount)} profiles / ${formatInt(report?.issues?.length)} issues`;
+}
+
+function summarizeResponsiveIssueKinds(report: ResponsiveReadabilityReport | null): string {
+  const kinds = Array.from(new Set((report?.issues || []).map((issue) => issue.kind).filter((kind): kind is string => Boolean(kind))));
+  return kinds.length > 0 ? kinds.join(', ') : 'none';
+}
+
 function latestDoctorFailure(report: DoctorReport | null): { name: string; category: string } | null {
   if (!report?.stages) return null;
   const stage = report.stages.find((entry) => entry.status === 'fail');
@@ -301,6 +341,24 @@ function latestWarningEvidence(report: ReleaseReadiness | null): string {
   return warning?.evidence || 'none';
 }
 
+function latestReleaseAttentionEvidence(report: ReleaseReadiness | null): string {
+  const failure = (report?.checks || []).find((check) => check.status === 'fail');
+  if (failure) {
+    return `${failure.id || 'unknown'}: ${failure.evidence || 'no evidence'}`;
+  }
+  return latestWarningEvidence(report);
+}
+
+function latestFailedReleaseChecks(report: ReleaseReadiness | null, limit = 6): Array<{ id: string; evidence: string }> {
+  return (report?.checks || [])
+    .filter((check) => check.status === 'fail')
+    .slice(0, limit)
+    .map((check) => ({
+      id: check.id || 'unknown',
+      evidence: check.evidence || 'no evidence',
+    }));
+}
+
 function latestEnemyIssueIds(report: ContentAuthoring | null): string[] {
   return (report?.enemies?.issues || [])
     .slice(0, 4)
@@ -313,6 +371,42 @@ function latestExperienceStatus(report: ExperiencePolish | null, componentName: 
   return entry?.status || 'unknown';
 }
 
+function countPassingStatuses(items: Array<{ status?: string }> | undefined): number {
+  return (items || []).filter((item) => item.status === 'pass').length;
+}
+
+function getSecuritySummary(report: SecurityReport | null): SecuritySummary | null {
+  return report?.current?.summary || report?.summary || null;
+}
+
+function formatSecurityConclusion(summary: SecuritySummary | null): string {
+  return `${formatInt(summary?.total)} issues, critical=${formatInt(summary?.critical)}, high=${formatInt(summary?.high)}`;
+}
+
+function latestWinDistExeArtifact(report: WinDistReport | null): NonNullable<WinDistReport['artifacts']>[number] | null {
+  return (report?.artifacts || []).find((artifact) => artifact.path?.toLowerCase().endsWith('.exe')) || null;
+}
+
+function hasValidSha256(value: string | undefined): value is string {
+  return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+}
+
+function formatWinDistConclusion(report: WinDistReport | null): string {
+  const artifact = latestWinDistExeArtifact(report);
+  const reportedStatus = report?.overallStatus || 'unknown';
+  if (!artifact) {
+    const status = reportedStatus === 'pass' ? 'fail' : reportedStatus;
+    return `${status}, exe=missing, sha256=missing`;
+  }
+  const hasPositiveSize = typeof artifact.sizeBytes === 'number' && Number.isFinite(artifact.sizeBytes) && artifact.sizeBytes > 0;
+  const hasHashEvidence = hasValidSha256(artifact.sha256);
+  const status = reportedStatus === 'pass' && (!hasPositiveSize || !hasHashEvidence) ? 'fail' : reportedStatus;
+  const size = hasPositiveSize ? `${artifact.sizeBytes} bytes` : 'unknown bytes';
+  const hash = artifact.sha256 ? (hasHashEvidence ? artifact.sha256.slice(0, 12) : 'invalid') : 'missing';
+  const updatedAt = artifact.updatedAt || 'missing';
+  return `${status}, exe=${size}, sha256=${hash}, updatedAt=${updatedAt}`;
+}
+
 function buildMarkdown(): string {
   const date = todayStamp();
   const generatedAt = new Date().toISOString();
@@ -323,6 +417,7 @@ function buildMarkdown(): string {
   const parityPath = resolve(REPO_ROOT, 'output/runtime_v2/parity_report.json');
   const uiSmokePath = resolve(REPO_ROOT, 'output/playwright/ui_smoke_report.json');
   const uiSmokeExpansionPath = resolve(REPO_ROOT, 'output/playwright/ui_smoke_expansion_report.json');
+  const responsiveReadabilityPath = resolve(REPO_ROOT, 'reports/ui/responsive-readability.json');
 
   const combat = readJsonFile<CombatRegression>(combatPath);
   const economy = readJsonFile<EconomyRegression>(economyPath);
@@ -330,6 +425,7 @@ function buildMarkdown(): string {
   const parity = readJsonFile<RuntimeParityReport>(parityPath);
   const uiSmoke = readJsonFile<UiSmokeReport>(uiSmokePath);
   const uiSmokeExpansion = readJsonFile<UiSmokeReport>(uiSmokeExpansionPath);
+  const responsiveReadability = readJsonFile<ResponsiveReadabilityReport>(responsiveReadabilityPath);
 
   const latestDoctorJson = canonicalReportPath(['reports', 'doctor', 'report.json']);
   const latestReleaseJson = canonicalReportPath(['reports', 'release', 'release-readiness.json']);
@@ -343,6 +439,7 @@ function buildMarkdown(): string {
   const latestTranslationJson = canonicalReportPath(['reports', 'translation', 'translation-audit.json']);
   const latestSystemAssertionsJson = canonicalReportPath(['reports', 'system', 'system-assertions.json']);
   const latestDestructiveJson = canonicalReportPath(['reports', 'system', 'destructive-suite.json']);
+  const latestWinDistJson = canonicalReportPath(['reports', 'desktop', 'win-dist.json']);
   const latestBundleJson = canonicalReportPath(['reports', 'content', 'bundle-check.json']);
   const latestReachabilityJson = canonicalReportPath(['reports', 'content', 'reachability.json']);
   const latestDeepReachabilityJson = canonicalReportPath(['reports', 'content', 'deep-reachability.json']);
@@ -351,6 +448,7 @@ function buildMarkdown(): string {
 
   const doctor = latestDoctorJson ? readJsonFile<DoctorReport>(latestDoctorJson) : null;
   const release = latestReleaseJson ? readJsonFile<ReleaseReadiness>(latestReleaseJson) : null;
+  const failedReleaseChecks = latestFailedReleaseChecks(release);
   const scenarioMatrix = latestScenarioJson ? readJsonFile<ScenarioMatrix>(latestScenarioJson) : null;
   const expansion = latestExpansionJson ? readJsonFile<ExpansionAcceptance>(latestExpansionJson) : null;
   const contentAuthoring = latestContentAuthoringJson ? readJsonFile<ContentAuthoring>(latestContentAuthoringJson) : null;
@@ -361,8 +459,10 @@ function buildMarkdown(): string {
   const translation = latestTranslationJson ? readJsonFile<TranslationAudit>(latestTranslationJson) : null;
   const systemAssertions = latestSystemAssertionsJson ? readJsonFile<SystemAssertions>(latestSystemAssertionsJson) : null;
   const destructive = latestDestructiveJson ? readJsonFile<DestructiveSuite>(latestDestructiveJson) : null;
+  const winDist = latestWinDistJson ? readJsonFile<WinDistReport>(latestWinDistJson) : null;
 
   const doctorFailure = latestDoctorFailure(doctor);
+  const securitySummary = getSecuritySummary(security);
   const economySummaries = economy?.summaries || [];
   const outliers = combat?.analysis?.outliers || [];
   const invalidEnemyIds = latestEnemyIssueIds(contentAuthoring);
@@ -392,9 +492,10 @@ function buildMarkdown(): string {
   lines.push(`- 当前经济回归来自 \`${repoPath(economyPath)}\`，训练诊断状态为：\`illegalRunTransitions = ${(economy?.diagnostics?.illegalRunTransitions || []).length}\`，\`unknownActionTypes = ${(economy?.diagnostics?.unknownActionTypes || []).length}\`。`);
   lines.push(`- 当前 \`runtime_v2\` 一致性报告来自 \`${repoPath(parityPath)}\`，\`${formatInt(parity?.sampleCount)}\` 组样本在全部汇总场景均通过。`);
   lines.push(`- 当前 UI 自动化存在分层差异：基础烟测 \`${sumLayoutIssues(uiSmoke)}\` 个布局问题，扩展烟测 \`${sumLayoutIssues(uiSmokeExpansion)}\` 个布局问题。`);
+  lines.push(`- 当前响应式可读性报告来自 \`${repoPath(responsiveReadabilityPath)}\`，\`${summarizeResponsiveReadability(responsiveReadability)}\`，问题类型：\`${summarizeResponsiveIssueKinds(responsiveReadability)}\`。`);
   lines.push(`- 当前最新 doctor 总报告显示 \`${formatInt(doctor?.summary?.total)}\` 个阶段里 \`${formatInt(doctor?.summary?.passed)}\` 个通过、\`${formatInt(doctor?.summary?.failed)}\` 个失败${doctorFailure ? `，失败项是 \`${doctorFailure.name}\`` : ''}。`);
-  lines.push(`- 当前 release readiness 报告总体状态为 \`${release?.summary?.overallStatus || 'unknown'}\`，warning 证据为：\`${latestWarningEvidence(release)}\`。`);
-  lines.push(`- 当前安全扫描无 \`critical/high\`，但仍有 \`${formatInt(security?.current?.summary?.total)}\` 个中低级问题。`);
+  lines.push(`- 当前 release readiness 报告总体状态为 \`${release?.summary?.overallStatus || 'unknown'}\`，关键证据为：\`${latestReleaseAttentionEvidence(release)}\`。`);
+  lines.push(`- 当前安全扫描汇总：\`${formatSecurityConclusion(securitySummary)}\`。`);
   lines.push(`- 当前内容作者校验总体通过率 \`${formatNumber(contentAuthoring?.summary?.passRate, 2)}%\`，当前无效敌人数量 \`${formatInt(contentAuthoring?.enemies?.invalid)}\`。`);
   lines.push('');
   lines.push('### 1.2 当前关键数字');
@@ -409,6 +510,7 @@ function buildMarkdown(): string {
   lines.push(`| 经济诊断未知动作 | \`${formatInt((economy?.diagnostics?.unknownActionTypes || []).length)}\` | 最新摘要 |`);
   lines.push(`| UI 基础烟测布局问题 | \`${sumLayoutIssues(uiSmoke)}\` | 基础入口 |`);
   lines.push(`| UI 扩展烟测布局问题 | \`${sumLayoutIssues(uiSmokeExpansion)}\` | 扩展覆盖 |`);
+  lines.push(`| 响应式可读性 | \`${summarizeResponsiveReadability(responsiveReadability)}\` | ${responsiveReadability?.overallStatus || 'unknown'} |`);
   lines.push(`| baseline audit errors | \`${formatInt(baseline?.summary?.errors)}\` | 最新扫描 |`);
   lines.push(`| baseline audit warnings | \`${formatInt(baseline?.summary?.warnings)}\` | anomaly=${formatInt(baseline?.anomalySummary?.warnings)}, drift=${formatInt(baseline?.driftSummary?.warnings)} |`);
   lines.push(`| scenario matrix | \`${formatInt(scenarioMatrix?.summary?.passed)}/${formatInt(scenarioMatrix?.summary?.total)} pass\` | 当前场景矩阵 |`);
@@ -494,6 +596,7 @@ function buildMarkdown(): string {
   lines.push('');
   lines.push(`- \`${repoPath(uiSmokePath)}\``);
   lines.push(`- \`${repoPath(uiSmokeExpansionPath)}\``);
+  lines.push(`- \`${repoPath(responsiveReadabilityPath)}\``);
   lines.push('');
   lines.push('基础烟测：');
   lines.push('');
@@ -516,6 +619,13 @@ function buildMarkdown(): string {
     lines.push(`  - \`${slot}\``);
   }
   lines.push('');
+  lines.push('响应式可读性：');
+  lines.push('');
+  lines.push(`- 状态：\`${responsiveReadability?.overallStatus || 'unknown'}\``);
+  lines.push(`- 覆盖：\`${summarizeResponsiveReadability(responsiveReadability)}\``);
+  lines.push(`- 审计次数：\`${formatInt(responsiveReadability?.audits?.length)}\``);
+  lines.push(`- 问题类型：\`${summarizeResponsiveIssueKinds(responsiveReadability)}\``);
+  lines.push('');
   lines.push('### 2.7 Release Readiness');
   lines.push('');
   if (latestReleaseJson) {
@@ -527,6 +637,16 @@ function buildMarkdown(): string {
     lines.push(`- \`failed = ${formatInt(release?.summary?.failed)}\``);
     lines.push(`- \`overallStatus = ${release?.summary?.overallStatus || 'unknown'}\``);
     lines.push(`- 唯一 warning：\`${latestWarningEvidence(release)}\``);
+    if (failedReleaseChecks.length > 0) {
+      lines.push('- 失败项：');
+      for (const check of failedReleaseChecks) {
+        lines.push(`  - \`${check.id}\`: ${check.evidence}`);
+      }
+      const hiddenFailures = Math.max(0, (release?.summary?.failed || 0) - failedReleaseChecks.length);
+      if (hiddenFailures > 0) {
+        lines.push(`  - 另有 \`${hiddenFailures}\` 个失败项未在摘要中展开，详见原始 JSON。`);
+      }
+    }
   } else {
     lines.push('- 当前未找到 release readiness 报告。');
   }
@@ -567,7 +687,7 @@ function buildMarkdown(): string {
   }
   lines.push(`- ecosystem balance：\`totalCharacters = ${formatInt(ecosystem?.summary?.totalCharacters)}\`，\`reportStatus = ${ecosystem?.summary?.reportStatus || 'unknown'}\``);
   lines.push(`- experience polish：\`命中反馈 = ${latestExperienceStatus(experience, '命中反馈')}\`，\`状态施加 = ${latestExperienceStatus(experience, '状态施加')}\``);
-  lines.push(`- security report：\`${formatInt(security?.current?.summary?.total)}\` 个问题，\`critical = ${formatInt(security?.current?.summary?.critical)}\`，\`high = ${formatInt(security?.current?.summary?.high)}\``);
+  lines.push(`- security report：\`${formatInt(securitySummary?.total)}\` 个问题，\`critical = ${formatInt(securitySummary?.critical)}\`，\`high = ${formatInt(securitySummary?.high)}\``);
   lines.push(`- vulnerability scan：\`${formatInt(vulnerability?.summary?.total)}\` 个问题，\`critical = ${formatInt(vulnerability?.summary?.critical)}\`，\`high = ${formatInt(vulnerability?.summary?.high)}\``);
   lines.push(`- translation audit：\`${formatInt(translation?.summary?.total)}\` 项问题`);
   lines.push('');
@@ -578,14 +698,18 @@ function buildMarkdown(): string {
   lines.push(`- \`release-readiness\` 为 \`${release?.summary?.overallStatus || 'unknown'}\`，但最新 doctor 报告仍有 \`${formatInt(doctor?.summary?.failed)}\` 个失败。发布判断应以时间更晚的总报告为准。`);
   lines.push('- `runtime_v2 parity`、`scenario matrix`、`system assertions` 全绿，但 `combat_regression` 和 `economy_regression` 仍是独立状态线。');
   lines.push(`- 基础 UI 烟测仍有 \`${sumLayoutIssues(uiSmoke)}\` 个布局问题，而扩展 UI 烟测为 \`${sumLayoutIssues(uiSmokeExpansion)}\`，页面覆盖范围并不一致。`);
+  lines.push(`- 响应式可读性报告当前为 \`${responsiveReadability?.overallStatus || 'unknown'}\`，覆盖 \`${summarizeResponsiveReadability(responsiveReadability)}\`。`);
   lines.push('');
   lines.push('### 3.2 当前最需要继续跟进的点');
   lines.push('');
   if (doctorFailure) lines.push(`- \`${doctorFailure.name}\` 的失败源头`);
+  for (const check of failedReleaseChecks.slice(0, 3)) {
+    lines.push(`- release readiness 失败项 \`${check.id}\`：${check.evidence}`);
+  }
   lines.push('- `combat_regression.json` 中 `powerSpread` 和 `survivalSpreadFirst3` 的变化');
   lines.push('- `economy_regression.json` 摘要层的 `cardAffordability` / `floor3Removal` 空值');
   if (invalidEnemyIds.length > 0) lines.push(`- \`content-authoring\` 暴露的 \`${invalidEnemyIds.length}\` 个敌人缺失 move 引用`);
-  lines.push(`- \`security\` / \`vulnerability\` 中累计的 \`${formatInt(security?.current?.summary?.total)}\` 个中低级问题`);
+  lines.push(`- \`security\` / \`vulnerability\` 中累计的 \`${formatInt(securitySummary?.total)}\` 个安全问题`);
   lines.push('');
   lines.push('## 4. 人工维护报告目录');
   lines.push('');
@@ -656,16 +780,18 @@ function buildMarkdown(): string {
     ['keyword registry', latestKeywordJson, '关键词校验产物'],
     ['numeric diff', latestNumericDiffJson, '数值变更审计产物'],
     ['reachability', latestReachabilityJson, '最新可达性产物'],
-    ['release readiness', latestReleaseJson, `${release?.summary?.overallStatus || 'unknown'} with ${formatInt(release?.summary?.warned)} warn`],
-    ['security report', latestSecurityJson, `无高危，${formatInt(security?.current?.summary?.total)} 项中低级问题`],
+    ['release readiness', latestReleaseJson, `${release?.summary?.overallStatus || 'unknown'} with ${formatInt(release?.summary?.failed)} fail / ${formatInt(release?.summary?.warned)} warn`],
+    ['windows distribution', latestWinDistJson, formatWinDistConclusion(winDist)],
+    ['security report', latestSecurityJson, formatSecurityConclusion(securitySummary)],
     ['scenario matrix', latestScenarioJson, `${formatInt(scenarioMatrix?.summary?.passed)}/${formatInt(scenarioMatrix?.summary?.total)} pass`],
-    ['destructive suite', latestDestructiveJson, `${(destructive?.cases || []).length}/${(destructive?.cases || []).length} pass`],
+    ['destructive suite', latestDestructiveJson, `${countPassingStatuses(destructive?.cases)}/${(destructive?.cases || []).length} pass`],
     ['system assertions', latestSystemAssertionsJson, `${(systemAssertions?.probes || []).length}/${(systemAssertions?.probes || []).length} pass`],
     ['translation audit', latestTranslationJson, `${formatInt(translation?.summary?.total)} 问题`],
     ['vulnerability scan', latestVulnerabilityJson, `无高危，${formatInt(vulnerability?.summary?.total)} 项中低级问题`],
     ['expansion acceptance', latestExpansionJson, `${formatInt(expansion?.summary?.passed)} suites pass`],
     ['ui smoke', uiSmokePath, `${sumLayoutIssues(uiSmoke)} 布局问题`],
     ['ui smoke expansion', uiSmokeExpansionPath, `${sumLayoutIssues(uiSmokeExpansion)} 布局问题`],
+    ['responsive readability', responsiveReadabilityPath, summarizeResponsiveReadability(responsiveReadability)],
     ['runtime parity', parityPath, `${formatInt(parity?.sampleCount)} 样本全量对比`],
     ['combat regression', combatPath, '当前战斗回归产物'],
     ['economy regression', economyPath, '当前经济回归产物'],
@@ -682,7 +808,8 @@ function buildMarkdown(): string {
   lines.push(`- incident report：\`${incidentReports.length}\` 份`);
   lines.push(`- \`output/\` 下 report 与 numerics 快照：\`${outputReports.length}\` 份`);
   lines.push(`- \`reports/\` 下自动化 JSON 报告：\`${generatedReportsJson.length}\` 份`);
-  lines.push(`- \`reports/doctor/*.md\`：\`${generatedReportsMd.filter((path) => path.includes('/doctor/')).length}\` 份`);
+  const doctorMarkdownCount = generatedReportsMd.filter((path) => repoPath(path).startsWith('reports/doctor/')).length;
+  lines.push(`- \`reports/doctor/*.md\`：\`${doctorMarkdownCount}\` 份`);
   lines.push('');
   lines.push('## 6. 全部报告清单');
   lines.push('');

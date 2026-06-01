@@ -211,12 +211,12 @@ export class LegacyOracleAdapter implements RuleRuntimeAdapter {
       if (!relicState) {
         throw new Error(`Relic is not available for upgrade: ${command.relicId}`);
       }
-      if (!relicState.corrupted) {
-        throw new Error(`Relic is not corrupted and cannot use the runtime-v2 relic upgrade flow: ${command.relicId}`);
-      }
       const upgradeInfo = this.engine.getRelicUpgradeInfo(command.relicId);
       if (!upgradeInfo?.canAfford) {
         throw new Error('Not enough gold to upgrade relic');
+      }
+      if (!upgradeInfo.canUpgrade) {
+        throw new Error(`Relic is already at max upgrade level: ${command.relicId}`);
       }
       this.engine.upgradeRelic(command.relicId);
       this.snapshot = normalizeLegacyGameState(this.engine.state, this.engine.getSaveData());

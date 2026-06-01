@@ -5,6 +5,7 @@ import type { RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
 
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
+const SPECIAL_RESOURCE_KEYS = ['timeLayer', 'thread', 'concoction'] as const;
 
 export function snakeToCamelKey(key: string): string {
   return key.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
@@ -29,15 +30,29 @@ export function convertKeys(value: unknown, keyMapper: (key: string) => string):
   return result;
 }
 
+function normalizeNonNegativeInteger(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(numeric));
+}
+
 export function unwrapPythonSnapshotEnvelope(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Invalid Python runtime payload');
   }
 
   const record = value as Record<string, unknown>;
+  if (record.ok === false) {
+    throw new Error(typeof record.error === 'string' && record.error.length > 0 ? record.error : 'Python runtime returned an error');
+  }
   const nestedSnapshot = record.snapshot;
   if (nestedSnapshot && typeof nestedSnapshot === 'object' && !Array.isArray(nestedSnapshot)) {
     return nestedSnapshot as Record<string, unknown>;
+  }
+  if ('ok' in record) {
+    throw new Error('Python runtime envelope is missing snapshot');
   }
 
   return record;
@@ -123,6 +138,9 @@ export function normalizePythonSnapshot(
       .filter(([, value]) => Number.isFinite(value))
       .map(([key, value]) => [key, Math.max(0, Math.floor(value as number))]),
   );
+  const specialResources = Object.fromEntries(
+    SPECIAL_RESOURCE_KEYS.map((key) => [key, normalizeNonNegativeInteger(player[key])]),
+  ) as Pick<RuleSnapshot['player'], 'timeLayer' | 'thread' | 'concoction'>;
   const rawRelicStates = (rawPlayer.relic_states as Record<string, unknown> | undefined)
     ?? (rawPlayer.relicStates as Record<string, unknown> | undefined)
     ?? {};
@@ -154,6 +172,7 @@ export function normalizePythonSnapshot(
       command: secondaryResources.command ?? player.command ?? 0,
       verdict: secondaryResources.verdict ?? player.verdict ?? 0,
       seal: secondaryResources.seal ?? player.seal ?? 0,
+      ...specialResources,
       deck: player.deck ?? [],
       relicIds: player.relicIds ?? [],
       potionIds: player.potionIds ?? [],

@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   bootstrapContext,
   checkServer,
+  createFlowSmokeErrorCollector,
   createGameOverFixture,
   createVictoryFixture,
   ensureDir,
@@ -35,9 +36,11 @@ interface TerminalCaseReport {
 }
 
 interface TerminalFlowReport {
+  generatedAt: string;
   baseUrl: string;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   cases: TerminalCaseReport[];
 }
 
@@ -46,15 +49,7 @@ async function runCase(baseUrl: string, slotName: string, terminalTitle: string,
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createVictoryFixture(), createGameOverFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
-  });
+  const errorCollector = createFlowSmokeErrorCollector(page);
 
   let reachedTerminal = false;
   let exitedTerminal = false;
@@ -75,7 +70,13 @@ async function runCase(baseUrl: string, slotName: string, terminalTitle: string,
     await browser.close();
   }
 
-  return { reachedTerminal, exitedTerminal, consoleErrors, pageErrors };
+  return {
+    reachedTerminal,
+    exitedTerminal,
+    consoleErrors: errorCollector.consoleErrors,
+    pageErrors: errorCollector.pageErrors,
+    failedRequests: errorCollector.failedRequests,
+  };
 }
 
 async function main() {
@@ -94,6 +95,7 @@ async function main() {
   const cases: TerminalCaseReport[] = [];
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
+  const failedRequests: string[] = [];
 
   try {
     const victoryShot = screenshotPath(outputDir, 'victory-terminal.png');
@@ -106,6 +108,7 @@ async function main() {
     });
     consoleErrors.push(...victory.consoleErrors);
     pageErrors.push(...victory.pageErrors);
+    failedRequests.push(...victory.failedRequests);
 
     const gameOverShot = screenshotPath(outputDir, 'gameover-terminal.png');
     const gameOver = await runCase(baseUrl, 'Terminal Flow GameOver', '执行失败 (MIA/KIA)', '派遣下一任牺牲者', gameOverShot);
@@ -117,11 +120,14 @@ async function main() {
     });
     consoleErrors.push(...gameOver.consoleErrors);
     pageErrors.push(...gameOver.pageErrors);
+    failedRequests.push(...gameOver.failedRequests);
   } finally {
     const report: TerminalFlowReport = {
+      generatedAt: new Date().toISOString(),
       baseUrl,
       consoleErrors,
       pageErrors,
+      failedRequests,
       cases,
     };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -131,8 +137,8 @@ async function main() {
   }
 
   const failedCase = cases.find((entry) => !entry.reachedTerminal || !entry.exitedTerminal);
-  if (failedCase || consoleErrors.length > 0 || pageErrors.length > 0) {
-    throw new Error(`Terminal flow smoke failed: failedCase=${failedCase?.slotName || 'none'} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (failedCase || consoleErrors.length > 0 || pageErrors.length > 0 || failedRequests.length > 0) {
+    throw new Error(`Terminal flow smoke failed: failedCase=${failedCase?.slotName || 'none'} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length} failedRequests=${failedRequests.length}`);
   }
 }
 

@@ -31,6 +31,109 @@ test('createLegacyRenderModel projects a legacy engine into the runtime v2 rende
   }
 });
 
+test('createRenderModel exposes selected character map energy for runtime-v2 map HUDs', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Map',
+      phase: 'map',
+      pendingNodeResolution: false,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 70,
+      maxHp: 70,
+      gold: 0,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: ['calculated_strike'],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [
+        {
+          id: 'runtime-combat-1',
+          type: 'Combat',
+          x: 0.5,
+          y: 0,
+          revealed: true,
+          next: [],
+        },
+      ],
+    },
+    surfaceContext: null,
+    roomSession: null,
+    combat: null,
+    reward: null,
+    shop: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.player.energy, 3);
+  assert.equal(renderModel.player.maxEnergy, 3);
+});
+
+test('createLegacyRenderModel preserves legacy combat special route resources', () => {
+  const engine = new GameEngine(12345, null, { enableRuntimeDelegation: false });
+  try {
+    engine.selectCharacter('chronomancer');
+    engine.state.screen = 'Combat';
+    (engine.state as any).combat = {
+      player: {
+        hp: engine.state.player.hp,
+        maxHp: engine.state.player.maxHp,
+        block: 0,
+        energy: 3,
+        statuses: {},
+        delayedCards: [],
+        constructs: [],
+        elements: [],
+        potionToxicity: 0,
+        potionsUsedThisTurn: 0,
+        cardsPlayedThisTurn: 0,
+        devotion: 0,
+        corruptionAxis: 0,
+        axisDisposition: 'balanced',
+        timeLayer: 3,
+        thread: 2,
+        concoction: 4,
+      },
+      enemies: [],
+      drawPile: [],
+      hand: [],
+      discardPile: [],
+      exhaustPile: [],
+      turn: 1,
+      isPlayerTurn: true,
+      warpTide: 0,
+      warpAlpha: 0,
+      warpPerilK: 0,
+    };
+
+    const renderModel = createLegacyRenderModel(engine);
+
+    assert.equal(renderModel.player.timeLayer, 3);
+    assert.equal(renderModel.player.thread, 2);
+    assert.equal(renderModel.player.concoction, 4);
+  } finally {
+    engine.dispose();
+  }
+});
+
 test('createLegacyRenderModel includes shop room summary for legacy shop screens', () => {
   const engine = new GameEngine(12345, null);
   try {
@@ -109,6 +212,70 @@ test('createRenderModel preserves a custom shop removal cost while selecting a p
 
   assert.equal(renderModel.room?.kind, 'remove_card');
   assert.equal(renderModel.room?.cardRemovalCost, 125);
+});
+
+test('createRenderModel derives shop service gates from the runtime deck', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Shop',
+      phase: 'shop',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 40,
+      maxHp: 70,
+      gold: 120,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: [],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: 'shop-1',
+      nodes: [],
+    },
+    shop: {
+      cards: [],
+      relics: [],
+      potions: [],
+      cardRemovalCost: 75,
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const emptyDeckRenderModel = createRenderModel(snapshot);
+
+  assert.equal(emptyDeckRenderModel.room?.kind, 'shop');
+  assert.equal(emptyDeckRenderModel.room?.canRemove, false);
+  assert.equal(emptyDeckRenderModel.room?.canUpgrade, false);
+  assert.equal(emptyDeckRenderModel.room?.canEnchant, false);
+
+  const deckRenderModel = createRenderModel({
+    ...snapshot,
+    player: {
+      ...snapshot.player,
+      deck: ['calculated_strike'],
+    },
+  });
+
+  assert.equal(deckRenderModel.room?.canRemove, true);
+  assert.equal(deckRenderModel.room?.canUpgrade, true);
+  assert.equal(deckRenderModel.room?.canEnchant, true);
 });
 
 test('createLegacyRenderModel preserves a custom shop removal cost on the remove-card surface', () => {
@@ -204,6 +371,114 @@ test('createRenderModel reports a nonzero rest heal amount for low max HP snapsh
   assert.equal(renderModel.room?.healAmount, 1);
 });
 
+test('createRenderModel derives rest deck service gates from the runtime deck', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Rest',
+      phase: 'rest',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'informant',
+      hp: 40,
+      maxHp: 70,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: [],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const emptyDeckRenderModel = createRenderModel(snapshot);
+
+  assert.equal(emptyDeckRenderModel.room?.kind, 'rest');
+  assert.equal(emptyDeckRenderModel.room?.canRemove, false);
+  assert.equal(emptyDeckRenderModel.room?.canUpgrade, false);
+  assert.equal(emptyDeckRenderModel.room?.canEnchant, false);
+
+  const deckRenderModel = createRenderModel({
+    ...snapshot,
+    player: {
+      ...snapshot.player,
+      deck: ['calculated_strike'],
+    },
+  });
+
+  assert.equal(deckRenderModel.room?.canRemove, true);
+  assert.equal(deckRenderModel.room?.canUpgrade, true);
+  assert.equal(deckRenderModel.room?.canEnchant, true);
+});
+
+test('createRenderModel preserves special route resources on runtime player state', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'Combat',
+      phase: 'combat',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'chronomancer',
+      hp: 40,
+      maxHp: 70,
+      gold: 99,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      secondaryResources: { evidence: 1 },
+      timeLayer: 3,
+      thread: 2,
+      concoction: 4,
+      deck: [],
+      relicIds: [],
+      potionIds: [],
+      relicStates: {},
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.player.timeLayer, 3);
+  assert.equal(renderModel.player.thread, 2);
+  assert.equal(renderModel.player.concoction, 4);
+  assert.equal(renderModel.player.secondaryResources?.evidence, 1);
+});
+
 test('createRenderModel exposes runtime-v2 rest potion mix choices', () => {
   const snapshot: RuleSnapshot = {
     schemaVersion: 2,
@@ -246,6 +521,7 @@ test('createRenderModel exposes runtime-v2 rest potion mix choices', () => {
 
   assert.equal(renderModel.room?.kind, 'rest');
   assert.equal(renderModel.room?.canMix, true);
+  assert.deepEqual(renderModel.player.potionIds, ['healing_potion', 'block_potion']);
   assert.deepEqual(renderModel.room?.potions?.map((potion) => potion.id), ['healing_potion', 'block_potion']);
 });
 
@@ -391,6 +667,53 @@ test('createRenderModel only exposes enchant-applicable unenchanted card choices
 
   assert.equal(renderModel.room?.kind, 'enchant');
   assert.deepEqual(renderModel.room.choices?.map((choice) => choice.id), ['1:calculated_strike']);
+});
+
+test('createRenderModel exposes configured non-corrupted relic upgrade choices', () => {
+  const snapshot: RuleSnapshot = {
+    schemaVersion: 2,
+    engineVersion: 'test',
+    seed: 1,
+    lifecycle: {
+      screen: 'RelicUpgrade',
+      phase: 'relic_upgrade',
+      pendingNodeResolution: true,
+    },
+    player: {
+      characterId: 'chronomancer',
+      hp: 40,
+      maxHp: 70,
+      gold: 999,
+      intel: 0,
+      devotion: 0,
+      corruption: 0,
+      deck: ['temporal_mastery'],
+      relicIds: ['lantern'],
+      potionIds: [],
+      relicStates: {
+        lantern: { level: 1, progress: 0, corrupted: false },
+      },
+    },
+    map: {
+      currentNodeId: null,
+      nodes: [],
+    },
+    combat: null,
+    reward: null,
+    activeEvent: null,
+    meta: {
+      runId: null,
+      replayLength: 0,
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      adapter: 'python-wasm',
+    },
+  };
+
+  const renderModel = createRenderModel(snapshot);
+
+  assert.equal(renderModel.room?.kind, 'relic_upgrade');
+  assert.deepEqual(renderModel.room.choices?.map((choice) => choice.id), ['lantern']);
+  assert.match(renderModel.room.choices?.[0]?.label ?? '', /Lv\.1/);
 });
 
 test('createLegacyRenderModel includes reward room summary for legacy reward screens', () => {

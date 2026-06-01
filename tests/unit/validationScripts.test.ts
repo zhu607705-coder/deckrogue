@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 test('dead file scan resolves the repository root above scripts/validation', () => {
@@ -79,10 +79,38 @@ test('experience polish requires complete UI expansion evidence', () => {
 
 test('desktop smoke isolates production runs', () => {
   const source = readFileSync('scripts/validation/playwright_electron_smoke.ts', 'utf-8');
+  const electronMain = readFileSync('electron/main.mjs', 'utf-8');
 
   assert.match(source, /desktop-smoke-production\.lock/);
+  assert.match(source, /readFileSync\(PRODUCTION_LOCK_PATH/);
+  assert.match(source, /process\.kill\(stalePid,\s*0\)/);
+  assert.match(source, /rmSync\(PRODUCTION_LOCK_PATH,\s*\{\s*force:\s*true\s*\}\)/);
   assert.match(source, /deckrogue-electron-smoke-user-data-\$\{runId\}/);
+  assert.match(source, /responsiveChecks:\s*\[\]/);
+  assert.match(source, /DESKTOP_RESPONSIVE_VIEWPORTS/);
+  assert.match(source, /desktop-min-960x540/);
+  assert.match(source, /captureResponsiveChecks\(page,\s*app,\s*report,\s*'launcher'\)/);
+  assert.match(source, /captureResponsiveChecks\(page,\s*app,\s*report,\s*'combat'\)/);
+  assert.match(source, /report\.responsiveChecks\.every\(\(check\)\s*=>\s*check\.status\s*===\s*'pass'\)/);
   assert.match(source, /desktop_\$\{runId\}_launcher\.png/);
+  assert.match(source, /rendererCrashes:\s*\[\]/);
+  assert.match(source, /new Function\('electronModules'/);
+  assert.doesNotMatch(source, /app\.evaluate\(async \(\{/);
+  assert.doesNotMatch(source, /app\.evaluate\(\(\{/);
+  assert.match(source, /page\.on\('crash'/);
+  assert.match(source, /render-process-gone/);
+  assert.match(source, /--no-sandbox/);
+  assert.match(source, /disable-gpu/);
+  assert.match(source, /disable-gpu-sandbox/);
+  assert.match(source, /disable-gpu-compositing/);
+  assert.match(electronMain, /app\.disableHardwareAcceleration\(\)/);
+  assert.match(electronMain, /disable-gpu/);
+  assert.match(electronMain, /disable-gpu-sandbox/);
+  assert.match(electronMain, /disable-gpu-compositing/);
+  assert.match(electronMain, /DECKROGUE_DESKTOP_MIN_WIDTH/);
+  assert.match(electronMain, /DECKROGUE_DESKTOP_MIN_HEIGHT/);
+  assert.match(electronMain, /minWidth:\s*Number\.isFinite\(desktopMinWidth\)\s*\?\s*desktopMinWidth\s*:\s*960/);
+  assert.match(electronMain, /minHeight:\s*Number\.isFinite\(desktopMinHeight\)\s*\?\s*desktopMinHeight\s*:\s*540/);
 });
 
 test('game doctor keeps Windows desktop installer distribution gated after smoke', () => {
@@ -123,6 +151,29 @@ test('game doctor keeps Python WASM runtime sync and package tests gated', () =>
   assert.match(source, /Python Runtime Unit Tests/);
   assert.match(source, /npm run test:python-runtime/);
   assert.match(releaseReadiness, /Runtime V2 Adapter Differential Parity/);
+});
+
+test('game doctor classifies GitHub transport failures as environment issues', () => {
+  const source = readFileSync('scripts/doctor/gameDoctor.ts', 'utf-8');
+
+  assert.match(source, /'environment'/);
+  assert.match(source, /github transport/);
+  assert.match(source, /check_github_transport/);
+  assert.doesNotMatch(source, /lower\.includes\('ui'\)/);
+  assert.match(source, /\\bui\\b/);
+});
+
+test('Python runtime launchers skip unavailable Windows py launcher before falling back to python', () => {
+  const runtimeTestSource = readFileSync('scripts/validation/run_python_runtime_tests.ts', 'utf-8');
+  const adapterSource = readFileSync('src/runtimeV2/node/pythonProcessAdapter.ts', 'utf-8');
+
+  assert.match(runtimeTestSource, /resolvePythonCommandCandidates/);
+  assert.match(runtimeTestSource, /result\.status !== 0/);
+  assert.match(runtimeTestSource, /continue/);
+  assert.doesNotMatch(runtimeTestSource, /process\.exit\(result\.status \?\? 1\);/);
+
+  assert.match(adapterSource, /resolveAvailablePythonCommand/);
+  assert.doesNotMatch(adapterSource, /return \{ command: 'py', argsPrefix: \['-3'\] \};/);
 });
 
 test('real UI round stress treats missing or invalid scenario reports as failures', () => {
@@ -184,6 +235,106 @@ test('enemy AI profile gate rejects numeric authoring values encoded as strings'
   }
 });
 
+test('enemy AI profile gate rejects intent policy weights encoded as strings', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-ai-profile-policy-weight-'));
+  const enemyDataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(enemyDataDir, { recursive: true });
+    writeFileSync(
+      join(enemyDataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'stringly_policy_weight_enemy',
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: '1' }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+          ai_profile: {
+            perceptionAccuracy: 0.5,
+            personality: {
+              aggression: 0.4,
+              defensiveness: 0.3,
+              unpredictability: 0.2,
+              revengefulness: 0.1,
+            },
+            intentBiases: [{ intent: 'attack', multiplier: 1.1 }],
+            antiStall: {
+              maxNonAttackTurns: 2,
+              forcedAttackMultiplier: 1.5,
+              suppressedIntents: [],
+            },
+          },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_enemy_ai_profiles.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected stringly intent policy weight to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stderr, /intent_policy\.attack\.weight must be a finite number/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('enemy AI profile gate rejects intent bias bands that runtime perception cannot produce', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-ai-profile-band-'));
+  const enemyDataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(enemyDataDir, { recursive: true });
+    writeFileSync(
+      join(enemyDataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'invalid_band_ai_profile',
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+          ai_profile: {
+            perceptionAccuracy: 0.5,
+            personality: {
+              aggression: 0.4,
+              defensiveness: 0.3,
+              unpredictability: 0.2,
+              revengefulness: 0.1,
+            },
+            intentBiases: [{ intent: 'attack', playerHpBand: 'healthy', multiplier: 1.1 }],
+            antiStall: {
+              maxNonAttackTurns: 2,
+              forcedAttackMultiplier: 1.5,
+              suppressedIntents: [],
+            },
+          },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_enemy_ai_profiles.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected impossible intent bias band to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stderr, /playerHpBand.*safe, pressured, kill_range/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test('content authoring gate rejects card costs encoded as strings', () => {
   const repoRoot = process.cwd();
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-authoring-'));
@@ -201,6 +352,7 @@ test('content authoring gate rejects card costs encoded as strings', () => {
           cost: '1',
           type: 'Attack',
           targeting: 'Enemy',
+          tags: [],
           text: 'Deal 4 damage.',
           actions: [{ type: 'DealDamage', amount: 4 }],
         },
@@ -213,6 +365,7 @@ test('content authoring gate rejects card costs encoded as strings', () => {
           id: 'fixture_enemy',
           name: 'Fixture Enemy',
           hp_range: [10, 12],
+          keywords: [],
           intent_policy: [{ intent: 'attack', weight: 1 }],
           moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
         },
@@ -262,6 +415,7 @@ test('content authoring gate rejects invalid card action schema', () => {
           cost: 1,
           type: 'Attack',
           targeting: 'Enemy',
+          tags: [],
           text: 'Deal 4 damage.',
           actions: [{ type: 'DealDamage', amount: '4' }],
         },
@@ -272,6 +426,7 @@ test('content authoring gate rejects invalid card action schema', () => {
           cost: 1,
           type: 'Skill',
           targeting: 'Self',
+          tags: [],
           text: 'Do a missing action.',
           actions: [{ type: 'MissingActionType', amount: 1 }],
         },
@@ -284,6 +439,7 @@ test('content authoring gate rejects invalid card action schema', () => {
           id: 'fixture_enemy',
           name: 'Fixture Enemy',
           hp_range: [10, 12],
+          keywords: [],
           intent_policy: [{ intent: 'attack', weight: 1 }],
           moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
         },
@@ -317,6 +473,486 @@ test('content authoring gate rejects invalid card action schema', () => {
   }
 });
 
+test('content authoring gate rejects non-attack cards without targeting', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-targeting-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'missing_skill_targeting',
+          name: 'Missing Skill Targeting',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected missing non-attack targeting to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Missing targeting/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects cards missing runtime tags array', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-card-tags-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'missing_tags_card',
+          name: 'Missing Tags Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected missing card tags to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Missing or invalid tags/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects enemies missing runtime keywords array', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-enemy-keywords-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_card',
+          name: 'Fixture Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'missing_keywords_enemy',
+          name: 'Missing Keywords Enemy',
+          hp_range: [10, 12],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected missing enemy keywords to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Missing or invalid keywords/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects relics missing runtime trigger and effect contracts', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-relic-contract-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_card',
+          name: 'Fixture Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'runtime_incomplete_relic',
+          name: 'Runtime Incomplete Relic',
+          description: 'Missing trigger and effect contract.',
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected incomplete relic runtime contract to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Missing relic trigger/);
+    assert.match(result.stdout, /Missing relic effect contract/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects invalid relic optional runtime fields', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-relic-optional-fields-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_card',
+          name: 'Fixture Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'invalid_optional_relic',
+          name: 'Invalid Optional Relic',
+          description: 'Has invalid optional runtime fields.',
+          price: '99',
+          tags: ['valid', 42],
+          priority: '10',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected invalid relic optional fields to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Invalid relic price/);
+    assert.match(result.stdout, /Invalid relic tags/);
+    assert.match(result.stdout, /Invalid relic priority/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate rejects potions missing runtime price and effect contracts', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-potion-contract-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_card',
+          name: 'Fixture Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'potions.json'),
+      JSON.stringify([
+        {
+          id: 'runtime_incomplete_potion',
+          name: 'Runtime Incomplete Potion',
+          description: 'Missing price and effect.',
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected incomplete potion runtime contract to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /Missing or invalid potion price/);
+    assert.match(result.stdout, /Missing potion effect contract/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('content authoring gate reports malformed potion strings instead of crashing', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-potion-string-contract-'));
+  const dataDir = join(fixtureRoot, 'src', 'content', 'data');
+
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, 'cards.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_card',
+          name: 'Fixture Card',
+          rarity: 'Common',
+          cost: 1,
+          type: 'Skill',
+          targeting: 'Self',
+          tags: [],
+          text: 'Gain 4 block.',
+          actions: [{ type: 'GainBlock', amount: 4 }],
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'enemies.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_enemy',
+          name: 'Fixture Enemy',
+          hp_range: [10, 12],
+          keywords: [],
+          intent_policy: [{ intent: 'attack', weight: 1 }],
+          moves: { attack: [{ type: 'DealDamage', amount: 4 }] },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'relics.json'),
+      JSON.stringify([
+        {
+          id: 'fixture_relic',
+          name: 'Fixture Relic',
+          description: 'Fixture relic.',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
+        },
+      ]),
+    );
+    writeFileSync(
+      join(dataDir, 'potions.json'),
+      JSON.stringify([
+        {
+          id: 42,
+          name: { text: 'Broken Potion' },
+          description: ['not a string'],
+          price: 25,
+          effect: { type: 'Heal', amount: 4 },
+        },
+      ]),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_content_authoring.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.notEqual(result.status, 0, `expected malformed potion strings to fail, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /Missing potion ID/);
+    assert.match(result.stdout, /Missing potion name/);
+    assert.match(result.stdout, /Missing potion description/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test('content authoring gate parses UTF-8 BOM relic data instead of silently skipping relics', () => {
   const repoRoot = process.cwd();
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-content-relic-bom-'));
@@ -333,6 +969,8 @@ test('content authoring gate parses UTF-8 BOM relic data instead of silently ski
           id: 'bom_relic',
           name: 'BOM Relic',
           description: 'Relic data with a UTF-8 BOM should still be validated.',
+          trigger: 'StartCombat',
+          effect: { type: 'GainBlock', amount: 1 },
         },
       ])}`,
       'utf-8',
@@ -414,6 +1052,8 @@ test('github transport diagnostics are documented and gated for Windows SSH over
 
   assert.equal(pkg.scripts['check:github-transport'], 'tsx scripts/validation/check_github_transport.ts');
   assert.match(scriptSource, /git\s+remote\s+get-url\s+origin/);
+  assert.match(scriptSource, /DECKROGUE_GIT_COMMAND/);
+  assert.match(scriptSource, /DECKROGUE_SSH_COMMAND/);
   assert.match(scriptSource, /ssh\.github\.com/);
   assert.match(scriptSource, /git@github\.com:zhu607705-coder\/deckrogue\.git/);
   assert.match(doctorSource, /Check GitHub Transport/);
@@ -426,6 +1066,404 @@ test('github transport diagnostics are documented and gated for Windows SSH over
   assert.match(docsSource, /Port 443/);
   assert.match(docsSource, /git remote set-url origin git@github\.com:zhu607705-coder\/deckrogue\.git/);
   assert.match(validationReadme, /check:github-transport/);
+});
+
+test('github transport diagnostics resolve tilde identities against the active OpenSSH profile', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-github-transport-home-'));
+  const binDir = join(fixtureRoot, 'bin');
+  const sshHome = join(fixtureRoot, 'openssh-home');
+  const sshDir = join(sshHome, '.ssh');
+
+  try {
+    mkdirSync(binDir, { recursive: true });
+    mkdirSync(sshDir, { recursive: true });
+    mkdirSync(join(fixtureRoot, 'docs', 'environment'), { recursive: true });
+    writeFileSync(join(fixtureRoot, 'docs', 'environment', 'github-ssh-over-443.md'), 'setup guide');
+    writeFileSync(join(sshDir, 'id_ed25519_github'), 'private-key');
+    writeFileSync(
+      join(binDir, 'git.cmd'),
+      [
+        '@echo off',
+        'if "%1"=="remote" if "%2"=="get-url" if "%3"=="origin" (',
+        '  echo git@github.com:zhu607705-coder/deckrogue.git',
+        '  exit /b 0',
+        ')',
+        'exit /b 1',
+      ].join('\r\n'),
+    );
+    writeFileSync(
+      join(binDir, 'ssh.cmd'),
+      [
+        '@echo off',
+        'echo host github.com',
+        'echo user git',
+        'echo hostname ssh.github.com',
+        'echo port 443',
+        'echo identityfile ~/.ssh/id_ed25519_github',
+        `echo userknownhostsfile ${sshHome.replace(/\\/g, '/')}/.ssh/known_hosts ${sshHome.replace(/\\/g, '/')}/.ssh/known_hosts2`,
+        'exit /b 0',
+      ].join('\r\n'),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'check_github_transport.ts'),
+      ],
+      {
+        cwd: fixtureRoot,
+        env: {
+          ...process.env,
+          DECKROGUE_GIT_COMMAND: join(binDir, 'git.cmd'),
+          DECKROGUE_SSH_COMMAND: join(binDir, 'ssh.cmd'),
+        },
+        encoding: 'utf-8',
+      },
+    );
+
+    assert.equal(result.status, 0, `expected github transport check to pass, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /found SSH identity file/);
+    assert.match(result.stdout, /openssh-home/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('security report reads camelCase vulnerability baseline counters', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-security-baseline-'));
+  const vulnerabilityDir = join(fixtureRoot, 'reports', 'vulnerability');
+
+  try {
+    mkdirSync(vulnerabilityDir, { recursive: true });
+    writeFileSync(
+      join(vulnerabilityDir, 'vulnerability-scan.json'),
+      JSON.stringify({
+        timestamp: '2026-05-24T00:00:00.000Z',
+        summary: {
+          total: 80,
+          critical: 0,
+          high: 0,
+          medium: 78,
+          low: 2,
+          byCategory: {},
+          bySubCategory: {
+            'array-bounds-risk': 78,
+            'unexpected-debug-code': 2,
+          },
+        },
+        baseline: {
+          unprotectedJsonParse: 0,
+          arrayBoundsRisk: 78,
+          nullableAccessRisk: 0,
+          unexpectedDebugCode: 2,
+        },
+        vulnerabilities: [],
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'security_report.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected security report to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+    assert.match(result.stdout, /优先处理核心模块的数组越界问题/);
+    const report = JSON.parse(readFileSync(join(fixtureRoot, 'reports', 'security', 'security-report.json'), 'utf-8')) as {
+      analysis: { recommendations: string[] };
+    };
+    assert.ok(report.analysis.recommendations.includes('优先处理核心模块的数组越界问题'));
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle surfaces release readiness failed checks', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-release-fail-'));
+  const releaseDir = join(fixtureRoot, 'reports', 'release');
+  const doctorDir = join(fixtureRoot, 'reports', 'doctor');
+
+  try {
+    mkdirSync(releaseDir, { recursive: true });
+    mkdirSync(doctorDir, { recursive: true });
+    writeFileSync(join(doctorDir, 'report.md'), '# Doctor report');
+    writeFileSync(
+      join(releaseDir, 'release-readiness.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        checks: [
+          {
+            id: 'desktop_build_report',
+            status: 'fail',
+            evidence: 'desktop build report is stale for current workspace state; run build:desktop again',
+          },
+          {
+            id: 'version_consistency',
+            status: 'pass',
+            evidence: 'package.json=0.0.0, VERSION=0.0.0',
+          },
+        ],
+        summary: {
+          total: 2,
+          passed: 1,
+          warned: 0,
+          failed: 1,
+          overallStatus: 'fail',
+        },
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+    assert.match(bundle, /失败项/);
+    assert.match(bundle, /desktop_build_report/);
+    assert.match(bundle, /desktop build report is stale/);
+    assert.match(bundle, /`reports\/doctor\/\*\.md`：`1` 份/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle reports destructive suite failed cases instead of counting every case as pass', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-destructive-fail-'));
+  const systemDir = join(fixtureRoot, 'reports', 'system');
+
+  try {
+    mkdirSync(systemDir, { recursive: true });
+    writeFileSync(
+      join(systemDir, 'destructive-suite.json'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        cases: [
+          { name: 'factory reset preserves unrelated keys', status: 'pass' },
+          { name: 'corrupt save is quarantined', status: 'fail' },
+        ],
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+    assert.match(bundle, /\| destructive suite \| `reports\/system\/destructive-suite\.json` \| 1\/2 pass \|/);
+    assert.doesNotMatch(bundle, /destructive suite \| `2\/2 pass`/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle reads fallback security report summary schema', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-security-summary-'));
+  const securityDir = join(fixtureRoot, 'reports', 'security');
+
+  try {
+    mkdirSync(securityDir, { recursive: true });
+    writeFileSync(
+      join(securityDir, 'security-report.json'),
+      JSON.stringify({
+        generatedAt: '2026-05-25T00:00:00.000Z',
+        summary: {
+          total: 12,
+          critical: 0,
+          high: 1,
+          medium: 8,
+          low: 3,
+        },
+        analysis: {
+          overallStatus: 'needs-attention',
+          riskLevel: 'high',
+        },
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+    assert.match(bundle, /security report：`12` 个问题，`critical = 0`，`high = 1`/);
+    assert.match(bundle, /\| security report \| `reports\/security\/security-report\.json` \| 12 issues, critical=0, high=1 \|/);
+    assert.doesNotMatch(bundle, /security report：`null` 个问题/);
+    assert.doesNotMatch(bundle, /security report \| `reports\/security\/security-report\.json` \| 无高危/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle surfaces Windows distribution artifact size and hash evidence', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-win-dist-'));
+  const desktopDir = join(fixtureRoot, 'reports', 'desktop');
+  const releaseDir = join(fixtureRoot, 'release', 'win');
+  const exePath = join(releaseDir, 'DeckRogue-0.0.0-x64.exe');
+  const artifactHash = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+  try {
+    mkdirSync(desktopDir, { recursive: true });
+    mkdirSync(releaseDir, { recursive: true });
+    writeFileSync(exePath, 'installer-v1');
+    writeFileSync(
+      join(desktopDir, 'win-dist.json'),
+      JSON.stringify({
+        timestamp: '2026-05-25T00:00:00.000Z',
+        overallStatus: 'pass',
+        artifacts: [
+          {
+            path: exePath,
+            sizeBytes: 12,
+            sha256: artifactHash,
+            updatedAt: '2026-05-25T00:00:00.000Z',
+          },
+        ],
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+    assert.match(
+      bundle,
+      /\| windows distribution \| `reports\/desktop\/win-dist\.json` \| pass, exe=12 bytes, sha256=aaaaaaaaaaaa, updatedAt=2026-05-25T00:00:00.000Z \|/,
+    );
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle downgrades Windows distribution when installer hash evidence is missing', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-win-dist-missing-hash-'));
+  const desktopDir = join(fixtureRoot, 'reports', 'desktop');
+  const releaseDir = join(fixtureRoot, 'release', 'win');
+  const exePath = join(releaseDir, 'DeckRogue-0.0.0-x64.exe');
+
+  try {
+    mkdirSync(desktopDir, { recursive: true });
+    mkdirSync(releaseDir, { recursive: true });
+    writeFileSync(exePath, 'installer-v1');
+    writeFileSync(
+      join(desktopDir, 'win-dist.json'),
+      JSON.stringify({
+        timestamp: '2026-05-25T00:00:00.000Z',
+        overallStatus: 'pass',
+        artifacts: [
+          {
+            path: exePath,
+            sizeBytes: 12,
+            updatedAt: '2026-05-25T00:00:00.000Z',
+          },
+        ],
+      }),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+    assert.match(
+      bundle,
+      /\| windows distribution \| `reports\/desktop\/win-dist\.json` \| fail, exe=12 bytes, sha256=missing, updatedAt=2026-05-25T00:00:00.000Z \|/,
+    );
+    assert.doesNotMatch(bundle, /\| windows distribution \| `reports\/desktop\/win-dist\.json` \| pass, exe=12 bytes, sha256=missing/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('report bundle surfaces responsive readability coverage and issue counts', () => {
+  const repoRoot = process.cwd();
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'deckrogue-report-bundle-responsive-'));
+  const reportBundleSource = readFileSync(resolve('scripts/validation/generate_report_bundle.ts'), 'utf-8');
+  mkdirSync(join(fixtureRoot, 'reports', 'ui'), { recursive: true });
+  mkdirSync(join(fixtureRoot, 'docs', 'reports'), { recursive: true });
+  writeFileSync(join(fixtureRoot, 'reports', 'ui', 'responsive-readability.json'), JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    overallStatus: 'fail',
+    surfaceCount: 4,
+    viewportCount: 3,
+    profileCount: 2,
+    audits: [
+      { surface: 'launcher', viewport: 'mobile-320x640', profile: 'baseline', screenshot: join(fixtureRoot, 'output', 'launcher.png') },
+      { surface: 'combat', viewport: 'mobile-320x640', profile: 'baseline', screenshot: join(fixtureRoot, 'output', 'combat.png') },
+    ],
+    issues: [
+      { kind: 'small-text', surface: 'combat', viewport: 'mobile-320x640', selector: '.immersive-card__text' },
+      { kind: 'tap-target-small', surface: 'launcher', viewport: 'tablet-768x1024', selector: 'button' },
+    ],
+  }));
+
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+        join(repoRoot, 'scripts', 'validation', 'generate_report_bundle.ts'),
+      ],
+      { cwd: fixtureRoot, encoding: 'utf-8' },
+    );
+
+    assert.equal(result.status, 0, `expected report bundle to run, stdout=${result.stdout}, stderr=${result.stderr}`);
+    const bundle = readFileSync(join(fixtureRoot, 'docs', 'reports', 'report_bundle.md'), 'utf-8');
+
+    assert.match(reportBundleSource, /responsive-readability\.json/);
+    assert.match(bundle, /响应式可读性/);
+    assert.match(bundle, /4 surfaces \/ 3 viewports \/ 2 profiles \/ 2 issues/);
+    assert.match(bundle, /small-text/);
+    assert.match(bundle, /tap-target-small/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test('obsolete one-off script generators remain removed', () => {

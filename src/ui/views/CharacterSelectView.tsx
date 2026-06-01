@@ -146,7 +146,7 @@ export function CharacterSelectView({ engine }: { engine: GameEngine }) {
           </div>
           <button
             onClick={() => setIsTopPanelExpanded((v) => !v)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-sm"
+            className="flex min-h-10 items-center gap-2 px-3 py-2 rounded-lg border border-slate-600 bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-sm"
             title={isTopPanelExpanded ? '收起顶部面板' : '展开顶部面板'}
             data-keyboard-focus="true"
           >

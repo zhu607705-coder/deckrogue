@@ -82,6 +82,7 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
     !!state.roomSession &&
     (state.pendingNodeResolution || lifecyclePhase !== 'map');
   const activeEventOutcome = readLegacyActiveEventOutcome(state.activeEvent);
+  const combatPlayer = state.combat?.player;
   return {
     schemaVersion: 2,
     engineVersion: 'runtime-v2-draft',
@@ -99,6 +100,9 @@ export function normalizeLegacyGameState(state: GameState, legacySaveData?: obje
       intel: state.player.intel || 0,
       devotion: state.player.devotion || 0,
       corruption: state.player.corruption || 0,
+      timeLayer: Math.max(0, Math.floor(Number(combatPlayer?.timeLayer ?? 0))),
+      thread: Math.max(0, Math.floor(Number(combatPlayer?.thread ?? 0))),
+      concoction: Math.max(0, Math.floor(Number(combatPlayer?.concoction ?? 0))),
       deck: state.player.deck.map((card) => card.id),
       relicIds: [...state.player.relics],
       potionIds: [...state.player.potions],

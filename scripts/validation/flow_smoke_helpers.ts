@@ -12,7 +12,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
-import type { BrowserContext, Page } from 'playwright';
+import type { BrowserContext, Page, Request } from 'playwright';
 
 import { GameEngine, createDefaultMetaProfile } from '@/core';
 import { createRoomSessionForNode, setRoomSession, syncRoomSessionFromLegacyState } from '@/core/events/roomSession';
@@ -34,6 +34,33 @@ export interface SaveSlotFixture {
     checksum: string;
   };
   saveData: Record<string, unknown>;
+}
+
+export interface FlowSmokeErrorCollector {
+  consoleErrors: string[];
+  pageErrors: string[];
+  failedRequests: string[];
+}
+
+export function createFlowSmokeErrorCollector(page: Page): FlowSmokeErrorCollector {
+  const collector: FlowSmokeErrorCollector = {
+    consoleErrors: [],
+    pageErrors: [],
+    failedRequests: [],
+  };
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') collector.consoleErrors.push(msg.text());
+  });
+  page.on('pageerror', (error) => {
+    collector.pageErrors.push(error.message);
+  });
+  page.on('requestfailed', (request: Request) => {
+    const failureText = request.failure()?.errorText;
+    collector.failedRequests.push(failureText ? `${request.url()} (${failureText})` : request.url());
+  });
+
+  return collector;
 }
 
 export function ensureDir(dir: string): void {

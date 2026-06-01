@@ -117,6 +117,42 @@ class RuleRuntimeTests(unittest.TestCase):
         self.assertIsNone(removed["room_session"])
         self.assertEqual(len(removed["player"]["deck"]), 3)
 
+    def test_rest_relic_upgrade_accepts_configured_non_corrupted_relics(self):
+        runtime = boot(build_content_bundle(), seed=12345)
+        selected = runtime.dispatch({"type": "select_character", "character_id": "informant"})["snapshot"]
+        selected["lifecycle"] = {
+            "screen": "Rest",
+            "phase": "rest",
+            "pending_node_resolution": True,
+        }
+        selected["map"]["current_node_id"] = "rest-1"
+        selected["map"]["nodes"] = [
+            {"id": "rest-1", "type": "Rest", "x": 0.2, "y": 0, "revealed": True, "next": ["combat-2"]},
+            {"id": "combat-2", "type": "Combat", "x": 0.2, "y": 1, "revealed": True, "next": []},
+        ]
+        selected["room_session"] = {
+            "token": "rest-session",
+            "node_id": "rest-1",
+            "owner_kind": "rest",
+            "resolver_kind": "rest",
+            "surface_stack": ["rest"],
+            "status": "active",
+        }
+        selected["player"]["gold"] = 999
+        selected["player"]["relic_ids"] = ["lantern"]
+        selected["player"]["relic_states"] = {
+            "lantern": {"level": 1, "progress": 0, "corrupted": False},
+        }
+        runtime.load(selected)
+
+        entered = runtime.dispatch({"type": "enter_relic_upgrade"})["snapshot"]
+        self.assertEqual(entered["lifecycle"]["screen"], "RelicUpgrade")
+
+        upgraded = runtime.dispatch({"type": "upgrade_relic", "relic_id": "lantern"})["snapshot"]
+        self.assertEqual(upgraded["lifecycle"]["screen"], "RelicUpgrade")
+        self.assertEqual(upgraded["player"]["relic_states"]["lantern"]["level"], 2)
+        self.assertEqual(upgraded["player"]["relic_states"]["lantern"]["corrupted"], False)
+
 
 if __name__ == "__main__":
     unittest.main()

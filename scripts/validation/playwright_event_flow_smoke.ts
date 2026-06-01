@@ -18,6 +18,7 @@ import {
   bootstrapContext,
   checkServer,
   createEventFixture,
+  createFlowSmokeErrorCollector,
   ensureDir,
   getDefaultSmokeUrl,
   loadSlotFromLauncher,
@@ -27,12 +28,14 @@ import {
 } from './flow_smoke_helpers';
 
 interface EventFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedEvent: boolean;
   resolvedEvent: boolean;
   returnedToMap: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -53,16 +56,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createEventFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
-  });
 
   let reachedEvent = false;
   let resolvedEvent = false;
@@ -87,12 +82,14 @@ async function main() {
     screenshots.push(map);
   } finally {
     const report: EventFlowReport = {
+      generatedAt: new Date().toISOString(),
       baseUrl,
       reachedEvent,
       resolvedEvent,
       returnedToMap,
-      consoleErrors,
-      pageErrors,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
       screenshots,
     };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -101,8 +98,8 @@ async function main() {
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedEvent || !resolvedEvent || !returnedToMap || pageErrors.length > 0 || consoleErrors.length > 0) {
-    throw new Error(`Event flow smoke failed: reachedEvent=${reachedEvent} resolvedEvent=${resolvedEvent} returnedToMap=${returnedToMap} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedEvent || !resolvedEvent || !returnedToMap || errorCollector.pageErrors.length > 0 || errorCollector.consoleErrors.length > 0 || errorCollector.failedRequests.length > 0) {
+    throw new Error(`Event flow smoke failed: reachedEvent=${reachedEvent} resolvedEvent=${resolvedEvent} returnedToMap=${returnedToMap} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

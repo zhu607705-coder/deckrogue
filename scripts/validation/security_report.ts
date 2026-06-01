@@ -100,8 +100,19 @@ function calculateOverallStatus(report: VulnerabilityReport): 'healthy' | 'needs
   return 'healthy';
 }
 
+function baselineCount(report: VulnerabilityReport, camelCaseKey: string, kebabCaseKey: string): number {
+  const camelCaseValue = report.baseline[camelCaseKey];
+  if (typeof camelCaseValue === 'number') return camelCaseValue;
+  const kebabCaseValue = report.baseline[kebabCaseKey];
+  return typeof kebabCaseValue === 'number' ? kebabCaseValue : 0;
+}
+
 function generateKeyFindings(report: VulnerabilityReport): string[] {
   const findings: string[] = [];
+  const unprotectedJsonParse = baselineCount(report, 'unprotectedJsonParse', 'unprotected-json-parse');
+  const arrayBoundsRisk = baselineCount(report, 'arrayBoundsRisk', 'array-bounds-risk');
+  const nullableAccessRisk = baselineCount(report, 'nullableAccessRisk', 'nullable-access-risk');
+  const unexpectedDebugCode = baselineCount(report, 'unexpectedDebugCode', 'unexpected-debug-code');
   
   // 高危态势
   if (report.summary.critical > 0) {
@@ -110,19 +121,19 @@ function generateKeyFindings(report: VulnerabilityReport): string[] {
   if (report.summary.high > 0) {
     findings.push(`[高危] 发现 ${report.summary.high} 个高危问题，需立即处理`);
   }
-  if (report.baseline['unprotected-json-parse'] > 0) {
-    findings.push(`[高危] 发现 ${report.baseline['unprotected-json-parse']} 个未保护的 JSON.parse 调用`);
+  if (unprotectedJsonParse > 0) {
+    findings.push(`[高危] 发现 ${unprotectedJsonParse} 个未保护的 JSON.parse 调用`);
   }
   
   // 稳定性/健康态势
-  if (report.baseline['array-bounds-risk'] > 100) {
-    findings.push(`[稳定性] 数组越界风险较高: ${report.baseline['array-bounds-risk']} 个潜在问题`);
+  if (arrayBoundsRisk > 100) {
+    findings.push(`[稳定性] 数组越界风险较高: ${arrayBoundsRisk} 个潜在问题`);
   }
-  if (report.baseline['nullable-access-risk'] > 1000) {
-    findings.push(`[稳定性] 空值访问风险显著: ${report.baseline['nullable-access-risk']} 个潜在问题`);
+  if (nullableAccessRisk > 1000) {
+    findings.push(`[稳定性] 空值访问风险显著: ${nullableAccessRisk} 个潜在问题`);
   }
-  if (report.baseline['unexpected-debug-code'] > 10) {
-    findings.push(`[稳定性] 调试代码需要清理: ${report.baseline['unexpected-debug-code']} 个问题`);
+  if (unexpectedDebugCode > 10) {
+    findings.push(`[稳定性] 调试代码需要清理: ${unexpectedDebugCode} 个问题`);
   }
   
   // 治理优先级
@@ -141,10 +152,10 @@ function generateKeyFindings(report: VulnerabilityReport): string[] {
 
 function generateRecommendations(report: VulnerabilityReport): string[] {
   const recs: string[] = [];
-  if (report.baseline['unprotected-json-parse'] > 0) recs.push('立即修复未保护的 JSON.parse 调用');
-  if (report.baseline['array-bounds-risk'] > 50) recs.push('优先处理核心模块的数组越界问题');
-  if (report.baseline['nullable-access-risk'] > 1000) recs.push('逐步重构高风险代码路径，使用安全工具库');
-  if (report.baseline['unexpected-debug-code'] > 10) recs.push('清理生产代码中的调试语句');
+  if (baselineCount(report, 'unprotectedJsonParse', 'unprotected-json-parse') > 0) recs.push('立即修复未保护的 JSON.parse 调用');
+  if (baselineCount(report, 'arrayBoundsRisk', 'array-bounds-risk') > 50) recs.push('优先处理核心模块的数组越界问题');
+  if (baselineCount(report, 'nullableAccessRisk', 'nullable-access-risk') > 1000) recs.push('逐步重构高风险代码路径，使用安全工具库');
+  if (baselineCount(report, 'unexpectedDebugCode', 'unexpected-debug-code') > 10) recs.push('清理生产代码中的调试语句');
   recs.push('定期运行安全扫描，持续监控安全态势');
   recs.push('在 PR 审查中严格执行安全检查流程');
   return recs;

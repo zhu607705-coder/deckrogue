@@ -43,39 +43,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem',
-            backgroundColor: '#1a1a2e',
-            color: '#eee',
-            minHeight: '200px',
-            borderRadius: '8px',
-            margin: '1rem',
-          }}
-        >
-          <h2 style={{ color: '#ff6b6b', marginBottom: '1rem' }}>
-            界面渲染异常
-          </h2>
-          <p style={{ color: '#888', marginBottom: '1rem' }}>
-            {this.state.error?.message || '发生了未预期的界面错误'}
-          </p>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#4a4a6a',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            重试
-          </button>
+        <div className="deckrogue-error-boundary" role="alert">
+          <div className="deckrogue-error-boundary__panel">
+            <h2 className="deckrogue-error-boundary__title">
+              界面渲染异常
+            </h2>
+            <p className="deckrogue-error-boundary__message">
+              {this.state.error?.message || '发生了未预期的界面错误'}
+            </p>
+            <button
+              className="deckrogue-error-boundary__action"
+              onClick={() => this.setState({ hasError: false, error: null })}
+            >
+              重试
+            </button>
+          </div>
         </div>
       );
     }

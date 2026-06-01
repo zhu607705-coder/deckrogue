@@ -66,9 +66,45 @@ function getCardDirectionTags(card: RunCardInstance): string[] {
   return tags.slice(0, 2);
 }
 
+type RewardChoiceCard = RunCardInstance & {
+  isRuntimeModelChoice?: boolean;
+};
+
+function createRuntimeRewardChoice(card: NonNullable<RenderModel['reward']>['cards'][number]): RewardChoiceCard {
+  return {
+    id: card.id,
+    instanceId: card.id,
+    baseCardId: card.id,
+    name: card.name,
+    cost: card.cost,
+    rarity: card.rarity as RewardChoiceCard['rarity'],
+    type: card.type as RewardChoiceCard['type'],
+    targeting: 'None',
+    tags: [],
+    text: card.description ?? '',
+    actions: [],
+    runtimeBase: {
+      id: card.id,
+      name: card.name,
+      cost: card.cost,
+      rarity: card.rarity as RewardChoiceCard['rarity'],
+      type: card.type as RewardChoiceCard['type'],
+      targeting: 'None',
+      tags: [],
+      text: card.description ?? '',
+      actions: [],
+    },
+    persistentEnchantments: [],
+    combatAfflictions: [],
+    isRuntimeModelChoice: true,
+  };
+}
+
 export function RewardView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const WORLD_LORE = uiWorldLore as WorldLore;
-  const cards = engine.state.rewardCards.slice(0, 3);
+  const legacyCards = engine.state.rewardCards.slice(0, 3);
+  const runtimeRewardCards = renderModel?.reward?.cards?.map(createRuntimeRewardChoice) ?? [];
+  const cards: RewardChoiceCard[] = renderModel?.reward ? runtimeRewardCards : legacyCards;
   const rewardOfferCount = renderModel?.room?.kind === 'reward' ? (renderModel.room.offerCount ?? cards.length) : (renderModel?.reward?.offerCount ?? cards.length);
   const [backgroundIndex] = useState(() =>
     VIEW_BACKGROUNDS.reward.length > 0 ? systemRandomInt(VIEW_BACKGROUNDS.reward.length) : 0
@@ -162,6 +198,7 @@ export function RewardView({ engine, renderModel }: { engine: GameEngine; render
                     size="compact"
                     onClick={() => engine.pickRewardCard(card.instanceId)}
                     rootProps={{
+                      'data-reward-card-id': card.id,
                       'data-keyboard-option': String(index + 1),
                       'data-keyboard-focus': 'true',
                       'aria-label': `${index + 1}. ${getCardNameZh(card)}`

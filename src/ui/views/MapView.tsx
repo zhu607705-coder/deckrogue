@@ -44,8 +44,9 @@ export function MapView({
   renderModel?: RenderModel | null;
   backgroundVisualMode?: BackgroundVisualMode;
 }) {
-  const map = engine.state.map;
-  const intel = engine.state.player.intel;
+  const map = (renderModel?.map.nodes.length ? renderModel.map.nodes : engine.state.map) as MapNode[];
+  const pendingNodeResolution = renderModel?.lifecycle?.pendingNodeResolution ?? engine.state.pendingNodeResolution;
+  const intel = renderModel?.player?.intel ?? engine.state.player.intel;
   const currentNodeId = renderModel?.map.currentNodeId ?? engine.state.currentNodeId;
 
   const [zoom, setZoom] = useState(1);
@@ -67,7 +68,7 @@ export function MapView({
   }, [] as MapNode[][]);
 
   const isNodeSelectable = (node: MapNode) => {
-    if (engine.state.pendingNodeResolution) return false;
+    if (pendingNodeResolution) return false;
     if (renderModel) {
       return renderModel.map.availableNodeIds.includes(node.id);
     }
@@ -77,7 +78,8 @@ export function MapView({
   };
 
   const currentY = renderModel?.map.currentFloor ? renderModel.map.currentFloor - 1 : map.find(n => n.id === currentNodeId)?.y ?? -1;
-  const totalFloors = Math.max(...map.map(n => n.y)) + 1;
+  const maxFloorIndex = map.length > 0 ? Math.max(...map.map(n => n.y)) : 0;
+  const totalFloors = maxFloorIndex + 1;
   const totalFloorSpan = Math.max(1, totalFloors - 1);
   const floorLabel = currentNodeId ? `扇区深度 ${currentY + 1}` : '空投区 (降落阶段)';
   const selectableNodeIds = (renderModel?.map.availableNodeIds ?? map.filter(isNodeSelectable).slice(0, 10).map((node) => node.id)).slice(0, 10);
@@ -92,19 +94,20 @@ export function MapView({
   const pastNodes = map.filter(n => n.y < currentY).length;
   const bossFloor = map.find(n => n.type === 'Boss')?.y ?? totalFloors - 1;
   const floorsToBoss = Math.max(0, bossFloor - currentY);
-  const playerHp = engine.state.player.hp;
-  const playerMaxHp = engine.state.player.maxHp;
-  const playerEnergy = engine.state.player.energy;
-  const playerMaxEnergy = engine.state.player.maxEnergy;
-  const playerRelics = engine.state.player.relics?.length ?? 0;
-  const deckSize = engine.state.player.deck?.length ?? 0;
+  const playerHp = renderModel?.player?.hp ?? engine.state.player.hp;
+  const playerMaxHp = renderModel?.player?.maxHp ?? engine.state.player.maxHp;
+  const playerEnergy = renderModel?.player?.energy ?? engine.state.player.energy;
+  const playerMaxEnergy = renderModel?.player?.maxEnergy ?? engine.state.player.maxEnergy;
+  const playerRelics = renderModel?.player?.relicCount ?? engine.state.player.relics?.length ?? 0;
+  const deckSize = renderModel?.player?.deckCount ?? engine.state.player.deck?.length ?? 0;
+  const routeCharacterId = renderModel?.player?.characterId ?? engine.state.character?.id;
   const routeDossiers = useMemo(() => buildRouteDossiers(map, selectableNodeIds, {
     hp: playerHp,
     maxHp: playerMaxHp,
     intel,
     relicCount: playerRelics,
-    characterId: engine.state.character?.id,
-  }), [map, selectableNodeIds, playerHp, playerMaxHp, intel, playerRelics, engine.state.character?.id]);
+    characterId: routeCharacterId,
+  }), [map, selectableNodeIds, playerHp, playerMaxHp, intel, playerRelics, routeCharacterId]);
   const routeDossierById = useMemo(
     () => new Map(routeDossiers.map((dossier) => [dossier.nodeId, dossier])),
     [routeDossiers]
@@ -116,7 +119,7 @@ export function MapView({
   const currentNodeLabel = currentNode
     ? `${nodeTypeNames[currentNode.type] || currentNode.type} · 第 ${currentNode.y + 1} 层`
     : '待部署';
-  const patrolStateLabel = engine.state.pendingNodeResolution
+  const patrolStateLabel = pendingNodeResolution
     ? '巡逻结算中'
     : currentNode
       ? '巡逻推进中'
@@ -385,7 +388,7 @@ export function MapView({
         </div>
         <button
           onClick={resetView}
-          className="grimdark-control-panel grimdark-control-btn p-2 rounded-sm backdrop-blur-sm transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
+          className="grimdark-control-panel grimdark-control-btn map-reset-view-btn p-2 rounded-sm backdrop-blur-sm transition-all duration-200 hover:bg-stone-700/50 active:scale-95 focus:ring-2 focus:ring-amber-500/50"
           title="重置视图"
           aria-label="重置地图视图"
           data-keyboard-focus="true"
@@ -444,7 +447,7 @@ export function MapView({
 
       <div
         ref={mapContainerRef}
-        className="flex-1 overflow-hidden relative z-10"
+        className="grimdark-map-node-stage flex-1 overflow-hidden relative z-10"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -454,10 +457,10 @@ export function MapView({
         onTouchEnd={handleMouseUp}
       >
         <div
-            className="flex flex-col-reverse gap-8 md:gap-12 items-center w-full max-w-4xl mx-auto relative py-6 md:py-8"
+            className="grimdark-map-node-stack flex flex-col-reverse gap-8 md:gap-12 items-center w-full max-w-4xl mx-auto relative py-6 md:py-8"
             style={containerStyle}
           >
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+          <svg className="grimdark-map-paths absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
             <defs>
               <filter id="glow">
                 <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -578,7 +581,7 @@ export function MapView({
           </svg>
 
           {floors.map((floor, y) => (
-            <div key={y} className="flex justify-between w-full relative z-10 px-8" style={{ minHeight: '94px' }}>
+            <div key={y} className="grimdark-map-floor flex justify-between w-full relative z-10 px-8" style={{ minHeight: '94px' }}>
               {floor.map(node => {
                 const isCurrent = currentNodeId === node.id;
                 const isSelectable = isNodeSelectable(node);
@@ -627,7 +630,7 @@ export function MapView({
                 return (
                   <div
                     key={node.id}
-                    className="absolute transform -translate-x-1/2 flex flex-col items-center"
+                    className="grimdark-map-node-position absolute transform -translate-x-1/2 flex flex-col items-center"
                     style={{ left: `${node.x * 100}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
                   >
                     <button

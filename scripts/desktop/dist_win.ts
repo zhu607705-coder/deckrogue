@@ -5,9 +5,11 @@
  */
 
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { Arch, build, Platform } from 'electron-builder';
+import { copyPyodideAssets } from './pyodide_assets.ts';
 
 const REPORT_DIR = path.join(process.cwd(), 'reports', 'desktop');
 const REPORT_PATH = path.join(REPORT_DIR, 'win-dist.json');
@@ -18,6 +20,7 @@ const SKIP_BUILD = process.argv.includes('--skip-build');
 interface WinDistArtifact {
   path: string;
   sizeBytes: number;
+  sha256: string;
   updatedAt: string;
 }
 
@@ -97,6 +100,7 @@ function collectArtifacts(): WinDistArtifact[] {
       return {
         path: artifactPath,
         sizeBytes: stats.size,
+        sha256: createHash('sha256').update(readFileSync(artifactPath)).digest('hex'),
         updatedAt: stats.mtime.toISOString(),
       };
     })
@@ -122,6 +126,9 @@ async function main(): Promise<void> {
     if (!existsSync(path.join(process.cwd(), 'dist', 'index.html'))) {
       throw new Error('dist/index.html missing; run build:desktop before dist:win -- --skip-build');
     }
+    const pyodideReport = copyPyodideAssets();
+    evidence.push(`Pyodide assets staged before Windows distribution: ${pyodideReport.files.length}`);
+
     prepareStagingApp();
     evidence.push('minimal desktop staging app prepared without production node_modules');
 

@@ -18,6 +18,7 @@ import {
   bootstrapContext,
   checkServer,
   createBossTerminalFixture,
+  createFlowSmokeErrorCollector,
   ensureDir,
   getDefaultSmokeUrl,
   loadSlotFromLauncher,
@@ -27,11 +28,13 @@ import {
 } from './flow_smoke_helpers';
 
 interface BossTerminalFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedTerminal: boolean;
   exitedToCharacterSelect: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -52,16 +55,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createBossTerminalFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
-  });
 
   let reachedTerminal = false;
   let exitedToCharacterSelect = false;
@@ -84,11 +79,13 @@ async function main() {
     screenshots.push(charSelect);
   } finally {
     const report: BossTerminalFlowReport = {
+      generatedAt: new Date().toISOString(),
       baseUrl,
       reachedTerminal,
       exitedToCharacterSelect,
-      consoleErrors,
-      pageErrors,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
       screenshots,
     };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -97,8 +94,8 @@ async function main() {
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedTerminal || !exitedToCharacterSelect || pageErrors.length > 0 || consoleErrors.length > 0) {
-    throw new Error(`Boss terminal flow smoke failed: reachedTerminal=${reachedTerminal} exitedToCharacterSelect=${exitedToCharacterSelect} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedTerminal || !exitedToCharacterSelect || errorCollector.pageErrors.length > 0 || errorCollector.consoleErrors.length > 0 || errorCollector.failedRequests.length > 0) {
+    throw new Error(`Boss terminal flow smoke failed: reachedTerminal=${reachedTerminal} exitedToCharacterSelect=${exitedToCharacterSelect} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

@@ -10,8 +10,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import cardsDataRaw from '@/content/data/cards.json';
 import charactersDataRaw from '@/content/data/characters.json';
 import enemiesDataRaw from '@/content/data/enemies.json';
+import relicsDataRaw from '@/content/data/relics.json';
+import potionsDataRaw from '@/content/data/potions.json';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
 
 test('runtime v2 content bundle projects real character and enemy content for the Python core', () => {
@@ -81,4 +84,128 @@ test('runtime v2 content bundle projects real character and enemy content for th
   assert.ok(gatherIntel);
   assert.equal(gatherIntel.rarity, 'Common');
   assert.equal(gatherIntel.character, 'informant');
+});
+
+test('runtime v2 content bundle preserves potion display metadata for render models', () => {
+  const bundle = buildRuntimeV2ContentBundle();
+  const potionsData = potionsDataRaw as Array<{
+    id: string;
+    name: string;
+    description: string;
+    rarity?: string;
+  }>;
+
+  const healingPotion = bundle.potions?.find((entry) => entry.id === 'healing_potion');
+  const healingPotionSource = potionsData.find((entry) => entry.id === 'healing_potion');
+
+  assert.ok(healingPotion);
+  assert.ok(healingPotionSource);
+  assert.equal(healingPotion!.name, healingPotionSource!.name);
+  assert.equal(healingPotion!.description, healingPotionSource!.description);
+  assert.equal(healingPotion!.rarity, healingPotionSource!.rarity);
+});
+
+test('runtime v2 content bundle preserves relic display and corruption metadata for render models', () => {
+  const bundle = buildRuntimeV2ContentBundle();
+  const relicsData = relicsDataRaw as Array<{
+    id: string;
+    name: string;
+    description: string;
+    rarity?: string;
+    corrupted?: boolean;
+  }>;
+
+  const burningBlood = bundle.relics?.find((entry) => entry.id === 'burning_blood');
+  const burningBloodSource = relicsData.find((entry) => entry.id === 'burning_blood');
+  const markOfEntropy = bundle.relics?.find((entry) => entry.id === 'mark_of_entropy');
+  const markOfEntropySource = relicsData.find((entry) => entry.id === 'mark_of_entropy');
+
+  assert.ok(burningBlood);
+  assert.ok(burningBloodSource);
+  assert.equal(burningBlood!.name, burningBloodSource!.name);
+  assert.equal(burningBlood!.description, burningBloodSource!.description);
+  assert.equal(burningBlood!.rarity, burningBloodSource!.rarity);
+
+  assert.ok(markOfEntropy);
+  assert.ok(markOfEntropySource);
+  assert.equal(markOfEntropy!.corrupted, markOfEntropySource!.corrupted);
+});
+
+test('runtime v2 content bundle preserves card display metadata for render models', () => {
+  const bundle = buildRuntimeV2ContentBundle();
+  const cardsData = cardsDataRaw as Array<{
+    id: string;
+    name: string;
+    cost: number;
+    type: string;
+    targeting?: string;
+    tags?: string[];
+    text?: string;
+    upgrade?: unknown;
+  }>;
+
+  const gatherIntel = bundle.cards.find((entry) => entry.id === 'gather_intel');
+  const gatherIntelSource = cardsData.find((entry) => entry.id === 'gather_intel');
+
+  assert.ok(gatherIntel);
+  assert.ok(gatherIntelSource);
+  assert.equal(gatherIntel!.name, gatherIntelSource!.name);
+  assert.equal(gatherIntel!.cost, gatherIntelSource!.cost);
+  assert.equal(gatherIntel!.type, gatherIntelSource!.type);
+  assert.equal(gatherIntel!.targeting, gatherIntelSource!.targeting);
+  assert.deepEqual(gatherIntel!.tags, gatherIntelSource!.tags);
+  assert.equal(gatherIntel!.text, gatherIntelSource!.text);
+  assert.deepEqual(gatherIntel!.upgrade, gatherIntelSource!.upgrade);
+});
+
+test('runtime v2 content bundle preserves character display metadata for content service consumers', () => {
+  const bundle = buildRuntimeV2ContentBundle();
+  const charactersData = charactersDataRaw as Array<{
+    id: string;
+    name: string;
+    description: string;
+    portraitPrompt: string;
+    complexity?: 'low' | 'medium' | 'high';
+    archetype?: string[];
+    background?: string;
+    mechanicNarrative?: string;
+    loreFragments?: string[];
+  }>;
+
+  const informant = bundle.characters.find((entry) => entry.id === 'informant');
+  const informantSource = charactersData.find((entry) => entry.id === 'informant');
+
+  assert.ok(informant);
+  assert.ok(informantSource);
+  assert.equal(informant!.name, informantSource!.name);
+  assert.equal(informant!.description, informantSource!.description);
+  assert.equal(informant!.portrait_prompt, informantSource!.portraitPrompt);
+  assert.equal(informant!.complexity, informantSource!.complexity);
+  assert.deepEqual(informant!.archetype, informantSource!.archetype);
+  assert.equal(informant!.background, informantSource!.background);
+  assert.equal(informant!.mechanic_narrative, informantSource!.mechanicNarrative);
+  assert.deepEqual(informant!.lore_fragments, informantSource!.loreFragments);
+});
+
+test('runtime v2 content bundle preserves enemy display metadata for content service consumers', () => {
+  const bundle = buildRuntimeV2ContentBundle();
+  const enemiesData = enemiesDataRaw as Array<{
+    id: string;
+    name: string;
+    description?: string;
+  }>;
+
+  const gremlinNob = bundle.enemies.find((entry) => entry.id === 'gremlin_nob');
+  const gremlinNobSource = enemiesData.find((entry) => entry.id === 'gremlin_nob');
+  const coolantHound = bundle.enemies.find((entry) => entry.id === 'coolant_hound');
+  const coolantHoundSource = enemiesData.find((entry) => entry.id === 'coolant_hound');
+
+  assert.ok(gremlinNob);
+  assert.ok(gremlinNobSource);
+  assert.equal(gremlinNob!.name, gremlinNobSource!.name);
+
+  assert.ok(coolantHound);
+  assert.ok(coolantHoundSource);
+  assert.equal(coolantHound!.name, coolantHoundSource!.name);
+  assert.equal(coolantHound!.description, coolantHoundSource!.description);
 });

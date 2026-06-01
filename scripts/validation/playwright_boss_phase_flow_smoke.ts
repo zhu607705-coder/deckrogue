@@ -18,6 +18,7 @@ import {
   bootstrapContext,
   checkServer,
   createBossPhaseFixture,
+  createFlowSmokeErrorCollector,
   ensureDir,
   getDefaultSmokeUrl,
   loadSlotFromLauncher,
@@ -27,11 +28,13 @@ import {
 } from './flow_smoke_helpers';
 
 interface BossPhaseFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedCombat: boolean;
   triggeredPhaseEffect: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -51,12 +54,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createBossPhaseFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
 
   let reachedCombat = false;
   let triggeredPhaseEffect = false;
@@ -79,15 +78,24 @@ async function main() {
     await page.screenshot({ path: end, fullPage: true });
     screenshots.push(end);
   } finally {
-    const report: BossPhaseFlowReport = { baseUrl, reachedCombat, triggeredPhaseEffect, consoleErrors, pageErrors, screenshots };
+    const report: BossPhaseFlowReport = {
+      generatedAt: new Date().toISOString(),
+      baseUrl,
+      reachedCombat,
+      triggeredPhaseEffect,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
+      screenshots,
+    };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
     await context.close();
     await browser.close();
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedCombat || !triggeredPhaseEffect || consoleErrors.length || pageErrors.length) {
-    throw new Error(`Boss phase flow smoke failed: reachedCombat=${reachedCombat} triggeredPhaseEffect=${triggeredPhaseEffect} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedCombat || !triggeredPhaseEffect || errorCollector.consoleErrors.length || errorCollector.pageErrors.length || errorCollector.failedRequests.length) {
+    throw new Error(`Boss phase flow smoke failed: reachedCombat=${reachedCombat} triggeredPhaseEffect=${triggeredPhaseEffect} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

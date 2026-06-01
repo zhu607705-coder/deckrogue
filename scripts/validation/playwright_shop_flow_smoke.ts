@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   bootstrapContext,
   checkServer,
+  createFlowSmokeErrorCollector,
   createShopFixture,
   ensureDir,
   getDefaultSmokeUrl,
@@ -27,6 +28,7 @@ import {
 } from './flow_smoke_helpers';
 
 interface ShopFlowReport {
+  generatedAt: string;
   baseUrl: string;
   reachedShop: boolean;
   reachedEnchant: boolean;
@@ -34,6 +36,7 @@ interface ShopFlowReport {
   returnedToMap: boolean;
   consoleErrors: string[];
   pageErrors: string[];
+  failedRequests: string[];
   screenshots: string[];
 }
 
@@ -54,16 +57,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   await bootstrapContext(context, [createShopFixture()]);
   const page = await context.newPage();
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  const errorCollector = createFlowSmokeErrorCollector(page);
   const screenshots: string[] = [];
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
-  });
 
   let reachedShop = false;
   let reachedEnchant = false;
@@ -104,13 +99,15 @@ async function main() {
     screenshots.push(map);
   } finally {
     const report: ShopFlowReport = {
+      generatedAt: new Date().toISOString(),
       baseUrl,
       reachedShop,
       reachedEnchant,
       returnedToShop,
       returnedToMap,
-      consoleErrors,
-      pageErrors,
+      consoleErrors: errorCollector.consoleErrors,
+      pageErrors: errorCollector.pageErrors,
+      failedRequests: errorCollector.failedRequests,
       screenshots,
     };
     writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -119,8 +116,8 @@ async function main() {
     if (devServer && !devServer.killed) devServer.kill('SIGTERM');
   }
 
-  if (!reachedShop || !reachedEnchant || !returnedToShop || !returnedToMap || pageErrors.length > 0 || consoleErrors.length > 0) {
-    throw new Error(`Shop flow smoke failed: reachedShop=${reachedShop} reachedEnchant=${reachedEnchant} returnedToShop=${returnedToShop} returnedToMap=${returnedToMap} pageErrors=${pageErrors.length} consoleErrors=${consoleErrors.length}`);
+  if (!reachedShop || !reachedEnchant || !returnedToShop || !returnedToMap || errorCollector.pageErrors.length > 0 || errorCollector.consoleErrors.length > 0 || errorCollector.failedRequests.length > 0) {
+    throw new Error(`Shop flow smoke failed: reachedShop=${reachedShop} reachedEnchant=${reachedEnchant} returnedToShop=${returnedToShop} returnedToMap=${returnedToMap} pageErrors=${errorCollector.pageErrors.length} consoleErrors=${errorCollector.consoleErrors.length} failedRequests=${errorCollector.failedRequests.length}`);
   }
 }
 

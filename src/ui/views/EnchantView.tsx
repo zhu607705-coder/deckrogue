@@ -18,6 +18,7 @@ import { ErrorBoundary } from '@/ui/components/ErrorBoundary';
 import type { RunCardInstance } from '@/core';
 import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
+import { createRuntimeRouteDeck } from '@/ui/views/routeAdvisorDeck';
 
 interface WorldLoreType {
   viewAtmosphere?: {
@@ -31,8 +32,10 @@ export function EnchantView({ engine, renderModel }: { engine: GameEngine; rende
   const context = engine.state.enchantContext;
   const roomSummary = renderModel?.room?.kind === 'enchant' ? renderModel.room : null;
   const enchantment = context?.enchantmentId ? getCardEnchantmentDefById(context.enchantmentId) : null;
-  const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
-  const preferredRouteTag = getPreferredRouteTagFromState(engine.state.player.deck, routeTagsForCharacter, engine.state.routeState ?? null);
+  const routeCharacterId = renderModel?.player?.characterId ?? engine.state.character?.id;
+  const routeDeck = renderModel?.player?.deck?.length ? createRuntimeRouteDeck(renderModel.player.deck) : engine.state.player.deck;
+  const routeTagsForCharacter = routeCharacterId ? getKnownRouteTagsForCharacter(routeCharacterId) : [];
+  const preferredRouteTag = getPreferredRouteTagFromState(routeDeck, routeTagsForCharacter, renderModel?.routeState ?? engine.state.routeState ?? null);
 
   const enchantableCards = sortCardsByRouteAffinity(engine.state.player.deck.filter((card) => {
     const runCard = card as RunCardInstance;

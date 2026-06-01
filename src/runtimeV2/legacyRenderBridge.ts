@@ -18,13 +18,21 @@ import { createRenderModel } from '@/runtimeV2/renderModel';
 export function createLegacyRenderModel(engine: GameEngine): RenderModel {
   const base = createRenderModel(normalizeLegacyGameState(engine.state, engine.getSaveData()));
   const player = engine.state.player;
+  const modelWithLegacyEnergy: RenderModel = {
+    ...base,
+    player: {
+      ...base.player,
+      energy: player.energy,
+      maxEnergy: player.maxEnergy,
+    },
+  };
   const canEnchant = player.deck.some(
     (card) => (card.type === 'Attack' || card.type === 'Skill') && (!(card as any).persistentEnchantments || (card as any).persistentEnchantments.length === 0),
   );
 
   if (engine.state.screen === 'Shop') {
     return {
-      ...base,
+      ...modelWithLegacyEnergy,
       room: {
         kind: 'shop',
         cardCount: engine.state.shopCards.length,
@@ -71,7 +79,7 @@ export function createLegacyRenderModel(engine: GameEngine): RenderModel {
 
   if (engine.state.screen === 'Rest') {
     return {
-      ...base,
+      ...modelWithLegacyEnergy,
       room: {
         kind: 'rest',
         healAmount: calculateRestHealAmount(player.maxHp),
@@ -85,7 +93,7 @@ export function createLegacyRenderModel(engine: GameEngine): RenderModel {
 
   if (engine.state.screen === 'Reward') {
     return {
-      ...base,
+      ...modelWithLegacyEnergy,
       room: {
         kind: 'reward',
         offerCount: engine.state.rewardCards.length,
@@ -93,5 +101,5 @@ export function createLegacyRenderModel(engine: GameEngine): RenderModel {
     };
   }
 
-  return base;
+  return modelWithLegacyEnergy;
 }

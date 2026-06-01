@@ -21,5 +21,8 @@ test('ErrorBoundary default fallback uses localized Chinese recovery copy', () =
 
   assert.match(html, /界面渲染异常/);
   assert.match(html, /重试/);
+  assert.match(html, /deckrogue-error-boundary/);
+  assert.match(html, /deckrogue-error-boundary__action/);
+  assert.match(html, /role="alert"/);
   assert.doesNotMatch(html, /Something went wrong|Try Again|unexpected error/i);
 });

@@ -57,6 +57,7 @@ import { runPhaseToScreen } from '@/core/events/runStateMachine';
 
 import { projectRuleSnapshotToLegacyState, type LegacyStateProjection } from '@/runtimeV2/legacyStateProjector';
 import { normalizeLegacyGameState } from '@/runtimeV2/normalizeLegacyGameState';
+import type { RuleSnapshot } from '@/runtimeV2/contracts';
 import { COMBAT_NUMBERS } from '@/core/balance/numericConstants';
 import { combatMemory } from '@/core/ai';
 import { calculateRewardRuntime } from '@/core/balance/numericsRuntime';
@@ -384,6 +385,12 @@ export class GameEngine {
     } catch (error) {
       this.recordDelegationFallback(error);
     }
+  }
+
+  private resolveDelegatedDeckSelector(cardInstanceId: string): string {
+    const deckIndex = this.state.player.deck.findIndex((card) => card.instanceId === cardInstanceId);
+    if (deckIndex < 0) return cardInstanceId;
+    return `${deckIndex}:${this.state.player.deck[deckIndex].id}`;
   }
 
   private restoreAuthoritativeStateSlice(snapshot: Partial<GameState>): void {
@@ -736,6 +743,30 @@ export class GameEngine {
     });
   }
 
+  private applyDelegatedRoomSnapshot(snapshot: RuleSnapshot): void {
+    const projection = projectRuleSnapshotToLegacyState(snapshot);
+    this.state.player.hp = projection.player.hp;
+    this.state.player.maxHp = projection.player.maxHp;
+    this.state.player.gold = projection.player.gold;
+    this.state.player.intel = projection.player.intel;
+    this.state.player.devotion = projection.player.devotion;
+    this.state.player.corruption = projection.player.corruption;
+    this.state.player.deck = projection.player.deckIds
+      .map((cardId) => {
+        const def = cardsData.find((card) => card.id === cardId);
+        return def ? this.createRuntimeCard(def) : null;
+      })
+      .filter((card): card is RunCardInstance => !!card);
+    this.state.player.relics = projection.player.relicIds;
+    this.state.player.relicStates = cloneJsonValue(projection.player.relicStates ?? {}, {} as GameState['player']['relicStates']);
+    this.state.player.potions = projection.player.potionIds;
+    this.state.map = projection.map;
+    this.state.currentNodeId = projection.currentNodeId;
+    this.state.screen = projection.screen;
+    this.reconcileProjectedRoomResolution(projection);
+    this.notify();
+  }
+
   private applyRunTransition(action: import('@/core/events/runStateMachine').RunAction): boolean {
     try {
       if (action.type === 'COMBAT_WON' && this.state.screen !== 'Combat') return true;
@@ -875,14 +906,6 @@ export class GameEngine {
   }
 
   removeCard(cardInstanceId: string): void {
-    if (this.supportsBootAndMapDelegation()) {
-      try {
-        this.runtimeDelegate!.removeCard(cardInstanceId);
-        this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'remove_card';
-      } catch (error) {
-        this.recordDelegationFallback(error);
-      }
-    }
     const isEventFreeCardRemovalMode = this.eventManager.isEventFreeCardRemovalMode();
     const nestedRoomRemovalKind = this.state.roomSession?.resolverKind ?? this.state.roomResolutionKind ?? null;
     const returnScreenAfterRemoval = this.state.upgradeReturnScreen;
@@ -899,17 +922,34 @@ export class GameEngine {
       this.state.screen === 'RemoveCard'
       && this.state.upgradeReturnScreen === 'Shop'
       && !isEventFreeCardRemovalMode;
+    const removalCost = this.state.cardRemovalCost ?? 75;
     if (requiresPaidRemoval) {
-      const removalCost = this.state.cardRemovalCost ?? 75;
       if (this.state.player.gold < removalCost) {
         return;
       }
+    }
+    let delegatedRemoveSnapshot: RuleSnapshot | null = null;
+    if (this.supportsBootAndMapDelegation()) {
+      try {
+        delegatedRemoveSnapshot = this.runtimeDelegate!.removeCard(this.resolveDelegatedDeckSelector(cardInstanceId));
+        this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'remove_card';
+      } catch (error) {
+        this.recordDelegationFallback(error);
+      }
+    }
+    if (requiresPaidRemoval) {
       this.state.player.gold -= removalCost;
     }
     this.state.player.deck = this.state.player.deck.filter(c => c.instanceId !== cardInstanceId);
     syncRouteStateFromLegacyState(this.state);
     if (shouldResolveRoomAfterRemoval) {
-      this.leaveCurrentRoomToMap();
+      if (delegatedRemoveSnapshot?.lifecycle.screen === 'Map') {
+        this.musicDispatcher?.onEventEnd();
+        this.runFlowManager.leaveCurrentRoomToMap();
+        this.musicDispatcher?.onScreenChange(this.state.screen);
+      } else {
+        this.leaveCurrentRoomToMap();
+      }
       if (this.state.screen === 'Map' && !this.state.pendingNodeResolution) {
         this.state.upgradeReturnScreen = undefined;
       }
@@ -918,12 +958,19 @@ export class GameEngine {
     this.state.screen = returnScreenAfterRemoval || 'Map';
     this.state.upgradeReturnScreen = undefined;
     if (this.state.screen === 'Map') {
-      this.leaveCurrentRoomToMap();
+      if (delegatedRemoveSnapshot?.lifecycle.screen === 'Map') {
+        this.musicDispatcher?.onEventEnd();
+        this.runFlowManager.leaveCurrentRoomToMap();
+        this.musicDispatcher?.onScreenChange(this.state.screen);
+      } else {
+        this.leaveCurrentRoomToMap();
+      }
       return;
     }
     syncRoomSessionFromLegacyState(this.state, {
       isEventFreeCardRemovalMode,
     });
+    this.syncRuntimeDelegateFromLegacyState('remove_card');
     this.notify();
   }
 
@@ -1081,7 +1128,14 @@ export class GameEngine {
     if (this.supportsBootAndMapDelegation()) {
       try {
         const card = cardInstanceId ? this.state.rewardCards.find(c => c.instanceId === cardInstanceId) : undefined;
-        const cardId = card?.id;
+        const delegatedRewardCardIds = this.runtimeDelegate!.getSnapshot()?.reward?.cardIds ?? [];
+        const cardId =
+          card?.id ??
+          (cardInstanceId && delegatedRewardCardIds.includes(cardInstanceId)
+            ? cardInstanceId
+            : this.state.rewardCards.length === 0
+              ? cardInstanceId
+              : undefined);
         const snapshot = this.runtimeDelegate!.takeReward(cardId);
         this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'take_reward';
         const projection = projectRuleSnapshotToLegacyState(snapshot);
@@ -1187,8 +1241,12 @@ export class GameEngine {
   resolveEventChoice(choice: string): void {
     if (this.supportsBootAndMapDelegation()) {
       try {
-        this.runtimeDelegate!.chooseEventOption(choice);
+        const snapshot = this.runtimeDelegate!.chooseEventOption(choice);
         this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'choose_event_option';
+        if (!this.state.activeEvent) {
+          this.applyDelegatedRoomSnapshot(snapshot);
+          return;
+        }
       } catch (error) {
         this.recordDelegationFallback(error);
       }
@@ -1376,6 +1434,15 @@ export class GameEngine {
   buyShopCard(cardInstanceId: string, basePrice?: number): void {
     const shopCard = this.state.shopCards.find((card) => card.instanceId === cardInstanceId);
     if (!shopCard) {
+      if (this.state.shopCards.length === 0 && this.supportsBootAndMapDelegation()) {
+        try {
+          const snapshot = this.runtimeDelegate!.buyShopCard(cardInstanceId);
+          this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'buy_shop_card';
+          this.applyDelegatedRoomSnapshot(snapshot);
+        } catch (error) {
+          this.recordDelegationFallback(error);
+        }
+      }
       return;
     }
 
@@ -1395,6 +1462,17 @@ export class GameEngine {
   }
 
   buyShopRelic(relicId: string, basePrice?: number): void {
+    if (!this.state.shopRelics.includes(relicId) && this.state.shopRelics.length === 0 && this.supportsBootAndMapDelegation()) {
+      try {
+        const snapshot = this.runtimeDelegate!.buyShopRelic(relicId);
+        this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'buy_shop_relic';
+        this.applyDelegatedRoomSnapshot(snapshot);
+      } catch (error) {
+        this.recordDelegationFallback(error);
+      }
+      return;
+    }
+
     const relic = (relicsData as any[]).find(r => r.id === relicId);
     if (!relic || this.state.player.relics.includes(relicId)) return;
     const price = this.getAdjustedShopPrice(resolveShopOfferPrice('relic', basePrice ?? relic.price));
@@ -1403,6 +1481,17 @@ export class GameEngine {
   }
 
   buyShopPotion(potionId: string, basePrice?: number, _index?: number): void {
+    if (!this.state.shopPotions.includes(potionId) && this.state.shopPotions.length === 0 && this.supportsBootAndMapDelegation()) {
+      try {
+        const snapshot = this.runtimeDelegate!.buyShopPotion(potionId);
+        this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'buy_shop_potion';
+        this.applyDelegatedRoomSnapshot(snapshot);
+      } catch (error) {
+        this.recordDelegationFallback(error);
+      }
+      return;
+    }
+
     if (this.state.player.potions.length >= getPotionRuntimeConfig().slotLimit) return;
     const potion = (potionsData as any[]).find(p => p.id === potionId);
     if (!potion) return;
@@ -1416,7 +1505,19 @@ export class GameEngine {
     if (indexA === indexB) return false;
     if (this.state.screen === 'Rest' && this.state.campfireChoiceLocked) return false;
     const ids = this.state.player.potions;
-    if (!ids[indexA] || !ids[indexB]) return false;
+    if (!ids[indexA] || !ids[indexB]) {
+      if (this.state.screen === 'Rest' && ids.length === 0 && this.supportsBootAndMapDelegation()) {
+        try {
+          const snapshot = this.runtimeDelegate!.mixPotions(indexA, indexB);
+          this.runtimeDelegateDiagnostics.lastDelegatedCommand = 'mix_potions';
+          this.applyDelegatedRoomSnapshot(snapshot);
+          return true;
+        } catch (error) {
+          this.recordDelegationFallback(error);
+        }
+      }
+      return false;
+    }
 
     const next = ids.filter((_, idx) => idx !== indexA && idx !== indexB);
     const result = (potionsData as any[]).find(p => p.id === 'mutagenic_draft')?.id || 'mutagenic_draft';

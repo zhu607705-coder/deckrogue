@@ -24,7 +24,7 @@ interface CardSpec {
   cost: number;
   type: string;
   targeting?: string;
-  tags?: string[];
+  tags?: unknown;
   text?: string;
   actions?: any[];
   upgrade?: any;
@@ -37,9 +37,20 @@ interface EnemySpec {
   hp_range?: [number, number];
   minHp?: number;
   maxHp?: number;
+  keywords?: unknown;
   intent_policy?: Array<{ intent?: string; weight?: number }>;
   intentPolicy?: Array<{ intent?: string; weight?: number }>;
   moves?: Record<string, unknown>;
+}
+
+interface PotionSpec {
+  id?: unknown;
+  name?: unknown;
+  description?: unknown;
+  price?: unknown;
+  toxicity?: unknown;
+  tags?: unknown;
+  effect?: unknown;
 }
 
 interface ContentAuthoringReport {
@@ -71,6 +82,13 @@ interface ContentAuthoringReport {
     missingEffect: number;
     issues: Array<{ relicId: string; issues: string[] }>;
   };
+  potions: {
+    total: number;
+    valid: number;
+    invalid: number;
+    missingEffect: number;
+    issues: Array<{ potionId: string; issues: string[] }>;
+  };
   summary: {
     overallStatus: 'pass' | 'fail';
     passRate: number;
@@ -87,6 +105,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
 }
 
 function loadRegisteredActionTypes(): Set<string> {
@@ -349,8 +371,12 @@ function checkCard(card: CardSpec): string[] {
     issues.push(...validateActionList(card.upgrade.actions, 'upgrade.actions', CARD_ACTION_TYPES, 'Unknown card action type'));
   }
 
-  if (card.type === 'Attack' && !card.targeting) {
-    issues.push('Attack card missing targeting');
+  if (typeof card.targeting !== 'string' || card.targeting.trim() === '') {
+    issues.push(card.type === 'Attack' ? 'Attack card missing targeting' : 'Missing targeting');
+  }
+
+  if (!Array.isArray(card.tags) || !card.tags.every((tag) => isNonEmptyString(tag))) {
+    issues.push('Missing or invalid tags');
   }
 
   if (card.character !== undefined && typeof card.character !== 'string') {
@@ -392,6 +418,10 @@ function checkEnemy(enemy: EnemySpec): string[] {
     issues.push('Missing moves');
   }
 
+  if (!Array.isArray(enemy.keywords) || !enemy.keywords.every((keyword) => isNonEmptyString(keyword))) {
+    issues.push('Missing or invalid keywords');
+  }
+
   if (intentPolicy && moves) {
     for (const policy of intentPolicy) {
       const intent = String(policy?.intent || '');
@@ -428,6 +458,60 @@ function checkRelic(relic: any): string[] {
     issues.push('Missing relic description');
   }
 
+  if (relic.price !== undefined && !isFiniteNumber(relic.price)) {
+    issues.push('Invalid relic price');
+  }
+
+  if (typeof relic.trigger !== 'string' || relic.trigger.trim() === '') {
+    issues.push('Missing relic trigger');
+  }
+
+  if (relic.tags !== undefined && (!Array.isArray(relic.tags) || !relic.tags.every((tag: unknown) => isNonEmptyString(tag)))) {
+    issues.push('Invalid relic tags');
+  }
+
+  if (relic.priority !== undefined && !isFiniteNumber(relic.priority)) {
+    issues.push('Invalid relic priority');
+  }
+
+  if (relic.effect === undefined && relic.effects === undefined && relic.passiveEffect === undefined) {
+    issues.push('Missing relic effect contract');
+  }
+
+  return issues;
+}
+
+function checkPotion(potion: PotionSpec): string[] {
+  const issues: string[] = [];
+
+  if (!isNonEmptyString(potion.id)) {
+    issues.push('Missing potion ID');
+  }
+
+  if (!isNonEmptyString(potion.name)) {
+    issues.push('Missing potion name');
+  }
+
+  if (!isNonEmptyString(potion.description)) {
+    issues.push('Missing potion description');
+  }
+
+  if (!isFiniteNumber(potion.price)) {
+    issues.push('Missing or invalid potion price');
+  }
+
+  if (potion.toxicity !== undefined && !isFiniteNumber(potion.toxicity)) {
+    issues.push('Invalid potion toxicity');
+  }
+
+  if (potion.tags !== undefined && (!Array.isArray(potion.tags) || !potion.tags.every((tag) => typeof tag === 'string' && tag.length > 0))) {
+    issues.push('Invalid potion tags');
+  }
+
+  if (potion.effect === undefined) {
+    issues.push('Missing potion effect contract');
+  }
+
   return issues;
 }
 
@@ -435,18 +519,22 @@ function checkContent(): ContentAuthoringReport {
   const cardsPath = resolve('src/content/data/cards.json');
   const enemiesPath = resolve('src/content/data/enemies.json');
   const relicsPath = resolve('src/content/data/relics.json');
+  const potionsPath = resolve('src/content/data/potions.json');
 
   const cards = loadJsonFile(cardsPath) || [];
   const enemies = loadJsonFile(enemiesPath) || [];
   const relics = loadJsonFile(relicsPath) || [];
+  const potions = loadJsonFile(potionsPath) || [];
 
   const cardIssues: Array<{ cardId: string; issues: string[] }> = [];
   const enemyIssues: Array<{ enemyId: string; issues: string[] }> = [];
   const relicIssues: Array<{ relicId: string; issues: string[] }> = [];
+  const potionIssues: Array<{ potionId: string; issues: string[] }> = [];
 
   let validCards = 0;
   let validEnemies = 0;
   let validRelics = 0;
+  let validPotions = 0;
 
   for (const card of cards) {
     const issues = checkCard(card);
@@ -475,10 +563,20 @@ function checkContent(): ContentAuthoringReport {
     }
   }
 
+  for (const potion of potions) {
+    const issues = checkPotion(potion);
+    if (issues.length > 0) {
+      potionIssues.push({ potionId: typeof potion.id === 'string' && potion.id.length > 0 ? potion.id : 'unknown', issues });
+    } else {
+      validPotions++;
+    }
+  }
+
   const totalItems = cards.length + enemies.length + relics.length;
-  const validItems = validCards + validEnemies + validRelics;
-  const passRate = totalItems > 0 ? (validItems / totalItems) * 100 : 0;
-  const invalidItems = cardIssues.length + enemyIssues.length + relicIssues.length;
+  const validItems = validCards + validEnemies + validRelics + validPotions;
+  const totalItemsWithPotions = totalItems + potions.length;
+  const passRate = totalItemsWithPotions > 0 ? (validItems / totalItemsWithPotions) * 100 : 0;
+  const invalidItems = cardIssues.length + enemyIssues.length + relicIssues.length + potionIssues.length;
 
   return {
     timestamp: new Date().toISOString(),
@@ -509,6 +607,13 @@ function checkContent(): ContentAuthoringReport {
       missingEffect: relicIssues.filter(r => r.issues.some(i => i.includes('description'))).length,
       issues: relicIssues
     },
+    potions: {
+      total: potions.length,
+      valid: validPotions,
+      invalid: potionIssues.length,
+      missingEffect: potionIssues.filter(p => p.issues.some(i => i.includes('effect'))).length,
+      issues: potionIssues
+    },
     summary: {
       overallStatus: invalidItems === 0 ? 'pass' : 'fail',
       passRate: Math.round(passRate * 100) / 100
@@ -530,6 +635,7 @@ function main() {
   log(`Cards: ${report.cards.valid}/${report.cards.total} valid`);
   log(`Enemies: ${report.enemies.valid}/${report.enemies.total} valid`);
   log(`Relics: ${report.relics.valid}/${report.relics.total} valid`);
+  log(`Potions: ${report.potions.valid}/${report.potions.total} valid`);
   log(`Pass rate: ${report.summary.passRate}%`);
 
   if (report.cards.invalid > 0) {
@@ -559,6 +665,16 @@ function main() {
     }
     if (report.relics.issues.length > 5) {
       log(`  ... and ${report.relics.issues.length - 5} more`);
+    }
+  }
+
+  if (report.potions.invalid > 0) {
+    log('\nPotion issues:');
+    for (const { potionId, issues } of report.potions.issues.slice(0, 5)) {
+      log(`  - ${potionId}: ${issues.join(', ')}`);
+    }
+    if (report.potions.issues.length > 5) {
+      log(`  ... and ${report.potions.issues.length - 5} more`);
     }
   }
 

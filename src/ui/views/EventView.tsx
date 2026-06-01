@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import { GameEngine } from '@/core';
+import type { RenderModel } from '@/runtimeV2';
 import { getStoryEventDef, getStoryEventOptionPresentation, relicsData } from '@/content/narrative/numericSystem';
 import type { EventPresentationTag } from '@/content/narrative/numericSystem';
 import { ASSET_PLACEHOLDERS, bindImgFallback } from '@/ui/components/assetHelpers';
@@ -445,9 +446,98 @@ function StoryEventPanel({ engine }: { engine: GameEngine }) {
   );
 }
 
-export function EventView({ engine }: { engine: GameEngine }) {
+function RuntimeEventPanel({ engine, room }: { engine: GameEngine; room: NonNullable<RenderModel['room']> }) {
+  const choices = room.choices ?? [];
+  const bodyParagraphs = (room.body ?? '').split(/\n{2,}/).filter(Boolean);
+  const bgImage = getEventBackground('runtime_event');
+
+  return (
+    <BackgroundImage
+      src={bgImage}
+      className="campaign-shell flex h-full flex-col px-4 py-6 text-slate-100 md:px-8"
+      overlayOpacity={0.78}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(180,180,255,0.10),transparent_55%)]" />
+
+      <div className="relative z-10 flex flex-col h-full max-w-5xl mx-auto w-full">
+        <div className="mb-6 border-b border-white/10 pb-6">
+          <div className="campaign-kicker">{getUiLabelZh('Narrative Event')}</div>
+          <h1 className="campaign-title campaign-poster-title mt-4 text-[clamp(2.2rem,4vw,4rem)] leading-[0.96] text-red-200">
+            {room.title ?? '未记录事件'}
+          </h1>
+          {room.guidance && (
+            <div className="campaign-section mt-4 max-w-2xl p-3 text-sm text-slate-200">
+              <div className="font-semibold text-red-100">{room.guidance.headline}</div>
+              <div className="mt-1 text-slate-300">{room.guidance.reason}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="event-story-layout">
+          <div className="campaign-section min-h-0 overflow-y-auto p-4 md:p-6 shadow-2xl">
+            <div className="campaign-kicker mb-3">{getUiLabelZh('Field Record')}</div>
+            <div className="space-y-4">
+              {bodyParagraphs.length > 0 ? bodyParagraphs.map((paragraph, index) => (
+                <p key={index} className="text-sm md:text-base leading-7 text-slate-200/95">
+                  <GlossaryText text={paragraph} />
+                </p>
+              )) : (
+                <p className="text-sm md:text-base leading-7 text-slate-200/95">
+                  <GlossaryText text="事件记录仍在同步中。" />
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="campaign-section campaign-decision-column min-h-0 overflow-y-auto p-4 md:p-5 shadow-2xl md:pl-5">
+            <div className="campaign-kicker mb-3">{getUiLabelZh('Decision')}</div>
+            <div className="space-y-3">
+              {choices.map((choice, index) => (
+                <button
+                  key={choice.id}
+                  onClick={() => engine.resolveEventChoice(choice.id)}
+                  disabled={!!choice.disabled}
+                  className={`campaign-choice w-full text-left p-4 ${choice.disabled ? 'opacity-50 cursor-not-allowed' : dangerClasses('medium')}`}
+                  data-event-choice-id={choice.id}
+                  data-keyboard-option={String(index + 1)}
+                  data-keyboard-focus="true"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-bold text-slate-100"><GlossaryText text={choice.label} /></div>
+                    {choice.routeReason && <div className="text-[10px] uppercase tracking-widest text-slate-300">{choice.routeReason}</div>}
+                  </div>
+                  {choice.description && (
+                    <div className="text-sm text-slate-300 mt-1"><GlossaryText text={choice.description} /></div>
+                  )}
+                </button>
+              ))}
+              {choices.length === 0 && (
+                <button
+                  onClick={() => engine.resolveEventChoice('continue')}
+                  className={`campaign-choice w-full text-left p-4 ${dangerClasses('medium')}`}
+                  data-event-choice-id="continue"
+                  data-keyboard-option="1"
+                  data-keyboard-focus="true"
+                >
+                  <div className="font-bold text-slate-100">继续</div>
+                  <div className="text-sm text-slate-300 mt-1">等待运行时事件继续。</div>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </BackgroundImage>
+  );
+}
+
+export function EventView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const event = engine.state.activeEvent;
+  const roomSummary = renderModel?.room?.kind === 'event' ? renderModel.room : null;
   if (!event) {
+    if (roomSummary) {
+      return <RuntimeEventPanel engine={engine} room={roomSummary} />;
+    }
     return (
       <div className="campaign-terminal campaign-shell flex h-full flex-col items-center justify-center px-8 text-slate-200">
         <div className="campaign-kicker">事件记录</div>

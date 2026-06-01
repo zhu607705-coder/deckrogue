@@ -40,3 +40,20 @@ test('rest relic upgrade can upgrade a corrupted relic and return to rest on can
   engine.cancelRelicUpgrade();
   assert.equal(engine.state.screen, 'Rest');
 });
+
+test('rest relic upgrade accepts configured non-corrupted upgrade relics', () => {
+  const engine = buildEngine();
+  engine.state.screen = 'Rest';
+  engine.state.player.gold = 999;
+  engine.state.player.relics.push('lantern');
+  engine.state.player.relicStates.lantern = { level: 1, progress: 0, corrupted: false };
+
+  engine.restUpgradeRelic();
+
+  assert.equal(engine.state.screen, 'RelicUpgrade');
+  const upgraded = engine.upgradeRelic('lantern');
+  assert.equal(upgraded, true);
+  assert.equal(engine.state.player.relicStates.lantern?.level, 2);
+
+  engine.dispose();
+});

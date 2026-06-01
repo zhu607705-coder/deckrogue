@@ -21,6 +21,7 @@ import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import { calculateRestHealAmount } from '@/core/events/restHealing';
 import { uiWorldLore } from '@/ui/content/worldLore';
 import { buildRestRouteAdvice, type RestActionId } from '@/ui/views/restRouteAdvisor';
+import { createRuntimeRouteDeck } from '@/ui/views/routeAdvisorDeck';
 
 export function RestView({ engine, renderModel }: { engine: GameEngine; renderModel?: RenderModel | null }) {
   const WORLD_LORE = uiWorldLore as any;
@@ -53,13 +54,20 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
     && mixA !== mixB
     && !!potionChoices[mixA]
     && !!potionChoices[mixB];
+  const routeDeck = renderModel?.player.deck
+    ? createRuntimeRouteDeck(renderModel.player.deck)
+    : player.deck;
+  const routeCharacterId = renderModel?.player.characterId ?? engine.state.character?.id;
+  const routeState = renderModel?.routeState ?? engine.state.routeState ?? null;
+  const routeCurrentHp = renderModel?.player.hp ?? player.hp;
+  const routeMaxHp = renderModel?.player.maxHp ?? player.maxHp;
   const restRouteAdvice = buildRestRouteAdvice({
-    characterId: engine.state.character?.id,
-    deck: player.deck,
-    routeState: engine.state.routeState ?? null,
+    characterId: routeCharacterId,
+    deck: routeDeck,
+    routeState,
     relicIds: player.relics,
-    currentHp: player.hp,
-    maxHp: player.maxHp,
+    currentHp: routeCurrentHp,
+    maxHp: routeMaxHp,
     canHeal,
     canUpgrade,
     canEnchant,
@@ -211,7 +219,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
             <select
               value={mixA}
               onChange={e => setMixA(Number(e.target.value))}
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 min-w-56"
+              className="min-h-10 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 min-w-56"
             >
               {potionChoices.map(p => (
                 <option key={`a_${p.index}`} value={p.index}>
@@ -226,7 +234,7 @@ export function RestView({ engine, renderModel }: { engine: GameEngine; renderMo
             <select
               value={mixB}
               onChange={e => setMixB(Number(e.target.value))}
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 min-w-56"
+              className="min-h-10 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 min-w-56"
             >
               {potionChoices.map(p => (
                 <option key={`b_${p.index}`} value={p.index}>

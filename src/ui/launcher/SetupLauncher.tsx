@@ -117,15 +117,15 @@ export function SetupLauncher({
     <div
       ref={shellRef}
       data-screen="Launcher"
-      className="launcher-shell relative min-h-screen w-full overflow-hidden text-white bg-[url('/assets/backgrounds/bg_starless_archive.png')] bg-cover bg-center"
+      className="launcher-shell relative min-h-screen w-full overflow-x-hidden overflow-y-auto text-white bg-[url('/assets/backgrounds/bg_starless_archive.png')] bg-cover bg-center"
     >
       <div className="launcher-veil absolute inset-0 bg-black/60" />
       <div className="launcher-grain absolute inset-0 opacity-60" />
       <div className="launcher-orb launcher-orb-left absolute" />
       <div className="launcher-orb launcher-orb-right absolute" />
 
-      <div className="relative z-10 min-h-screen px-6 py-8 md:px-10 xl:h-screen xl:overflow-hidden xl:px-14">
-        <div className="mx-auto flex max-w-7xl flex-col xl:h-full xl:min-h-0">
+      <div className="relative z-10 min-h-screen px-6 py-8 md:px-10 xl:min-h-screen xl:px-14">
+        <div className="mx-auto flex max-w-7xl flex-col xl:min-h-screen">
           <section className="flex min-h-[calc(100vh-4rem)] flex-col justify-center py-10 xl:min-h-[calc(100vh-8rem)] xl:flex-none xl:justify-center xl:py-4">
             <div className="grid items-center gap-10 xl:gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
               <div className="min-w-0 max-w-4xl">
@@ -156,7 +156,11 @@ export function SetupLauncher({
                   <div className="reveal-rise mt-8 text-sm text-stone-400 xl:mt-5">当前还没有作战记录。</div>
                 )}
                 {error ? (
-                  <div className="reveal-rise mt-6 max-w-xl border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+                  <div
+                    role="alert"
+                    data-launcher-error="true"
+                    className="reveal-rise mt-6 max-w-xl border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-100"
+                  >
                     {error}
                   </div>
                 ) : null}
@@ -238,7 +242,7 @@ export function SetupLauncher({
             </div>
           </section>
 
-          <section className="grid gap-6 border-t border-white/10 py-10 xl:min-h-0 xl:flex-1 xl:grid-cols-[0.68fr_1.32fr] xl:gap-4 xl:overflow-hidden xl:py-4">
+          <section className="grid gap-6 border-t border-white/10 py-10 xl:min-h-0 xl:flex-1 xl:grid-cols-[0.68fr_1.32fr] xl:gap-4 xl:py-4">
             <div className="space-y-4 xl:min-h-0 xl:space-y-3">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.34em] text-stone-500">{getUiLabelZh('Version State')}</div>
@@ -304,16 +308,20 @@ export function SetupLauncher({
                       <div className="mt-4 flex gap-2 xl:mt-2">
                         <button
                           onClick={() => onLoadSlot(slot.id)}
-                          className="border border-white/10 bg-white/5 px-3 py-2 text-sm text-stone-100 transition hover:bg-white/10 xl:px-2.5 xl:py-1.5 xl:text-xs"
+                          className="min-h-10 border border-white/10 bg-white/5 px-3 py-2 text-sm text-stone-100 transition hover:bg-white/10 xl:px-2.5 xl:py-1.5 xl:text-xs"
                           data-keyboard-option={String(index + 3)}
                           data-keyboard-focus="true"
+                          data-save-slot-action="load"
+                          data-save-slot-id={slot.id}
                         >
                           读取
                         </button>
                         <button
                           onClick={() => onDeleteSlot(slot.id)}
-                          className="border border-red-900/50 bg-red-950/15 px-3 py-2 text-sm text-red-200 transition hover:bg-red-900/20 xl:px-2.5 xl:py-1.5 xl:text-xs"
+                          className="min-h-10 border border-red-900/50 bg-red-950/15 px-3 py-2 text-sm text-red-200 transition hover:bg-red-900/20 xl:px-2.5 xl:py-1.5 xl:text-xs"
                           data-keyboard-focus="true"
+                          data-save-slot-action="delete"
+                          data-save-slot-id={slot.id}
                         >
                           删除
                         </button>

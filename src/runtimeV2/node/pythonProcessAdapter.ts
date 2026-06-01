@@ -17,6 +17,7 @@ import readline from 'node:readline';
 import { RunGenerator } from '@/core/events/runGenerator';
 import type { EngineHostStartOptions, RuleCommand, RuleRuntimeAdapter, RuleSnapshot } from '@/runtimeV2/contracts';
 import { buildRuntimeV2ContentBundle } from '@/runtimeV2/content/buildContentBundle';
+import { resolveAvailablePythonCommand } from '@/runtimeV2/node/pythonCommand';
 import { camelToSnakeKey, convertKeys, normalizePythonSnapshot } from '@/runtimeV2/pythonInterop';
 
 type PendingRequest = {
@@ -50,16 +51,6 @@ type PythonResponse = {
 const runtimeV2ContentBundle = buildRuntimeV2ContentBundle();
 const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 
-function resolvePythonCommand(): { command: string; argsPrefix: string[] } {
-  if (process.env.PYTHON_BIN) {
-    return { command: process.env.PYTHON_BIN, argsPrefix: [] };
-  }
-  if (process.platform === 'win32') {
-    return { command: 'py', argsPrefix: ['-3'] };
-  }
-  return { command: 'python3', argsPrefix: [] };
-}
-
 function encodeCommand(command: RuleCommand): Record<string, unknown> {
   return convertKeys(command, camelToSnakeKey) as Record<string, unknown>;
 }
@@ -85,7 +76,7 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
   async start(options: EngineHostStartOptions = {}): Promise<RuleSnapshot> {
     this.dispose();
 
-    const pythonCommand = resolvePythonCommand();
+    const pythonCommand = resolveAvailablePythonCommand();
     const pythonSourcePath = path.resolve(process.cwd(), 'python_runtime/src');
     const env = {
       ...process.env,
@@ -147,6 +138,13 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
     processHandle.stderr.on('data', (chunk: Buffer) => {
       this.stderrBuffer += chunk.toString();
     });
+    processHandle.on('error', (error) => {
+      const pending = this.pending.splice(0);
+      for (const entry of pending) {
+        clearTimeout(entry.timeout);
+        entry.reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
     processHandle.on('exit', (code, signal) => {
       const pending = this.pending.splice(0);
       for (const entry of pending) {
@@ -172,9 +170,11 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
       }
 
       const responseRequestId = response.requestId ?? response.request_id;
-      const pendingIndex = typeof responseRequestId === 'string'
-        ? this.pending.findIndex((entry) => entry.requestId === responseRequestId)
-        : 0;
+      if (typeof responseRequestId !== 'string') {
+        return;
+      }
+
+      const pendingIndex = this.pending.findIndex((entry) => entry.requestId === responseRequestId);
       if (pendingIndex < 0 || pendingIndex >= this.pending.length) {
         return;
       }
@@ -247,16 +247,24 @@ export class PythonProcessAdapter implements RuleRuntimeAdapter {
       this.pending.push(entry);
 
       const encodedPayload = `${JSON.stringify({ request_id: requestId, ...payload })}\n`;
-      processRef.stdin.write(encodedPayload, 'utf8', (error) => {
-        if (!error) return;
-
+      const rejectWriteFailure = (error: unknown) => {
         const index = this.pending.indexOf(entry);
         if (index >= 0) {
           this.pending.splice(index, 1);
         }
         clearTimeout(entry.timeout);
         reject(error instanceof Error ? error : new Error(String(error)));
-      });
+      };
+
+      try {
+        processRef.stdin.write(encodedPayload, 'utf8', (error) => {
+          if (!error) return;
+
+          rejectWriteFailure(error);
+        });
+      } catch (error) {
+        rejectWriteFailure(error);
+      }
     });
   }
 }

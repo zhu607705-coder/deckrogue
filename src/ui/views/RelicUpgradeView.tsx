@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RELIC_UPGRADE_CONFIGS } from '@/core/relic/RelicUpgrade';
 import { RuntimeSurfaceChoiceCard } from '@/ui/views/RuntimeSurfaceChoiceCard';
 import { uiWorldLore } from '@/ui/content/worldLore';
+import { createRuntimeRouteDeck } from '@/ui/views/routeAdvisorDeck';
 
 interface RelicUpgradeCardProps {
   engine: GameEngine;
@@ -209,11 +210,13 @@ export function RelicUpgradeView({ engine, renderModel }: { engine: GameEngine; 
   const player = engine.state.player;
   const roomSummary = renderModel?.room?.kind === 'relic_upgrade' ? renderModel.room : null;
   const playerGold = player.gold;
-  const routeTagsForCharacter = engine.state.character?.id ? getKnownRouteTagsForCharacter(engine.state.character.id) : [];
+  const routeCharacterId = renderModel?.player?.characterId ?? engine.state.character?.id;
+  const routeDeck = renderModel?.player?.deck?.length ? createRuntimeRouteDeck(renderModel.player.deck) : player.deck;
+  const routeTagsForCharacter = routeCharacterId ? getKnownRouteTagsForCharacter(routeCharacterId) : [];
   const preferredRouteTag = getPreferredRouteTagFromState(
-    player.deck,
+    routeDeck,
     routeTagsForCharacter,
-    engine.state.routeState ?? null,
+    renderModel?.routeState ?? engine.state.routeState ?? null,
   );
   
   const upgradableRelics = sortRelicIdsByRouteAffinity(

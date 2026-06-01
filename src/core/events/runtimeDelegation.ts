@@ -24,6 +24,10 @@ export interface GameEngineRuntimeDelegate {
   completeCombat(): RuleSnapshot;
   takeReward(cardId?: string): RuleSnapshot;
   skipReward(): RuleSnapshot;
+  buyShopCard(cardId: string): RuleSnapshot;
+  buyShopRelic(relicId: string): RuleSnapshot;
+  buyShopPotion(potionId: string): RuleSnapshot;
+  mixPotions(indexA: number, indexB: number): RuleSnapshot;
   chooseEventOption(choiceId: string): RuleSnapshot;
   rest(): RuleSnapshot;
   upgradeCard(cardInstanceId?: string): RuleSnapshot;
@@ -50,6 +54,10 @@ export interface GameEngineRuntimeDelegateDiagnostics {
     | 'complete_combat'
     | 'take_reward'
     | 'skip_reward'
+    | 'buy_shop_card'
+    | 'buy_shop_relic'
+    | 'buy_shop_potion'
+    | 'mix_potions'
     | 'choose_event_option'
     | 'rest'
     | 'upgrade_card'
@@ -334,6 +342,172 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
     });
   }
 
+  buyShopCard(cardId: string): RuleSnapshot {
+    if (!this.snapshot) {
+      throw new Error('Delegated runtime has not been started');
+    }
+    if (this.snapshot.lifecycle.phase !== 'shop') {
+      throw new Error(`Delegated buyShopCard is not supported from phase: ${this.snapshot.lifecycle.phase}`);
+    }
+
+    const shop = this.snapshot.shop;
+    if (!shop) {
+      throw new Error('No delegated shop is available');
+    }
+
+    const offer = shop.cards.find((entry) => entry.id === cardId);
+    if (!offer) {
+      throw new Error(`Delegated shop card is not offered: ${cardId}`);
+    }
+    if (this.snapshot.player.gold < offer.price) {
+      throw new Error(`Not enough gold for delegated shop card: ${cardId}`);
+    }
+
+    this.snapshot = {
+      ...this.snapshot,
+      player: {
+        ...this.snapshot.player,
+        gold: this.snapshot.player.gold - offer.price,
+        deck: [...this.snapshot.player.deck, cardId],
+      },
+      shop: {
+        ...shop,
+        cards: shop.cards.filter((entry) => entry.id !== cardId),
+      },
+      meta: {
+        ...this.snapshot.meta,
+        replayLength: this.snapshot.meta.replayLength + 1,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+    return structuredClone(this.snapshot);
+  }
+
+  buyShopRelic(relicId: string): RuleSnapshot {
+    if (!this.snapshot) {
+      throw new Error('Delegated runtime has not been started');
+    }
+    if (this.snapshot.lifecycle.phase !== 'shop') {
+      throw new Error(`Delegated buyShopRelic is not supported from phase: ${this.snapshot.lifecycle.phase}`);
+    }
+
+    const shop = this.snapshot.shop;
+    if (!shop) {
+      throw new Error('No delegated shop is available');
+    }
+
+    const offer = shop.relics.find((entry) => entry.id === relicId);
+    if (!offer) {
+      throw new Error(`Delegated shop relic is not offered: ${relicId}`);
+    }
+    if (this.snapshot.player.gold < offer.price) {
+      throw new Error(`Not enough gold for delegated shop relic: ${relicId}`);
+    }
+    if (this.snapshot.player.relicIds.includes(relicId)) {
+      throw new Error(`Delegated shop relic is already owned: ${relicId}`);
+    }
+
+    const relicDef = this.contentBundle.relics?.find((entry) => entry.id === relicId) as { corrupted?: boolean } | undefined;
+    this.snapshot = {
+      ...this.snapshot,
+      player: {
+        ...this.snapshot.player,
+        gold: this.snapshot.player.gold - offer.price,
+        relicIds: [...this.snapshot.player.relicIds, relicId],
+        relicStates: {
+          ...(this.snapshot.player.relicStates ?? {}),
+          [relicId]: {
+            level: 1,
+            progress: 0,
+            corrupted: !!relicDef?.corrupted,
+          },
+        },
+      },
+      shop: {
+        ...shop,
+        relics: shop.relics.filter((entry) => entry.id !== relicId),
+      },
+      meta: {
+        ...this.snapshot.meta,
+        replayLength: this.snapshot.meta.replayLength + 1,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+    return structuredClone(this.snapshot);
+  }
+
+  buyShopPotion(potionId: string): RuleSnapshot {
+    if (!this.snapshot) {
+      throw new Error('Delegated runtime has not been started');
+    }
+    if (this.snapshot.lifecycle.phase !== 'shop') {
+      throw new Error(`Delegated buyShopPotion is not supported from phase: ${this.snapshot.lifecycle.phase}`);
+    }
+
+    const shop = this.snapshot.shop;
+    if (!shop) {
+      throw new Error('No delegated shop is available');
+    }
+
+    const offer = shop.potions.find((entry) => entry.id === potionId);
+    if (!offer) {
+      throw new Error(`Delegated shop potion is not offered: ${potionId}`);
+    }
+    if (this.snapshot.player.gold < offer.price) {
+      throw new Error(`Not enough gold for delegated shop potion: ${potionId}`);
+    }
+    if (this.snapshot.player.potionIds.length >= 3) {
+      throw new Error('Delegated potion slots are full');
+    }
+
+    this.snapshot = {
+      ...this.snapshot,
+      player: {
+        ...this.snapshot.player,
+        gold: this.snapshot.player.gold - offer.price,
+        potionIds: [...this.snapshot.player.potionIds, potionId],
+      },
+      shop: {
+        ...shop,
+        potions: shop.potions.filter((entry) => entry.id !== potionId),
+      },
+      meta: {
+        ...this.snapshot.meta,
+        replayLength: this.snapshot.meta.replayLength + 1,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+    return structuredClone(this.snapshot);
+  }
+
+  mixPotions(indexA: number, indexB: number): RuleSnapshot {
+    if (!this.snapshot) {
+      throw new Error('Delegated runtime has not been started');
+    }
+    if (this.snapshot.lifecycle.phase !== 'rest') {
+      throw new Error(`Delegated mixPotions is not supported from phase: ${this.snapshot.lifecycle.phase}`);
+    }
+    if (indexA === indexB) {
+      throw new Error('Delegated mixPotions requires two different potion slots');
+    }
+
+    const potionIds = this.snapshot.player.potionIds;
+    if (!potionIds[indexA] || !potionIds[indexB]) {
+      throw new Error(`Delegated mixPotions slot is unavailable: ${indexA}, ${indexB}`);
+    }
+
+    this.snapshot = this.returnToMapSnapshot({
+      player: {
+        ...this.snapshot.player,
+        potionIds: potionIds
+          .filter((_, index) => index !== indexA && index !== indexB)
+          .concat('mutagenic_draft')
+          .slice(0, 3),
+      },
+    });
+    return structuredClone(this.snapshot);
+  }
+
   chooseEventOption(choiceId: string): RuleSnapshot {
     if (!this.snapshot) {
       throw new Error('Delegated runtime has not been started');
@@ -401,27 +575,118 @@ export class SyncBootAndMapRuntimeDelegate implements GameEngineRuntimeDelegate 
     return structuredClone(this.snapshot);
   }
 
-  removeCard(_cardInstanceId?: string): RuleSnapshot {
+  private parseCardSelector(cardInstanceId?: string): { index: number; cardId: string } | null {
+    if (!cardInstanceId) return null;
+    const separatorIndex = cardInstanceId.indexOf(':');
+    if (separatorIndex < 0) return null;
+    const index = Number(cardInstanceId.slice(0, separatorIndex));
+    const cardId = cardInstanceId.slice(separatorIndex + 1);
+    if (!Number.isInteger(index) || index < 0 || cardId.length === 0) return null;
+    return { index, cardId };
+  }
+
+  removeCard(cardInstanceId?: string): RuleSnapshot {
     if (!this.snapshot) {
       throw new Error('Delegated runtime has not been started');
     }
-    const nextDeck = [...this.snapshot.player.deck];
-    if (nextDeck.length > 0) {
-      nextDeck.shift();
+    if (!cardInstanceId) {
+      if (!['rest', 'shop', 'event'].includes(this.snapshot.lifecycle.phase)) {
+        throw new Error('Delegated removeCard without a selector is only valid during rest, shop, or event phase');
+      }
+      const sourcePhase = this.snapshot.lifecycle.phase as 'rest' | 'shop' | 'event';
+      this.snapshot = {
+        ...this.snapshot,
+        lifecycle: {
+          screen: 'RemoveCard',
+          phase: 'remove_card',
+          pendingNodeResolution: true,
+        },
+        surfaceContext: {
+          ...(this.snapshot.surfaceContext ?? {}),
+          upgradeReturnScreen: sourcePhase === 'shop' ? 'Shop' : sourcePhase === 'rest' ? 'Rest' : undefined,
+          isEventFreeCardRemovalMode: sourcePhase === 'event' ? true : this.snapshot.surfaceContext?.isEventFreeCardRemovalMode,
+        },
+        roomSession: {
+          token: this.snapshot.roomSession?.token ?? `delegated:${this.snapshot.map.currentNodeId ?? sourcePhase}:remove_card`,
+          nodeId: this.snapshot.map.currentNodeId,
+          ownerKind: sourcePhase,
+          resolverKind: sourcePhase,
+          surfaceStack: [sourcePhase, 'remove_card'],
+          status: 'active',
+        },
+        meta: {
+          ...this.snapshot.meta,
+          replayLength: this.snapshot.meta.replayLength + 1,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+      return structuredClone(this.snapshot);
     }
-    this.snapshot = {
-      ...this.snapshot,
-      player: {
-        ...this.snapshot.player,
-        deck: nextDeck,
-      },
-      meta: {
-        ...this.snapshot.meta,
-        replayLength: this.snapshot.meta.replayLength + 1,
-        generatedAt: new Date().toISOString(),
-      },
+    if (this.snapshot.lifecycle.phase !== 'remove_card') {
+      throw new Error(`Delegated removeCard with a selector is not supported from phase: ${this.snapshot.lifecycle.phase}`);
+    }
+    const parsedSelector = this.parseCardSelector(cardInstanceId);
+    if (!parsedSelector) {
+      throw new Error('Delegated removeCard requires an index-prefixed card selector');
+    }
+    const nextDeck = [...this.snapshot.player.deck];
+    if (!nextDeck[parsedSelector.index]) {
+      throw new Error(`Delegated removeCard selector index is out of range: ${parsedSelector.index}`);
+    }
+    if (nextDeck[parsedSelector.index] !== parsedSelector.cardId) {
+      throw new Error(`Delegated removeCard selector does not match the current deck entry: ${cardInstanceId}`);
+    }
+    const surfaceContext = { ...(this.snapshot.surfaceContext ?? {}) };
+    const returnScreen = surfaceContext.isEventFreeCardRemovalMode
+      ? 'Map'
+      : surfaceContext.upgradeReturnScreen ?? 'Map';
+    let gold = this.snapshot.player.gold;
+    if (!surfaceContext.isEventFreeCardRemovalMode && returnScreen === 'Shop') {
+      const removalCost = this.snapshot.shop?.cardRemovalCost ?? 75;
+      if (gold < removalCost) {
+        throw new Error('Not enough gold for delegated shop removeCard');
+      }
+      gold -= removalCost;
+    }
+    nextDeck.splice(parsedSelector.index, 1);
+    surfaceContext.isEventFreeCardRemovalMode = false;
+    const player = {
+      ...this.snapshot.player,
+      gold,
+      deck: nextDeck,
     };
-    return structuredClone(this.snapshot);
+    if (returnScreen === 'Shop') {
+      this.snapshot = {
+        ...this.snapshot,
+        player,
+        surfaceContext,
+        lifecycle: {
+          screen: 'Shop',
+          phase: 'shop',
+          pendingNodeResolution: true,
+        },
+        roomSession: {
+          token: this.snapshot.roomSession?.token ?? `delegated:${this.snapshot.map.currentNodeId ?? 'shop'}`,
+          nodeId: this.snapshot.map.currentNodeId,
+          ownerKind: 'shop',
+          resolverKind: 'shop',
+          surfaceStack: ['shop'],
+          status: 'active',
+        },
+        meta: {
+          ...this.snapshot.meta,
+          replayLength: this.snapshot.meta.replayLength + 1,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+      return structuredClone(this.snapshot);
+    }
+    delete surfaceContext.upgradeReturnScreen;
+    return this.returnToMapSnapshot({
+      player,
+      activeEvent: null,
+      surfaceContext,
+    });
   }
 
   leaveRoom(): RuleSnapshot {

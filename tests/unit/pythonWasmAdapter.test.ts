@@ -91,6 +91,35 @@ test('PythonWasmAdapter dispatch auto-starts before running commands', async () 
   }
 });
 
+test('PythonWasmAdapter rejects failed runtime envelopes without replacing the last snapshot', async () => {
+  const previousWindow = (globalThis as any).window;
+  (globalThis as any).window = {
+    loadPyodide: async () => ({
+      globals: { set(): void {} },
+      runPythonAsync: async (code: string) => ({
+        toJs: () => code.includes('dispatch_command')
+          ? { ok: false, error: 'unsupported command from wasm runtime' }
+          : { snapshot: makePythonSnapshot('CharacterSelect') },
+      }),
+    }),
+  };
+
+  try {
+    const adapter = new PythonWasmAdapter();
+    const initialSnapshot = await adapter.start({ seed: 5 });
+
+    await assert.rejects(
+      adapter.dispatch({ type: 'enter_node', nodeId: 'node-1' } as any),
+      /unsupported command from wasm runtime/,
+    );
+
+    assert.equal(adapter.getSnapshot(), initialSnapshot);
+    assert.equal(adapter.getSnapshot()?.lifecycle.screen, 'CharacterSelect');
+  } finally {
+    (globalThis as any).window = previousWindow;
+  }
+});
+
 test('PythonWasmAdapter dispose prevents an in-flight start from restoring a snapshot', async () => {
   const calls: string[] = [];
   const previousWindow = (globalThis as any).window;

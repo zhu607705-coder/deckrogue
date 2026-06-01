@@ -104,9 +104,9 @@ export function AchievementOverlay({
   const total = defs.length;
 
   return (
-    <div className="fixed inset-0 z-[125]">
+    <div className="achievement-overlay fixed inset-0 z-[125]">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-2 sm:inset-4 lg:inset-6 rounded-2xl border border-slate-700/70 bg-slate-950/92 shadow-2xl overflow-hidden flex flex-col">
+      <div className="achievement-overlay__panel absolute inset-2 sm:inset-4 lg:inset-6 rounded-2xl border border-slate-700/70 bg-slate-950/92 shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-emerald-950/20 to-slate-950">
           <div>
             <div className="flex items-center gap-2 text-slate-100">
@@ -126,8 +126,8 @@ export function AchievementOverlay({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_1fr]">
-          <div className="border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col min-h-0 bg-slate-950/60">
+        <div className="achievement-overlay__body flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[360px_1fr]">
+          <div className="achievement-overlay__sidebar border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col min-h-0 bg-slate-950/60">
             <div className="p-4 space-y-3 border-b border-slate-800">
               <div className="grid grid-cols-3 gap-2">
                 {([
@@ -155,7 +155,7 @@ export function AchievementOverlay({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="achievement-overlay__entry-list flex-1 overflow-y-auto p-3 space-y-2">
               {entries.map((def) => {
                 const unlocked = unlockedSet.has(def.id);
                 const active = selectedId === def.id;
@@ -195,7 +195,7 @@ export function AchievementOverlay({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+          <div className="achievement-overlay__detail min-h-0 overflow-y-auto p-4 sm:p-5">
             {!selected && (
               <div className="h-full rounded-xl border border-dashed border-slate-700/80 bg-slate-950/40 flex items-center justify-center text-slate-500">
                 选择一个成就查看详情

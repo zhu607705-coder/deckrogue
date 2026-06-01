@@ -16,13 +16,22 @@ import { resolve } from 'node:path';
 type EnemyRecord = {
   id: string;
   keywords?: string[];
-  intent_policy?: Array<{ intent: string }>;
-  intentPolicy?: Array<{ intent: string }>;
+  intent_policy?: Array<{ intent: string; weight?: unknown }>;
+  intentPolicy?: Array<{ intent: string; weight?: unknown }>;
   moves?: Record<string, unknown>;
   ai_profile?: {
     perceptionAccuracy?: number;
     personality?: Record<string, number>;
-    intentBiases?: Array<{ intent: string; multiplier?: number }>;
+    intentBiases?: Array<{
+      intent: string;
+      multiplier?: number;
+      attackIntentBand?: string;
+      defenseIntentBand?: string;
+      comboThreatBand?: string;
+      playerHpBand?: string;
+      enemyHpBand?: string;
+      playerBlockBand?: string;
+    }>;
     antiStall?: {
       maxNonAttackTurns?: number;
       forcedAttackMultiplier?: number;
@@ -33,6 +42,29 @@ type EnemyRecord = {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+const BIAS_BAND_VALUES = {
+  attackIntentBand: ['low', 'medium', 'high'],
+  defenseIntentBand: ['low', 'medium', 'high'],
+  comboThreatBand: ['none', 'suspected', 'high'],
+  playerHpBand: ['safe', 'pressured', 'kill_range'],
+  enemyHpBand: ['safe', 'pressured', 'kill_range'],
+  playerBlockBand: ['none', 'light', 'heavy'],
+} as const;
+
+function validateBiasBand(
+  violations: string[],
+  enemyId: string,
+  intent: string,
+  key: keyof typeof BIAS_BAND_VALUES,
+  value: unknown,
+): void {
+  if (value === undefined) return;
+  const allowed = BIAS_BAND_VALUES[key];
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    violations.push(`${enemyId}: intentBiases.${intent}.${key} must be one of ${allowed.join(', ')}`);
+  }
 }
 
 function main(): void {
@@ -56,6 +88,9 @@ function main(): void {
     for (const policy of policies) {
       if (!policy.intent || !knownMoveIntents.has(policy.intent)) {
         violations.push(`${enemy.id}: intent_policy references missing move ${policy.intent || 'unknown'}`);
+      }
+      if (policy.weight !== undefined && !isFiniteNumber(policy.weight)) {
+        violations.push(`${enemy.id}: intent_policy.${policy.intent || 'unknown'}.weight must be a finite number`);
       }
     }
 
@@ -94,6 +129,9 @@ function main(): void {
         violations.push(`${enemy.id}: intentBiases.${rule.intent}.multiplier must be a finite number`);
       } else if (multiplier < 0) {
         violations.push(`${enemy.id}: intentBiases.${rule.intent}.multiplier must be non-negative`);
+      }
+      for (const key of Object.keys(BIAS_BAND_VALUES) as Array<keyof typeof BIAS_BAND_VALUES>) {
+        validateBiasBand(violations, enemy.id, rule.intent, key, rule[key]);
       }
     }
 
