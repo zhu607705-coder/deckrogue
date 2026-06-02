@@ -19,12 +19,13 @@
   - `git worktree list` now shows only `E:/deckrogue/deckrogue`.
   - Local branch `mainline-upload-20260511` was deleted after containment proof.
 - Inventory What Reached GitHub:
-  - Ordinary git: current `main` source/report/docs/assets already on `origin/main` at `02df682`.
+  - Ordinary git: current `main` source/report/docs/assets and this cleanup report were pushed to `origin/main`.
+  - Ordinary git branch archive: `codex/deckrogue-import-with-workflow-backup-20260421` was pushed to GitHub at `4e5e4913f0cbc38c17bcc74caaaea98b83383de4`, then the local branch pointer was removed.
   - GitHub Release: oversized Windows installer and historical design bundle split assets under `deckrogue-local-assets-20260602`.
-  - Local-only exclusions: `node_modules`, `release/win/win-unpacked`, Unity `My deckrogue/Library`, tool caches, and remaining unmerged local branches were not forced into ordinary git.
+  - Local-only exclusions: `node_modules`, `release/win/win-unpacked`, Unity `My deckrogue/Library`, tool caches, and the remaining unmerged local branch were not forced into ordinary git.
 - Remaining risk:
-  - `codex/deckrogue-import-with-workflow-backup-20260421` and `codex/team-map-opt-leader-20260410-1106` remain local-only unmerged branches; they were not deleted because they are not contained in `main`.
-  - `codex/team-map-opt-leader-20260410-1106` contains an old team snapshot and an oversized historical design bundle; the bundle was published to Release, but the branch history itself was not pushed into ordinary git.
+  - `codex/team-map-opt-leader-20260410-1106` remains as the only local-only unmerged branch because it contains an old team snapshot and an oversized blob that should not be pushed into ordinary git.
+  - The `team-map` historical design bundle was published to Release, but the branch history itself was not pushed into ordinary git.
 
 ## GitHub Repository Presentation Polish - 2026-06-01
 
