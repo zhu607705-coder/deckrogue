@@ -1,5 +1,31 @@
 # Project Development Report
 
+## Folder Cleanup and GitHub Asset Publication - 2026-06-02
+
+- Confirmed the active repository root is `E:\deckrogue\deckrogue`; `main` was aligned with `origin/main` before cleanup.
+- Published oversized local assets through GitHub Release instead of ordinary git:
+  - Release: `deckrogue-local-assets-20260602`.
+  - URL: `https://github.com/zhu607705-coder/deckrogue/releases/tag/deckrogue-local-assets-20260602`.
+  - Assets uploaded: 49 total, including 29 Windows installer chunks, 16 historical design-bundle chunks, `DeckRogue-0.0.0-x64.exe.blockmap`, `builder-debug.yml`, `SHA256SUMS.txt`, and `SHA256SUMS-SPLIT-20MB.txt`.
+  - Full-file hashes recorded in the Release manifest:
+    - `DeckRogue-0.0.0-x64.exe`: `03c8e604efbf60daff6d20b730ae7b6e46f8fbc2ea4cf6f763ba6eaa5097e9c7`.
+    - `deckrogue_design_asset_bundle_2026-04-10.zip`: `384d193ac7b4a008a7f4ff42cb8472f2b62e1273a06bc2c485b454c6d1867810`.
+- Removed confirmed redundant or generated local copies after publication/verification:
+  - `E:\deckrogue\deckrogue-mainline-merge` old worktree, after verifying `mainline-upload-20260511` was already contained in `main`.
+  - `E:\deckrogue\merge-backups`, which only contained an empty backup marker.
+  - `E:\deckrogue\__MACOSX` and `E:\deckrogue\__pycache__`.
+  - Temporary Release staging cache at `output/github-release-assets`.
+- Worktree cleanup result:
+  - `git worktree list` now shows only `E:/deckrogue/deckrogue`.
+  - Local branch `mainline-upload-20260511` was deleted after containment proof.
+- Inventory What Reached GitHub:
+  - Ordinary git: current `main` source/report/docs/assets already on `origin/main` at `02df682`.
+  - GitHub Release: oversized Windows installer and historical design bundle split assets under `deckrogue-local-assets-20260602`.
+  - Local-only exclusions: `node_modules`, `release/win/win-unpacked`, Unity `My deckrogue/Library`, tool caches, and remaining unmerged local branches were not forced into ordinary git.
+- Remaining risk:
+  - `codex/deckrogue-import-with-workflow-backup-20260421` and `codex/team-map-opt-leader-20260410-1106` remain local-only unmerged branches; they were not deleted because they are not contained in `main`.
+  - `codex/team-map-opt-leader-20260410-1106` contains an old team snapshot and an oversized historical design bundle; the bundle was published to Release, but the branch history itself was not pushed into ordinary git.
+
 ## GitHub Repository Presentation Polish - 2026-06-01
 
 - Corrected scope after the user clarified that the requested decoration was for the GitHub repository page, not the in-app launcher.
